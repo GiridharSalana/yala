@@ -7,7 +7,7 @@
   [![Version](https://img.shields.io/badge/Version-v2.1.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/nightcodex7/yala/releases)
   [![Downloads](https://img.shields.io/github/downloads/nightcodex7/yala/total.svg?style=for-the-badge&logo=github&color=blue)](https://github.com/nightcodex7/yala/releases)
   [![Page Views](https://komarev.com/ghpvc/?username=nightcodex7-yala&label=Page%20Views&color=0175C2&style=for-the-badge)](https://github.com/nightcodex7/yala)
-  [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)]()
+  [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20(Beta)-3DDC84?style=for-the-badge&logo=android&logoColor=white)]()
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](LICENSE)
   [![Build Status](https://img.shields.io/badge/Build-Passing-teal.svg?style=for-the-badge)]()
   [![OpenWrt](https://img.shields.io/badge/OpenWrt-19.07--25.x-1589F0?style=for-the-badge&logo=openwrt&logoColor=white)](https://openwrt.org)
@@ -21,6 +21,12 @@
   <a href="https://github.com/nightcodex7/yala/releases/latest">
     <img src="store-badges/github.webp" alt="Get it on GitHub" height="60" />
   </a>
+
+  <p>
+    <a href="https://github.com/nightcodex7/yala/releases/tag/v2.1.0-beta-ipa">
+      <b>📦 iOS Beta IPA Available on GitHub Releases</b>
+    </a>
+  </p>
   <!-- &nbsp;&nbsp;
   <a href="https://f-droid.org/packages/com.nightcode.luci/">
     <img src="store-badges/fdroid.webp" alt="Get it on F-Droid" height="60" />
@@ -51,6 +57,10 @@ YALA is purpose-built for mobile, tablet, and touch-first form factors:
 - **Foldables & Dual-Screen Devices:** Adaptive layouts with screen hinge and fold awareness (including Samsung Galaxy Fold/Flip series and Apple Duo / foldable layouts).
 - **Chromebooks:** Supported through the ChromeOS Android runtime.
 - **Android XR:** Spatial Android XR support.
+
+> [!TIP]
+> **iOS Beta Availability:**  
+> An experimental iOS Beta `.ipa` build is available for sideloading on [GitHub Releases](https://github.com/nightcodex7/yala/releases/tag/v2.1.0-beta-ipa).
 
 > [!NOTE]
 > **Platform Scope:** YALA is tailored specifically for phone, tablet, and handheld interfaces. Desktop and laptop operating systems (native Windows, macOS, or desktop Linux) are outside the scope of this project, except for Chromebooks running Android apps.
@@ -432,7 +442,7 @@ flutter run
   ```bash
   flutter build ios --no-codesign --release
   ```
-  *(Or trigger the manual GitHub Actions workflow `.github/workflows/build-ipa.yml` to produce an unsigned `.ipa` artifact for testing)*
+  *(Or trigger the manual GitHub Actions workflow `.github/workflows/build-ipa.yml` to produce an unsigned `.ipa` artifact for testing. Pre-built packages are also available on [GitHub Releases](https://github.com/nightcodex7/yala/releases/tag/v2.1.0-beta-ipa))*
 
 ---
 
