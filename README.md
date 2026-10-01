@@ -24,7 +24,7 @@
 
   <p>
     <a href="https://github.com/nightcodex7/yala/releases/tag/v2.1.0-beta-ipa">
-      <b>📦 iOS Beta IPA Available on GitHub Releases</b>
+      <b>iOS Beta IPA Available on GitHub Releases</b>
     </a>
   </p>
   <!-- &nbsp;&nbsp;
@@ -269,7 +269,7 @@ YALA is purpose-built for mobile, tablet, and touch-first form factors:
 <br>
 
 <details>
-  <summary><b>📱 Show More Tablet & Large Screen Screenshots (8 Views)</b></summary>
+  <summary><b>Show More Tablet & Large Screen Screenshots (8 Views)</b></summary>
   <br>
   <p>YALA automatically adapts its layout on tablets, iPads, foldables, and Chromebooks to take full advantage of wider screens:</p>
   <table>
