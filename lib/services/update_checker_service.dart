@@ -12,8 +12,9 @@ import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 /// Manages manual update checks against GitHub Releases for the Community build flavor.
 class UpdateCheckerService {
-  static const String _githubReleasesUrl =
-      'https://api.github.com/repos/nightcodex7/yet-another-luci-app/releases';
+  @visibleForTesting
+  static const String githubReleasesUrl =
+      'https://api.github.com/repos/nightcodex7/yala/releases';
 
   /// Performs a manual check for updates on GitHub Releases and displays an interactive dialog.
   static Future<void> checkForUpdates(BuildContext context) async {
@@ -47,7 +48,7 @@ class UpdateCheckerService {
 
       final response = await http
           .get(
-            Uri.parse(_githubReleasesUrl),
+            Uri.parse(githubReleasesUrl),
             headers: {
               'Accept': 'application/vnd.github.v3+json',
               'User-Agent': 'YetAnotherLuCIApp/${info.version}',
@@ -87,7 +88,7 @@ class UpdateCheckerService {
           final releaseNotes =
               latestRelease['body'] as String? ?? 'No release notes available.';
 
-          final int comparison = _compareVersions(
+          final int comparison = compareVersions(
             currentVersionStr,
             latestVersionStr,
           );
@@ -150,7 +151,8 @@ class UpdateCheckerService {
   /// - Negative integer if current < latest (update available)
   /// - 0 if current == latest (up to date)
   /// - Positive integer if current > latest (ahead of GitHub release / local dev build)
-  static int _compareVersions(String current, String latest) {
+  @visibleForTesting
+  static int compareVersions(String current, String latest) {
     if (current == latest) return 0;
 
     final currentClean = current.split('+').first.split('-').first.trim();

@@ -41,12 +41,12 @@ jobs:
         run: |
           echo "Available Xcode installations on runner:"
           ls -d /Applications/Xcode* || true
-          if [ -d "/Applications/Xcode_15.4.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_15.4.app
-          elif [ -d "/Applications/Xcode_16.0.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.0.app
+          if [ -d "/Applications/Xcode_16.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app
           elif [ -d "/Applications/Xcode_16.1.app" ]; then
             sudo xcode-select -s /Applications/Xcode_16.1.app
+          elif [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app
           elif [ -d "/Applications/Xcode.app" ]; then
             sudo xcode-select -s /Applications/Xcode.app
           fi
@@ -61,7 +61,9 @@ jobs:
           cache: true
 
       - name: Install Flutter Dependencies
-        run: flutter pub get
+        run: |
+          flutter precache --ios
+          flutter pub get
 
       - name: Setup CocoaPods Dependencies
         run: |
