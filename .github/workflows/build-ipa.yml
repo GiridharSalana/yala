@@ -87,21 +87,22 @@ jobs:
 
       - name: Package Sideloadable IPA
         run: |
-          STAGING_DIR="build/ios/ipa_staging"
+          ROOT_DIR="$PWD"
+          STAGING_DIR="$ROOT_DIR/build/ios/ipa_staging"
           PAYLOAD_DIR="$STAGING_DIR/Payload"
-          OUTPUT_DIR="output"
+          OUTPUT_DIR="$ROOT_DIR/output"
           IPA_NAME="Yet-Another-LuCI-App.ipa"
 
           rm -rf "$STAGING_DIR" "$OUTPUT_DIR"
           mkdir -p "$PAYLOAD_DIR" "$OUTPUT_DIR"
 
           # Copy compiled Runner.app bundle into Payload structure
-          cp -R "build/ios/iphoneos/Runner.app" "$PAYLOAD_DIR/"
+          cp -R "$ROOT_DIR/build/ios/iphoneos/Runner.app" "$PAYLOAD_DIR/"
 
           # Package into standard sideloadable zip archive (.ipa)
           (
             cd "$STAGING_DIR"
-            zip -r -9 "../../$OUTPUT_DIR/$IPA_NAME" Payload
+            zip -r -9 "$OUTPUT_DIR/$IPA_NAME" Payload
           )
 
           # Generate SHA256 checksum for verification
