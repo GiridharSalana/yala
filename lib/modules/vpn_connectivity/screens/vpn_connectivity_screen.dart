@@ -206,7 +206,8 @@ class VpnConnectivityScreen extends ConsumerWidget {
       }
       children.add(
         LuciCollapsibleCard(
-          title: l10n?.vpnUnconfiguredTunnelsSection ??
+          title:
+              l10n?.vpnUnconfiguredTunnelsSection ??
               'Unconfigured Tunnels & Services',
           count: unconfiguredCards.length,
           subtitle:
@@ -616,8 +617,10 @@ class VpnConnectivityScreen extends ConsumerWidget {
                   onPressed: () => _confirmToggleProvider(
                     context,
                     ref,
-                    title: AppLocalizations.of(context)
-                            ?.vpnRestartTailscaleTitle ??
+                    title:
+                        AppLocalizations.of(
+                          context,
+                        )?.vpnRestartTailscaleTitle ??
                         'Restart Tailscale Service?',
                     message:
                         'Restarting Tailscale will temporarily drop active mesh connections.',
@@ -725,8 +728,8 @@ class VpnConnectivityScreen extends ConsumerWidget {
                   onPressed: () => _confirmToggleProvider(
                     context,
                     ref,
-                    title: AppLocalizations.of(context)
-                            ?.vpnRestartNextDnsTitle ??
+                    title:
+                        AppLocalizations.of(context)?.vpnRestartNextDnsTitle ??
                         'Restart NextDNS Service?',
                     message:
                         'Restarting NextDNS will reload DNS filtering configurations.',
@@ -850,8 +853,10 @@ class VpnConnectivityScreen extends ConsumerWidget {
                   onPressed: () => _confirmToggleProvider(
                     context,
                     ref,
-                    title: AppLocalizations.of(context)
-                            ?.vpnRestartCloudflaredTitle ??
+                    title:
+                        AppLocalizations.of(
+                          context,
+                        )?.vpnRestartCloudflaredTitle ??
                         'Restart Cloudflared Service?',
                     message:
                         'Restarting Cloudflared will re-establish edge connection tunnels to Cloudflare Zero Trust.',
@@ -929,7 +934,8 @@ class VpnConnectivityScreen extends ConsumerWidget {
         if (context.mounted) {
           context.showToastSuccess(
             'Tunnel Configuration Updated',
-            subtitle: l10n?.vpnStateChangeAppliedSubtitle ??
+            subtitle:
+                l10n?.vpnStateChangeAppliedSubtitle ??
                 'State change applied successfully.',
             actionKey: actionKey,
           );

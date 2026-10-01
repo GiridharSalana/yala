@@ -25,129 +25,133 @@ void main() {
     }
   });
 
-  testWidgets('LoginScreen displays compact, self-explanatory language selector toggle', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(800, 1000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'LoginScreen displays compact, self-explanatory language selector toggle',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: LoginScreen(),
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: LoginScreen(),
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-    // 1. Verify LanguageSelectorBadge is present on LoginScreen and inside SingleChildScrollView
-    expect(find.byType(LanguageSelectorBadge), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byType(SingleChildScrollView),
-        matching: find.byType(LanguageSelectorBadge),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('login_language_selector_button')),
-      findsOneWidget,
-    );
-
-    // 2. Verify self-explanatory translation icon
-    expect(find.byIcon(Icons.translate_rounded), findsOneWidget);
-
-    // 3. Verify dropdown indicator and default language code (EN)
-    expect(find.byIcon(Icons.arrow_drop_down_rounded), findsOneWidget);
-    expect(find.text('EN'), findsOneWidget);
-
-    // 4. Tap the language selector badge to open the dialog
-    await tester.tap(
-      find.byKey(const ValueKey('login_language_selector_button')),
-    );
-    await tester.pumpAndSettle();
-
-    // 5. Verify the dialog title and key language options are rendered
-    expect(find.text('Language'), findsOneWidget);
-    expect(find.text('Русский'), findsOneWidget);
-    expect(find.text('Español'), findsOneWidget);
-    expect(find.text('Deutsch'), findsOneWidget);
-
-    // 6. Scroll to and verify Bahasa Indonesia
-    final idOptionFinder = find.text('Bahasa Indonesia');
-    await tester.scrollUntilVisible(
-      idOptionFinder,
-      100,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(idOptionFinder, findsOneWidget);
-
-    // 7. Select "Bahasa Indonesia"
-    await tester.tap(idOptionFinder);
-    await tester.pumpAndSettle();
-
-    // 8. Verify dialog dismissed
-    expect(find.text('Language'), findsNothing);
-  });
-
-  testWidgets('Selecting language updates locale in AppState and updates toggle label', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(800, 1000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: Consumer(
-          builder: (context, ref, child) {
-            final locale = ref.watch(appStateProvider.select((s) => s.locale));
-            return MaterialApp(
-              locale: locale,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              home: const LoginScreen(),
-            );
-          },
+      // 1. Verify LanguageSelectorBadge is present on LoginScreen and inside SingleChildScrollView
+      expect(find.byType(LanguageSelectorBadge), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(SingleChildScrollView),
+          matching: find.byType(LanguageSelectorBadge),
         ),
-      ),
-    );
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('login_language_selector_button')),
+        findsOneWidget,
+      );
 
-    await tester.pumpAndSettle();
+      // 2. Verify self-explanatory translation icon
+      expect(find.byIcon(Icons.translate_rounded), findsOneWidget);
 
-    // Open language dialog
-    await tester.tap(
-      find.byKey(const ValueKey('login_language_selector_button')),
-    );
-    await tester.pumpAndSettle();
+      // 3. Verify dropdown indicator and default language code (EN)
+      expect(find.byIcon(Icons.arrow_drop_down_rounded), findsOneWidget);
+      expect(find.text('EN'), findsOneWidget);
 
-    // Scroll to and tap Bahasa Indonesia
-    final idOptionFinder = find.text('Bahasa Indonesia');
-    await tester.scrollUntilVisible(
-      idOptionFinder,
-      100,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.tap(idOptionFinder);
-    await tester.pumpAndSettle();
+      // 4. Tap the language selector badge to open the dialog
+      await tester.tap(
+        find.byKey(const ValueKey('login_language_selector_button')),
+      );
+      await tester.pumpAndSettle();
 
-    // Verify AppState locale updated to Indonesian
-    final appState = container.read(appStateProvider);
-    expect(appState.locale?.languageCode, equals('id'));
+      // 5. Verify the dialog title and key language options are rendered
+      expect(find.text('Language'), findsOneWidget);
+      expect(find.text('Русский'), findsOneWidget);
+      expect(find.text('Español'), findsOneWidget);
+      expect(find.text('Deutsch'), findsOneWidget);
 
-    // Verify toggle badge now displays ID
-    expect(find.text('ID'), findsOneWidget);
-  });
+      // 6. Scroll to and verify Bahasa Indonesia
+      final idOptionFinder = find.text('Bahasa Indonesia');
+      await tester.scrollUntilVisible(
+        idOptionFinder,
+        100,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(idOptionFinder, findsOneWidget);
+
+      // 7. Select "Bahasa Indonesia"
+      await tester.tap(idOptionFinder);
+      await tester.pumpAndSettle();
+
+      // 8. Verify dialog dismissed
+      expect(find.text('Language'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Selecting language updates locale in AppState and updates toggle label',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: Consumer(
+            builder: (context, ref, child) {
+              final locale = ref.watch(
+                appStateProvider.select((s) => s.locale),
+              );
+              return MaterialApp(
+                locale: locale,
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: const LoginScreen(),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Open language dialog
+      await tester.tap(
+        find.byKey(const ValueKey('login_language_selector_button')),
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll to and tap Bahasa Indonesia
+      final idOptionFinder = find.text('Bahasa Indonesia');
+      await tester.scrollUntilVisible(
+        idOptionFinder,
+        100,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(idOptionFinder);
+      await tester.pumpAndSettle();
+
+      // Verify AppState locale updated to Indonesian
+      final appState = container.read(appStateProvider);
+      expect(appState.locale?.languageCode, equals('id'));
+
+      // Verify toggle badge now displays ID
+      expect(find.text('ID'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'LoginScreen renders cleanly without overflow under French locale and large text scaling (1.45x)',
@@ -193,9 +197,7 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: MediaQuery(
-              data: const MediaQueryData(
-                textScaler: TextScaler.linear(1.45),
-              ),
+              data: const MediaQueryData(textScaler: TextScaler.linear(1.45)),
               child: const LoginScreen(),
             ),
           ),
@@ -222,65 +224,71 @@ void main() {
       expect(find.widgetWithText(ChoiceChip, 'ncxTestRouter'), findsOneWidget);
 
       // Form fields should be present and valid
-      expect(find.byKey(const ValueKey('login_profile_name_field')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('login_profile_name_field')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('login_ip_field')), findsOneWidget);
     },
   );
 
-  testWidgets('Selecting Chinese updates locale in AppState and updates toggle label to ZH', (
-    WidgetTester tester,
-  ) async {
-    tester.view.physicalSize = const Size(800, 1000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'Selecting Chinese updates locale in AppState and updates toggle label to ZH',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
 
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: Consumer(
-          builder: (context, ref, child) {
-            final locale = ref.watch(appStateProvider.select((s) => s.locale));
-            return MaterialApp(
-              locale: locale,
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              home: const LoginScreen(),
-            );
-          },
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: Consumer(
+            builder: (context, ref, child) {
+              final locale = ref.watch(
+                appStateProvider.select((s) => s.locale),
+              );
+              return MaterialApp(
+                locale: locale,
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: const LoginScreen(),
+              );
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-    // Open language dialog
-    await tester.tap(
-      find.byKey(const ValueKey('login_language_selector_button')),
-    );
-    await tester.pumpAndSettle();
+      // Open language dialog
+      await tester.tap(
+        find.byKey(const ValueKey('login_language_selector_button')),
+      );
+      await tester.pumpAndSettle();
 
-    // Scroll to and tap 简体中文
-    final zhOptionFinder = find.text('简体中文');
-    await tester.scrollUntilVisible(
-      zhOptionFinder,
-      100,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(zhOptionFinder, findsOneWidget);
-    await tester.tap(zhOptionFinder);
-    await tester.pumpAndSettle();
+      // Scroll to and tap 简体中文
+      final zhOptionFinder = find.text('简体中文');
+      await tester.scrollUntilVisible(
+        zhOptionFinder,
+        100,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(zhOptionFinder, findsOneWidget);
+      await tester.tap(zhOptionFinder);
+      await tester.pumpAndSettle();
 
-    // Verify AppState locale updated to Chinese
-    final appState = container.read(appStateProvider);
-    expect(appState.locale?.languageCode, equals('zh'));
+      // Verify AppState locale updated to Chinese
+      final appState = container.read(appStateProvider);
+      expect(appState.locale?.languageCode, equals('zh'));
 
-    // Verify toggle badge now displays ZH
-    expect(find.text('ZH'), findsOneWidget);
-  });
+      // Verify toggle badge now displays ZH
+      expect(find.text('ZH'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'LoginScreen renders cleanly without overflow under Chinese locale and large text scaling (1.45x)',
@@ -314,9 +322,7 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: MediaQuery(
-              data: const MediaQueryData(
-                textScaler: TextScaler.linear(1.45),
-              ),
+              data: const MediaQueryData(textScaler: TextScaler.linear(1.45)),
               child: const LoginScreen(),
             ),
           ),
@@ -383,4 +389,3 @@ void main() {
     );
   });
 }
-

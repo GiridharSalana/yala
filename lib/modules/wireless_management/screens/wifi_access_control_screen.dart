@@ -1224,7 +1224,8 @@ class _WifiAccessControlScreenState
           LuciToastManager.safeShowSuccess(
             context,
             'Access Control applied.',
-            subtitle: l10n?.wifiAccessRulesUpdatedToast ??
+            subtitle:
+                l10n?.wifiAccessRulesUpdatedToast ??
                 'Wi-Fi access rules updated successfully.',
             actionKey: actionKey,
           );

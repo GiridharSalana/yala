@@ -80,7 +80,8 @@ class _WirelessManagementScreenState
       context.showToastSuccess(
         l10n?.wirelessMigratedAnonymousSections(migrated) ??
             'Auto-fixed $migrated anonymous wireless section${migrated > 1 ? 's' : ''}',
-        subtitle: l10n?.wirelessRenamedWifinetNotice ??
+        subtitle:
+            l10n?.wirelessRenamedWifinetNotice ??
             'Renamed to wifinet# — LuCI migration dialog will no longer appear.',
       );
       // Refresh so the UI picks up the new section names

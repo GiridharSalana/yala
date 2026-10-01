@@ -441,8 +441,8 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                     ),
                   ),
                   IconButton(
-                    tooltip: l10n?.backupRefreshFromRouter ??
-                        'Refresh from Router',
+                    tooltip:
+                        l10n?.backupRefreshFromRouter ?? 'Refresh from Router',
                     icon: _isRefreshing
                         ? SizedBox(
                             width: 18,
@@ -592,7 +592,8 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                     OsPlatformIntegration.copyToClipboard(
                       context,
                       text: textToCopy,
-                      label: l10n?.backupPreservedFilesList ??
+                      label:
+                          l10n?.backupPreservedFilesList ??
                           'Preserved Files List',
                     ),
                   );

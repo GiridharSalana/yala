@@ -644,10 +644,7 @@ void main() {
         expect(zh.firewallInputPolicy, '入站数据策略 (Input)');
         expect(zh.firewallOutputPolicy, '出站数据策略 (Output)');
         expect(zh.firewallForwardPolicy, '转发数据策略 (Forward)');
-        expect(
-          zh.vpnWireguardSectionTitle,
-          'WireGuard VPN 接口与对端 (Peers)',
-        );
+        expect(zh.vpnWireguardSectionTitle, 'WireGuard VPN 接口与对端 (Peers)');
         expect(zh.servicesSysTestingDdns, '正在测试 DDNS 查询与解析...');
         expect(zh.updateAvailableTitle, '发现新版本');
       },

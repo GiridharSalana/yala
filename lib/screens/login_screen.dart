@@ -936,120 +936,122 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           behavior: HitTestBehavior.translucent,
           child: Stack(
             children: [
-            // Elegant Matte Network Topology Mesh Background Graphic
-            Positioned.fill(
-              child: RepaintBoundary(
-                child: CustomPaint(
-                  painter: _NetworkTopologyMeshPainter(meshColor: meshColor),
+              // Elegant Matte Network Topology Mesh Background Graphic
+              Positioned.fill(
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _NetworkTopologyMeshPainter(meshColor: meshColor),
+                  ),
                 ),
               ),
-            ),
 
-            SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide =
-                      constraints.maxWidth >= 768 &&
-                      constraints.maxHeight >= 480;
+              SafeArea(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide =
+                        constraints.maxWidth >= 768 &&
+                        constraints.maxHeight >= 480;
 
-                  return SingleChildScrollView(
-                    controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: ClampingScrollPhysics(),
-                    ),
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isWide ? 32 : 20,
-                      vertical: 18,
-                    ),
-                    child: Align(
-                      alignment: isWide
-                          ? Alignment.center
-                          : Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: (constraints.maxHeight - 36).clamp(
-                            0.0,
-                            double.infinity,
-                          ),
-                          maxWidth: isWide ? 920 : 460,
-                        ),
-                        child: Column(
-                          children: [
-                            // Integrated top-right language selector (part of the screen content, not floating)
-                            const Align(
-                              alignment: AlignmentDirectional.topEnd,
-                              child: LanguageSelectorBadge(),
+                    return SingleChildScrollView(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: ClampingScrollPhysics(),
+                      ),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isWide ? 32 : 20,
+                        vertical: 18,
+                      ),
+                      child: Align(
+                        alignment: isWide
+                            ? Alignment.center
+                            : Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: (constraints.maxHeight - 36).clamp(
+                              0.0,
+                              double.infinity,
                             ),
-                            const SizedBox(height: 8),
-                            isWide
-                                ? IntrinsicHeight(
-                                    child: Row(
+                            maxWidth: isWide ? 920 : 460,
+                          ),
+                          child: Column(
+                            children: [
+                              // Integrated top-right language selector (part of the screen content, not floating)
+                              const Align(
+                                alignment: AlignmentDirectional.topEnd,
+                                child: LanguageSelectorBadge(),
+                              ),
+                              const SizedBox(height: 8),
+                              isWide
+                                  ? IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          // Left Pane: Hero Brand, LAN Security & Footers
+                                          Expanded(
+                                            flex: 5,
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                _buildHeaderLockup(
+                                                  context,
+                                                  isWide: true,
+                                                ),
+                                                const SizedBox(height: 24),
+                                                _buildSecurityAssurance(
+                                                  context,
+                                                ),
+                                                const SizedBox(height: 20),
+                                                _buildFooterLinks(context),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 32),
+                                          // Right Pane: Router Endpoint Console Form
+                                          Expanded(
+                                            flex: 6,
+                                            child: Center(
+                                              child: _buildFormCard(
+                                                context,
+                                                showSecurityInCard: false,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.center,
                                       children: [
-                                        // Left Pane: Hero Brand, LAN Security & Footers
-                                        Expanded(
-                                          flex: 5,
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            children: [
-                                              _buildHeaderLockup(
-                                                context,
-                                                isWide: true,
-                                              ),
-                                              const SizedBox(height: 24),
-                                              _buildSecurityAssurance(context),
-                                              const SizedBox(height: 20),
-                                              _buildFooterLinks(context),
-                                            ],
-                                          ),
+                                        _buildHeaderLockup(context),
+                                        const SizedBox(height: 18),
+                                        _buildFormCard(
+                                          context,
+                                          showSecurityInCard: true,
                                         ),
-                                        const SizedBox(width: 32),
-                                        // Right Pane: Router Endpoint Console Form
-                                        Expanded(
-                                          flex: 6,
-                                          child: Center(
-                                            child: _buildFormCard(
-                                              context,
-                                              showSecurityInCard: false,
-                                            ),
-                                          ),
-                                        ),
+                                        const SizedBox(height: 20),
+                                        _buildFooterLinks(context),
                                       ],
                                     ),
-                                  )
-                                : Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      _buildHeaderLockup(context),
-                                      const SizedBox(height: 18),
-                                      _buildFormCard(
-                                        context,
-                                        showSecurityInCard: true,
-                                      ),
-                                      const SizedBox(height: 20),
-                                      _buildFooterLinks(context),
-                                    ],
-                                  ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildHeaderLockup(BuildContext context, {bool isWide = false}) {

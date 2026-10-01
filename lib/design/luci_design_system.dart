@@ -386,9 +386,11 @@ class LuciBreakpoints {
   /// Returns true if the device currently has an active physical hinge or fold (e.g. Apple Duo or foldables).
   static bool hasHinge(BuildContext context) {
     final features = MediaQuery.of(context).displayFeatures;
-    return features.any((f) =>
-        f.type == DisplayFeatureType.hinge ||
-        f.type == DisplayFeatureType.fold);
+    return features.any(
+      (f) =>
+          f.type == DisplayFeatureType.hinge ||
+          f.type == DisplayFeatureType.fold,
+    );
   }
 
   /// Returns the active hinge or fold Rect if present (e.g. Apple Duo seam), or null.

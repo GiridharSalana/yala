@@ -1126,141 +1126,142 @@ class AppState extends ChangeNotifier {
     }
     _isUpdatingThroughput = true;
     try {
-
-    if (reviewerModeEnabled) {
-      // For reviewer mode, get network devices and system info
-      try {
-        final results = await Future.wait([
-          _apiService!.callSimple('network', 'device', {}),
-          _apiService!.callSimple('system', 'info', {}),
-        ]);
-        final networkData = results[0][1] as Map<String, dynamic>?;
-        final sysInfoData = results[1][1] as Map<String, dynamic>?;
-        if (sysInfoData != null) {
-          _dashboardController?.updateSysInfo(sysInfoData);
-        }
-
-        final wanDeviceNames = {'eth0'}; // Mock WAN device
-
-        // Resolve specific interface from preferences
-        final specificInterface = ThroughputController.resolveSpecificInterface(
-          dashboardPreferences,
-          deviceNameResolver: (iface) => getDeviceNameForInterface(iface),
-        );
-
-        _throughputController?.updateThroughput(
-          networkData,
-          wanDeviceNames,
-          specificInterface: specificInterface,
-        );
-        notifyListenersDeferrable();
-      } catch (e) {
-        // Don't log throughput update errors as they're non-critical
-      }
-      return;
-    }
-
-    if (_routerService?.selectedRouter == null ||
-        _authService?.sysauth == null) {
-      return;
-    }
-
-    final ip = _routerService!.selectedRouter!.ipAddress;
-    final useHttps = _routerService!.selectedRouter!.useHttps;
-
-    try {
-      // Fetch network devices and system info in parallel for real-time charts
-      final results = await Future.wait([
-        _apiService!.call(
-          ip,
-          _authService!.sysauth!,
-          useHttps,
-          object: 'luci-rpc',
-          method: 'getNetworkDevices',
-          params: {},
-        ),
-        _apiService!.call(
-          ip,
-          _authService!.sysauth!,
-          useHttps,
-          object: 'system',
-          method: 'info',
-          params: {},
-        ),
-      ]);
-
-      final netResult = results[0];
-      final sysResult = results[1];
-
-      if (sysResult is List && sysResult.length > 1 && sysResult[0] == 0) {
-        final sysInfoData = sysResult[1] as Map<String, dynamic>?;
-        if (sysInfoData != null) {
-          _dashboardController?.updateSysInfo(sysInfoData);
-        }
-      }
-
-      dynamic netDataResult = netResult;
-      if (netDataResult is! List ||
-          netDataResult.length <= 1 ||
-          netDataResult[0] != 0) {
+      if (reviewerModeEnabled) {
+        // For reviewer mode, get network devices and system info
         try {
-          netDataResult = await _apiService!.call(
+          final results = await Future.wait([
+            _apiService!.callSimple('network', 'device', {}),
+            _apiService!.callSimple('system', 'info', {}),
+          ]);
+          final networkData = results[0][1] as Map<String, dynamic>?;
+          final sysInfoData = results[1][1] as Map<String, dynamic>?;
+          if (sysInfoData != null) {
+            _dashboardController?.updateSysInfo(sysInfoData);
+          }
+
+          final wanDeviceNames = {'eth0'}; // Mock WAN device
+
+          // Resolve specific interface from preferences
+          final specificInterface =
+              ThroughputController.resolveSpecificInterface(
+                dashboardPreferences,
+                deviceNameResolver: (iface) => getDeviceNameForInterface(iface),
+              );
+
+          _throughputController?.updateThroughput(
+            networkData,
+            wanDeviceNames,
+            specificInterface: specificInterface,
+          );
+          notifyListenersDeferrable();
+        } catch (e) {
+          // Don't log throughput update errors as they're non-critical
+        }
+        return;
+      }
+
+      if (_routerService?.selectedRouter == null ||
+          _authService?.sysauth == null) {
+        return;
+      }
+
+      final ip = _routerService!.selectedRouter!.ipAddress;
+      final useHttps = _routerService!.selectedRouter!.useHttps;
+
+      try {
+        // Fetch network devices and system info in parallel for real-time charts
+        final results = await Future.wait([
+          _apiService!.call(
             ip,
             _authService!.sysauth!,
             useHttps,
-            object: 'network.device',
-            method: 'status',
+            object: 'luci-rpc',
+            method: 'getNetworkDevices',
             params: {},
-          );
-        } catch (_) {}
-      }
+          ),
+          _apiService!.call(
+            ip,
+            _authService!.sysauth!,
+            useHttps,
+            object: 'system',
+            method: 'info',
+            params: {},
+          ),
+        ]);
 
-      if (netDataResult is List &&
-          netDataResult.length > 1 &&
-          netDataResult[0] == 0) {
-        final networkData = netDataResult[1] as Map<String, dynamic>?;
+        final netResult = results[0];
+        final sysResult = results[1];
 
-        // Get ALL device names from cached dashboard data (except loopback)
-        final wanDeviceNames = <String>{};
-        final interfaceDump =
-            dashboardData?['interfaceDump'] as Map<String, dynamic>?;
-        if (interfaceDump != null && interfaceDump['interface'] is List) {
-          for (final interface in interfaceDump['interface']) {
-            if (interface is Map<String, dynamic>) {
-              final ifname = interface['interface'] as String?;
-              final device = interface['device'] as String?;
-              final l3Device = interface['l3_device'] as String?;
-              // Include all interfaces except loopback
-              if (ifname != null && ifname != 'loopback' && ifname != 'lo') {
-                if (device != null) wanDeviceNames.add(device);
-                if (l3Device != null && l3Device != device) {
-                  wanDeviceNames.add(l3Device);
+        if (sysResult is List && sysResult.length > 1 && sysResult[0] == 0) {
+          final sysInfoData = sysResult[1] as Map<String, dynamic>?;
+          if (sysInfoData != null) {
+            _dashboardController?.updateSysInfo(sysInfoData);
+          }
+        }
+
+        dynamic netDataResult = netResult;
+        if (netDataResult is! List ||
+            netDataResult.length <= 1 ||
+            netDataResult[0] != 0) {
+          try {
+            netDataResult = await _apiService!.call(
+              ip,
+              _authService!.sysauth!,
+              useHttps,
+              object: 'network.device',
+              method: 'status',
+              params: {},
+            );
+          } catch (_) {}
+        }
+
+        if (netDataResult is List &&
+            netDataResult.length > 1 &&
+            netDataResult[0] == 0) {
+          final networkData = netDataResult[1] as Map<String, dynamic>?;
+
+          // Get ALL device names from cached dashboard data (except loopback)
+          final wanDeviceNames = <String>{};
+          final interfaceDump =
+              dashboardData?['interfaceDump'] as Map<String, dynamic>?;
+          if (interfaceDump != null && interfaceDump['interface'] is List) {
+            for (final interface in interfaceDump['interface']) {
+              if (interface is Map<String, dynamic>) {
+                final ifname = interface['interface'] as String?;
+                final device = interface['device'] as String?;
+                final l3Device = interface['l3_device'] as String?;
+                // Include all interfaces except loopback
+                if (ifname != null && ifname != 'loopback' && ifname != 'lo') {
+                  if (device != null) wanDeviceNames.add(device);
+                  if (l3Device != null && l3Device != device) {
+                    wanDeviceNames.add(l3Device);
+                  }
                 }
               }
             }
           }
+
+          // Resolve specific interface from preferences
+          final specificInterface =
+              ThroughputController.resolveSpecificInterface(
+                dashboardPreferences,
+                deviceNameResolver: (iface) => getDeviceNameForInterface(iface),
+              );
+
+          _throughputController?.updateThroughput(
+            networkData,
+            wanDeviceNames,
+            specificInterface: specificInterface,
+          );
+          notifyListenersDeferrable();
         }
-
-        // Resolve specific interface from preferences
-        final specificInterface = ThroughputController.resolveSpecificInterface(
-          dashboardPreferences,
-          deviceNameResolver: (iface) => getDeviceNameForInterface(iface),
-        );
-
-        _throughputController?.updateThroughput(
-          networkData,
-          wanDeviceNames,
-          specificInterface: specificInterface,
-        );
-        notifyListenersDeferrable();
+      } catch (e) {
+        // Don't log throughput update errors as they're non-critical
       }
-    } catch (e) {
-      // Don't log throughput update errors as they're non-critical
+    } finally {
+      _isUpdatingThroughput = false;
     }
-  } finally {
-    _isUpdatingThroughput = false;
   }
-}
 
   void startThroughputTimer() {
     _startThroughputTimer();

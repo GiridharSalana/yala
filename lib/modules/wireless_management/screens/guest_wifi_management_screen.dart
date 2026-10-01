@@ -1260,65 +1260,64 @@ class _GuestMasterControlSwitchState
                   );
                 }
               : _isToggling
-                  ? null
-                  : (enable) async {
-                      if (_isToggling) return;
-                      setState(() {
-                        _isToggling = true;
-                        _optimisticEnabled = enable;
-                      });
+              ? null
+              : (enable) async {
+                  if (_isToggling) return;
+                  setState(() {
+                    _isToggling = true;
+                    _optimisticEnabled = enable;
+                  });
 
-                      final actionKey = 'toggle_all_guest_screen';
-                      context.showToastLoading(
+                  final actionKey = 'toggle_all_guest_screen';
+                  context.showToastLoading(
+                    enable
+                        ? (l10n?.toastEnablingAllGuest ??
+                              'Enabling all Guest networks...')
+                        : (l10n?.toastDisablingAllGuest ??
+                              'Disabling all Guest networks...'),
+                    actionKey: actionKey,
+                  );
+                  int count = 0;
+                  try {
+                    for (final iface in widget.guestIfaces) {
+                      if (iface.isEnabled != enable) {
+                        final res = await appState.setSsidEnabled(
+                          iface.sectionName,
+                          enable,
+                          context: context,
+                        );
+                        if (res) count++;
+                      }
+                    }
+                    if (context.mounted) {
+                      context.showToastSuccess(
                         enable
-                            ? (l10n?.toastEnablingAllGuest ??
-                                  'Enabling all Guest networks...')
-                            : (l10n?.toastDisablingAllGuest ??
-                                  'Disabling all Guest networks...'),
+                            ? (l10n?.toastEnabledGuestCount(count) ??
+                                  'Enabled $count Guest network interface${count == 1 ? '' : 's'}.')
+                            : (l10n?.toastDisabledGuestCount(count) ??
+                                  'Disabled $count Guest network interface${count == 1 ? '' : 's'}.'),
                         actionKey: actionKey,
                       );
-                      int count = 0;
-                      try {
-                        for (final iface in widget.guestIfaces) {
-                          if (iface.isEnabled != enable) {
-                            final res = await appState.setSsidEnabled(
-                              iface.sectionName,
-                              enable,
-                              context: context,
-                            );
-                            if (res) count++;
-                          }
-                        }
-                        if (context.mounted) {
-                          context.showToastSuccess(
-                            enable
-                                ? (l10n?.toastEnabledGuestCount(count) ??
-                                      'Enabled $count Guest network interface${count == 1 ? '' : 's'}.')
-                                : (l10n?.toastDisabledGuestCount(count) ??
-                                      'Disabled $count Guest network interface${count == 1 ? '' : 's'}.'),
-                            actionKey: actionKey,
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          context.showToastError(
-                            enable
-                                ? 'Failed to enable guest networks'
-                                : 'Failed to disable guest networks',
-                            subtitle:
-                                e.toString().replaceAll('Exception: ', ''),
-                            actionKey: actionKey,
-                          );
-                        }
-                      } finally {
-                        if (mounted) {
-                          setState(() {
-                            _isToggling = false;
-                            _optimisticEnabled = null;
-                          });
-                        }
-                      }
-                    },
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      context.showToastError(
+                        enable
+                            ? 'Failed to enable guest networks'
+                            : 'Failed to disable guest networks',
+                        subtitle: e.toString().replaceAll('Exception: ', ''),
+                        actionKey: actionKey,
+                      );
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isToggling = false;
+                        _optimisticEnabled = null;
+                      });
+                    }
+                  }
+                },
         ),
       ],
     );

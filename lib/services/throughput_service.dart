@@ -25,7 +25,8 @@ class ThroughputService {
   static const int _maxHistoryLength = 50;
   static const double _maxRate = 1000.0 * 1024.0 * 1024.0; // 1 GB/s
   static const double _minElapsedSeconds = 0.1;
-  static const double _maxElapsedSeconds = 15.0; // Discontinuity threshold for paused app or tab gaps
+  static const double _maxElapsedSeconds =
+      15.0; // Discontinuity threshold for paused app or tab gaps
 
   List<double> get rxHistory => _rxHistory.toList();
   List<double> get txHistory => _txHistory.toList();

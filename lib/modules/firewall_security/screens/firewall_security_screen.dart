@@ -48,7 +48,8 @@ class _FirewallSecurityScreenState
       final l10n = AppLocalizations.of(context);
       context.showToastInfo(
         'Changes Discarded',
-        subtitle: l10n?.firewallDiscardedCustomRules ??
+        subtitle:
+            l10n?.firewallDiscardedCustomRules ??
             'Discarded all unsaved firewall custom rule changes.',
       );
     }
@@ -174,7 +175,8 @@ class _FirewallSecurityScreenState
       context,
       count: _stagedCustomRuleStates.length,
       itemLabel: 'firewall rule change(s)',
-      title: l10n?.firewallUnsavedCustomRulesTitle ??
+      title:
+          l10n?.firewallUnsavedCustomRulesTitle ??
           'Unsaved Firewall Rule Changes',
     );
 

@@ -25,7 +25,10 @@ void main() {
         },
       };
 
-      final overview = DdnsOverview.fromDashboardData(data, isReviewerMode: false);
+      final overview = DdnsOverview.fromDashboardData(
+        data,
+        isReviewerMode: false,
+      );
       expect(overview.isInstalled, isTrue);
       expect(overview.isGlobalEnabled, isTrue);
       expect(overview.instances.length, equals(1));
@@ -33,20 +36,23 @@ void main() {
       expect(overview.instances.first.enabled, isTrue);
     });
 
-    testWidgets('ServicesSystemScreen renders DDNS section and localized elements', (tester) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: ServicesSystemScreen(),
+    testWidgets(
+      'ServicesSystemScreen renders DDNS section and localized elements',
+      (tester) async {
+        await tester.pumpWidget(
+          const ProviderScope(
+            child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: ServicesSystemScreen(),
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.pumpAndSettle();
+        await tester.pumpAndSettle();
 
-      expect(find.byType(ServicesSystemScreen), findsOneWidget);
-    });
+        expect(find.byType(ServicesSystemScreen), findsOneWidget);
+      },
+    );
   });
 }

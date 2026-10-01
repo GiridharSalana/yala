@@ -899,7 +899,8 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
                   onPressed: () async {
                     context.showToastInfo(
                       'Capabilities Probe',
-                      subtitle: l10n?.pkgReProbingCapabilities ??
+                      subtitle:
+                          l10n?.pkgReProbingCapabilities ??
                           'Re-probing router capabilities...',
                     );
                     await ref.read(appStateProvider).redetectCapabilities();

@@ -138,10 +138,12 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
         });
         // If this was an initial fetch and wireless stations have traffic stats but no speed delta yet,
         // trigger a one-time quick sample in 3 seconds to immediately compute and display live speeds.
-        if (list.any((c) =>
-            c.connectionType == ConnectionType.wireless &&
-            c.rxBytes != null &&
-            c.txSpeed == null)) {
+        if (list.any(
+          (c) =>
+              c.connectionType == ConnectionType.wireless &&
+              c.rxBytes != null &&
+              c.txSpeed == null,
+        )) {
           Timer(const Duration(seconds: 3), () {
             if (mounted && widget.isTabActive) {
               _computeClientsFuture();

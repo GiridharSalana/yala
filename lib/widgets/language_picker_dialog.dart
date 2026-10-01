@@ -151,7 +151,10 @@ Future<void> showLanguagePickerDialog(
                 Flexible(
                   child: Text(
                     l10n?.languageTitle ?? 'Select Language',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

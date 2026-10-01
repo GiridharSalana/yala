@@ -278,8 +278,7 @@ class DhcpDnsScreen extends ConsumerWidget {
                       size: 20,
                       color: Colors.teal,
                     ),
-                    tooltip:
-                        l10n?.editStaticLeaseTitle ?? 'Edit Static Lease',
+                    tooltip: l10n?.editStaticLeaseTitle ?? 'Edit Static Lease',
                     onPressed: () => _showAddStaticLeaseDialog(
                       context,
                       ref,
@@ -294,8 +293,8 @@ class DhcpDnsScreen extends ConsumerWidget {
                       size: 20,
                       color: Colors.blue,
                     ),
-                    tooltip: l10n?.dhcpReserveAsStaticIp ??
-                        'Reserve as Static IP',
+                    tooltip:
+                        l10n?.dhcpReserveAsStaticIp ?? 'Reserve as Static IP',
                     onPressed: () =>
                         _showAddStaticLeaseDialog(context, ref, lease: lease),
                   ),
@@ -394,8 +393,7 @@ class DhcpDnsScreen extends ConsumerWidget {
                     color: Colors.teal,
                     size: 20,
                   ),
-                  tooltip:
-                      l10n?.editStaticLeaseTitle ?? 'Edit Static Lease',
+                  tooltip: l10n?.editStaticLeaseTitle ?? 'Edit Static Lease',
                   onPressed: () => _showAddStaticLeaseDialog(
                     context,
                     ref,
@@ -408,7 +406,8 @@ class DhcpDnsScreen extends ConsumerWidget {
                     color: Colors.redAccent,
                     size: 20,
                   ),
-                  tooltip: l10n?.dialogRemoveStaticLeaseTitle ??
+                  tooltip:
+                      l10n?.dialogRemoveStaticLeaseTitle ??
                       'Remove Static Lease',
                   onPressed: () =>
                       _confirmDeleteStaticLease(context, ref, mapping),
@@ -463,8 +462,10 @@ class DhcpDnsScreen extends ConsumerWidget {
               child: Text(
                 AppLocalizations.of(context)?.dialogRemoveStaticLeaseTitle ??
                     'Remove Static Lease',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],

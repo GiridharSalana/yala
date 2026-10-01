@@ -516,11 +516,11 @@ class OsPlatformIntegration {
       isPublicDownloads: isPublic,
       storageMethodLabel: isPublic
           ? (Platform.isIOS
-              ? 'Files App (On My iPhone / iPad)'
-              : 'Public Downloads Folder')
+                ? 'Files App (On My iPhone / iPad)'
+                : 'Public Downloads Folder')
           : (Platform.isIOS
-              ? 'Files App (On My iPhone / iPad)'
-              : 'Private App Storage (/Android/data/)'),
+                ? 'Files App (On My iPhone / iPad)'
+                : 'Private App Storage (/Android/data/)'),
     );
     await showBackupDownloadedPrompt(context, saveResult);
   }
@@ -605,10 +605,14 @@ class OsPlatformIntegration {
       if (ver.contains('chrome') || sysVer.contains('chrome')) {
         return 'Chromebook (ChromeOS ARC)';
       }
-      if (ver.contains('tv') || ver.contains('atv') || ver.contains('googletv')) {
+      if (ver.contains('tv') ||
+          ver.contains('atv') ||
+          ver.contains('googletv')) {
         return 'Android TV Subsystem';
       }
-      if (ver.contains('xr') || ver.contains('spatial') || ver.contains('vision')) {
+      if (ver.contains('xr') ||
+          ver.contains('spatial') ||
+          ver.contains('vision')) {
         return 'Android XR Spatial Subsystem';
       }
       if (ver.contains('graphene') || sysVer.contains('graphene')) {

@@ -552,7 +552,9 @@ class Client {
       }
       if (bitsPerSecond < 1000000) {
         final val = bitsPerSecond / 1000;
-        final str = val >= 100 ? val.toStringAsFixed(0) : val.toStringAsFixed(1);
+        final str = val >= 100
+            ? val.toStringAsFixed(0)
+            : val.toStringAsFixed(1);
         return '$str Kbps';
       }
       final val = bitsPerSecond / 1000000;
