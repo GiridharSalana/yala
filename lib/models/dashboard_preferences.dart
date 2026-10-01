@@ -46,9 +46,12 @@ class DashboardPreferences {
   final bool showRamUsage;
   final bool showLoadAverage;
   final bool showUptime;
+  final bool showTemperature;
+  final bool dismissTemperaturePrompt;
 
   // Formatting & display options
   final String speedUnit; // 'bits' or 'bytes'
+  final String temperatureUnit; // 'celsius' or 'fahrenheit'
   final bool showInactiveInterfaces;
 
   // Quick Action Shortcuts selection
@@ -73,7 +76,10 @@ class DashboardPreferences {
     this.showRamUsage = true,
     this.showLoadAverage = true,
     this.showUptime = true,
+    this.showTemperature = true,
+    this.dismissTemperaturePrompt = false,
     this.speedUnit = 'bits',
+    this.temperatureUnit = 'celsius',
     this.showInactiveInterfaces = true,
     Set<String>? enabledQuickActions,
   }) : enabledWirelessInterfaces = enabledWirelessInterfaces ?? {},
@@ -139,7 +145,10 @@ class DashboardPreferences {
     bool? showRamUsage,
     bool? showLoadAverage,
     bool? showUptime,
+    bool? showTemperature,
+    bool? dismissTemperaturePrompt,
     String? speedUnit,
+    String? temperatureUnit,
     bool? showInactiveInterfaces,
     Set<String>? enabledQuickActions,
   }) {
@@ -166,7 +175,11 @@ class DashboardPreferences {
       showRamUsage: showRamUsage ?? this.showRamUsage,
       showLoadAverage: showLoadAverage ?? this.showLoadAverage,
       showUptime: showUptime ?? this.showUptime,
+      showTemperature: showTemperature ?? this.showTemperature,
+      dismissTemperaturePrompt:
+          dismissTemperaturePrompt ?? this.dismissTemperaturePrompt,
       speedUnit: speedUnit ?? this.speedUnit,
+      temperatureUnit: temperatureUnit ?? this.temperatureUnit,
       showInactiveInterfaces:
           showInactiveInterfaces ?? this.showInactiveInterfaces,
       enabledQuickActions: enabledQuickActions ?? this.enabledQuickActions,
@@ -192,7 +205,10 @@ class DashboardPreferences {
     'showRamUsage': showRamUsage,
     'showLoadAverage': showLoadAverage,
     'showUptime': showUptime,
+    'showTemperature': showTemperature,
+    'dismissTemperaturePrompt': dismissTemperaturePrompt,
     'speedUnit': speedUnit,
+    'temperatureUnit': temperatureUnit,
     'showInactiveInterfaces': showInactiveInterfaces,
     'enabledQuickActions': enabledQuickActions.toList(),
   };
@@ -223,7 +239,13 @@ class DashboardPreferences {
       showRamUsage: json['showRamUsage'] ?? true,
       showLoadAverage: json['showLoadAverage'] ?? true,
       showUptime: json['showUptime'] ?? true,
+      showTemperature: json['showTemperature'] ?? true,
+      dismissTemperaturePrompt:
+          json['dismissTemperaturePrompt'] as bool? ?? false,
       speedUnit: json['speedUnit']?.toString() ?? 'bits',
+      temperatureUnit: json['temperatureUnit']?.toString() == 'fahrenheit'
+          ? 'fahrenheit'
+          : 'celsius',
       showInactiveInterfaces: json['showInactiveInterfaces'] ?? true,
       enabledQuickActions: json['enabledQuickActions'] != null
           ? Set<String>.from(json['enabledQuickActions'])

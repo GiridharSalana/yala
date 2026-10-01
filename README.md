@@ -2,24 +2,29 @@
 
 <div align="center">
   <img src="assets/images/app_logo_transparent.png" width="120" alt="App Logo" />
-  <h2>Modern OpenWrt & LuCI Router Manager for Mobile</h2>
-  <p>Maintained by <b>@nightcodex7</b></p>
+  <h2>Modern OpenWrt & LuCI Router Manager</h2>
 
-  [![Google Play](https://img.shields.io/badge/Google%20Play-Get%20it%20on%20Play%20Store-414141?style=for-the-badge&logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=com.nightcode.luci&referrer=utm_source%3Dgithub%26utm_medium%3Dreadme%26utm_campaign%3Drepo_header)
-  [![Version](https://img.shields.io/badge/Version-v2.0.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/nightcodex7/yala/releases)
+  [![Version](https://img.shields.io/badge/Version-v2.1.1-blue.svg?style=for-the-badge&logo=github)](https://github.com/nightcodex7/yala/releases)
   [![Downloads](https://img.shields.io/github/downloads/nightcodex7/yala/total.svg?style=for-the-badge&logo=github&color=blue)](https://github.com/nightcodex7/yala/releases)
   [![Page Views](https://komarev.com/ghpvc/?username=nightcodex7-yala&label=Page%20Views&color=0175C2&style=for-the-badge)](https://github.com/nightcodex7/yala)
-  [![Flutter](https://img.shields.io/badge/Flutter-3.32.5+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
-  [![Dart](https://img.shields.io/badge/Dart-3.8+-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
+  [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)]()
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](LICENSE)
   [![Build Status](https://img.shields.io/badge/Build-Passing-teal.svg?style=for-the-badge)]()
-  [![OpenWrt](https://img.shields.io/badge/OpenWrt-19.07--24.10+-1589F0?style=for-the-badge&logo=openwrt&logoColor=white)](https://openwrt.org)
+  [![OpenWrt](https://img.shields.io/badge/OpenWrt-19.07--25.x-1589F0?style=for-the-badge&logo=openwrt&logoColor=white)](https://openwrt.org)
 
   <br>
 
   <a href="https://play.google.com/store/apps/details?id=com.nightcode.luci&referrer=utm_source%3Dgithub%26utm_medium%3Dreadme%26utm_campaign%3Dplay_badge">
     <img src="store-badges/google.webp" alt="Get it on Google Play" height="60" />
   </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/nightcodex7/yala/releases/latest">
+    <img src="store-badges/github.webp" alt="Get it on GitHub" height="60" />
+  </a>
+  <!-- &nbsp;&nbsp;
+  <a href="https://f-droid.org/packages/com.nightcode.luci/">
+    <img src="store-badges/fdroid.webp" alt="Get it on F-Droid" height="60" />
+  </a> -->
 
   <br><br>
 
@@ -33,7 +38,22 @@
 
 <br>
 
-**YALA (Yet Another LuCI App)** is an open-source mobile client for managing OpenWrt routers. It communicates with OpenWrt's LuCI JSON-RPC backend to provide intuitive network management, real-time metrics, wireless configuration, firewall rules, package management, system backups, and client controls directly from your phone.
+**YALA (Yet Another LuCI App)** is an open-source mobile client for managing OpenWrt routers. It connects directly to your router using LuCI JSON-RPC, ubus, and standard OpenWrt system services, allowing you to monitor real-time bandwidth, manage connected devices, run network diagnostics, configure wireless radios, inspect storage, and update packages directly from your phone or tablet.
+
+---
+
+## Supported Devices & Scope
+
+YALA is purpose-built for mobile, tablet, and touch-first form factors:
+
+- **Smartphones:** Android (Android 8.0 Oreo up to Android 15/16) and Apple iPhone (iOS 14.0+).
+- **Tablets & iPads:** Android Tablets and Apple iPads with dedicated wide-screen multi-column layouts and adaptive split views.
+- **Foldables & Dual-Screen Devices:** Adaptive layouts with screen hinge and fold awareness (including Samsung Galaxy Fold/Flip series and Apple Duo / foldable layouts).
+- **Chromebooks:** Supported through the ChromeOS Android runtime.
+- **Android XR:** Spatial Android XR support.
+
+> [!NOTE]
+> **Platform Scope:** YALA is tailored specifically for phone, tablet, and handheld interfaces. Desktop and laptop operating systems (native Windows, macOS, or desktop Linux) are outside the scope of this project, except for Chromebooks running Android apps.
 
 ---
 
@@ -41,61 +61,79 @@
 
 ### Multi-Router Management & Secure Vault
 
-- **Multi-Device Support:** Manage and switch between multiple OpenWrt routers with isolated credentials stored in native secure storage.
-- **Resilient Authentication Stack:** Automatic fallback chain supporting LuCI RPC (`/cgi-bin/luci/rpc/auth`), ubus JSON-RPC (`session.login`), and redirect-aware CGI form authentication (`sysauth` cookies and `stok` tokens).
-- **HTTPS & Custom Ports:** Connect via HTTP or HTTPS with custom port configurations and local SSL certificate validation overrides.
+- **Multiple Router Profiles:** Save and switch between multiple OpenWrt routers with isolated credentials.
+- **Hardware-Backed Vault:** Router IP addresses, credentials, and session tokens are encrypted locally using native secure storage (`flutter_secure_storage` with Android KeyStore and iOS Keychain).
+- **Resilient Authentication Stack:** Automatic fallback chain supporting LuCI JSON-RPC (`/cgi-bin/luci/rpc/auth`), ubus JSON-RPC (`session.login`), and redirect-aware CGI form authentication (`sysauth` cookies and `stok` tokens).
+- **HTTPS & Custom Ports:** Connect over HTTP or HTTPS with custom port configurations and optional self-signed SSL certificate acceptance for local home networks.
 
-### Parental Controls & Scheduled Access
+### Network Diagnostics Suite
 
-- **Profile-Based Management:** Group connected devices under profiles with customizable access schedules.
-- **Automated Access Windows:** Enforces firewall blocking rules during scheduled restriction windows and restores access automatically when windows expire.
-- **Domain Filtering & Overrides:** Filter specific domains per profile or toggle instant unrestricted bypass overrides.
+- **Router-Side Ping:** Send ICMP ECHO_REQUEST packets directly from the router to any target IP or hostname with packet count selection, IPv6 toggle, and live min/avg/max latency calculation.
+- **Visual Traceroute:** Trace network hops from the router with customizable hop limits and IPv6 support.
+- **DNS Lookup / NSLookup:** Test domain name resolution against default upstream resolvers or custom DNS servers.
+- **Routes, ARP & Conntrack:** Inspect kernel routing tables, active ARP neighbor caches, and live network connection tracking entries.
+- **One-Tap Diagnostic Export:** Generate and copy clean, formatted diagnostic summaries for easy troubleshooting and sharing.
 
-### Guest Wi-Fi & Wireless Diagnostics
+### Dashboard & Real-Time Vitals
 
-- **One-Click Guest Networks:** Provision guest Wi-Fi SSIDs with automatic AP client isolation (`ap_isolate=1`) and dedicated firewall zone isolation.
+- **Animated Gauges:** Live visual gauges for CPU load, RAM usage, Swap space, and flash root (`/`) filesystem capacity.
+- **Real-Time Throughput Graph:** Smooth live chart displaying router network transfer rates (Rx/Tx) with customizable polling intervals.
+- **Interface Status Cards:** Overview cards for WAN, LAN, and WWAN showing IP addresses, MACs, protocols, and WAN public IP verification.
+- **Quick Actions:** Instant shortcuts to reboot the router, access network diagnostics, or inspect connected clients.
+
+### Connected Clients & Lease Management
+
+- **Unified Client List:** Merges active DHCP leases, ARP neighbor entries, and wireless stations into a single clear view.
+- **Device Details:** Displays hostname, assigned IP, MAC address, vendor OUI lookup, connected SSID, and radio band badges.
+- **IPv6 Management:** Cleanly displays deduplicated IPv6 address lists with expandable views for multiple private or link-local addresses.
+- **Static DHCP Leases:** View, add, edit, and delete static IP reservations with immediate router synchronization.
+
+### Wireless Networks & Guest Wi-Fi
+
+- **Multi-Band Monitoring:** Monitor 2.4 GHz, 5 GHz, and 6 GHz radios with channel, frequency, transmit power, and channel width details.
+- **Connected Stations:** Live station list per radio showing connected devices, signal strength (dBm), and bitrate metrics.
 - **Wi-Fi Access Control:** Enforce MAC address allowlists or denylists with direct router UCI synchronization.
-- **QR Code Sharing:** Generate on-screen Wi-Fi QR codes for quick client connection.
-- **Multi-Band Diagnostics:** Monitor 2.4GHz, 5GHz, and 6GHz radios with frequency details, channel width, transmit power, and connected station bandwidth metrics.
+- **One-Click Guest Wi-Fi:** Provision guest Wi-Fi SSIDs with automatic AP client isolation (`ap_isolate=1`) and dedicated firewall zone isolation.
+- **Wi-Fi QR Code Sharing:** Generate on-screen QR codes to help family and visitors connect without typing passwords.
 
-### Self-Device Protection & Atomic UCI Engine
+### Dual Package Managers (OPKG & APK)
 
-- **Self-Device Guard:** Automatically detects local client IP and MAC addresses to prevent accidental self-lockouts during access rule changes.
-- **Atomic UCI Rollback:** Automatically executes `uci revert` across target configuration files if an intermediate multi-step RPC request fails.
+- **Smart Engine Detection:** Automatically detects and switches between `opkg` (OpenWrt 19.07–23.05) and modern `apk` (OpenWrt 24.10+ and 25.x snapshots).
+- **Package Management:** Search repository feeds, update package lists, and install or remove packages directly.
+- **LuCI App Companion Finder:** Discover, install, and manage installed vs available LuCI web extension modules (`luci-app-*`).
 
-### Dashboard & Network Vitals
+### Parental Controls & Timed Access
 
-- **Dual Themes:** Switch seamlessly between Light and Dark Material 3 themes.
-- **Animated Gauges:** Live visual gauges for CPU load, RAM usage, Swap space, and root `/` filesystem capacity.
-- **Real-Time Throughput Graph:** Smooth live chart displaying network transfer rates (Rx/Tx) with customizable polling intervals.
-- **Interface Cards:** Status cards for WAN, LAN, and WWAN showing IP addresses, MACs, protocols, and WAN public IP verification.
+- **Device Profiling:** Group household devices under customizable profiles.
+- **Automated Access Windows:** Enforce firewall blocking rules during scheduled restriction hours (such as study or bedtime) and restore access automatically.
+- **Domain Filtering & Overrides:** Filter specific domains per profile or toggle instant unrestricted bypass overrides when needed.
 
-### Connected Client Management
+### System Services, Cron & Dynamic DNS (DDNS)
 
-- **Unified Client List:** Aggregates active DHCP leases, ARP neighbor entries, and wireless stations into a single view.
-- **Device Details:** Displays hostname, IP, MAC address, vendor OUI, connected SSID, and radio band badges.
-- **IPv6 Management:** Displays deduplicated IPv6 address lists with toggleable expand/collapse views for multiple private or link-local addresses.
-- **Static Leases:** View, add, and modify static DHCP IP assignments.
+- **Services Control:** View active `procd` daemons and `/etc/init.d/` startup scripts; start, stop, restart, enable, or disable services remotely.
+- **Cron Scheduler:** View, add, edit, or delete scheduled crontab jobs (`/etc/crontabs/root`).
+- **Dynamic DNS:** Monitor DDNS sync status, trigger forced IP updates, and view service status.
+- **Optional SSH Service:** Connect via SSH for advanced router maintenance and SoC thermal sensor monitoring.
 
-### OPKG & APK Dual Package Manager
+### Storage, Partitions & Backup/Restore
 
-- **Smart Engine Detection:** Automatically switches between standard `opkg` (OpenWrt 21.02–23.05) and modern `apk` (OpenWrt 24.10+) package engines.
-- **Package Management:** Search repository feeds, update package lists, install, and remove packages.
-- **LuCI App Finder:** Discover and manage installed vs. available LuCI extension modules (`luci-app-*`).
-
-### System Services, VPN & Storage
-
-- **Services Control:** View active `procd` daemons and init scripts; start, stop, restart, enable, or disable services remotely.
-- **VPN Monitoring:** Monitor status and interfaces for WireGuard, OpenVPN, Tailscale, and ZeroTier connections.
-- **Cron Scheduler:** View and edit system scheduled tasks (`/etc/crontabs/root`).
-- **Disk & Storage Monitor:** Monitor disk space breakdown for root `/`, `/overlay`, `/tmp`, and attached USB drives.
-
-### Backup, Restore & Partition Tools
-
-- **Pre-Restore Validation:** Validates gzip headers (`0x1F 0x8B`) and `ustar` archive structures prior to upload to prevent corrupt backup restores.
+- **Storage Breakdown:** Inspect disk space usage across root `/`, `/overlay`, `/tmp`, and mounted external USB drives.
+- **Pre-Restore Validation:** Validates gzip headers (`0x1F 0x8B`) and `tar` archive structures before uploading to prevent corrupt backup restores.
 - **Preserved File Viewer:** Inspect files marked for retention during sysupgrade operations (`sysupgrade -l`).
 - **MTD Partition Dumper:** Save binary `mtdblock` partition images directly from `/proc/mtd`.
-- **Factory Reset:** Trigger remote system reset (`firstboot -y`) and router reboot.
+- **System Maintenance:** Trigger remote system reboot or clean factory reset (`firstboot -y`).
+
+### Safety Guardrails & Atomic Rollbacks
+
+- **Self-Device Guard:** Automatically detects the managing phone's local IP and MAC address to prevent accidental self-lockouts during access rule changes.
+- **Atomic UCI Rollback:** Automatically executes `uci revert` across target configuration files if an intermediate multi-step RPC request fails.
+
+### Adaptive Design, Theming & Localization
+
+- **Material 3 & Material You:** Dynamic wallpaper-extracted color palettes on supported Android devices, along with the signature YALA Amber theme.
+- **Theme Modes:** Full Light and Dark mode support.
+- **Localization:** Available in English, German, Spanish, French, Indonesian, Portuguese, Brazilian Portuguese, Russian, and Chinese.
+- **Tablet & Foldable Optimization:** Responsive two-column and three-column layouts designed for tablets, foldables, and Chromebooks.
 
 ---
 
@@ -197,9 +235,13 @@
     </td>
   </tr>
   <tr>
-    <td colspan="4" align="center" valign="top">
-      <b>Tools & Diagnostics (More Menu)</b><br/><br/>
-      <img src="assets/screenshots/21-more.jpeg" width="165" height="350" alt="Tools & Diagnostics"/>
+    <td colspan="2" width="50%" align="center" valign="top">
+      <b>Tools & More Menu</b><br/><br/>
+      <img src="assets/screenshots/21-more.jpeg" width="165" height="350" alt="Tools & More Menu"/>
+    </td>
+    <td colspan="2" width="50%" align="center" valign="top">
+      <b>Network Diagnostics</b><br/><br/>
+      <img src="assets/screenshots/19_diagnostic.jpeg" width="165" height="350" alt="Network Diagnostics"/>
     </td>
   </tr>
   <tr>
@@ -216,8 +258,58 @@
 
 <br>
 
+<details>
+  <summary><b>📱 Show More Tablet & Large Screen Screenshots (8 Views)</b></summary>
+  <br>
+  <p>YALA automatically adapts its layout on tablets, iPads, foldables, and Chromebooks to take full advantage of wider screens:</p>
+  <table>
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <b>Multi-Router Profiles & Quick Switch</b><br/><br/>
+        <img src="assets/screenshots/Tab/tab_1.png" width="480" style="max-width: 100%; height: auto;" alt="Tablet Login & Profiles"/>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <b>Connected Clients & Device Details</b><br/><br/>
+        <img src="assets/screenshots/Tab/tab_2.png" width="480" style="max-width: 100%; height: auto;" alt="Tablet Connected Clients"/>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <b>Network Interfaces & DSA Switch Topology</b><br/><br/>
+        <img src="assets/screenshots/Tab/tab_3.png" width="480" style="max-width: 100%; height: auto;" alt="Tablet Network Interfaces"/>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <b>Wireless Overview & Multi-Radio Management</b><br/><br/>
+        <img src="assets/screenshots/Tab/tab_4.png" width="480" style="max-width: 100%; height: auto;" alt="Tablet Wireless Management"/>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <b>Device Management & Modules Menu</b><br/><br/>
+        <img src="assets/screenshots/Tab/tab_5.png" width="480" style="max-width: 100%; height: auto;" alt="Tablet Device Management Menu"/>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <b>DHCP & DNS Management</b><br/><br/>
+        <img src="assets/screenshots/Tab/tab_6.png" width="480" style="max-width: 100%; height: auto;" alt="Tablet DHCP and DNS"/>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <b>Services, Init Scripts, Cron & Dynamic DNS</b><br/><br/>
+        <img src="assets/screenshots/Tab/tab_7.png" width="480" style="max-width: 100%; height: auto;" alt="Tablet Services and System"/>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <b>App Settings & Customization</b><br/><br/>
+        <img src="assets/screenshots/Tab/tab_8.png" width="480" style="max-width: 100%; height: auto;" alt="Tablet Settings"/>
+      </td>
+    </tr>
+  </table>
+</details>
+
+<br>
+
 <div align="center">
-  <p><i>Navigate to <a href="assets/screenshots/">assets/screenshots/</a> to view the complete collection of screenshots in the repository.</i></p>
+  <p><i>Browse <a href="assets/screenshots/">assets/screenshots/</a> to view the full resolution collection of screenshots.</i></p>
 </div>
 
 ---
@@ -226,25 +318,28 @@
 
 ```
 yala/
+├── .github/                   # CI/CD workflows (including unsigned iOS IPA build)
 ├── android/                   # Android native platform code & signing configs
 ├── assets/                    # Static app assets
 │   ├── icons/                 # App launcher icons
 │   ├── images/                # Brand graphics & logos
 │   ├── mock/                  # Mock diagnostic data for review modes
-│   └── screenshots/           # Full app feature screenshots & theme previews
-├── fastlane/                  # Google Play Store release metadata & screenshots
+│   └── screenshots/           # Full app screenshots (including Tab/ tablet gallery)
+├── fastlane/                  # Google Play Store release metadata & changelogs
+├── ios/                       # iOS/iPadOS platform runner & build configurations
 ├── lib/                       # Main Flutter codebase
 │   ├── config/                # Design tokens, themes, app routes, and constants
+│   ├── design/                # LuciTheme, breakpoints, responsive layouts & typography
+│   ├── l10n/                  # Multi-language localization resources
 │   ├── models/                # Data models (Client, Interface, Router, etc.)
-│   ├── modules/               # Feature modules (Package Manager, Parental Controls, VPN, Services, Backup, Storage, etc.)
+│   ├── modules/               # Feature modules (Diagnostics, Package Manager, Parental Controls, etc.)
 │   ├── screens/               # Core screens (Dashboard, Clients, Interfaces, Login, Settings, More)
-│   ├── services/              # API communication layer, JSON-RPC client, secure storage
+│   ├── services/              # API communication layer, JSON-RPC client, SSH service, secure vault
 │   ├── state/                 # State management engine (Riverpod controllers)
 │   ├── utils/                 # Security guardrails, HTTP client managers, platform utilities
 │   ├── widgets/               # Reusable UI widgets, animated gauges, throughput charts, topology map
 │   └── main.dart              # Application entry point
-├── scripts/                   # Auxiliary maintenance scripts
-├── store-badges/              # Google Play Store promotional badges
+├── store-badges/              # App store and release download badges
 ├── test/                      # Unit, widget, and integration test suite
 ├── pubspec.yaml               # Flutter package specification & dependencies
 ├── CHANGELOG.md               # Version history & sync logs
@@ -256,14 +351,54 @@ yala/
 
 ---
 
+## Router Requirements & Setup
+
+YALA connects directly to your OpenWrt router over HTTP or HTTPS. To ensure full compatibility with all dashboard and monitoring features, install the standard LuCI and RPC modules on your router.
+
+### For OpenWrt 19.07 to 23.05 (OPKG)
+
+SSH into your router and run:
+
+```bash
+opkg update
+opkg install luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status
+/etc/init.d/rpcd restart
+```
+
+### For OpenWrt 24.10, 25.x & Snapshots (APK)
+
+OpenWrt 24.10 and newer versions use the `apk` package manager:
+
+```bash
+apk update
+apk add rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status
+/etc/init.d/rpcd restart
+```
+
+> [!TIP]
+> If your router already has standard LuCI web interface installed, most of these modules (`rpcd-mod-luci`, `luci-mod-status`) are usually already present. YALA automatically detects the available endpoints on your router.
+
+---
+
+## Security & Privacy Highlights
+
+- **Zero Telemetry or Analytics:** No user tracking, no crash telemetry, and no third-party analytics SDKs are bundled into the application.
+- **Local Credential Storage:** Router IP addresses, credentials, and session tokens are encrypted locally on your device inside hardware-backed storage (Android KeyStore / iOS Keychain).
+- **Self-Device Protection:** Prevents you from accidentally blocking your own phone while configuring firewall rules or MAC filtering.
+- **Atomic UCI Rollback:** If a multi-step configuration change fails midway, changes are automatically reverted (`uci revert`) to avoid breaking your router setup.
+- **Secure Encrypted Connections:** Supports HTTPS endpoints and custom ports, with an optional self-signed certificate toggle for local subnets.
+
+---
+
 ## Building & Running
 
 ### Prerequisites
 
-- **Flutter SDK:** 3.32.5+
-- **Dart SDK:** 3.8+
+- **Flutter SDK:** 3.27.0+ (or Flutter 3.32+)
+- **Dart SDK:** 3.8.1+
 - **JDK:** OpenJDK 17 or higher
-- **Android Studio / Android SDK:** API level 36
+- **Android Studio / Android SDK:** API level 35/36 (for Android builds)
+- **Xcode:** 15.0+ (optional, for macOS/iOS builds)
 
 ### Quick Local Run
 
@@ -281,68 +416,54 @@ flutter analyze
 # 4. Run test suite
 flutter test
 
-# 5. Run application in dev mode
+# 5. Run application on connected device
 flutter run
 ```
 
----
+### Building Release Packages
 
-## Router Requirements & Security
+- **Android APK (split by ABI):**
+  ```bash
+  flutter build apk --split-per-abi
+  ```
+  *(Outputs architecture-specific APKs: `arm64-v8a`, `armeabi-v7a`, and `x86_64`)*
 
-(Optional) To enable full communication between **Yet Another LuCI App** and your OpenWrt router, ensure the following RPC modules are installed on your router:
-
-```bash
-opkg update
-opkg install luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status
-/etc/init.d/rpcd restart
-```
-
-for OpenWrt 25.12 and newer use the `apk` package manager:
-
-```bash
-apk update
-apk add rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status
-/etc/init.d/rpcd restart
-```
-
-### Security Highlights
-
-- **Zero Analytics:** No tracking telemetry, no cloud relays, zero data collection.
-- **Local Vault:** Router IP addresses, credentials, and tokens remain isolated on your local device inside native secure storage.
-- **Self-Device Guard:** Active IP/MAC auto-detection prevents self-lockout during network access modifications.
-- **Atomic Rollbacks:** Staged UCI changes revert automatically if RPC failures occur, preventing broken router state.
-- **SSL Support:** Supports HTTPS RPC endpoints and self-signed SSL certificate bypass options for local subnets.
+- **iOS Unsigned IPA (Local / CI):**
+  ```bash
+  flutter build ios --no-codesign --release
+  ```
+  *(Or trigger the manual GitHub Actions workflow `.github/workflows/build-ipa.yml` to produce an unsigned `.ipa` artifact for testing)*
 
 ---
 
-<!-- ## Contributing
+## Contributing
 
-Contributions, bug reports, and feature suggestions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting pull requests.
+Contributions, bug reports, and suggestions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting pull requests.
 
-1. Fork the project.
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the branch (`git push origin feature/AmazingFeature`).
+1. Fork this repository on GitHub (`nightcodex7/yala`).
+2. Create your feature branch (`git checkout -b feature/your-feature-name`).
+3. Commit your changes (`git commit -m 'feat: description of change'`).
+4. Push to the branch (`git push origin feature/your-feature-name`).
 5. Open a Pull Request.
 
---- -->
-
-### Attribution & Licensing
-
-> [!IMPORTANT]
-> **yala** is a fork of [`cogwheel0/luci-mobile`](https://github.com/cogwheel0/luci-mobile), originally created and authored by **cogwheel0**.
->
-> The combined codebase — including original upstream code and all subsequent modifications — is licensed under the [GNU General Public License v3.0 (GPLv3)](LICENSE).
-
-> [!NOTE]
-> **Licensing Correction Note**  
-> Previous distributions of this work were incorrectly published under the Apache-2.0 license. This project has been corrected and is properly licensed under GPLv3 as a fork of `cogwheel0/luci-mobile`, effective from this repository's creation.
-
 ---
 
-## License
+## Origin, Attribution & Licensing
 
-This project is licensed under the **GNU General Public License v3.0 (GPLv3)** - see the [LICENSE](LICENSE) file for details.
+> [!IMPORTANT]
+> **YALA** is an independent, standalone project originally based on [`cogwheel0/luci-mobile`](https://github.com/cogwheel0/luci-mobile), created and authored by **cogwheel0**.
+>
+> Since diverging from the original codebase, YALA has been extensively refactored, modernized, and expanded by **@nightcodex7** with new capabilities including dual package managers (`apk` / `opkg`), a complete network diagnostics suite, tablet & foldable responsive layouts, hardware thermal monitoring, atomic rollbacks, and multi-language support.
+>
+> The complete codebase — including original upstream code and all subsequent modifications — is licensed under the [GNU General Public License v3.0 (GPL-3.0-or-later)](LICENSE).
+>
+> I express my sincere thanks to **cogwheel0** for creating the original foundation for mobile LuCI management.
 
-Original work Copyright (C) 2025–2026 cogwheel0.  
-Modifications Copyright (C) 2026 @nightcodex7.
+> [!NOTE]
+> **Licensing Historical Correction:**  
+> Early releases of this project were inadvertently published with an Apache-2.0 identifier. That has since been completely corrected. The project is strictly licensed under GPL-3.0-or-later in accordance with the original project's copyleft terms.
+
+### Copyright
+
+- Original work Copyright (C) 2025–2026 cogwheel0.
+- Modifications and enhancements Copyright (C) 2026 @nightcodex7.

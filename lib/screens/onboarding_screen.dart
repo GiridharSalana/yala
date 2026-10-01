@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/material.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -16,29 +17,39 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<OnboardingPageData> _pages = const [
-    OnboardingPageData(
-      title: 'Welcome to Yet Another LuCI App',
-      subtitle: 'Modern OpenWrt Router Management',
-      description:
-          'Monitor real-time network throughput, system vitals, connected devices, and interface diagnostics effortlessly.',
-      icon: Icons.router_rounded,
-    ),
-    OnboardingPageData(
-      title: 'Multi-Router & Secure Control',
-      subtitle: 'Unlimited Routers, Isolated Credentials',
-      description:
-          'Connect to multiple OpenWrt routers with encrypted local credential storage, HTTPS support, and quick router switching.',
-      icon: Icons.security_rounded,
-    ),
-    OnboardingPageData(
-      title: 'Package Manager & Flash Tools',
-      subtitle: 'OPKG / APK & Sysupgrade',
-      description:
-          'Search and install software packages, edit cron jobs, manage system daemons, perform configuration backups, and flash firmware.',
-      icon: Icons.system_update_rounded,
-    ),
-  ];
+  List<OnboardingPageData> _getPages(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return [
+      OnboardingPageData(
+        title: l10n?.onboardingSlide1Title ?? 'Welcome to Yet Another LuCI App',
+        subtitle:
+            l10n?.onboardingSlide1Subtitle ??
+            'Modern OpenWrt Router Management',
+        description:
+            l10n?.onboardingSlide1Desc ??
+            'Monitor real-time network throughput, system vitals, connected devices, and interface diagnostics effortlessly.',
+        icon: Icons.router_rounded,
+      ),
+      OnboardingPageData(
+        title: l10n?.onboardingSlide2Title ?? 'Multi-Router & Secure Control',
+        subtitle:
+            l10n?.onboardingSlide2Subtitle ??
+            'Unlimited Routers, Isolated Credentials',
+        description:
+            l10n?.onboardingSlide2Desc ??
+            'Connect to multiple OpenWrt routers with encrypted local credential storage, HTTPS support, and quick router switching.',
+        icon: Icons.security_rounded,
+      ),
+      OnboardingPageData(
+        title: l10n?.onboardingSlide3Title ?? 'Package Manager & Flash Tools',
+        subtitle: l10n?.onboardingSlide3Subtitle ?? 'OPKG / APK & Sysupgrade',
+        description:
+            l10n?.onboardingSlide3Desc ??
+            'Search and install software packages, edit cron jobs, manage system daemons, perform configuration backups, and flash firmware.',
+        icon: Icons.system_update_rounded,
+      ),
+    ];
+  }
 
   @override
   void dispose() {
@@ -46,8 +57,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  void _nextPage() {
-    if (_currentPage < _pages.length - 1) {
+  void _nextPage(int pageCount) {
+    if (_currentPage < pageCount - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeInOut,
@@ -61,6 +72,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final pages = _getPages(context);
 
     return Scaffold(
       body: SafeArea(
@@ -74,21 +87,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   onPressed: () {
                     Navigator.of(context).pushReplacementNamed('/login');
                   },
-                  child: const Text('Skip'),
+                  child: Text(l10n?.onboardingSkip ?? 'Skip'),
                 ),
               ),
             ),
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _pages.length,
+                itemCount: pages.length,
                 onPageChanged: (index) {
                   setState(() {
                     _currentPage = index;
                   });
                 },
                 itemBuilder: (context, index) {
-                  final page = _pages[index];
+                  final page = pages[index];
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 28.0),
                     child: Column(
@@ -138,7 +151,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
-                _pages.length,
+                pages.length,
                 (index) => AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -159,16 +172,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 width: double.infinity,
                 height: 52,
                 child: FilledButton(
-                  onPressed: _nextPage,
+                  onPressed: () => _nextPage(pages.length),
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: Text(
-                    _currentPage == _pages.length - 1
-                        ? 'Get Started'
-                        : 'Continue',
+                    _currentPage == pages.length - 1
+                        ? (l10n?.onboardingGetStarted ?? 'Get Started')
+                        : (l10n?.onboardingContinue ?? 'Continue'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

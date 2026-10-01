@@ -11,6 +11,7 @@ import 'package:yet_another_luci_app/widgets/luci_collapsible_card.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import 'package:yet_another_luci_app/widgets/luci_guardrail.dart';
 import '../models/firewall_info.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class FirewallSecurityScreen extends ConsumerStatefulWidget {
   const FirewallSecurityScreen({super.key});
@@ -44,9 +45,11 @@ class _FirewallSecurityScreenState
       _stagedCustomRuleStates.clear();
     });
     if (mounted) {
+      final l10n = AppLocalizations.of(context);
       context.showToastInfo(
         'Changes Discarded',
-        subtitle: 'Discarded all unsaved firewall custom rule changes.',
+        subtitle: l10n?.firewallDiscardedCustomRules ??
+            'Discarded all unsaved firewall custom rule changes.',
       );
     }
   }
@@ -88,29 +91,42 @@ class _FirewallSecurityScreenState
       );
     }
 
-    for (final entry in modifiedEntries.entries) {
-      final sectionKey = entry.key;
-      final targetEnabled = entry.value;
+    try {
+      for (final entry in modifiedEntries.entries) {
+        if (!mounted) break;
+        final sectionKey = entry.key;
+        final targetEnabled = entry.value;
 
-      final success = await appState.updateFirewallCustomRuleStatus(
-        sectionKey,
-        targetEnabled,
-        context: context,
-      );
+        final success = await appState.updateFirewallCustomRuleStatus(
+          sectionKey,
+          targetEnabled,
+          context: mounted ? context : null,
+        );
 
-      if (success) {
-        succeededRules.add(sectionKey);
-      } else {
-        failedRules.add(sectionKey);
+        if (success) {
+          succeededRules.add(sectionKey);
+        } else {
+          failedRules.add(sectionKey);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showToastError(
+          'Firewall Save Error',
+          subtitle: e.toString().replaceAll('Exception: ', ''),
+          actionKey: actionKey,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          for (final secKey in succeededRules) {
+            _stagedCustomRuleStates.remove(secKey);
+          }
+          _isSaving = false;
+        });
       }
     }
-
-    setState(() {
-      for (final secKey in succeededRules) {
-        _stagedCustomRuleStates.remove(secKey);
-      }
-      _isSaving = false;
-    });
 
     await appState.fetchDashboardData();
 
@@ -125,18 +141,25 @@ class _FirewallSecurityScreenState
       );
       return true;
     } else {
+      final l10n = AppLocalizations.of(context);
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Firewall Rule Save Warning'),
-          content: Text(
-            'Updated ${succeededRules.length} rule(s), but failed to update ${failedRules.length} rule(s):\n\n'
-            '${failedRules.join(", ")}',
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
+          title: Text(
+            l10n?.firewallRuleSaveWarning ?? 'Firewall Rule Save Warning',
+          ),
+          content: SingleChildScrollView(
+            child: Text(
+              'Updated ${succeededRules.length} rule(s), but failed to update ${failedRules.length} rule(s):\n\n'
+              '${failedRules.join(", ")}',
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
+              child: Text(l10n?.actionConfirm ?? 'OK'),
             ),
           ],
         ),
@@ -146,11 +169,13 @@ class _FirewallSecurityScreenState
   }
 
   Future<bool?> _showUnsavedChangesDialog() async {
+    final l10n = AppLocalizations.of(context);
     final action = await LuciGuardrail.confirmSaveOrDiscardChanges(
       context,
       count: _stagedCustomRuleStates.length,
       itemLabel: 'firewall rule change(s)',
-      title: 'Unsaved Firewall Rule Changes',
+      title: l10n?.firewallUnsavedCustomRulesTitle ??
+          'Unsaved Firewall Rule Changes',
     );
 
     if (action == 'discard') {
@@ -176,6 +201,8 @@ class _FirewallSecurityScreenState
       isReviewerMode: appState.reviewerModeEnabled,
     );
 
+    final l10n = AppLocalizations.of(context);
+    final titlePrefix = l10n?.firewallTitle ?? 'Firewall & Security';
     return PopScope(
       canPop: !_hasUnsavedChanges && !_isSaving,
       onPopInvokedWithResult: (bool didPop, dynamic result) async {
@@ -189,19 +216,19 @@ class _FirewallSecurityScreenState
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            'Firewall & Security (${backend == FirewallBackend.fw4 ? "fw4 / nftables" : "fw3 / iptables"})',
+            '$titlePrefix (${backend == FirewallBackend.fw4 ? "fw4 / nftables" : "fw3 / iptables"})',
           ),
           actions: [
             if (_hasUnsavedChanges)
               IconButton(
                 icon: const Icon(Icons.undo),
-                tooltip: 'Discard Changes',
+                tooltip: l10n?.btnRevert ?? 'Discard Changes',
                 onPressed: _isSaving ? null : _confirmAndDiscardChanges,
               ),
             if (_hasUnsavedChanges)
               IconButton(
                 icon: const Icon(Icons.save),
-                tooltip: 'Save Changes',
+                tooltip: l10n?.btnApplyChanges ?? 'Save Changes',
                 onPressed: _isSaving ? null : () => _saveChanges(),
               ),
           ],
@@ -217,7 +244,8 @@ class _FirewallSecurityScreenState
                   children: [
                     _buildSectionHeader(
                       context,
-                      'Global Default Policies',
+                      l10n?.firewallGlobalPoliciesTitle ??
+                          'Global Default Policies',
                       Icons.shield_outlined,
                     ),
                     const SizedBox(height: 8),
@@ -225,7 +253,8 @@ class _FirewallSecurityScreenState
                     const SizedBox(height: 16),
                     _buildSectionHeader(
                       context,
-                      'Firewall Zones Overview',
+                      l10n?.firewallZonesOverviewTitle ??
+                          'Firewall Zones Overview',
                       Icons.layers_outlined,
                     ),
                     const SizedBox(height: 8),
@@ -234,41 +263,41 @@ class _FirewallSecurityScreenState
                     ),
                     const SizedBox(height: 16),
                     LuciCollapsibleCard(
-                      title: 'Inter-Zone Forwarding Rules',
+                      title:
+                          l10n?.zoneForwardingTitle ??
+                          'Inter-Zone Forwarding Rules',
                       count: overview.forwardings.length,
                       subtitle:
                           '${overview.forwardings.length} inter-zone policies',
                       icon: Icons.alt_route_outlined,
                       iconColor: Colors.blue,
-                      child: _buildForwardingsCard(
-                        context,
-                        overview.forwardings,
-                      ),
+                      childBuilder: (ctx) =>
+                          _buildForwardingsCard(context, overview.forwardings),
                     ),
                     const SizedBox(height: 16),
                     LuciCollapsibleCard(
-                      title: 'Port Forwarding / Redirects',
+                      title:
+                          l10n?.portForwardsTitle ??
+                          'Port Forwarding / Redirects',
                       count: overview.portForwards.length,
                       subtitle:
                           '${overview.portForwards.length} port forward rules',
                       icon: Icons.import_export_outlined,
                       iconColor: Colors.orange,
-                      child: _buildPortForwardingsList(
+                      childBuilder: (ctx) => _buildPortForwardingsList(
                         context,
                         overview.portForwards,
                       ),
                     ),
                     const SizedBox(height: 16),
                     LuciCollapsibleCard(
-                      title: 'Custom Security Rules',
+                      title: l10n?.customRulesTitle ?? 'Custom Security Rules',
                       count: overview.customRules.length,
                       subtitle: '${overview.customRules.length} custom rules',
                       icon: Icons.rule_outlined,
                       iconColor: Colors.teal,
-                      child: _buildCustomRulesList(
-                        context,
-                        overview.customRules,
-                      ),
+                      childBuilder: (ctx) =>
+                          _buildCustomRulesList(context, overview.customRules),
                     ),
                     const SizedBox(height: 80),
                   ],
@@ -320,7 +349,10 @@ class _FirewallSecurityScreenState
             ElevatedButton.icon(
               onPressed: () => appState.redetectCapabilities(),
               icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Re-probe Capabilities'),
+              label: Text(
+                AppLocalizations.of(context)?.firewallReprobeCapabilities ??
+                    'Re-probe Capabilities',
+              ),
             ),
           ],
         ),
@@ -331,17 +363,22 @@ class _FirewallSecurityScreenState
   Widget _buildSectionHeader(
     BuildContext context,
     String title,
-    IconData icon,
-  ) {
+    IconData icon, {
+    int maxLines = 2,
+  }) {
     final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, size: 20, color: theme.colorScheme.primary),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+        Expanded(
+          child: Text(
+            title,
+            maxLines: maxLines,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -454,10 +491,13 @@ class _FirewallSecurityScreenState
     List<FirewallForwarding> forwardings,
   ) {
     if (forwardings.isEmpty) {
-      return const Card(
+      final l10n = AppLocalizations.of(context);
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('No zone forwarding rules configured.'),
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            l10n?.firewallNoZoneRules ?? 'No zone forwarding rules configured.',
+          ),
         ),
       );
     }
@@ -513,10 +553,13 @@ class _FirewallSecurityScreenState
     List<FirewallPortForwarding> pfs,
   ) {
     if (pfs.isEmpty) {
-      return const Card(
+      final l10n = AppLocalizations.of(context);
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('No port forwarding rules active.'),
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            l10n?.firewallNoPortRules ?? 'No port forwarding rules active.',
+          ),
         ),
       );
     }
@@ -597,6 +640,7 @@ class _FirewallSecurityScreenState
                     child: Text(
                       r.name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -620,7 +664,7 @@ class _FirewallSecurityScreenState
                         style: TextStyle(
                           color: Colors.amber.shade900,
                           fontWeight: FontWeight.bold,
-                          fontSize: 9,
+                          fontSize: 10,
                         ),
                       ),
                     ),
@@ -777,7 +821,9 @@ class _FirewallSecurityScreenState
             ),
             OutlinedButton(
               onPressed: _isSaving ? null : _confirmAndDiscardChanges,
-              child: const Text('Discard'),
+              child: Text(
+                AppLocalizations.of(context)?.actionDiscard ?? 'Discard',
+              ),
             ),
             const SizedBox(width: 8),
             FilledButton.icon(
@@ -792,7 +838,7 @@ class _FirewallSecurityScreenState
                       ),
                     )
                   : const Icon(Icons.check, size: 18),
-              label: const Text('Save'),
+              label: Text(AppLocalizations.of(context)?.actionSave ?? 'Save'),
             ),
           ],
         ),

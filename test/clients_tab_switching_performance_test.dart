@@ -27,6 +27,15 @@ class MockApiService implements IApiService {
   }) async => {};
 
   @override
+  Future<Map<String, List<Map<String, dynamic>>>>
+  fetchAllAssociatedWirelessStationsWithDetailsContext({
+    required String ipAddress,
+    required String sysauth,
+    required bool useHttps,
+    BuildContext? context,
+  }) async => {};
+
+  @override
   Future<dynamic> call(
     String ipAddress,
     String sysauth,
@@ -86,9 +95,7 @@ void main() {
 
         await tester.pumpWidget(
           const ProviderScope(
-            child: MaterialApp(
-              home: ClientsScreen(isTabActive: true),
-            ),
+            child: MaterialApp(home: ClientsScreen(isTabActive: true)),
           ),
         );
 
@@ -121,9 +128,7 @@ void main() {
 
         await tester.pumpWidget(
           const ProviderScope(
-            child: MaterialApp(
-              home: ClientsScreen(isTabActive: false),
-            ),
+            child: MaterialApp(home: ClientsScreen(isTabActive: false)),
           ),
         );
 
@@ -146,19 +151,20 @@ void main() {
           250,
           (i) => Client(
             ipAddress: '192.168.1.${10 + i}',
-            macAddress: '00:11:22:33:${(i ~/ 100).toString().padLeft(2, '0')}:${(i % 100).toString().padLeft(2, '0')}',
+            macAddress:
+                '00:11:22:33:${(i ~/ 100).toString().padLeft(2, '0')}:${(i % 100).toString().padLeft(2, '0')}',
             hostname: 'Enterprise-Device-$i',
             isConnected: i % 2 == 0,
-            connectionType: i % 3 == 0 ? ConnectionType.wired : ConnectionType.wireless,
+            connectionType: i % 3 == 0
+                ? ConnectionType.wired
+                : ConnectionType.wireless,
           ),
         );
         appState.clients = largeClientList;
 
         await tester.pumpWidget(
           const ProviderScope(
-            child: MaterialApp(
-              home: ClientsScreen(isTabActive: true),
-            ),
+            child: MaterialApp(home: ClientsScreen(isTabActive: true)),
           ),
         );
 
@@ -213,36 +219,42 @@ void main() {
       expect(clients, isA<List<Client>>());
     });
 
-    test('Client model caches displayName and normalizedMac with identical string references', () {
-      final client = Client(
-        ipAddress: '192.168.1.50',
-        macAddress: 'aa-bb-cc-dd-ee-ff',
-        hostname: 'My-Laptop',
-        staticLeaseName: 'Office-Workstation',
-      );
+    test(
+      'Client model caches displayName and normalizedMac with identical string references',
+      () {
+        final client = Client(
+          ipAddress: '192.168.1.50',
+          macAddress: 'aa-bb-cc-dd-ee-ff',
+          hostname: 'My-Laptop',
+          staticLeaseName: 'Office-Workstation',
+        );
 
-      final name1 = client.displayName;
-      final name2 = client.displayName;
-      expect(name1, 'Office-Workstation');
-      expect(identical(name1, name2), isTrue);
+        final name1 = client.displayName;
+        final name2 = client.displayName;
+        expect(name1, 'Office-Workstation');
+        expect(identical(name1, name2), isTrue);
 
-      final mac1 = client.normalizedMac;
-      final mac2 = client.normalizedMac;
-      expect(mac1, 'AA:BB:CC:DD:EE:FF');
-      expect(identical(mac1, mac2), isTrue);
-    });
+        final mac1 = client.normalizedMac;
+        final mac2 = client.normalizedMac;
+        expect(mac1, 'AA:BB:CC:DD:EE:FF');
+        expect(identical(mac1, mac2), isTrue);
+      },
+    );
 
-    test('ClientNamingHelper caches device icons via Expando across lookups', () {
-      final client = Client(
-        ipAddress: '192.168.1.51',
-        macAddress: '11:22:33:44:55:66',
-        hostname: 'LivingRoom-TV',
-      );
+    test(
+      'ClientNamingHelper caches device icons via Expando across lookups',
+      () {
+        final client = Client(
+          ipAddress: '192.168.1.51',
+          macAddress: '11:22:33:44:55:66',
+          hostname: 'LivingRoom-TV',
+        );
 
-      final icon1 = ClientNamingHelper.getDeviceIcon(client);
-      final icon2 = ClientNamingHelper.getDeviceIcon(client);
-      expect(icon1, Icons.tv_rounded);
-      expect(identical(icon1, icon2), isTrue);
-    });
+        final icon1 = ClientNamingHelper.getDeviceIcon(client);
+        final icon2 = ClientNamingHelper.getDeviceIcon(client);
+        expect(icon1, Icons.tv_rounded);
+        expect(identical(icon1, icon2), isTrue);
+      },
+    );
   });
 }

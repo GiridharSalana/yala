@@ -61,8 +61,18 @@ class ThroughputController {
     return true;
   }
 
+  bool _isPaused = false;
+
+  /// Whether the throughput polling timer is currently active.
+  bool get isTimerRunning =>
+      _throughputTimer != null && _throughputTimer!.isActive;
+
+  /// Whether the throughput timer was active before being paused.
+  bool get isPaused => _isPaused;
+
   /// Starts (or restarts) the periodic throughput poll timer.
   void startTimer({required bool isRebooting, required VoidCallback onTick}) {
+    _isPaused = false;
     _throughputTimer?.cancel();
     if (isRebooting) return;
     _throughputTimer = Timer.periodic(
@@ -73,8 +83,40 @@ class ThroughputController {
 
   /// Cancels the timer and clears accumulated history.
   void cancelAndClear() {
+    _isPaused = false;
     _throughputTimer?.cancel();
+    _throughputTimer = null;
     _throughputService.clear();
+  }
+
+  /// Pauses the polling timer without clearing rate history.
+  void pauseTimer() {
+    if (isTimerRunning) {
+      _isPaused = true;
+      _throughputTimer?.cancel();
+      _throughputTimer = null;
+    }
+  }
+
+  /// Resumes the timer only if it was previously running and paused.
+  void resumeTimer({
+    required bool isRebooting,
+    required VoidCallback onTick,
+    bool immediateTick = false,
+  }) {
+    if (_isPaused) {
+      _isPaused = false;
+      _throughputService.resetBaseline();
+      startTimer(isRebooting: isRebooting, onTick: onTick);
+      if (immediateTick && !isRebooting) {
+        Future.microtask(onTick);
+      }
+    }
+  }
+
+  /// Resets the baseline timestamp and stats without clearing historical rate queues.
+  void resetBaseline() {
+    _throughputService.resetBaseline();
   }
 
   /// Feeds network data into the underlying ThroughputService.

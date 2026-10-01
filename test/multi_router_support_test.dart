@@ -365,7 +365,8 @@ void main() {
     test(
       'importRoutersFromJson successfully parses payload with UTF-8 BOM prefix',
       () async {
-        const jsonWithBom = '\uFEFF{"ipAddress":"192.168.1.1","username":"root","password":"pwd"}';
+        const jsonWithBom =
+            '\uFEFF{"ipAddress":"192.168.1.1","username":"root","password":"pwd"}';
         final result = await routerService.importRoutersFromJson(jsonWithBom);
         expect(result.success, isTrue);
         expect(result.importedCount, 1);

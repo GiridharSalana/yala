@@ -10,8 +10,10 @@ import 'package:yet_another_luci_app/modules/vpn_connectivity/models/vpn_info.da
 import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
 import 'package:yet_another_luci_app/models/router_capabilities.dart';
 import 'package:yet_another_luci_app/modules/storage_monitoring/models/storage_info.dart';
+import 'package:yet_another_luci_app/modules/system_monitoring/models/router_temperature.dart';
 import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
 import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
+import 'package:yet_another_luci_app/services/interfaces/ssh_service_interface.dart';
 import 'package:yet_another_luci_app/services/router_service.dart';
 import 'package:yet_another_luci_app/services/secure_storage_service.dart';
 import 'package:yet_another_luci_app/state/controllers/throughput_controller.dart';
@@ -29,6 +31,7 @@ class DashboardController {
   DashboardController({
     required IApiService? Function() apiServiceRef,
     required IAuthService? Function() authServiceRef,
+    ISshService? Function()? sshServiceRef,
     required RouterService? Function() routerServiceRef,
     required SecureStorageService Function() secureStorageServiceRef,
     required ThroughputController? Function() throughputControllerRef,
@@ -47,6 +50,7 @@ class DashboardController {
     required VoidCallback notifyListeners,
   }) : _apiServiceRef = apiServiceRef,
        _authServiceRef = authServiceRef,
+       _sshServiceRef = sshServiceRef,
        _routerServiceRef = routerServiceRef,
        _secureStorageServiceRef = secureStorageServiceRef,
        _throughputControllerRef = throughputControllerRef,
@@ -63,6 +67,7 @@ class DashboardController {
 
   final IApiService? Function() _apiServiceRef;
   final IAuthService? Function() _authServiceRef;
+  final ISshService? Function()? _sshServiceRef;
   final RouterService? Function() _routerServiceRef;
   final SecureStorageService Function() _secureStorageServiceRef;
   final ThroughputController? Function() _throughputControllerRef;
@@ -90,8 +95,14 @@ class DashboardController {
   String? get dashboardError => _dashboardError;
   RouterCapabilities? get capabilities => _capabilities;
 
+  void setDashboardDataForTesting(Map<String, dynamic>? data) {
+    _dashboardData = data;
+    _notifyListeners();
+  }
+
   IApiService? get _apiService => _apiServiceRef();
   IAuthService? get _authService => _authServiceRef();
+  ISshService? get _sshService => _sshServiceRef?.call();
   RouterService? get _routerService => _routerServiceRef();
   SecureStorageService get _secureStorageService => _secureStorageServiceRef();
   ThroughputController? get _throughputController => _throughputControllerRef();
@@ -411,6 +422,25 @@ class DashboardController {
     return _capabilities!;
   }
 
+  /// Update package engine dynamically if detected during package manager operations
+  void updatePackageEngine(PackageManagerEngine engine) {
+    if (_capabilities != null && _capabilities!.packageEngine != engine) {
+      Logger.info('Updating router capability packageEngine to $engine');
+      _capabilities = _capabilities!.copyWith(packageEngine: engine);
+      final routerId = _routerService?.selectedRouter?.id;
+      if (routerId != null) {
+        final cacheKey = 'router_capabilities_$routerId';
+        try {
+          _secureStorageService.writeValue(
+            cacheKey,
+            jsonEncode(_capabilities!.toJson()),
+          );
+        } catch (_) {}
+      }
+      _notifyListeners();
+    }
+  }
+
   /// Central method to fetch all dashboard data concurrently
   Future<void> fetchDashboardData({bool force = false}) {
     if (force) {
@@ -419,7 +449,7 @@ class DashboardController {
     if (_activeFetchFuture != null) {
       return _activeFetchFuture!;
     }
-    final future = _fetchDashboardDataInternal();
+    final future = _fetchDashboardDataInternal(force: force);
     _activeFetchFuture = future;
     return future.whenComplete(() {
       if (_activeFetchFuture == future) {
@@ -428,7 +458,7 @@ class DashboardController {
     });
   }
 
-  Future<void> _fetchDashboardDataInternal() async {
+  Future<void> _fetchDashboardDataInternal({bool force = false}) async {
     if (_isReviewerMode) {
       _isDashboardLoading = true;
       _dashboardError = null;
@@ -566,6 +596,7 @@ class DashboardController {
               'avail': 260096,
             },
           ],
+          'temperature': RouterTemperature.mock(),
           '_lastUpdated': DateTime.now().millisecondsSinceEpoch,
         };
 
@@ -667,13 +698,13 @@ class DashboardController {
       }
 
       dynamic getData(dynamic result) {
-        if (result is List && result.length > 1) {
-          if (result[0] == 0) {
-            return result[1];
+        if (result is List) {
+          if (result.isNotEmpty && result[0] == 0) {
+            return result.length > 1 ? result[1] : null;
           } else {
-            final errorMessage = result[1] is String
+            final errorMessage = (result.length > 1 && result[1] is String)
                 ? result[1]
-                : 'Unknown API Error';
+                : 'UBUS RPC Error (${result.isNotEmpty ? result[0] : "empty"})';
             throw Exception(errorMessage);
           }
         }
@@ -921,6 +952,13 @@ class DashboardController {
       );
 
       Future<dynamic> fetchStorageData() async {
+        // If the user has disabled the system_modules card and force is not set,
+        // don't waste time and battery probing multiple storage RPC fallback paths.
+        if (!force &&
+            !_dashboardPreferences.isSectionVisible('system_modules')) {
+          return _dashboardData?['mountPoints'];
+        }
+
         try {
           bool hasValidMounts(dynamic rawData) {
             if (rawData == null) return false;
@@ -1095,6 +1133,230 @@ class DashboardController {
 
       final mountPointsFuture = fetchStorageData();
 
+      Future<RouterTemperature> fetchTemperatureData() async {
+        // If temperature or vitals card is disabled and not force refreshing,
+        // avoid running the thermal sysfs scan.
+        if (!force &&
+            (!_dashboardPreferences.isSectionVisible('system_vitals') ||
+                !_dashboardPreferences.showTemperature)) {
+          final existing = _dashboardData?['temperature'];
+          if (existing is RouterTemperature) {
+            return existing;
+          }
+          return RouterTemperature.unavailable(
+            hasPhysicalSensors: false,
+            isHandlerInstalled: false,
+            reason: 'Temperature monitoring disabled in dashboard settings.',
+          );
+        }
+
+        try {
+          // 1. Try ubus luci.temp-status getSensors (if luci-app-temp-status is installed)
+          try {
+            final res = await callOptionalRpc(
+              object: 'luci.temp-status',
+              method: 'getSensors',
+              params: {},
+            );
+            final data = getOptionalData(res, 'luci.temp-status.getSensors');
+            if (data != null) {
+              final parsed = RouterTemperature.parse(data);
+              if (parsed.isSupported && parsed.sensors.isNotEmpty) {
+                return parsed;
+              }
+            }
+          } catch (_) {}
+
+          // 2. Direct sysfs scan via file.exec
+          try {
+            const script =
+                'for f in /sys/class/thermal/thermal_zone*; do '
+                '[ -d "\$f" ] || continue; '
+                't=\$(cat "\$f/temp" 2>/dev/null); '
+                '[ -n "\$t" ] && echo "thermal|\$(cat "\$f/type" 2>/dev/null)|\${f##*/}|\$t"; '
+                'done; '
+                'for f in /sys/class/hwmon/hwmon*; do '
+                '[ -d "\$f" ] || continue; '
+                'n=\$(cat "\$f/name" 2>/dev/null); '
+                'for i in "\$f"/temp*_input; do '
+                '[ -f "\$i" ] || continue; '
+                't=\$(cat "\$i" 2>/dev/null); '
+                'l=\$(cat "\${i%_input}_label" 2>/dev/null); '
+                '[ -n "\$t" ] && echo "hwmon|\${n:-hwmon}\${l:+ (\$l)}|\${f##*/}/\${i##*/}|\$t"; '
+                'done; '
+                'done';
+
+            final res = await callOptionalRpc(
+              object: 'file',
+              method: 'exec',
+              params: {
+                'command': '/bin/sh',
+                'params': ['-c', script],
+                'args': ['-c', script],
+              },
+            );
+            final data = getOptionalData(res, 'file.exec.temperature');
+            if (data is Map && data['stdout'] is String) {
+              final stdout = (data['stdout'] as String).trim();
+              if (stdout.isNotEmpty) {
+                final parsed = RouterTemperature.parse(stdout);
+                if (parsed.isSupported && parsed.sensors.isNotEmpty) {
+                  return parsed;
+                }
+              }
+            }
+          } catch (_) {}
+
+          // 3. Fallback: file.read on primary common sysfs paths
+          final fallbackPaths = [
+            (
+              '/sys/class/thermal/thermal_zone0/temp',
+              'thermal_zone0',
+              'CPU Thermal',
+              'thermal_zone',
+            ),
+            (
+              '/sys/class/thermal/thermal_zone1/temp',
+              'thermal_zone1',
+              'SoC Thermal',
+              'thermal_zone',
+            ),
+            (
+              '/sys/class/hwmon/hwmon0/temp1_input',
+              'hwmon0/temp1_input',
+              'Hardware Sensor 0',
+              'hwmon',
+            ),
+            (
+              '/sys/class/hwmon/hwmon1/temp1_input',
+              'hwmon1/temp1_input',
+              'Hardware Sensor 1',
+              'hwmon',
+            ),
+            (
+              '/sys/class/hwmon/hwmon2/temp1_input',
+              'hwmon2/temp1_input',
+              'Hardware Sensor 2',
+              'hwmon',
+            ),
+          ];
+
+          final probedSensors = <ThermalSensor>[];
+          for (final (path, id, name, type) in fallbackPaths) {
+            try {
+              final res = await callOptionalRpc(
+                object: 'file',
+                method: 'read',
+                params: {'path': path},
+              );
+              final fileData = getOptionalData(res, 'file.read.$path');
+              if (fileData is Map && fileData['data'] != null) {
+                final tempStr = fileData['data'].toString().trim();
+                final temp = RouterTemperature.normalizeTemperature(tempStr);
+                if (temp != null) {
+                  probedSensors.add(
+                    ThermalSensor(
+                      id: id,
+                      name: name,
+                      rawName: id,
+                      type: type,
+                      value: temp,
+                    ),
+                  );
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (probedSensors.isNotEmpty) {
+            return RouterTemperature.fromSensors(probedSensors);
+          }
+
+          // 4. Probing hardware sensor presence via file.list
+          // LuCI default ACL grants "/*": ["list"] on all OpenWrt routers.
+          bool hasPhysicalSensors = false;
+          try {
+            final hwmonRes = await callOptionalRpc(
+              object: 'file',
+              method: 'list',
+              params: {'path': '/sys/class/hwmon'},
+            );
+            final hwmonData = getOptionalData(
+              hwmonRes,
+              'file.list./sys/class/hwmon',
+            );
+            if (hwmonData is Map && hwmonData['entries'] is List) {
+              final entries = hwmonData['entries'] as List;
+              if (entries.isNotEmpty) {
+                hasPhysicalSensors = true;
+              }
+            }
+          } catch (_) {}
+
+          if (!hasPhysicalSensors) {
+            try {
+              final thermalRes = await callOptionalRpc(
+                object: 'file',
+                method: 'list',
+                params: {'path': '/sys/class/thermal'},
+              );
+              final thermalData = getOptionalData(
+                thermalRes,
+                'file.list./sys/class/thermal',
+              );
+              if (thermalData is Map && thermalData['entries'] is List) {
+                final entries = thermalData['entries'] as List;
+                for (final e in entries) {
+                  if (e is Map && e['name'] != null) {
+                    final name = e['name'].toString();
+                    if (name.startsWith('thermal_zone') ||
+                        name.startsWith('cooling_device')) {
+                      hasPhysicalSensors = true;
+                      break;
+                    }
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
+          if (hasPhysicalSensors) {
+            return RouterTemperature.unavailable(
+              hasPhysicalSensors: true,
+              isHandlerInstalled: false,
+              reason:
+                  'Hardware thermal sensors detected, but native OpenWrt RPC handler is not installed.',
+            );
+          }
+        } catch (e) {
+          Logger.warning('Temperature fetch error: $e');
+        }
+
+        return RouterTemperature.unavailable(
+          hasPhysicalSensors: false,
+          isHandlerInstalled: false,
+          reason: 'Thermal sensors are not supported on this router hardware.',
+        );
+      }
+
+      final temperatureFuture = fetchTemperatureData();
+
+      final deviceStatusFuture = callOptionalRpc(
+        object: 'network.device',
+        method: 'status',
+        params: {},
+      );
+
+      final swconfigFuture =
+          (_capabilities?.networkModel == NetworkModel.swconfig ||
+              _capabilities?.networkModel == NetworkModel.unknown)
+          ? callOptionalRpc(
+              object: 'luci',
+              method: 'getSwconfigPortState',
+              params: {'switch': 'switch0'},
+            )
+          : Future<dynamic>.value(null);
+
       final currentSysauth = _authService?.sysauth;
       if (currentSysauth == null || currentSysauth.isEmpty) {
         if (!_isReviewerMode) {
@@ -1128,9 +1390,12 @@ class DashboardController {
           'Session expired or router unreachable: core system info failed',
         );
       }
-      final networkData =
+      Map<String, dynamic>? networkData =
           getOptionalData(results[2], 'luci-rpc.getNetworkDevices')
               as Map<String, dynamic>?;
+      if (networkData != null) {
+        networkData = Map<String, dynamic>.from(networkData);
+      }
       final interfaceDump =
           getOptionalData(results[3], 'network.interface.dump')
               as Map<String, dynamic>?;
@@ -1152,6 +1417,9 @@ class DashboardController {
         tailscaleExecFuture,
         uciDdnsFuture,
         uciNetworkFuture,
+        temperatureFuture,
+        deviceStatusFuture,
+        swconfigFuture,
       ]);
       final wirelessRaw = optionalResults[0];
       final uciWirelessRaw = optionalResults[1];
@@ -1169,6 +1437,98 @@ class DashboardController {
       final tailscaleExecRaw = optionalResults[13];
       final uciDdnsRaw = optionalResults[14];
       final uciNetworkRaw = optionalResults[15];
+      final temperatureRaw = optionalResults[16];
+      final deviceStatusRaw = optionalResults[17];
+      final swconfigRaw = optionalResults[18];
+
+      dynamic parsedNextdns = getOptionalData(uciNextdnsRaw, 'uci.get nextdns');
+      dynamic parsedCloudflared = getOptionalData(
+        uciCloudflaredRaw,
+        'uci.get cloudflared',
+      );
+      dynamic parsedOpenvpn = getOptionalData(uciOpenvpnRaw, 'uci.get openvpn');
+      dynamic effectiveTailscaleExec = tailscaleExecRaw;
+      dynamic effectiveUciTailscale = uciTailscaleRaw;
+
+      final hasNextdnsMap = parsedNextdns is Map && parsedNextdns.isNotEmpty;
+      final hasCloudflaredMap =
+          parsedCloudflared is Map && parsedCloudflared.isNotEmpty;
+      final hasOpenvpnMap = parsedOpenvpn is Map && parsedOpenvpn.isNotEmpty;
+      final hasTailscaleExec =
+          effectiveTailscaleExec != null &&
+          (effectiveTailscaleExec is Map &&
+              effectiveTailscaleExec['stdout'] is String &&
+              (effectiveTailscaleExec['stdout'] as String).trim().isNotEmpty);
+
+      // If any of NextDNS, Cloudflared, OpenVPN, or Tailscale queries were rejected/denied (e.g. OpenWrt
+      // RPCD ACL restrictions where these services are not in the LuCI session ACL),
+      // seamlessly fall back to a single fast SSH query if SSH credentials and service are available.
+      if ((!hasNextdnsMap ||
+              !hasCloudflaredMap ||
+              !hasOpenvpnMap ||
+              !hasTailscaleExec) &&
+          _sshService != null &&
+          !_isReviewerMode) {
+        final sshFallbackData = await _fetchUciConfigsViaSsh(ip, force: force);
+        if (!hasNextdnsMap && sshFallbackData.containsKey('nextdns')) {
+          parsedNextdns = sshFallbackData['nextdns'];
+        }
+        if (!hasCloudflaredMap && sshFallbackData.containsKey('cloudflared')) {
+          parsedCloudflared = sshFallbackData['cloudflared'];
+        }
+        if (!hasOpenvpnMap && sshFallbackData.containsKey('openvpn')) {
+          parsedOpenvpn = sshFallbackData['openvpn'];
+        }
+        if (!hasTailscaleExec &&
+            sshFallbackData.containsKey('tailscale_exec')) {
+          effectiveTailscaleExec = sshFallbackData['tailscale_exec'];
+        }
+        if (sshFallbackData.containsKey('tailscale')) {
+          effectiveUciTailscale = sshFallbackData['tailscale'];
+        }
+      }
+
+      final deviceStatusData = getOptionalData(
+        deviceStatusRaw,
+        'network.device.status',
+      );
+      if (deviceStatusData is Map<String, dynamic>) {
+        if (networkData == null || networkData.isEmpty) {
+          networkData = Map<String, dynamic>.from(deviceStatusData);
+        } else {
+          deviceStatusData.forEach((k, v) {
+            if (!networkData!.containsKey(k)) {
+              networkData[k] = v;
+            } else if (networkData[k] is Map && v is Map) {
+              final existing = networkData[k] as Map;
+              final incoming = v;
+              if (!existing.containsKey('carrier') &&
+                  incoming.containsKey('carrier')) {
+                existing['carrier'] = incoming['carrier'];
+              }
+              if (!existing.containsKey('speed') &&
+                  incoming.containsKey('speed')) {
+                existing['speed'] = incoming['speed'];
+              }
+            }
+          });
+        }
+      }
+
+      if (swconfigRaw != null) {
+        final swData = getOptionalData(
+          swconfigRaw,
+          'luci.getSwconfigPortState',
+        );
+        if (swData is Map<String, dynamic>) {
+          networkData ??= <String, dynamic>{};
+          networkData['swconfigPortState'] = swData;
+        }
+      }
+
+      final temperatureData = temperatureRaw is RouterTemperature
+          ? temperatureRaw
+          : RouterTemperature.parse(temperatureRaw);
 
       Map<String, dynamic>? wirelessData;
       if (wirelessRaw != null) {
@@ -1215,12 +1575,15 @@ class DashboardController {
       int cliPeersCount = 0;
       bool cliIsExitNode = false;
 
-      if (tailscaleExecRaw != null) {
-        final parsedExec = tailscaleExecRaw is Map<String, dynamic>
-            ? tailscaleExecRaw
-            : (tailscaleExecRaw is Map
-                  ? Map<String, dynamic>.from(tailscaleExecRaw)
-                  : getOptionalData(tailscaleExecRaw, 'file.exec.tailscale'));
+      if (effectiveTailscaleExec != null) {
+        final parsedExec = effectiveTailscaleExec is Map<String, dynamic>
+            ? effectiveTailscaleExec
+            : (effectiveTailscaleExec is Map
+                  ? Map<String, dynamic>.from(effectiveTailscaleExec)
+                  : getOptionalData(
+                      effectiveTailscaleExec,
+                      'file.exec.tailscale',
+                    ));
 
         if (parsedExec is Map<String, dynamic> &&
             parsedExec['stdout'] is String) {
@@ -1312,11 +1675,10 @@ class DashboardController {
       Map<String, dynamic>? uciSec;
       bool uciConfigured = false;
       bool uciEnabled = false;
-      if (uciTailscaleRaw != null) {
-        final parsedTailscale = getOptionalData(
-          uciTailscaleRaw,
-          'uci.get tailscale',
-        );
+      if (effectiveUciTailscale != null) {
+        final parsedTailscale = effectiveUciTailscale is Map<String, dynamic>
+            ? effectiveUciTailscale
+            : getOptionalData(effectiveUciTailscale, 'uci.get tailscale');
         if (parsedTailscale is Map<String, dynamic>) {
           final values = parsedTailscale['values'] is Map<String, dynamic>
               ? parsedTailscale['values'] as Map<String, dynamic>
@@ -1375,8 +1737,7 @@ class DashboardController {
       }
 
       Map<String, dynamic>? nextdnsData;
-      if (uciNextdnsRaw != null) {
-        final parsedNextdns = getOptionalData(uciNextdnsRaw, 'uci.get nextdns');
+      if (parsedNextdns != null) {
         if (parsedNextdns is Map<String, dynamic>) {
           final values = parsedNextdns['values'] is Map<String, dynamic>
               ? parsedNextdns['values'] as Map<String, dynamic>
@@ -1427,14 +1788,19 @@ class DashboardController {
               }
             }
 
+            final profileVal =
+                (sec['profile'] is List
+                        ? (sec['profile'] as List).firstOrNull
+                        : sec['profile'])
+                    ?.toString() ??
+                sec['profile_id']?.toString() ??
+                '';
+
             nextdnsData = {
               'configured': true,
               'enabled': isEnabled,
               'running': isRunning,
-              'profile':
-                  sec['profile']?.toString() ??
-                  sec['profile_id']?.toString() ??
-                  '',
+              'profile': profileVal,
               'report_client_info':
                   sec['report_client_info'] == '1' ||
                   sec['report_client_info'] == true,
@@ -1444,11 +1810,8 @@ class DashboardController {
       }
 
       Map<String, dynamic>? cloudflaredData;
-      if (uciCloudflaredRaw != null) {
-        final parsedCf = getOptionalData(
-          uciCloudflaredRaw,
-          'uci.get cloudflared',
-        );
+      if (parsedCloudflared != null) {
+        final parsedCf = parsedCloudflared;
         if (parsedCf is Map<String, dynamic>) {
           final values = parsedCf['values'] is Map<String, dynamic>
               ? parsedCf['values'] as Map<String, dynamic>
@@ -1563,7 +1926,7 @@ class DashboardController {
       final pkgMgrType = _capabilities?.packageEngine.name ?? 'opkg';
 
       final openvpnData = synthesizeOpenVpnData(
-        uciOpenvpnRaw: uciOpenvpnRaw,
+        uciOpenvpnRaw: parsedOpenvpn ?? uciOpenvpnRaw,
         interfaceDump: interfaceDump,
         networkDevices: networkData,
         servicesData: servicesData,
@@ -1777,6 +2140,7 @@ class DashboardController {
         'nextdns': nextdnsData,
         'cloudflared': cloudflaredData,
         'ddns': ddnsData,
+        'temperature': temperatureData,
         '_lastUpdated': DateTime.now().millisecondsSinceEpoch,
       };
 
@@ -2295,4 +2659,242 @@ class DashboardController {
 
     return openvpnData;
   }
+
+  /// Parses raw UCI text (as found in /etc/config/*) into a Map structure
+  /// matching OpenWrt's `uci.get` JSON RPC response format: `{'values': {section_name: {...}}}`.
+  static Map<String, dynamic> parseUciText(String uciContent) {
+    final values = <String, Map<String, dynamic>>{};
+    Map<String, dynamic>? currentSection;
+    int anonIndex = 0;
+
+    String cleanVal(String raw) {
+      var s = raw.trim();
+      if ((s.startsWith("'") && s.endsWith("'")) ||
+          (s.startsWith('"') && s.endsWith('"'))) {
+        if (s.length >= 2) {
+          s = s.substring(1, s.length - 1);
+        }
+      }
+      return s;
+    }
+
+    final lines = uciContent.split('\n');
+    for (final rawLine in lines) {
+      var line = rawLine.trim();
+      if (line.isEmpty || line.startsWith('#')) continue;
+
+      // Strip trailing comment if outside quotes
+      final hashIdx = line.indexOf('#');
+      if (hashIdx > 0) {
+        final singleQuotes = "'".allMatches(line.substring(0, hashIdx)).length;
+        final doubleQuotes = '"'.allMatches(line.substring(0, hashIdx)).length;
+        if (singleQuotes % 2 == 0 && doubleQuotes % 2 == 0) {
+          line = line.substring(0, hashIdx).trim();
+        }
+      }
+
+      if (line.startsWith('config ')) {
+        final rest = line.substring(7).trim();
+        final tokens = <String>[];
+        final tokenRegex = RegExp(r'''[^\s"']+|"([^"]*)"|'([^']*)' ''');
+        for (final match in tokenRegex.allMatches(rest)) {
+          tokens.add(cleanVal(match.group(0)!));
+        }
+
+        if (tokens.isNotEmpty) {
+          final type = tokens[0];
+          final name = tokens.length > 1 && tokens[1].isNotEmpty
+              ? tokens[1]
+              : 'cfg${anonIndex.toString().padLeft(6, '0')}';
+          final isAnon = tokens.length <= 1 || tokens[1].isEmpty;
+          if (isAnon) anonIndex++;
+
+          currentSection = <String, dynamic>{
+            '.type': type,
+            '.name': name,
+            '.anonymous': isAnon,
+          };
+          values[name] = currentSection;
+        }
+      } else if (line.startsWith('option ') && currentSection != null) {
+        final rest = line.substring(7).trim();
+        final firstSpace = rest.indexOf(RegExp(r'\s'));
+        if (firstSpace != -1) {
+          final key = rest.substring(0, firstSpace).trim();
+          final val = cleanVal(rest.substring(firstSpace + 1));
+          currentSection[key] = val;
+        }
+      } else if (line.startsWith('list ') && currentSection != null) {
+        final rest = line.substring(5).trim();
+        final firstSpace = rest.indexOf(RegExp(r'\s'));
+        if (firstSpace != -1) {
+          final key = rest.substring(0, firstSpace).trim();
+          final val = cleanVal(rest.substring(firstSpace + 1));
+          if (currentSection[key] is! List) {
+            currentSection[key] = <String>[];
+          }
+          (currentSection[key] as List).add(val);
+        }
+      }
+    }
+
+    return {'values': values};
+  }
+
+  static Map<String, dynamic>? _parseUciChunk(String chunk) {
+    if (chunk.isEmpty) return null;
+    final trimmed = chunk.trim();
+    final firstBrace = trimmed.indexOf('{');
+    final lastBrace = trimmed.lastIndexOf('}');
+    if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+      try {
+        final jsonSub = trimmed.substring(firstBrace, lastBrace + 1);
+        final decoded = jsonDecode(jsonSub);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+      } catch (_) {}
+    }
+    if (trimmed.contains('config ')) {
+      return parseUciText(trimmed);
+    }
+    return null;
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic>? parseUciChunkForTesting(String chunk) =>
+      _parseUciChunk(chunk);
+
+  final Map<String, (DateTime, Map<String, dynamic>)> _sshFallbackCache = {};
+
+  Future<Map<String, dynamic>> _fetchUciConfigsViaSsh(
+    String ip, {
+    bool force = false,
+  }) async {
+    final cached = _sshFallbackCache[ip];
+    final now = DateTime.now();
+    if (!force &&
+        cached != null &&
+        now.difference(cached.$1) < const Duration(seconds: 45)) {
+      return cached.$2;
+    }
+
+    final result = <String, dynamic>{};
+    final ssh = _sshService;
+    if (ssh == null) return result;
+
+    try {
+      final selected = _routerService?.selectedRouter;
+      final allRouters = _routerService?.routers ?? [];
+      final router = (selected?.ipAddress == ip)
+          ? selected
+          : allRouters.where((r) => r.ipAddress == ip).firstOrNull ?? selected;
+
+      final username = router?.username ?? 'root';
+      String? password = router?.password;
+
+      if (password == null || password.isEmpty) {
+        final creds = await _secureStorageService.getCredentials();
+        if (creds['ipAddress'] == ip &&
+            creds['password'] != null &&
+            creds['password']!.isNotEmpty) {
+          password = creds['password'];
+        }
+      }
+
+      if (password == null || password.isEmpty) {
+        final storedRouters = await _secureStorageService.getRouters();
+        final match = storedRouters.where((r) => r.ipAddress == ip).firstOrNull;
+        if (match != null && match.password.isNotEmpty) {
+          password = match.password;
+        }
+      }
+
+      if (password == null || password.isEmpty) {
+        final creds = await _secureStorageService.getCredentials();
+        password = creds['password'];
+      }
+
+      if (password == null || password.isEmpty) {
+        Logger.warning('SSH fallback aborted: no password found for $ip');
+        return result;
+      }
+
+      const delimiter = '===UCI_CONFIG_DELIMITER===';
+      final cmd =
+          'ubus call uci get \'{"config":"nextdns"}\' 2>/dev/null || cat /etc/config/nextdns 2>/dev/null; '
+          'echo \'$delimiter\'; '
+          'ubus call uci get \'{"config":"cloudflared"}\' 2>/dev/null || cat /etc/config/cloudflared 2>/dev/null; '
+          'echo \'$delimiter\'; '
+          'ubus call uci get \'{"config":"openvpn"}\' 2>/dev/null || cat /etc/config/openvpn 2>/dev/null; '
+          'echo \'$delimiter\'; '
+          'if [ -x /usr/sbin/tailscale ]; then /usr/sbin/tailscale status --json 2>/dev/null; '
+          'elif command -v tailscale >/dev/null 2>&1; then tailscale status --json 2>/dev/null; '
+          'elif [ -f /etc/config/tailscale ]; then cat /etc/config/tailscale 2>/dev/null; fi';
+
+      final res = await ssh.executeCommand(
+        host: ip,
+        username: username,
+        password: password,
+        command: cmd,
+        timeout: const Duration(seconds: 4),
+      );
+
+      if (res.success && res.stdout.isNotEmpty) {
+        final parts = res.stdout.split(delimiter);
+        if (parts.isNotEmpty) {
+          final nextdnsChunk = parts[0].trim();
+          final nextdnsMap = _parseUciChunk(nextdnsChunk);
+          if (nextdnsMap != null) {
+            result['nextdns'] = nextdnsMap;
+          }
+        }
+        if (parts.length > 1) {
+          final cfChunk = parts[1].trim();
+          final cfMap = _parseUciChunk(cfChunk);
+          if (cfMap != null) {
+            result['cloudflared'] = cfMap;
+          }
+        }
+        if (parts.length > 2) {
+          final openvpnChunk = parts[2].trim();
+          final openvpnMap = _parseUciChunk(openvpnChunk);
+          if (openvpnMap != null) {
+            result['openvpn'] = openvpnMap;
+          }
+        }
+        if (parts.length > 3) {
+          final tsChunk = parts[3].trim();
+          if (tsChunk.isNotEmpty) {
+            if (tsChunk.startsWith('{')) {
+              final tsMap = _parseUciChunk(tsChunk);
+              if (tsMap != null) {
+                result['tailscale_exec'] = {'stdout': jsonEncode(tsMap)};
+              }
+            } else if (tsChunk.contains('config ')) {
+              final tsMap = _parseUciChunk(tsChunk);
+              if (tsMap != null) {
+                result['tailscale'] = tsMap;
+              }
+            } else if (!tsChunk.contains(' ')) {
+              result['tailscale_exec'] = {'stdout': tsChunk};
+            }
+          }
+        }
+
+        if (result.isNotEmpty) {
+          _sshFallbackCache[ip] = (DateTime.now(), result);
+        }
+      }
+    } catch (e) {
+      Logger.warning('SSH fallback for UCI configs failed: $e');
+    }
+    return result;
+  }
+
+  @visibleForTesting
+  Future<Map<String, dynamic>> fetchUciConfigsViaSshForTesting(
+    String ip, {
+    bool force = false,
+  }) => _fetchUciConfigsViaSsh(ip, force: force);
 }

@@ -32,15 +32,19 @@ void main() {
         expect(theme.cardTheme.elevation, 1);
 
         // Verify WCAG AAA contrast ratio on containers (> 7:1)
-        final onPrimaryLum = theme.colorScheme.onPrimaryContainer.computeLuminance();
-        final primaryContainerLum = theme.colorScheme.primaryContainer.computeLuminance();
+        final onPrimaryLum = theme.colorScheme.onPrimaryContainer
+            .computeLuminance();
+        final primaryContainerLum = theme.colorScheme.primaryContainer
+            .computeLuminance();
         final primaryRatio = (primaryContainerLum > onPrimaryLum)
             ? (primaryContainerLum + 0.05) / (onPrimaryLum + 0.05)
             : (onPrimaryLum + 0.05) / (primaryContainerLum + 0.05);
         expect(primaryRatio, greaterThan(7.0));
 
-        final onSecondaryLum = theme.colorScheme.onSecondaryContainer.computeLuminance();
-        final secondaryContainerLum = theme.colorScheme.secondaryContainer.computeLuminance();
+        final onSecondaryLum = theme.colorScheme.onSecondaryContainer
+            .computeLuminance();
+        final secondaryContainerLum = theme.colorScheme.secondaryContainer
+            .computeLuminance();
         final secondaryRatio = (secondaryContainerLum > onSecondaryLum)
             ? (secondaryContainerLum + 0.05) / (onSecondaryLum + 0.05)
             : (onSecondaryLum + 0.05) / (secondaryContainerLum + 0.05);
@@ -60,15 +64,19 @@ void main() {
         expect(theme.cardTheme.elevation, 2);
 
         // Verify WCAG AAA contrast ratio on containers (> 7:1)
-        final onPrimaryLum = theme.colorScheme.onPrimaryContainer.computeLuminance();
-        final primaryContainerLum = theme.colorScheme.primaryContainer.computeLuminance();
+        final onPrimaryLum = theme.colorScheme.onPrimaryContainer
+            .computeLuminance();
+        final primaryContainerLum = theme.colorScheme.primaryContainer
+            .computeLuminance();
         final primaryRatio = (onPrimaryLum > primaryContainerLum)
             ? (onPrimaryLum + 0.05) / (primaryContainerLum + 0.05)
             : (primaryContainerLum + 0.05) / (onPrimaryLum + 0.05);
         expect(primaryRatio, greaterThan(7.0));
 
-        final onSecondaryLum = theme.colorScheme.onSecondaryContainer.computeLuminance();
-        final secondaryContainerLum = theme.colorScheme.secondaryContainer.computeLuminance();
+        final onSecondaryLum = theme.colorScheme.onSecondaryContainer
+            .computeLuminance();
+        final secondaryContainerLum = theme.colorScheme.secondaryContainer
+            .computeLuminance();
         final secondaryRatio = (onSecondaryLum > secondaryContainerLum)
             ? (onSecondaryLum + 0.05) / (secondaryContainerLum + 0.05)
             : (secondaryContainerLum + 0.05) / (onSecondaryLum + 0.05);

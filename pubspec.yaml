@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # build by specifying --build-name and --build-number, respectively.
 # In Android, build-name is used as versionName while build-number used as versionCode.
 # Read more about Android versioning at https://developer.android.com/studio/publish/versioning
-version: 2.0.0+220
+version: 2.1.0+224
 
 environment:
   sdk: ^3.8.1
@@ -29,6 +29,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
 
   flutter_riverpod: ^2.6.1
   google_fonts: ^8.2.1
@@ -44,6 +47,7 @@ dependencies:
   fluttertoast: ^10.0.0
   qr_flutter: ^4.1.0
   dynamic_color: ^1.7.0
+  dartssh2: ^4.1.0
 
 dev_dependencies:
   flutter_test:
@@ -61,11 +65,13 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  generate: true
   
   # Include mock data files and logo assets
   assets:
     - assets/mock/
-    - assets/images/
-    - assets/icons/
-    - assets/screenshots/
     - assets/fingerprints/
+    - assets/images/app_logo_router_clean.png
+    - assets/images/app_logo_transparent.png
+    - assets/images/app_logo.png
+

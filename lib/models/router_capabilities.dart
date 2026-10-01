@@ -138,6 +138,12 @@ class RouterCapabilities {
         (methods.contains('apply') || methods.contains('commit'));
   }
 
+  /// Helper to check if active package manager engine is Alpine Package Keeper (apk)
+  bool get isApk => packageEngine == PackageManagerEngine.apk;
+
+  /// Helper to check if active package manager engine is OPKG (ipk)
+  bool get isOpkg => packageEngine == PackageManagerEngine.opkg;
+
   /// Serialize for secure storage cache
   Map<String, dynamic> toJson() {
     return {

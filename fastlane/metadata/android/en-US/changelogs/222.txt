@@ -1,0 +1,6 @@
+What's new:
+• Network Diagnostics: Added built-in ping, traceroute, DNS lookup, connectivity tests & report export.
+• Multi-Language Support: Added 8 languages (EN, RU, DE, ES, FR, ID, PT-BR, PT) with instant login toggle.
+• Hardware Temperature: Real-time SoC temperature monitoring with 1-tap SSH sensor setup.
+• Display & Accessibility: Clean scaling for large font sizes without text truncation across all screens.
+• Performance: Faster connection handling and UI stability.

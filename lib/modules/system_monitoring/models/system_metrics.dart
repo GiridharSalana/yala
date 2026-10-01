@@ -2,6 +2,8 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'router_temperature.dart';
+
 class SystemMetrics {
   final int uptimeSeconds;
   final double load1m;
@@ -12,6 +14,7 @@ class SystemMetrics {
   final int freeMemoryBytes;
   final int bufferedMemoryBytes;
   final int cachedMemoryBytes;
+  final RouterTemperature? temperature;
 
   const SystemMetrics({
     required this.uptimeSeconds,
@@ -23,14 +26,19 @@ class SystemMetrics {
     required this.freeMemoryBytes,
     required this.bufferedMemoryBytes,
     required this.cachedMemoryBytes,
+    this.temperature,
   });
 
   factory SystemMetrics.fromSysInfo(
     Map<String, dynamic>? sysInfo, {
     Map<String, dynamic>? boardInfo,
+    dynamic temperature,
   }) {
     if (sysInfo == null) {
-      return const SystemMetrics(
+      final RouterTemperature? tempObj = temperature is RouterTemperature
+          ? temperature
+          : (temperature != null ? RouterTemperature.parse(temperature) : null);
+      return SystemMetrics(
         uptimeSeconds: 0,
         load1m: 0.0,
         load5m: 0.0,
@@ -40,6 +48,7 @@ class SystemMetrics {
         freeMemoryBytes: 0,
         bufferedMemoryBytes: 0,
         cachedMemoryBytes: 0,
+        temperature: tempObj,
       );
     }
 
@@ -157,6 +166,15 @@ class SystemMetrics {
         int.tryParse(memMap?['cached']?.toString() ?? '') ??
         0;
 
+    RouterTemperature? tempObj;
+    if (temperature is RouterTemperature) {
+      tempObj = temperature;
+    } else if (temperature != null) {
+      tempObj = RouterTemperature.parse(temperature);
+    } else if (sysInfo['temperature'] != null) {
+      tempObj = RouterTemperature.parse(sysInfo['temperature']);
+    }
+
     return SystemMetrics(
       uptimeSeconds: uptime,
       load1m: l1,
@@ -167,8 +185,14 @@ class SystemMetrics {
       freeMemoryBytes: free,
       bufferedMemoryBytes: buffered,
       cachedMemoryBytes: cached,
+      temperature: tempObj,
     );
   }
+
+  String get formattedTemperature => temperature?.formattedTemperature ?? 'N/A';
+
+  String formattedTemperatureForUnit(String unit, {bool precise = false}) =>
+      temperature?.formattedTemperatureForUnit(unit, precise: precise) ?? 'N/A';
 
   int get usedMemoryBytes {
     final used =

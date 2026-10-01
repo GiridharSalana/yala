@@ -30,6 +30,8 @@ void main() {
       expect(topology.vlans.first.vid, equals(10));
       expect(topology.vlans.first.ports.length, equals(3));
       expect(topology.vlans.first.ports.first.name, equals('lan1'));
+      expect(topology.vlans.first.ports.first.isTagged, isFalse);
+      expect(topology.vlans.first.ports.last.name, equals('lan3'));
       expect(topology.vlans.first.ports.last.isTagged, isTrue);
     });
 
@@ -55,6 +57,115 @@ void main() {
       expect(topology.vlans.first.ports.length, equals(4));
       expect(topology.vlans.first.ports.last.isTagged, isTrue);
     });
+
+    test(
+      'DsaTopologyParser parses unsegmented flat bridge and resolves port carrier/speed',
+      () {
+        final mockUciNetwork = {
+          'values': {
+            'br_lan': {
+              '.type': 'device',
+              'name': 'br-lan',
+              'type': 'bridge',
+              'ports': ['lan1', 'lan2', 'lan3', 'lan4'],
+            },
+            'wan_dev': {'.type': 'device', 'name': 'wan'},
+          },
+        };
+
+        final mockNetworkDevices = {
+          'lan1': {'up': true, 'carrier': true, 'speed': '1000F'},
+          'lan2': {'up': true, 'carrier': true, 'speed': '100F'},
+          'lan3': {'up': true, 'carrier': false, 'speed': null},
+          'lan4': {'up': true, 'carrier': false, 'speed': null},
+          'wan': {'up': true, 'carrier': true, 'speed': '1000F'},
+        };
+
+        final topology = DsaTopologyParser.parse(
+          mockUciNetwork,
+          mockNetworkDevices,
+        );
+        expect(topology.isAvailable, isTrue);
+        expect(topology.isZeroVlans, isFalse);
+        expect(topology.modelType, equals(NetworkModel.dsa));
+
+        // Should have synthesized Default Bridge and WAN interface
+        expect(topology.vlans.length, equals(2));
+        final defaultBridge = topology.vlans.first;
+        expect(defaultBridge.name, equals('Default Bridge (br-lan)'));
+        expect(defaultBridge.ports.length, equals(4));
+
+        // Check port carrier states
+        final p1 = defaultBridge.ports.firstWhere((p) => p.name == 'lan1');
+        expect(p1.isUp, isTrue);
+        expect(p1.linkSpeed, equals('1000F'));
+
+        final p2 = defaultBridge.ports.firstWhere((p) => p.name == 'lan2');
+        expect(p2.isUp, isTrue);
+        expect(p2.linkSpeed, equals('100F'));
+
+        final p3 = defaultBridge.ports.firstWhere((p) => p.name == 'lan3');
+        expect(p3.isUp, isFalse);
+        expect(p3.linkSpeed, isNull);
+
+        final p4 = defaultBridge.ports.firstWhere((p) => p.name == 'lan4');
+        expect(p4.isUp, isFalse);
+        expect(p4.linkSpeed, isNull);
+
+        // Check WAN port
+        final wanVlan = topology.vlans.last;
+        expect(wanVlan.ports.first.name, equals('wan'));
+        expect(wanVlan.ports.first.isUp, isTrue);
+        expect(wanVlan.ports.first.linkSpeed, equals('1000F'));
+      },
+    );
+
+    test(
+      'SwconfigTopologyParser resolves port link state and speeds from swconfigPortState',
+      () {
+        final mockUciNetwork = {
+          'values': {
+            'sw0': {'.type': 'switch', 'name': 'switch0'},
+            'vlan1': {
+              '.type': 'switch_vlan',
+              'device': 'switch0',
+              'vlan': '1',
+              'ports': '1 2 3 4 0t',
+            },
+          },
+        };
+
+        final mockNetworkDevices = {
+          'swconfigPortState': {
+            'result': [
+              {'port': 0, 'link': false, 'speed': 0},
+              {'port': 0, 'link': true, 'speed': 1000},
+              {'port': 1, 'link': false, 'speed': 0},
+              {'port': 2, 'link': false, 'speed': 0},
+              {'port': 3, 'link': false, 'speed': 0},
+              {'port': 4, 'link': false, 'speed': 0},
+            ],
+          },
+        };
+
+        final topology = SwconfigTopologyParser.parse(
+          mockUciNetwork,
+          mockNetworkDevices,
+        );
+        expect(topology.isAvailable, isTrue);
+        expect(topology.isZeroVlans, isFalse);
+        expect(topology.vlans.length, equals(1));
+
+        final vlan1 = topology.vlans.first;
+        final wanPort = vlan1.ports.firstWhere((p) => p.portIndex == 0);
+        expect(wanPort.isUp, isTrue);
+        expect(wanPort.linkSpeed, equals('1000M'));
+
+        final lan1Port = vlan1.ports.firstWhere((p) => p.portIndex == 1);
+        expect(lan1Port.isUp, isFalse);
+        expect(lan1Port.linkSpeed, isNull);
+      },
+    );
 
     test('Parser produces distinct empty states: zeroVlans vs unavailable', () {
       final validFlatNetworkUci = {

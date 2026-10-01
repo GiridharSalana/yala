@@ -5,6 +5,13 @@
 import 'package:flutter/material.dart';
 import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
 import 'package:yet_another_luci_app/modules/services_system/models/ddns_info.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/internet_reachability.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/ping_result.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/traceroute_result.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/dns_lookup_result.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/routing_neighbor_info.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/diagnostic_report.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/flush_dns_result.dart';
 
 enum AuthStatus { success, invalidCredentials, unreachable, unknownError }
 
@@ -106,6 +113,13 @@ abstract class IApiService {
     BuildContext? context,
   });
   Future<Map<String, Set<String>>> fetchAllAssociatedWirelessMacsWithContext({
+    required String ipAddress,
+    required String sysauth,
+    required bool useHttps,
+    BuildContext? context,
+  });
+  Future<Map<String, List<Map<String, dynamic>>>>
+  fetchAllAssociatedWirelessStationsWithDetailsContext({
     required String ipAddress,
     required String sysauth,
     required bool useHttps,
@@ -470,6 +484,108 @@ abstract class IApiService {
     String sysauth,
     bool useHttps, {
     required String profileId,
+    BuildContext? context,
+  });
+
+  /// Installs the native lightweight OpenWrt temperature RPC handler and ACL rule
+  Future<bool> installNativeTemperatureHandler(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Executes ping command on router via rpcd file.exec
+  Future<PingResult> executePing(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String target,
+    int count = 3,
+    int timeoutSec = 2,
+    bool isIpv6 = false,
+    BuildContext? context,
+  });
+
+  /// Executes traceroute on router via rpcd file.exec
+  Future<TracerouteResult> executeTraceroute(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String target,
+    int maxHops = 15,
+    int timeoutSec = 1,
+    bool isIpv6 = false,
+    BuildContext? context,
+  });
+
+  /// Executes DNS resolution check via rpcd file.exec (nslookup)
+  Future<DnsLookupResult> executeDnsLookup(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String host,
+    String? server,
+    BuildContext? context,
+  });
+
+  /// Tests router WAN internet reachability (gateway, public DNS, and DNS lookup)
+  Future<InternetReachability> testInternetReachability(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Fetches the kernel routing table via ip -4 route
+  Future<List<RouteEntry>> fetchRoutingTable(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Fetches the ARP neighbor table via ip -4 neigh
+  Future<List<NeighborEntry>> fetchNeighborTable(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Fetches conntrack table count and max
+  Future<ConntrackInfo?> fetchConntrackInfo(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Generates a full diagnostic report bundle
+  Future<DiagnosticReport> generateFullDiagnosticReport(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Flushes DNS resolver cache (dnsmasq / unbound / smartdns) and reloads local hosts
+  Future<FlushDnsResult> flushDns(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Executes a system command directly via LuCI's streaming CGI endpoint (/cgi-bin/cgi-exec)
+  /// without rpcd's 256KB buffer ceiling (RPC_FILE_MAX_SIZE).
+  Future<String?> execDirectCgi(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String command,
+    List<String>? params,
+    int stderr = 0,
     BuildContext? context,
   });
 }

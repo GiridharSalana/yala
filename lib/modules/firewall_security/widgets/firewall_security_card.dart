@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/models/router_capabilities.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import '../models/firewall_info.dart';
 
 class FirewallSecurityCard extends ConsumerWidget {
@@ -13,6 +14,7 @@ class FirewallSecurityCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
     final backend =
         appState.capabilities?.firewallBackend ?? FirewallBackend.fw4;
@@ -37,29 +39,39 @@ class FirewallSecurityCard extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.security_outlined,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Firewall & Security',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.security_outlined,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n?.firewallTitle ?? 'Firewall & Security',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Text(
-                  '${overview.zones.length} Zones',
+                  l10n != null
+                      ? l10n.firewallZonesCount(overview.zones.length)
+                      : '${overview.zones.length} Zones',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(
                       context,
                     ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -69,7 +81,7 @@ class FirewallSecurityCard extends ConsumerWidget {
                 Expanded(
                   child: _buildPolicyTile(
                     context,
-                    label: 'Input Policy',
+                    label: l10n?.firewallInputPolicy ?? 'Input Policy',
                     value: defPolicy.input,
                     color: _getPolicyColor(defPolicy.input),
                   ),
@@ -77,7 +89,7 @@ class FirewallSecurityCard extends ConsumerWidget {
                 Expanded(
                   child: _buildPolicyTile(
                     context,
-                    label: 'Output Policy',
+                    label: l10n?.firewallOutputPolicy ?? 'Output Policy',
                     value: defPolicy.output,
                     color: _getPolicyColor(defPolicy.output),
                   ),
@@ -85,7 +97,7 @@ class FirewallSecurityCard extends ConsumerWidget {
                 Expanded(
                   child: _buildPolicyTile(
                     context,
-                    label: 'Forward Policy',
+                    label: l10n?.firewallForwardPolicy ?? 'Forward Policy',
                     value: defPolicy.forward,
                     color: _getPolicyColor(defPolicy.forward),
                   ),
@@ -115,18 +127,21 @@ class FirewallSecurityCard extends ConsumerWidget {
     final theme = Theme.of(context);
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
             ),
           ),
         ),
@@ -137,6 +152,8 @@ class FirewallSecurityCard extends ConsumerWidget {
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             fontSize: 10,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
         ),
       ],

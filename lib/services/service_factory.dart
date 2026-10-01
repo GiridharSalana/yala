@@ -4,10 +4,13 @@
 
 import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
 import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
+import 'package:yet_another_luci_app/services/interfaces/ssh_service_interface.dart';
 import 'package:yet_another_luci_app/services/auth_service.dart';
 import 'package:yet_another_luci_app/services/api_service.dart';
+import 'package:yet_another_luci_app/services/ssh_service.dart';
 import 'package:yet_another_luci_app/services/mock_auth_service.dart';
 import 'package:yet_another_luci_app/services/mock_api_service.dart';
+import 'package:yet_another_luci_app/services/mock_ssh_service.dart';
 import 'package:yet_another_luci_app/services/secure_storage_service.dart';
 import 'package:yet_another_luci_app/services/router_service.dart';
 import 'package:yet_another_luci_app/services/throughput_service.dart';
@@ -15,6 +18,7 @@ import 'package:yet_another_luci_app/services/throughput_service.dart';
 abstract class ServiceFactory {
   IAuthService createAuthService();
   IApiService createApiService();
+  ISshService createSshService();
   SecureStorageService createSecureStorageService();
   RouterService createRouterService();
   ThroughputService createThroughputService();
@@ -23,6 +27,7 @@ abstract class ServiceFactory {
 class ProductionServiceFactory implements ServiceFactory {
   RealApiService? _apiService;
   RealAuthService? _authService;
+  RealSshService? _sshService;
   SecureStorageService? _secureStorageService;
   RouterService? _routerService;
   ThroughputService? _throughputService;
@@ -33,6 +38,9 @@ class ProductionServiceFactory implements ServiceFactory {
   @override
   IAuthService createAuthService() =>
       _authService ??= RealAuthService(createApiService());
+
+  @override
+  ISshService createSshService() => _sshService ??= RealSshService();
 
   @override
   SecureStorageService createSecureStorageService() =>
@@ -49,6 +57,7 @@ class ProductionServiceFactory implements ServiceFactory {
 class ReviewerModeServiceFactory implements ServiceFactory {
   MockApiService? _apiService;
   MockAuthService? _authService;
+  MockSshService? _sshService;
   SecureStorageService? _secureStorageService;
   RouterService? _routerService;
   ThroughputService? _throughputService;
@@ -58,6 +67,9 @@ class ReviewerModeServiceFactory implements ServiceFactory {
 
   @override
   IApiService createApiService() => _apiService ??= MockApiService();
+
+  @override
+  ISshService createSshService() => _sshService ??= MockSshService();
 
   @override
   SecureStorageService createSecureStorageService() =>

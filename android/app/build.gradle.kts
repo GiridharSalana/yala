@@ -40,6 +40,7 @@ android {
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        resourceConfigurations += listOf("en", "ru", "es", "b+pt+BR", "pt-rBR", "pt", "de", "id", "fr", "zh")
     }
 
     signingConfigs {
@@ -64,12 +65,10 @@ android {
         create("community") {
             dimension = "version"
             applicationId = "com.nightcode.luci"
-            resValue("string", "app_name", "Yet Another LuCI App")
         }
         create("playstore") {
             dimension = "version"
             applicationId = "com.nightcode.luci"
-            resValue("string", "app_name", "Yet Another LuCI App")
         }
     }
 
@@ -101,7 +100,7 @@ android {
 
     bundle {
         language {
-            enableSplit = true
+            enableSplit = false
         }
         density {
             enableSplit = true

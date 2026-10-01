@@ -14,6 +14,7 @@ import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
 import 'package:yet_another_luci_app/utils/logger.dart';
 import 'package:yet_another_luci_app/screens/main_screen.dart';
 import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class ManageRoutersScreen extends ConsumerStatefulWidget {
   final bool isFromLogin;
@@ -33,43 +34,50 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
     model.Router router,
   ) async {
     final appState = ref.read(appStateProvider);
+    final l10n = AppLocalizations.of(context);
     final controller = TextEditingController(text: router.name ?? '');
     try {
       final saved = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text('Rename Router Profile'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Assign a custom nickname to identify ${router.ipAddress}',
-                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+          title: Text(l10n?.renameRouterDialogTitle ?? 'Rename Router Profile'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Assign a custom nickname to identify ${router.ipAddress}',
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Profile Name',
-                  hintText: 'e.g. Home Lab, Living Room, Travel Router',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.label_outline_rounded),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: l10n?.manageRouterProfileName ?? 'Profile Name',
+                    hintText:
+                        l10n?.manageRouterProfileNameHint ??
+                        'e.g. Home Lab, Living Room, Travel Router',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.label_outline_rounded),
+                  ),
+                  textCapitalization: TextCapitalization.words,
                 ),
-                textCapitalization: TextCapitalization.words,
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
+              child: Text(l10n?.actionCancel ?? 'Cancel'),
             ),
             if (router.name != null && router.name!.trim().isNotEmpty)
               TextButton(
@@ -77,11 +85,11 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                   controller.clear();
                   Navigator.pop(ctx, true);
                 },
-                child: const Text('Clear Name'),
+                child: Text(l10n?.manageRouterClearName ?? 'Clear Name'),
               ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save'),
+              child: Text(l10n?.actionSave ?? 'Save'),
             ),
           ],
         ),
@@ -93,11 +101,13 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
             : controller.text.trim();
         await appState.updateRouterName(router.id, newName);
         if (context.mounted) {
+          final updL10n = AppLocalizations.of(context);
           context.showToastSuccess(
-            'Profile Updated',
+            updL10n?.manageRouterProfileUpdated ?? 'Profile Updated',
             subtitle: newName != null
-                ? 'Renamed to "$newName"'
-                : 'Reset to default name',
+                ? (updL10n?.manageRouterRenamedTo(newName) ??
+                      'Renamed to "$newName"')
+                : (updL10n?.manageRouterNameReset ?? 'Reset to default name'),
           );
         }
       }
@@ -107,14 +117,17 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
   }
 
   Future<void> _exportProfiles(BuildContext context, AppState appState) async {
+    final l10n = AppLocalizations.of(context);
     if (appState.routers.isEmpty) {
-      context.showToastInfo('No router profiles to export.');
+      context.showToastInfo(
+        l10n?.manageRouterNoProfiles ?? 'No router profiles to export.',
+      );
       return;
     }
 
     try {
       context.showToastLoading(
-        'Exporting Profiles...',
+        l10n?.manageRouterExporting ?? 'Exporting Profiles...',
         actionKey: 'export_profiles',
       );
       final result = await appState.exportRouterProfiles();
@@ -123,28 +136,42 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
       if (!context.mounted) return;
 
       if (result != null) {
+        final exportL10n = AppLocalizations.of(context);
         context.showToastSuccess(
-          'Profiles Exported',
-          subtitle: 'Saved to Downloads: ${result.filePath.split('/').last}',
+          exportL10n?.manageRouterExportSuccess ?? 'Profiles Exported',
+          subtitle:
+              exportL10n?.manageRouterExportSaved(
+                result.filePath.split('/').last,
+              ) ??
+              'Saved to Downloads: ${result.filePath.split('/').last}',
         );
         await OsPlatformIntegration.showFileDownloadedPrompt(
           context,
           result,
-          title: 'Profiles Exported Successfully',
-          fileLabel: 'Profiles JSON Path',
+          title:
+              exportL10n?.manageRouterExportedSuccessfully ??
+              'Profiles Exported Successfully',
+          fileLabel: exportL10n?.filePathLabel ?? 'File Path',
           icon: Icons.file_download_done_rounded,
           accentColor: Theme.of(context).colorScheme.primary,
         );
       } else {
+        final failL10n = AppLocalizations.of(context);
         context.showToastError(
-          'Export Failed',
-          subtitle: 'Could not save file to downloads directory.',
+          failL10n?.manageRouterExportFailed ?? 'Export Failed',
+          subtitle:
+              failL10n?.manageRouterExportFailedSubtitle ??
+              'Could not save file to downloads directory.',
         );
       }
     } catch (e) {
       LuciToastManager.dismissAllLoading();
       if (context.mounted) {
-        context.showToastError('Export Error', subtitle: e.toString());
+        final errL10n = AppLocalizations.of(context);
+        context.showToastError(
+          errL10n?.manageRouterExportError ?? 'Export Error',
+          subtitle: e.toString(),
+        );
       }
     }
   }
@@ -161,6 +188,7 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
       }
 
       if (result.success) {
+        final importL10n = AppLocalizations.of(context);
         final buffer = StringBuffer();
         if (result.importedCount > 0) {
           buffer.write('Imported ${result.importedCount} new profile(s)');
@@ -174,23 +202,27 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
         }
 
         context.showToastSuccess(
-          'Import Successful',
+          importL10n?.manageRouterImportSuccess ?? 'Import Successful',
           subtitle: buffer.toString(),
         );
 
         await appState.loadRouters();
       } else {
+        final failL10n = AppLocalizations.of(context);
         context.showToastError(
-          'Import Failed',
+          failL10n?.manageRouterImportFailed ?? 'Import Failed',
           subtitle: result.errorMessage ?? 'Could not import profiles.',
         );
       }
     } catch (e, stack) {
       Logger.exception('Unexpected error during profile import', e, stack);
       if (context.mounted) {
+        final errL10n = AppLocalizations.of(context);
         context.showToastError(
-          'Import Failed',
-          subtitle: 'Unable to import router profiles. Please check the file and try again.',
+          errL10n?.manageRouterImportFailed ?? 'Import Failed',
+          subtitle:
+              errL10n?.manageRouterImportFailedSubtitle ??
+              'Unable to import router profiles. Please check the file and try again.',
         );
       }
     }
@@ -200,6 +232,7 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
     BuildContext context,
     AppState appState,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final nameController = TextEditingController();
     final ipController = TextEditingController();
     final userController = TextEditingController(text: 'root');
@@ -229,9 +262,7 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                   vertical: 60,
                 ),
                 content: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: 400,
-                  ),
+                  constraints: const BoxConstraints(maxWidth: 400),
                   child: AutofillGroup(
                     child: Form(
                       key: formKey,
@@ -254,10 +285,12 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                               const SizedBox(height: 16),
                               TextFormField(
                                 controller: ipController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Router Address',
-                                  border: OutlineInputBorder(),
-                                  prefixIcon: Icon(Icons.router_outlined),
+                                decoration: InputDecoration(
+                                  labelText:
+                                      l10n?.routerAddressLabel ??
+                                      'Router Address',
+                                  border: const OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.router_outlined),
                                   helperText:
                                       'e.g. 192.168.1.1, router.local:8080, https://192.168.1.1',
                                 ),
@@ -277,10 +310,10 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                               const SizedBox(height: 20),
                               TextFormField(
                                 controller: userController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Username',
-                                  border: OutlineInputBorder(),
-                                  prefixIcon: Icon(Icons.person_outline),
+                                decoration: InputDecoration(
+                                  labelText: l10n?.usernameLabel ?? 'Username',
+                                  border: const OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.person_outline),
                                   helperText: 'Default is usually root',
                                 ),
                                 validator: (v) =>
@@ -291,7 +324,7 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                               TextFormField(
                                 controller: passController,
                                 decoration: InputDecoration(
-                                  labelText: 'Password',
+                                  labelText: l10n?.passwordLabel ?? 'Password',
                                   border: const OutlineInputBorder(),
                                   prefixIcon: const Icon(Icons.lock_outline),
                                   helperText: 'Your router password',
@@ -504,17 +537,20 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                               ),
                                             ),
                                             const SizedBox(width: 12),
-                                            const Text('Connecting...'),
+                                            Text(
+                                              l10n?.manageRouterConnecting ??
+                                                  'Connecting...',
+                                            ),
                                           ],
                                         )
                                       : Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           mainAxisSize: MainAxisSize.min,
-                                          children: const [
-                                            Icon(Icons.add),
-                                            SizedBox(width: 12),
-                                            Text('Add'),
+                                          children: [
+                                            const Icon(Icons.add),
+                                            const SizedBox(width: 12),
+                                            Text(l10n?.actionAdd ?? 'Add'),
                                           ],
                                         ),
                                 ),
@@ -546,22 +582,26 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
     final appState = ref.watch(appStateProvider);
     final List<model.Router> routers = appState.routers;
     final String? selectedId = appState.selectedRouter?.id;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: LuciAppBar(
-        title: 'Routers',
+        title: l10n?.manageRoutersTitle ?? 'Routers',
         showBack: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
-            tooltip: 'Import Profiles from JSON',
+            tooltip:
+                l10n?.manageRouterImportTooltip ?? 'Import Profiles from JSON',
             onPressed: () => _importProfiles(context, appState),
           ),
           if (routers.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.file_upload_outlined),
-              tooltip: 'Export Profiles as JSON',
+              tooltip:
+                  l10n?.manageRouterExportTooltip ?? 'Export Profiles as JSON',
               onPressed: () => _exportProfiles(context, appState),
             ),
+
           const SizedBox(width: 8),
         ],
       ),
@@ -589,7 +629,8 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                         const SizedBox(height: 16),
                         Center(
                           child: Text(
-                            'No routers added yet.',
+                            l10n?.manageRouterNoRoutersYet ??
+                                'No routers added yet.',
                             style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w600),
                           ),
@@ -598,7 +639,8 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 32.0),
                           child: Text(
-                            'Add your router credentials manually or restore profiles from a JSON backup.',
+                            l10n?.manageRouterEmptyDesc ??
+                                'Add your router credentials manually or restore profiles from a JSON backup.',
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
@@ -617,7 +659,9 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                 width: double.infinity,
                                 child: ElevatedButton.icon(
                                   icon: const Icon(Icons.add, size: 20),
-                                  label: const Text('Add Router'),
+                                  label: Text(
+                                    l10n?.manageRouterAddRouter ?? 'Add Router',
+                                  ),
                                   style: ElevatedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 14,
@@ -646,8 +690,9 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                     Icons.file_download_outlined,
                                     size: 20,
                                   ),
-                                  label: const Text(
-                                    'Import Profiles from JSON',
+                                  label: Text(
+                                    l10n?.manageRouterImportTooltip ??
+                                        'Import Profiles from JSON',
                                   ),
                                   style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
@@ -776,20 +821,32 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                 final confirm = await showDialog<bool>(
                                   context: context,
                                   builder: (context) => AlertDialog(
-                                    title: const Text('Remove Router'),
-                                    content: Text(
-                                      'Are you sure you want to remove $routerLabel?',
+                                    actionsOverflowButtonSpacing: 8,
+                                    actionsOverflowDirection:
+                                        VerticalDirection.down,
+                                    title: Text(
+                                      l10n?.deleteRouterDialogTitle ??
+                                          'Remove Router',
+                                    ),
+                                    content: SingleChildScrollView(
+                                      child: Text(
+                                        'Are you sure you want to remove $routerLabel?',
+                                      ),
                                     ),
                                     actions: [
                                       TextButton(
                                         onPressed: () =>
                                             Navigator.pop(context, false),
-                                        child: const Text('Cancel'),
+                                        child: Text(
+                                          l10n?.actionCancel ?? 'Cancel',
+                                        ),
                                       ),
                                       TextButton(
                                         onPressed: () =>
                                             Navigator.pop(context, true),
-                                        child: const Text('Remove'),
+                                        child: Text(
+                                          l10n?.actionDelete ?? 'Remove',
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -809,7 +866,9 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               icon: const Icon(Icons.add, size: 20),
-                              label: const Text('Add Router'),
+                              label: Text(
+                                l10n?.addRouterButton ?? 'Add Router',
+                              ),
                               style: ElevatedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
@@ -849,7 +908,10 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                       Icons.file_download_outlined,
                                       size: 18,
                                     ),
-                                    label: const Text('Import JSON'),
+                                    label: Text(
+                                      l10n?.manageRouterImportJson ??
+                                          'Import JSON',
+                                    ),
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 14,
@@ -870,7 +932,11 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                       Icons.file_upload_outlined,
                                       size: 18,
                                     ),
-                                    label: const Text('Export JSON'),
+                                    label: Text(
+                                      l10n?.manageRouterExportJson ??
+                                          'Export JSON',
+                                    ),
+
                                     style: OutlinedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 14,
@@ -969,7 +1035,7 @@ class _UnifiedRouterCard extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         color: colorScheme.onSurface,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
@@ -981,7 +1047,7 @@ class _UnifiedRouterCard extends StatelessWidget {
                         fontWeight: FontWeight.w400,
                         letterSpacing: 0.1,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -991,7 +1057,10 @@ class _UnifiedRouterCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(left: 8.0),
                   child: Chip(
-                    label: const Text('Active'),
+                    label: Text(
+                      AppLocalizations.of(context)?.manageRouterActive ??
+                          'Active',
+                    ),
                     labelStyle: theme.textTheme.labelSmall?.copyWith(
                       color: colorScheme.onPrimary,
                     ),

@@ -53,10 +53,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Compact search bar should be present with hint
-        expect(
-          find.text('Search by name, IP, MAC, vendor...'),
-          findsOneWidget,
-        );
+        expect(find.text('Search by name, IP, MAC, vendor...'), findsOneWidget);
 
         // Initially all clients rendered
         expect(find.text('Active-Wired-PC'), findsOneWidget);

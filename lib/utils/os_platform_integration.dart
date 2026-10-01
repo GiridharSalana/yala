@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/modules/storage_monitoring/models/storage_info.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 
@@ -66,7 +67,11 @@ class OsPlatformIntegration {
       await Clipboard.setData(ClipboardData(text: text));
       await triggerHaptic(OsHapticType.light);
       if (context.mounted) {
-        context.showToastSuccess('Copied $label', subtitle: text);
+        final l10n = AppLocalizations.of(context);
+        context.showToastSuccess(
+          l10n?.toastItemCopied(label) ?? 'Copied $label',
+          subtitle: text,
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -92,6 +97,11 @@ class OsPlatformIntegration {
         if (await canLaunchUrl(intentUri)) {
           launched = await launchUrl(intentUri);
         }
+      } else if (Platform.isIOS) {
+        final intentUri = Uri.parse('app-settings:');
+        if (await canLaunchUrl(intentUri)) {
+          launched = await launchUrl(intentUri);
+        }
       }
     } catch (_) {
       launched = false;
@@ -99,7 +109,9 @@ class OsPlatformIntegration {
 
     if (!launched && context.mounted) {
       context.showToastInfo(
-        'Please open device Settings > Apps > Yet Another LuCI App to manage permissions.',
+        Platform.isIOS
+            ? 'Please open device Settings > Yet Another LuCI App to manage permissions.'
+            : 'Please open device Settings > Apps > Yet Another LuCI App to manage permissions.',
       );
     }
 
@@ -108,6 +120,12 @@ class OsPlatformIntegration {
 
   /// Helper to evaluate whether a filesystem path is genuinely public Downloads.
   static bool isPathPublic(String path) {
+    if (kIsWeb) return false;
+    if (Platform.isIOS) {
+      // On iOS with UIFileSharingEnabled and LSSupportsOpeningDocumentsInPlace,
+      // files saved in documents directory are user-accessible via the native Files app.
+      return true;
+    }
     final lower = path.toLowerCase();
     if (lower.contains('/android/data/') ||
         lower.contains('/data/user/') ||
@@ -228,8 +246,10 @@ class OsPlatformIntegration {
       await file.writeAsBytes(bytes, flush: true);
       return FileSaveResult(
         filePath: file.path,
-        isPublicDownloads: false,
-        storageMethodLabel: 'App Storage (Sandbox)',
+        isPublicDownloads: Platform.isIOS,
+        storageMethodLabel: Platform.isIOS
+            ? 'Files App (On My iPhone / iPad)'
+            : 'App Storage (Sandbox)',
       );
     } catch (_) {}
 
@@ -266,8 +286,8 @@ class OsPlatformIntegration {
   static Future<void> showFileDownloadedPrompt(
     BuildContext context,
     FileSaveResult saveResult, {
-    String title = 'File Saved Successfully',
-    String fileLabel = 'File Path',
+    String? title,
+    String? fileLabel,
     IconData icon = Icons.check_circle_outline,
     Color accentColor = Colors.teal,
   }) async {
@@ -286,140 +306,160 @@ class OsPlatformIntegration {
     final formattedSize = StorageOverview.formatBytes(fileSizeInBytes);
 
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final colorScheme = theme.colorScheme;
     final fileName = file.path.split(Platform.pathSeparator).last;
+    final resolvedTitle =
+        title ?? (l10n?.fileSavedSuccessfully ?? 'File Saved Successfully');
+    final resolvedFileLabel = fileLabel ?? (l10n?.filePathLabel ?? 'File Path');
 
     await showDialog(
       context: context,
       barrierDismissible: true,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         icon: Icon(icon, color: accentColor, size: 40),
         title: Text(
-          title,
+          resolvedTitle,
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // File Summary Box
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.6,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.insert_drive_file_outlined,
-                        size: 20,
-                        color: accentColor,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          fileName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // File Summary Box
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.6,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Size: $formattedSize',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.insert_drive_file_outlined,
+                          size: 20,
+                          color: accentColor,
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: accentColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: accentColor.withValues(alpha: 0.3),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            fileName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              saveResult.isPublicDownloads
-                                  ? Icons.folder_special_outlined
-                                  : Icons.folder_outlined,
-                              size: 11,
-                              color: accentColor,
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          l10n?.fileSizePrefix(formattedSize) ??
+                              'Size: $formattedSize',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: accentColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: accentColor.withValues(alpha: 0.3),
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              saveResult.storageMethodLabel,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                saveResult.isPublicDownloads
+                                    ? Icons.folder_special_outlined
+                                    : Icons.folder_outlined,
+                                size: 11,
                                 color: accentColor,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  saveResult.isPublicDownloads
+                                      ? (l10n?.backupPublicDownloadsFolder ??
+                                            saveResult.storageMethodLabel)
+                                      : (l10n?.backupPrivateAppStorage ??
+                                            saveResult.storageMethodLabel),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: accentColor,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n?.backupSavedFileLocation ?? 'Saved File Location:',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: colorScheme.outline.withValues(alpha: 0.2),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Saved File Location:',
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: colorScheme.outline.withValues(alpha: 0.2),
+                ),
+                child: SelectableText(
+                  saveResult.filePath,
+                  style: GoogleFonts.geistMono(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              child: SelectableText(
-                saveResult.filePath,
-                style: GoogleFonts.geistMono(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
+            child: Text(l10n?.actionClose ?? 'Close'),
           ),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
@@ -435,12 +475,12 @@ class OsPlatformIntegration {
                 copyToClipboard(
                   context,
                   text: saveResult.filePath,
-                  label: fileLabel,
+                  label: resolvedFileLabel,
                 ),
               );
             },
             icon: const Icon(Icons.copy, size: 16),
-            label: const Text('Copy File Path'),
+            label: Text(l10n?.actionCopyFilePath ?? 'Copy File Path'),
           ),
         ],
       ),
@@ -452,11 +492,13 @@ class OsPlatformIntegration {
     BuildContext context,
     FileSaveResult saveResult,
   ) async {
+    final l10n = AppLocalizations.of(context);
     return showFileDownloadedPrompt(
       context,
       saveResult,
-      title: 'Backup Downloaded Successfully',
-      fileLabel: 'Backup Path',
+      title:
+          l10n?.backupDownloadSuccessTitle ?? 'Backup Downloaded Successfully',
+      fileLabel: l10n?.backupPathLabel ?? 'Backup Path',
       icon: Icons.check_circle_outline,
       accentColor: Colors.teal,
     );
@@ -473,8 +515,12 @@ class OsPlatformIntegration {
       filePath: filePath,
       isPublicDownloads: isPublic,
       storageMethodLabel: isPublic
-          ? 'Public Downloads Folder'
-          : 'Private App Storage (/Android/data/)',
+          ? (Platform.isIOS
+              ? 'Files App (On My iPhone / iPad)'
+              : 'Public Downloads Folder')
+          : (Platform.isIOS
+              ? 'Files App (On My iPhone / iPad)'
+              : 'Private App Storage (/Android/data/)'),
     );
     await showBackupDownloadedPrompt(context, saveResult);
   }
@@ -559,6 +605,12 @@ class OsPlatformIntegration {
       if (ver.contains('chrome') || sysVer.contains('chrome')) {
         return 'Chromebook (ChromeOS ARC)';
       }
+      if (ver.contains('tv') || ver.contains('atv') || ver.contains('googletv')) {
+        return 'Android TV Subsystem';
+      }
+      if (ver.contains('xr') || ver.contains('spatial') || ver.contains('vision')) {
+        return 'Android XR Spatial Subsystem';
+      }
       if (ver.contains('graphene') || sysVer.contains('graphene')) {
         return 'GrapheneOS Android Subsystem';
       }
@@ -577,9 +629,21 @@ class OsPlatformIntegration {
       if (ver.contains('waydroid')) {
         return 'Waydroid Linux-Android Subsystem';
       }
-      return 'Android OS & Derivatives (Phone/Tablet)';
+      return 'Android (Phone / Tablet / Foldable)';
     }
-    return 'Android Target Host Environment';
+    if (Platform.isIOS) {
+      return 'Apple (iPhone / iPad / Apple Duo)';
+    }
+    if (Platform.isMacOS) {
+      return 'macOS Desktop (Non-Target Host)';
+    }
+    if (Platform.isLinux) {
+      return 'Linux Desktop (Development Preview)';
+    }
+    if (Platform.isWindows) {
+      return 'Windows Desktop (Non-Target Host)';
+    }
+    return 'Host Environment';
   }
 
   /// Gracefully minimizes/exits the application without corrupting Android task affinity

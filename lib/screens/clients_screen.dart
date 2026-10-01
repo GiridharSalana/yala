@@ -24,14 +24,12 @@ import 'package:yet_another_luci_app/widgets/ban_wireless_client_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yet_another_luci_app/modules/dhcp_dns/models/dhcp_dns_info.dart';
 import 'package:yet_another_luci_app/modules/wireless_management/models/wireless_info.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class ClientsScreen extends ConsumerStatefulWidget {
   final bool isTabActive;
 
-  const ClientsScreen({
-    super.key,
-    this.isTabActive = true,
-  });
+  const ClientsScreen({super.key, this.isTabActive = true});
 
   @override
   ConsumerState<ClientsScreen> createState() => _ClientsScreenState();
@@ -138,6 +136,18 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
         setState(() {
           _cachedClients = list;
         });
+        // If this was an initial fetch and wireless stations have traffic stats but no speed delta yet,
+        // trigger a one-time quick sample in 3 seconds to immediately compute and display live speeds.
+        if (list.any((c) =>
+            c.connectionType == ConnectionType.wireless &&
+            c.rxBytes != null &&
+            c.txSpeed == null)) {
+          Timer(const Duration(seconds: 3), () {
+            if (mounted && widget.isTabActive) {
+              _computeClientsFuture();
+            }
+          });
+        }
       }
     });
   }
@@ -149,7 +159,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
       if (widget.isTabActive) {
         _lastRenderedScaffold = null;
         final now = DateTime.now();
-        final shouldFetch = _lastFetchTime == null ||
+        final shouldFetch =
+            _lastFetchTime == null ||
             now.difference(_lastFetchTime!) > const Duration(seconds: 15) ||
             _cachedClients.isEmpty;
         if (shouldFetch) {
@@ -244,8 +255,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
             aggregatedClients.any((c) => c.isDumbApClient) ||
             _cachedClients.any((c) => c.isDumbApClient) ||
             _categoryFilter == ClientCategoryFilter.dumbAp;
+        final l10n = AppLocalizations.of(context);
         return Scaffold(
-          appBar: const LuciAppBar(title: 'Clients'),
+          appBar: LuciAppBar(title: l10n?.navClients ?? 'Clients'),
           body: Stack(
             children: [
               LuciPullToRefresh(
@@ -259,6 +271,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                 child: Builder(
                   builder: (context) {
                     final appState = ref.watch(appStateProvider);
+                    final l10n = AppLocalizations.of(context);
                     final isLoading =
                         snapshot.connectionState == ConnectionState.waiting &&
                         (aggregatedClients.isEmpty);
@@ -301,10 +314,13 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
 
                     if (dashboardError != null && aggregatedClients.isEmpty) {
                       return LuciErrorDisplay(
-                        title: 'Failed to Load Clients',
+                        title:
+                            l10n?.clientsFailedToLoad ??
+                            'Failed to Load Clients',
                         message:
+                            l10n?.clientsFailedToLoadMessage ??
                             'Could not connect to the router. Please check your network connection and the router\'s IP address.',
-                        actionLabel: 'Retry',
+                        actionLabel: l10n?.actionRetry ?? 'Retry',
                         onAction: () =>
                             ref.read(appStateProvider).fetchDashboardData(),
                         icon: Icons.wifi_off_rounded,
@@ -369,15 +385,16 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
 
                     final List<Client> allClientsForView =
                         extraBannedClients.isEmpty
-                            ? clients
-                            : [...clients, ...extraBannedClients];
+                        ? clients
+                        : [...clients, ...extraBannedClients];
 
                     final query = _searchQuery.trim().toLowerCase();
                     final hasQuery = query.isNotEmpty;
                     final hasBannedOrPaused = allBannedMacs.isNotEmpty;
 
                     final filteredClients = allClientsForView.where((client) {
-                      final isBannedOrPaused = hasBannedOrPaused &&
+                      final isBannedOrPaused =
+                          hasBannedOrPaused &&
                           allBannedMacs.contains(client.normalizedMac);
 
                       if (_categoryFilter == ClientCategoryFilter.banned) {
@@ -472,7 +489,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Banned Clients Hub',
+                                        l10n?.bannedClientsHubTitle ??
+                                            'Banned Clients Hub',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12.5,
@@ -481,7 +499,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'All banned Wi-Fi devices and internet-paused clients are automatically moved to the Banned Clients section. Tap the "Banned" count in the summary bar to view and manage them.',
+                                        l10n?.bannedClientsHubMessage ??
+                                            'All banned Wi-Fi devices and internet-paused clients are automatically moved to the Banned Clients section. Tap the "Banned" count in the summary bar to view and manage them.',
                                         style: TextStyle(
                                           fontSize: 11,
                                           color: colorScheme.onPrimaryContainer
@@ -494,7 +513,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                 IconButton(
                                   icon: const Icon(Icons.close, size: 18),
                                   onPressed: _dismissRestrictedTooltip,
-                                  tooltip: 'Dismiss hint',
+                                  tooltip: l10n?.dismissHint ?? 'Dismiss hint',
                                 ),
                               ],
                             ),
@@ -519,7 +538,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                   horizontal: 12.0,
                                   vertical: 0.0,
                                 ),
-                                hintText: 'Search by name, IP, MAC, vendor...',
+                                hintText:
+                                    l10n?.searchClientsPlaceholder ??
+                                    'Search by name, IP, MAC, vendor...',
                                 prefixIcon: Icon(
                                   Icons.search,
                                   size: 19,
@@ -539,7 +560,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                             _searchController.clear();
                                           });
                                         },
-                                        tooltip: 'Clear search',
+                                        tooltip:
+                                            l10n?.clearSearchTooltip ??
+                                            'Clear search',
                                       )
                                     : null,
                                 suffixIconConstraints: const BoxConstraints(
@@ -576,7 +599,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                     icon: _showOnlyActiveConnected
                                         ? Icons.wifi_tethering
                                         : Icons.devices_other,
-                                    label: 'Active Connected Only',
+                                    label:
+                                        l10n?.filterActiveConnectedOnly ??
+                                        'Active Connected Only',
                                     isSelected: _showOnlyActiveConnected,
                                     onTap: () {
                                       setState(() {
@@ -591,7 +616,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                 Expanded(
                                   child: _buildFilterChip(
                                     icon: Icons.settings_input_antenna_rounded,
-                                    label: 'Show Dumb AP Clients',
+                                    label:
+                                        l10n?.filterShowDumbApClients ??
+                                        'Show Dumb AP Clients',
                                     isSelected:
                                         _categoryFilter ==
                                         ClientCategoryFilter.dumbAp,
@@ -612,7 +639,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                   icon: _showOnlyActiveConnected
                                       ? Icons.wifi_tethering
                                       : Icons.devices_other,
-                                  label: 'Active Connected Only',
+                                  label:
+                                      l10n?.filterActiveConnectedOnly ??
+                                      'Active Connected Only',
                                   isSelected: _showOnlyActiveConnected,
                                   onTap: () {
                                     setState(() {
@@ -638,23 +667,31 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                   title:
                                       _categoryFilter ==
                                           ClientCategoryFilter.banned
-                                      ? 'No Banned Clients'
+                                      ? (l10n?.noBannedClientsTitle ??
+                                            'No Banned Clients')
                                       : (_categoryFilter ==
                                                 ClientCategoryFilter.dumbAp
-                                            ? 'No Dumb AP Clients'
+                                            ? (l10n?.noDumbApClientsTitle ??
+                                                  'No Dumb AP Clients')
                                             : (_searchQuery.isEmpty
-                                                  ? 'No Active Clients Found'
-                                                  : 'No Matching Clients')),
+                                                  ? (l10n?.noActiveClientsFound ??
+                                                        'No Active Clients Found')
+                                                  : (l10n?.noMatchingClients ??
+                                                        'No Matching Clients'))),
                                   message:
                                       _categoryFilter ==
                                           ClientCategoryFilter.banned
-                                      ? 'No clients are currently banned from Wi-Fi or internet access.'
+                                      ? (l10n?.noBannedClientsMessage ??
+                                            'No clients are currently banned from Wi-Fi or internet access.')
                                       : (_categoryFilter ==
                                                 ClientCategoryFilter.dumbAp
-                                            ? 'No clients are currently associated with the secondary Access Point.'
+                                            ? (l10n?.noDumbApClientsMessage ??
+                                                  'No clients are currently associated with the secondary Access Point.')
                                             : (_searchQuery.isEmpty
-                                                  ? 'No clients are currently connected to the router. Pull down to refresh the list.'
-                                                  : 'No clients match your search criteria. Try a different search term.')),
+                                                  ? (l10n?.noClientsConnectedMessage ??
+                                                        'No clients are currently connected to the router. Pull down to refresh the list.')
+                                                  : (l10n?.noClientsMatchingMessage ??
+                                                        'No clients match your search criteria. Try a different search term.'))),
                                   icon:
                                       _categoryFilter ==
                                           ClientCategoryFilter.banned
@@ -666,54 +703,49 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                             : Icons.people_outline),
                                 )
                               : ListView.separated(
-                                  padding: const EdgeInsets.only(
-                                    bottom: 100,
-                                  ),
+                                  padding: const EdgeInsets.only(bottom: 100),
                                   // ignore: deprecated_member_use
                                   cacheExtent: 500.0,
                                   keyboardDismissBehavior:
-                                      ScrollViewKeyboardDismissBehavior
-                                          .onDrag,
+                                      ScrollViewKeyboardDismissBehavior.onDrag,
                                   physics:
                                       const AlwaysScrollableScrollPhysics(),
-                                      // ignore: deprecated_member_use
-                                      findChildIndexCallback: (Key key) {
-                                        if (key is ValueKey<String>) {
-                                          return clientMacToIndex[key.value];
-                                        }
-                                        return null;
-                                      },
-                                      separatorBuilder: (context, idx) =>
-                                          const SizedBox(height: 4),
-                                      itemCount: filteredClients.length,
-                                      itemBuilder: (context, index) {
-                                        final client = filteredClients[index];
-                                        final isExpanded = _expandedClientMacs
-                                            .contains(client.macAddress);
+                                  // ignore: deprecated_member_use
+                                  findChildIndexCallback: (Key key) {
+                                    if (key is ValueKey<String>) {
+                                      return clientMacToIndex[key.value];
+                                    }
+                                    return null;
+                                  },
+                                  separatorBuilder: (context, idx) =>
+                                      const SizedBox(height: 4),
+                                  itemCount: filteredClients.length,
+                                  itemBuilder: (context, index) {
+                                    final client = filteredClients[index];
+                                    final isExpanded = _expandedClientMacs
+                                        .contains(client.macAddress);
 
-                                        final isIpv6Expanded = _expandedIpv6Macs
-                                            .contains(client.macAddress);
-                                        return RepaintBoundary(
-                                          key: ValueKey<String>(
-                                            client.macAddress,
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16.0,
-                                              vertical: 8.0,
-                                            ),
-                                            child: _UnifiedClientCard(
-                                              client: client,
-                                              isExpanded: isExpanded,
-                                              isIpv6Expanded: isIpv6Expanded,
-                                              guestSsids: guestSsids,
-                                              guestIfaces: guestIfaces,
-                                              allClients: clients,
-                                              onRefreshNeeded: () {
-                                                setState(() {
-                                                  _computeClientsFuture();
-                                                });
-                                              },
+                                    final isIpv6Expanded = _expandedIpv6Macs
+                                        .contains(client.macAddress);
+                                    return RepaintBoundary(
+                                      key: ValueKey<String>(client.macAddress),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16.0,
+                                          vertical: 8.0,
+                                        ),
+                                        child: _UnifiedClientCard(
+                                          client: client,
+                                          isExpanded: isExpanded,
+                                          isIpv6Expanded: isIpv6Expanded,
+                                          guestSsids: guestSsids,
+                                          guestIfaces: guestIfaces,
+                                          allClients: clients,
+                                          onRefreshNeeded: () {
+                                            setState(() {
+                                              _computeClientsFuture();
+                                            });
+                                          },
                                           onToggleIpv6: () {
                                             setState(() {
                                               if (isIpv6Expanded) {
@@ -767,8 +799,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
     required VoidCallback onTap,
     required ColorScheme colorScheme,
   }) {
-    final activeColor =
-        isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant;
+    final activeColor = isSelected
+        ? colorScheme.primary
+        : colorScheme.onSurfaceVariant;
     final bgColor = isSelected
         ? colorScheme.primary.withValues(alpha: 0.14)
         : colorScheme.surfaceContainerHighest.withValues(alpha: 0.45);
@@ -806,8 +839,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                       maxLines: 1,
                       style: TextStyle(
                         fontSize: 11.5,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                         color: activeColor,
                       ),
                     ),
@@ -827,6 +861,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
     TextTheme textTheme,
   ) {
     final appState = ref.watch(appStateProvider);
+    final l10n = AppLocalizations.of(context);
 
     int totalCount = 0;
     int wiredCount = 0;
@@ -879,109 +914,129 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
             color: colorScheme.outlineVariant.withValues(alpha: 0.2),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Expanded(
-              child: _buildSummaryItem(
-                icon: Icons.devices_rounded,
-                label: 'Total',
-                count: totalCount,
-                color: colorScheme.primary,
-                isSelected: _categoryFilter == ClientCategoryFilter.all,
-                onTap: () {
-                  setState(() {
-                    _categoryFilter = ClientCategoryFilter.all;
-                  });
-                },
-                colorScheme: colorScheme,
-              ),
-            ),
-            Container(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 640;
+
+            final totalItem = _buildSummaryItem(
+              icon: Icons.devices_rounded,
+              label: l10n?.summaryTotal ?? 'Total',
+              count: totalCount,
+              color: colorScheme.primary,
+              category: ClientCategoryFilter.all,
+              isSelected: _categoryFilter == ClientCategoryFilter.all,
+              onTap: () {
+                setState(() {
+                  _categoryFilter = ClientCategoryFilter.all;
+                });
+              },
+              colorScheme: colorScheme,
+            );
+            final wiredItem = _buildSummaryItem(
+              icon: Icons.lan_outlined,
+              label: l10n?.summaryWired ?? 'Wired',
+              count: wiredCount,
+              color: colorScheme.secondary,
+              category: ClientCategoryFilter.wired,
+              isSelected: _categoryFilter == ClientCategoryFilter.wired,
+              onTap: () {
+                setState(() {
+                  _categoryFilter = ClientCategoryFilter.wired;
+                });
+              },
+              colorScheme: colorScheme,
+            );
+            final wirelessItem = _buildSummaryItem(
+              icon: Icons.wifi_rounded,
+              label: l10n?.summaryWireless ?? 'Wireless',
+              count: wirelessCount,
+              color: colorScheme.tertiary,
+              category: ClientCategoryFilter.wireless,
+              isSelected: _categoryFilter == ClientCategoryFilter.wireless,
+              onTap: () {
+                setState(() {
+                  _categoryFilter = ClientCategoryFilter.wireless;
+                });
+              },
+              colorScheme: colorScheme,
+            );
+            final dumbApItem = hasDumbAp
+                ? _buildSummaryItem(
+                    icon: Icons.settings_input_antenna_rounded,
+                    label: l10n?.summaryDumbAp ?? 'Dumb AP',
+                    count: dumbApCount,
+                    color: Colors.indigo,
+                    category: ClientCategoryFilter.dumbAp,
+                    isSelected: _categoryFilter == ClientCategoryFilter.dumbAp,
+                    onTap: () {
+                      setState(() {
+                        _categoryFilter = ClientCategoryFilter.dumbAp;
+                      });
+                    },
+                    colorScheme: colorScheme,
+                  )
+                : null;
+            final bannedItem = _buildSummaryItem(
+              icon: Icons.block_rounded,
+              label: l10n?.summaryBanned ?? 'Banned',
+              count: bannedCount,
+              color: bannedCount > 0
+                  ? Colors.red
+                  : colorScheme.onSurfaceVariant,
+              category: ClientCategoryFilter.banned,
+              isSelected: _categoryFilter == ClientCategoryFilter.banned,
+              onTap: () {
+                setState(() {
+                  _categoryFilter = ClientCategoryFilter.banned;
+                });
+              },
+              colorScheme: colorScheme,
+            );
+
+            Widget divider() => Container(
               width: 1,
               height: 20,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
               color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-            ),
-            Expanded(
-              child: _buildSummaryItem(
-                icon: Icons.lan_outlined,
-                label: 'Wired',
-                count: wiredCount,
-                color: colorScheme.secondary,
-                isSelected: _categoryFilter == ClientCategoryFilter.wired,
-                onTap: () {
-                  setState(() {
-                    _categoryFilter = ClientCategoryFilter.wired;
-                  });
-                },
-                colorScheme: colorScheme,
-              ),
-            ),
-            Container(
-              width: 1,
-              height: 20,
-              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-            ),
-            Expanded(
-              child: _buildSummaryItem(
-                icon: Icons.wifi_rounded,
-                label: 'Wireless',
-                count: wirelessCount,
-                color: colorScheme.tertiary,
-                isSelected: _categoryFilter == ClientCategoryFilter.wireless,
-                onTap: () {
-                  setState(() {
-                    _categoryFilter = ClientCategoryFilter.wireless;
-                  });
-                },
-                colorScheme: colorScheme,
-              ),
-            ),
-            if (hasDumbAp) ...[
-              Container(
-                width: 1,
-                height: 20,
-                color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-              Expanded(
-                child: _buildSummaryItem(
-                  icon: Icons.settings_input_antenna_rounded,
-                  label: 'Dumb AP',
-                  count: dumbApCount,
-                  color: Colors.indigo,
-                  isSelected: _categoryFilter == ClientCategoryFilter.dumbAp,
-                  onTap: () {
-                    setState(() {
-                      _categoryFilter = ClientCategoryFilter.dumbAp;
-                    });
-                  },
-                  colorScheme: colorScheme,
+            );
+
+            if (isNarrow) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    totalItem,
+                    divider(),
+                    wiredItem,
+                    divider(),
+                    wirelessItem,
+                    if (dumbApItem != null) ...[divider(), dumbApItem],
+                    divider(),
+                    bannedItem,
+                  ],
                 ),
-              ),
-            ],
-            Container(
-              width: 1,
-              height: 20,
-              color: colorScheme.outlineVariant.withValues(alpha: 0.3),
-            ),
-            Expanded(
-              child: _buildSummaryItem(
-                icon: Icons.block_rounded,
-                label: 'Banned',
-                count: bannedCount,
-                color: bannedCount > 0
-                    ? Colors.red
-                    : colorScheme.onSurfaceVariant,
-                isSelected: _categoryFilter == ClientCategoryFilter.banned,
-                onTap: () {
-                  setState(() {
-                    _categoryFilter = ClientCategoryFilter.banned;
-                  });
-                },
-                colorScheme: colorScheme,
-              ),
-            ),
-          ],
+              );
+            }
+
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Expanded(child: totalItem),
+                divider(),
+                Expanded(child: wiredItem),
+                divider(),
+                Expanded(child: wirelessItem),
+                if (dumbApItem != null) ...[
+                  divider(),
+                  Expanded(child: dumbApItem),
+                ],
+                divider(),
+                Expanded(child: bannedItem),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -992,41 +1047,37 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
     required String label,
     required int count,
     required Color color,
+    required ClientCategoryFilter category,
     required bool isSelected,
     required VoidCallback onTap,
     required ColorScheme colorScheme,
   }) {
     final isDark = colorScheme.brightness == Brightness.dark;
-    final (Color bg, Color fg, Color border) = switch (label) {
-      'Total' => (
+    final (Color bg, Color fg, Color border) = switch (category) {
+      ClientCategoryFilter.all => (
         colorScheme.primaryContainer,
         colorScheme.onPrimaryContainer,
         colorScheme.primary.withValues(alpha: 0.35),
       ),
-      'Wired' => (
+      ClientCategoryFilter.wired => (
         colorScheme.secondaryContainer,
         colorScheme.onSecondaryContainer,
         colorScheme.secondary.withValues(alpha: 0.35),
       ),
-      'Wireless' => (
+      ClientCategoryFilter.wireless => (
         colorScheme.tertiaryContainer,
         colorScheme.onTertiaryContainer,
         colorScheme.tertiary.withValues(alpha: 0.35),
       ),
-      'Dumb AP' => (
+      ClientCategoryFilter.dumbAp => (
         Colors.indigo.withValues(alpha: isDark ? 0.3 : 0.12),
         isDark ? Colors.indigo.shade200 : Colors.indigo.shade900,
         Colors.indigo.withValues(alpha: 0.4),
       ),
-      'Banned' => (
+      ClientCategoryFilter.banned => (
         Colors.red.withValues(alpha: isDark ? 0.3 : 0.12),
         isDark ? Colors.red.shade200 : Colors.red.shade900,
         Colors.red.withValues(alpha: 0.4),
-      ),
-      _ => (
-        colorScheme.primaryContainer,
-        colorScheme.onPrimaryContainer,
-        colorScheme.primary.withValues(alpha: 0.35),
       ),
     };
 
@@ -1109,7 +1160,6 @@ class _UnifiedClientCard extends StatefulWidget {
 }
 
 class _UnifiedClientCardState extends State<_UnifiedClientCard> {
-
   // --- Three-state neighbor reachability helpers ---
 
   /// Opacity for the entire card based on neighbor reachability state.
@@ -1146,19 +1196,22 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
   }
 
   /// Tooltip describing the connectivity state in plain language.
-  String _statusTooltip(Client client) {
-    if (!client.isConnected) return 'Client is offline (Lease active)';
+  String _statusTooltip(Client client, AppLocalizations? l10n) {
+    if (!client.isConnected) {
+      return l10n?.clientOfflineTooltip ?? 'Client is offline (Lease active)';
+    }
     switch (client.neighState) {
       case NeighborReachability.reachable:
-        return 'Client is online';
+        return l10n?.clientOnlineTooltip ?? 'Client is online';
       case NeighborReachability.stale:
-        return 'Client is idle (no recent traffic)';
+        return l10n?.clientIdleTooltip ?? 'Client is idle (no recent traffic)';
       case NeighborReachability.failed:
-        return 'Client is offline (Lease active)';
+        return l10n?.clientOfflineTooltip ?? 'Client is offline (Lease active)';
       case NeighborReachability.unknown:
         return client.isConnected
-            ? 'Client is online'
-            : 'Client is offline (Lease active)';
+            ? (l10n?.clientOnlineTooltip ?? 'Client is online')
+            : (l10n?.clientOfflineTooltip ??
+                  'Client is offline (Lease active)');
     }
   }
 
@@ -1166,6 +1219,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     return Card(
       elevation: widget.isExpanded ? 6 : 2,
@@ -1206,12 +1260,13 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                               color: widget.client.isConnected
                                   ? colorScheme.primaryContainer
                                   : colorScheme.surfaceContainerHighest
-                                      .withValues(alpha: 0.4),
+                                        .withValues(alpha: 0.4),
                               shape: BoxShape.circle,
                               border: widget.client.isConnected
                                   ? Border.all(
-                                      color: colorScheme.primary
-                                          .withValues(alpha: 0.25),
+                                      color: colorScheme.primary.withValues(
+                                        alpha: 0.25,
+                                      ),
                                       width: 0.8,
                                     )
                                   : null,
@@ -1224,8 +1279,9 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                                 ClientNamingHelper.getDeviceIcon(widget.client),
                                 color: widget.client.isConnected
                                     ? colorScheme.onPrimaryContainer
-                                    : colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.7),
+                                    : colorScheme.onSurfaceVariant.withValues(
+                                        alpha: 0.7,
+                                      ),
                                 size: 20,
                                 semanticLabel: 'Client icon',
                               ),
@@ -1235,7 +1291,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                             top: 0,
                             right: 0,
                             child: Tooltip(
-                              message: _statusTooltip(widget.client),
+                              message: _statusTooltip(widget.client, l10n),
                               child: Container(
                                 width: 10,
                                 height: 10,
@@ -1340,6 +1396,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
   Widget _buildBadgePills(BuildContext context, Client client) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
     final appState = AppState.instance;
     final pills = <Widget>[];
 
@@ -1390,9 +1447,12 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
     // 1. Connection & SSID Pill
     if (client.isConnected &&
         client.connectionType == ConnectionType.wireless) {
+      final signalText = client.signalDbm != null
+          ? ' • ${client.signalDbm} dBm'
+          : '';
       final labelText = (client.ssid != null && client.ssid!.isNotEmpty)
-          ? 'Wi-Fi • ${client.ssid}'
-          : 'Wi-Fi';
+          ? 'Wi-Fi • ${client.ssid}$signalText'
+          : 'Wi-Fi$signalText';
       pills.add(
         buildPill(
           label: labelText,
@@ -1402,11 +1462,43 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
           fg: colorScheme.onPrimaryContainer,
         ),
       );
+
+      // Live Speed Pill (for wireless clients with speed data)
+      if (client.rxSpeed != null || client.txSpeed != null) {
+        final speedUnit = appState.dashboardPreferences.speedUnit;
+        final downSpeed =
+            client.formattedDownloadSpeedWithUnit(speedUnit) ??
+            (speedUnit == 'bytes' ? '0 B/s' : '0 bps');
+        final upSpeed =
+            client.formattedUploadSpeedWithUnit(speedUnit) ??
+            (speedUnit == 'bytes' ? '0 B/s' : '0 bps');
+        final isTrafficActive =
+            (client.txSpeed ?? 0) > 1024 || (client.rxSpeed ?? 0) > 1024;
+        pills.add(
+          buildPill(
+            label: '↓ $downSpeed  ↑ $upSpeed',
+            icon: Icons.swap_vert_rounded,
+            bg: isTrafficActive
+                ? Colors.teal.shade700.withValues(alpha: 0.15)
+                : theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.4,
+                  ),
+            border: isTrafficActive
+                ? Colors.teal.shade600.withValues(alpha: 0.4)
+                : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+            fg: isTrafficActive
+                ? (theme.brightness == Brightness.dark
+                      ? Colors.teal.shade200
+                      : Colors.teal.shade800)
+                : theme.colorScheme.onSurfaceVariant,
+          ),
+        );
+      }
     } else if (client.isConnected &&
         client.connectionType == ConnectionType.wired) {
       pills.add(
         buildPill(
-          label: 'Wired',
+          label: l10n?.clientMediumWired ?? (l10n?.summaryWired ?? 'Wired'),
           icon: Icons.lan_rounded,
           bg: colorScheme.secondaryContainer,
           border: colorScheme.secondary.withValues(alpha: 0.3),
@@ -1419,7 +1511,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
     if (isStatic) {
       pills.add(
         buildPill(
-          label: 'STATIC',
+          label: l10n?.pillStatic ?? 'STATIC',
           icon: Icons.push_pin_rounded,
           bg: Colors.teal.shade700.withValues(alpha: 0.15),
           border: Colors.teal.shade600.withValues(alpha: 0.4),
@@ -1433,8 +1525,8 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
     // 3. Dumb AP Pill
     if (client.isDumbApClient) {
       final apLabel = client.apName != null && client.apName!.isNotEmpty
-          ? 'Dumb AP • ${client.apName}'
-          : 'Dumb AP';
+          ? '${l10n?.summaryDumbAp ?? "Dumb AP"} • ${client.apName}'
+          : (l10n?.summaryDumbAp ?? 'Dumb AP');
       pills.add(
         buildPill(
           label: apLabel,
@@ -1452,7 +1544,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
     if (isGuest) {
       pills.add(
         buildPill(
-          label: 'Isolated Guest',
+          label: l10n?.pillGuest ?? 'Isolated Guest',
           icon: Icons.shield_moon_rounded,
           bg: Colors.amber.shade700.withValues(alpha: 0.15),
           border: Colors.amber.shade700.withValues(alpha: 0.4),
@@ -1467,7 +1559,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
     if (isBanned) {
       pills.add(
         buildPill(
-          label: 'Wi-Fi Banned',
+          label: l10n?.pillBanned ?? 'Wi-Fi Banned',
           icon: Icons.block_rounded,
           bg: Colors.red.shade700.withValues(alpha: 0.15),
           border: Colors.red.shade700.withValues(alpha: 0.4),
@@ -1479,7 +1571,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
     } else if (isPaused) {
       pills.add(
         buildPill(
-          label: 'PAUSED',
+          label: l10n?.pillPaused ?? 'PAUSED',
           icon: Icons.pause_circle_filled_rounded,
           bg: Colors.orange.shade700.withValues(alpha: 0.15),
           border: Colors.orange.shade700.withValues(alpha: 0.4),
@@ -1504,24 +1596,30 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
   }
 
   /// Classifies an IPv6 address into a human-readable type label.
-  static String _classifyIPv6(String ipv6) {
+  static String _classifyIPv6(String ipv6, AppLocalizations? l10n) {
     final lower = ipv6.toLowerCase().split('/').first.split('%').first;
-    if (lower.startsWith('fe80')) return 'Link-Local IPv6';
-    if (lower.startsWith('fd') || lower.startsWith('fc')) {
-      return 'Private IPv6 (ULA)';
+    if (lower.startsWith('fe80')) {
+      return l10n?.ipv6LinkLocal ?? 'Link-Local IPv6';
     }
-    return 'Public IPv6';
+    if (lower.startsWith('fd') || lower.startsWith('fc')) {
+      return l10n?.ipv6Private ?? 'Private IPv6 (ULA)';
+    }
+    return l10n?.ipv6Public ?? 'Public IPv6';
   }
 
   /// Sort priority for IPv6 types: public first, private second, link-local last.
-  static int _ipv6SortPriority(String label) {
-    if (label.startsWith('Public')) return 0;
-    if (label.startsWith('Private')) return 1;
+  static int _ipv6SortPriority(String label, AppLocalizations? l10n) {
+    final publicPrefix = l10n?.ipv6Public ?? 'Public IPv6';
+    final privatePrefix = l10n?.ipv6Private ?? 'Private IPv6 (ULA)';
+    if (label == publicPrefix || label.startsWith('Public')) return 0;
+    if (label == privatePrefix || label.startsWith('Private')) return 1;
     return 2;
   }
 
   Widget _buildClientDetails(BuildContext context, Client client) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final appState = AppState.instance;
 
     Widget detailRow(
       String title,
@@ -1603,12 +1701,14 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
       }
 
       final classified = deduplicatedV6.map((ipv6) {
-        final label = _classifyIPv6(ipv6);
+        final label = _classifyIPv6(ipv6, l10n);
         return (label: label, address: ipv6);
       }).toList();
       classified.sort(
-        (a, b) =>
-            _ipv6SortPriority(a.label).compareTo(_ipv6SortPriority(b.label)),
+        (a, b) => _ipv6SortPriority(
+          a.label,
+          l10n,
+        ).compareTo(_ipv6SortPriority(b.label, l10n)),
       );
 
       final displayEntries = (classified.length > 1 && !widget.isIpv6Expanded)
@@ -1648,8 +1748,10 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                   children: [
                     Text(
                       widget.isIpv6Expanded
-                          ? 'Collapse IPv6 addresses'
-                          : 'Show $remainingCount more IPv6 address${remainingCount > 1 ? 'es' : ''}',
+                          ? (l10n?.collapseIpv6Addresses ??
+                                'Collapse IPv6 addresses')
+                          : (l10n?.showMoreIpv6Addresses(remainingCount) ??
+                                'Show $remainingCount more IPv6 addresses'),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -1684,48 +1786,123 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
         children: [
           const SizedBox(height: 4),
           detailRow(
-            'IP Address',
+            l10n?.labelIpAddress ?? 'IP Address',
             client.ipAddress,
-            onTap: () =>
-                _copyToClipboard(context, client.ipAddress, 'IP Address'),
-            semanticsLabel: 'IP Address: ${client.ipAddress}',
+            onTap: () => _copyToClipboard(
+              context,
+              client.ipAddress,
+              l10n?.labelIpAddress ?? 'IP Address',
+            ),
+            semanticsLabel:
+                '${l10n?.labelIpAddress ?? "IP Address"}: ${client.ipAddress}',
           ),
           ...ipv6Rows,
           detailRow(
-            'MAC Address',
+            l10n?.labelMacAddress ?? 'MAC Address',
             client.macAddress,
-            onTap: () =>
-                _copyToClipboard(context, client.macAddress, 'MAC Address'),
-            semanticsLabel: 'MAC Address: ${client.macAddress}',
+            onTap: () => _copyToClipboard(
+              context,
+              client.macAddress,
+              l10n?.labelMacAddress ?? 'MAC Address',
+            ),
+            semanticsLabel:
+                '${l10n?.labelMacAddress ?? "MAC Address"}: ${client.macAddress}',
           ),
           if (client.vendor != null && client.vendor!.isNotEmpty)
             detailRow(
-              'Vendor',
+              l10n?.labelVendor ?? 'Vendor',
               client.vendor!,
-              semanticsLabel: 'Vendor: ${client.vendor}',
+              semanticsLabel:
+                  '${l10n?.labelVendor ?? "Vendor"}: ${client.vendor}',
             ),
           if (client.dnsName != null && client.dnsName!.isNotEmpty)
             detailRow(
-              'DNS Name',
+              l10n?.labelDnsName ?? 'DNS Name',
               client.dnsName!,
-              onTap: () =>
-                  _copyToClipboard(context, client.dnsName!, 'DNS Name'),
-              semanticsLabel: 'DNS Name: ${client.dnsName}',
+              onTap: () => _copyToClipboard(
+                context,
+                client.dnsName!,
+                l10n?.labelDnsName ?? 'DNS Name',
+              ),
+              semanticsLabel:
+                  '${l10n?.labelDnsName ?? "DNS Name"}: ${client.dnsName}',
             ),
           const SizedBox(height: 2),
           const Divider(height: 1, indent: 14, endIndent: 14),
           const SizedBox(height: 2),
           detailRow(
-            'Lease Time Remaining',
-            client.formattedLeaseTime,
+            l10n?.labelLeaseTimeRemaining ?? 'Lease Time Remaining',
+            client.formattedLeaseTime == 'Expired'
+                ? (l10n?.leaseExpired ?? 'Expired')
+                : (client.formattedLeaseTime == 'No active lease'
+                      ? (l10n?.leaseNoActiveLease ?? 'No active lease')
+                      : client.formattedLeaseTime),
             valueColor: client.formattedLeaseTime == 'Expired'
                 ? theme.colorScheme.error
                 : (client.formattedLeaseTime == 'No active lease'
                       ? theme.colorScheme.onSurfaceVariant
                       : null),
             semanticsLabel:
-                'Lease Time Remaining: ${client.formattedLeaseTime}',
+                '${l10n?.labelLeaseTimeRemaining ?? "Lease Time Remaining"}: ${client.formattedLeaseTime}',
           ),
+          if (client.hasTrafficData || client.signalDbm != null) ...[
+            const SizedBox(height: 2),
+            const Divider(height: 1, indent: 14, endIndent: 14),
+            const SizedBox(height: 2),
+            if (client.formattedSignalWithQuality != null)
+              detailRow(
+                l10n?.clientSignal ?? 'Signal',
+                client.formattedSignalWithQuality!,
+                semanticsLabel:
+                    '${l10n?.clientSignal ?? "Signal"}: ${client.formattedSignalWithQuality}',
+              ),
+            if (client.formattedPhyRate != null)
+              detailRow(
+                l10n?.clientPhyRate ?? 'Link Rate (PHY)',
+                client.formattedPhyRate!,
+                semanticsLabel:
+                    '${l10n?.clientPhyRate ?? "Link Rate (PHY)"}: ${client.formattedPhyRate}',
+              ),
+            if (client.rxSpeed != null || client.txSpeed != null) ...[
+              () {
+                final speedUnit = appState.dashboardPreferences.speedUnit;
+                final downSpeed =
+                    client.formattedDownloadSpeedWithUnit(speedUnit) ??
+                    (speedUnit == 'bytes' ? '0 B/s' : '0 bps');
+                final upSpeed =
+                    client.formattedUploadSpeedWithUnit(speedUnit) ??
+                    (speedUnit == 'bytes' ? '0 B/s' : '0 bps');
+                return detailRow(
+                  l10n?.clientLiveSpeed ?? 'Current Speed',
+                  '↓ $downSpeed  ↑ $upSpeed',
+                  valueColor:
+                      ((client.txSpeed ?? 0) > 1024 ||
+                          (client.rxSpeed ?? 0) > 1024)
+                      ? (theme.brightness == Brightness.dark
+                            ? Colors.teal.shade200
+                            : Colors.teal.shade800)
+                      : null,
+                  semanticsLabel:
+                      '${l10n?.clientLiveSpeed ?? "Current Speed"}: ↓ $downSpeed ↑ $upSpeed',
+                );
+              }(),
+            ],
+            if (client.formattedTotalDownloaded != null ||
+                client.formattedTotalUploaded != null)
+              detailRow(
+                l10n?.clientTotalTransfer ?? 'Session Transfer',
+                '↓ ${client.formattedTotalDownloaded ?? "0 B"}  ↑ ${client.formattedTotalUploaded ?? "0 B"}',
+                semanticsLabel:
+                    '${l10n?.clientTotalTransfer ?? "Session Transfer"}: ↓ ${client.formattedTotalDownloaded ?? "0 B"} ↑ ${client.formattedTotalUploaded ?? "0 B"}',
+              ),
+            if (client.formattedConnectedTime != null)
+              detailRow(
+                l10n?.clientConnectedDuration ?? 'Connection Time',
+                client.formattedConnectedTime!,
+                semanticsLabel:
+                    '${l10n?.clientConnectedDuration ?? "Connection Time"}: ${client.formattedConnectedTime}',
+              ),
+          ],
           const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.symmetric(
@@ -1755,7 +1932,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                         color: colorScheme.primary,
                       ),
                       label: Text(
-                        'Unban Client',
+                        l10n?.btnUnbanClient ?? 'Unban Client',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -1789,9 +1966,9 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                         size: 14,
                         color: LuciStatusColors.warning,
                       ),
-                      label: const Text(
-                        'Edit Ban',
-                        style: TextStyle(
+                      label: Text(
+                        l10n?.btnEditBan ?? 'Edit Ban',
+                        style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: LuciStatusColors.warning,
@@ -1835,7 +2012,9 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                         color: pauseResumeColor,
                       ),
                       label: Text(
-                        isPaused ? 'Resume Access' : 'Pause Access',
+                        isPaused
+                            ? (l10n?.btnResumeAccess ?? 'Resume Access')
+                            : (l10n?.btnPauseAccess ?? 'Pause Access'),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -1873,9 +2052,9 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                         size: 14,
                         color: LuciStatusColors.warning,
                       ),
-                      label: const Text(
-                        'Ban Client',
-                        style: TextStyle(
+                      label: Text(
+                        l10n?.btnBanClient ?? 'Ban Client',
+                        style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: LuciStatusColors.warning,
@@ -1903,8 +2082,10 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                 }
 
                 // 3. Static Lease Controls (Add / Edit / Remove)
-                final normMac =
-                    client.macAddress.toUpperCase().replaceAll('-', ':');
+                final normMac = client.macAddress.toUpperCase().replaceAll(
+                  '-',
+                  ':',
+                );
                 final isStatic =
                     client.isStatic ||
                     appState.configuredStaticLeaseMacs.contains(normMac);
@@ -1920,7 +2101,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                         color: colorScheme.primary,
                       ),
                       label: Text(
-                        'Static Lease',
+                        l10n?.btnStaticLease ?? 'Static Lease',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -1959,7 +2140,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                         color: colorScheme.primary,
                       ),
                       label: Text(
-                        'Edit Static Lease',
+                        l10n?.btnEditStaticLease ?? 'Edit Static Lease',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -1996,7 +2177,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                         color: colorScheme.error,
                       ),
                       label: Text(
-                        'Remove Lease',
+                        l10n?.btnRemoveLease ?? 'Remove Lease',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -2091,9 +2272,12 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
       return;
     }
 
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -2110,21 +2294,30 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Remove Static Lease',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                l10n?.dialogRemoveStaticLeaseTitle ?? 'Remove Static Lease',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
         ),
-        content: Text(
-          'Are you sure you want to remove the static IP reservation for "${client.displayName}" (${client.macAddress})?',
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.dialogRemoveStaticLeaseMessage(
+                  client.displayName,
+                  client.macAddress,
+                ) ??
+                'Are you sure you want to remove the static IP reservation for "${client.displayName}" (${client.macAddress})?',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -2135,7 +2328,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Remove Reservation'),
+            child: Text(l10n?.btnRemoveReservation ?? 'Remove Reservation'),
           ),
         ],
       ),
@@ -2152,7 +2345,8 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
       final success = await appState.deleteStaticLease(
         macAddress: client.macAddress,
         targetIp: client.ipAddress != 'N/A' ? client.ipAddress : null,
-        hostname: client.staticLeaseName ??
+        hostname:
+            client.staticLeaseName ??
             (client.hostname != 'Unknown' ? client.hostname : null),
         context: context,
       );
@@ -2338,9 +2532,12 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
       return;
     }
 
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -2357,26 +2554,35 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Unban Wireless Device?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                l10n?.dialogUnbanDeviceTitle ?? 'Unban Wireless Device?',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
         ),
-        content: Text(
-          'Are you sure you want to unban "${client.displayName}" (${client.macAddress})? This will restore Wi-Fi association and remove firewall blocking rules.',
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.dialogUnbanDeviceMessage(
+                  client.displayName,
+                  client.macAddress,
+                ) ??
+                'Are you sure you want to unban "${client.displayName}" (${client.macAddress})? This will restore Wi-Fi association and remove firewall blocking rules.',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(ctx).pop(true),
             icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-            label: const Text('Unban Device'),
+            label: Text(l10n?.btnUnbanDevice ?? 'Unban Device'),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.blue.shade700,
               foregroundColor: Colors.white,
@@ -2449,7 +2655,11 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
 
   void _copyToClipboard(BuildContext context, String text, String label) {
     Clipboard.setData(ClipboardData(text: text));
-    context.showToastSuccess('$label copied', subtitle: 'Copied to clipboard.');
+    final l10n = AppLocalizations.of(context);
+    context.showToastSuccess(
+      l10n?.toastItemCopied(label) ?? '$label copied',
+      subtitle: l10n?.toastCopiedToClipboard ?? 'Copied to clipboard.',
+    );
   }
 
   Widget _buildJustifiedActionButtons(List<Widget> buttons) {

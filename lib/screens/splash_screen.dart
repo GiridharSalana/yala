@@ -11,6 +11,8 @@ import 'package:yet_another_luci_app/config/app_config.dart';
 import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
 import 'package:yet_another_luci_app/screens/main_screen.dart';
 import 'package:yet_another_luci_app/screens/login_screen.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:yet_another_luci_app/services/client_fingerprint_service.dart';
 
@@ -83,25 +85,8 @@ class _SplashScreenState extends State<SplashScreen>
         creds['password'] != null;
 
     if (hasSavedCreds) {
-      final hasPermission =
-          await LocalNetworkPermissionService.ensurePermissionGranted();
+      await LocalNetworkPermissionService.ensurePermissionGranted();
       if (!mounted) return;
-      if (!hasPermission) {
-        _navigateToLoginScreen(
-          initialIp: creds['ipAddress'],
-          initialUsername: creds['username'],
-          initialPassword: creds['password'],
-        );
-        return;
-      }
-      final success = await appState.tryAutoLogin(
-        context: mounted ? context : null,
-      );
-      if (!mounted) return;
-      if (success && appState.hasActiveSession) {
-        _navigateToMainScreen();
-        return;
-      }
     }
 
     _navigateToLoginScreen(
@@ -169,6 +154,7 @@ class _SplashScreenState extends State<SplashScreen>
     final colorScheme = theme.colorScheme;
     final primaryColor = colorScheme.primary;
     final isDark = theme.brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
 
     final meshColor = isDark
         ? Colors.white.withValues(alpha: 0.05)
@@ -275,7 +261,8 @@ class _SplashScreenState extends State<SplashScreen>
                                         const SizedBox(width: 6),
                                         Flexible(
                                           child: Text(
-                                            'OpenWrt Router Management System',
+                                            l10n?.splashRouterManagementSubtitle ??
+                                                'OpenWrt Router Management System',
                                             style: theme.textTheme.labelMedium
                                                 ?.copyWith(
                                                   color: colorScheme
@@ -327,7 +314,8 @@ class _SplashScreenState extends State<SplashScreen>
                                     ),
                                     const SizedBox(width: 10),
                                     Text(
-                                      'INITIALIZING CONSOLE',
+                                      l10n?.splashInitializingConsole ??
+                                          'INITIALIZING CONSOLE',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
@@ -348,56 +336,57 @@ class _SplashScreenState extends State<SplashScreen>
                   // Clean Footer Pinned at Bottom
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainer.withValues(
-                          alpha: 0.7,
+                    child: Tooltip(
+                      message: 'GitHub: @nightcodex7',
+                      child: InkWell(
+                        onTap: () => launchUrlString(
+                          'https://github.com/nightcodex7',
+                          mode: LaunchMode.externalApplication,
                         ),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: colorScheme.outlineVariant.withValues(
-                            alpha: 0.4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainer.withValues(
+                              alpha: 0.7,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: colorScheme.outlineVariant.withValues(
+                                alpha: 0.4,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CustomPaint(
+                                size: const Size(14, 14),
+                                painter: _GithubMarkPainter(
+                                  color: colorScheme.onSurfaceVariant
+                                      .withValues(alpha: 0.85),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  '@nightcodex7',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.9),
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.2,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'by @nightcodex7',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant.withValues(
-                                alpha: 0.8,
-                              ),
-                              fontStyle: FontStyle.italic,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            width: 3,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: colorScheme.onSurfaceVariant.withValues(
-                                alpha: 0.5,
-                              ),
-                            ),
-                          ),
-                          const Text('🐙', style: TextStyle(fontSize: 12)),
-                          const SizedBox(width: 4),
-                          Text(
-                            '@nightcodex7',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: primaryColor,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ),
@@ -493,4 +482,59 @@ class _NetworkTopologyMeshPainter extends CustomPainter {
   bool shouldRepaint(covariant _NetworkTopologyMeshPainter oldDelegate) {
     return oldDelegate.meshColor != meshColor;
   }
+}
+
+/// Permitted monochromatic GitHub Invertocat Logo vector mark conforming to
+/// brand.github.com/foundations/logo.
+class _GithubMarkPainter extends CustomPainter {
+  final Color color;
+
+  const _GithubMarkPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    canvas.save();
+    canvas.scale(size.width / 24.0, size.height / 24.0);
+
+    final path = Path();
+    path.moveTo(12.0, 0.297);
+    path.relativeCubicTo(-6.63, 0.0, -12.0, 5.373, -12.0, 12.0);
+    path.relativeCubicTo(0.0, 5.303, 3.438, 9.8, 8.205, 11.385);
+    path.relativeCubicTo(0.6, 0.113, 0.82, -0.258, 0.82, -0.577);
+    path.relativeCubicTo(0.0, -0.285, -0.01, -1.04, -0.015, -2.04);
+    path.relativeCubicTo(-3.338, 0.724, -4.042, -1.61, -4.042, -1.61);
+    path.cubicTo(4.422, 18.07, 3.633, 17.7, 3.633, 17.7);
+    path.relativeCubicTo(-1.087, -0.744, 0.084, -0.729, 0.084, -0.729);
+    path.relativeCubicTo(1.205, 0.084, 1.838, 1.236, 1.838, 1.236);
+    path.relativeCubicTo(1.07, 1.835, 2.809, 1.305, 3.495, 0.998);
+    path.relativeCubicTo(0.108, -0.776, 0.417, -1.305, 0.76, -1.605);
+    path.relativeCubicTo(-2.665, -0.3, -5.466, -1.332, -5.466, -5.93);
+    path.relativeCubicTo(0.0, -1.31, 0.465, -2.38, 1.235, -3.22);
+    path.relativeCubicTo(-0.135, -0.303, -0.54, -1.523, 0.105, -3.176);
+    path.relativeCubicTo(0.0, 0.0, 1.005, -0.322, 3.3, 1.23);
+    path.relativeCubicTo(0.96, -0.267, 1.98, -0.399, 3.0, -0.405);
+    path.relativeCubicTo(1.02, 0.006, 2.04, 0.138, 3.0, 0.405);
+    path.relativeCubicTo(2.28, -1.552, 3.285, -1.23, 3.285, -1.23);
+    path.relativeCubicTo(0.645, 1.653, 0.24, 2.873, 0.12, 3.176);
+    path.relativeCubicTo(0.765, 0.84, 1.23, 1.91, 1.23, 3.22);
+    path.relativeCubicTo(0.0, 4.61, -2.805, 5.625, -5.475, 5.92);
+    path.relativeCubicTo(0.42, 0.36, 0.81, 1.096, 0.81, 2.22);
+    path.relativeCubicTo(0.0, 1.606, -0.015, 2.896, -0.015, 3.286);
+    path.relativeCubicTo(0.0, 0.315, 0.21, 0.69, 0.825, 0.57);
+    path.cubicTo(20.565, 22.092, 24.0, 17.592, 24.0, 12.297);
+    path.relativeCubicTo(0.0, -6.627, -5.373, -12.0, -12.0, -12.0);
+    path.close();
+
+    canvas.drawPath(path, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _GithubMarkPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

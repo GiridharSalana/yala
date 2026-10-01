@@ -1,0 +1,120 @@
+# Copyright (C) 2026 @nightcodex7
+# SPDX-License-Identifier: GPL-3.0-or-later
+---
+name: Build iOS IPA
+
+'on':
+  workflow_dispatch:
+    inputs:
+      build_name:
+        description: >-
+          Optional custom version name (e.g. 2.0.2 - leaves
+          pubspec.yaml default if blank)
+        required: false
+        type: string
+      build_number:
+        description: >-
+          Optional custom build number (e.g. 224 - leaves
+          pubspec.yaml default if blank)
+        required: false
+        type: string
+
+concurrency:
+  group: build-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ipa:
+    name: Build Sideloadable IPA
+    runs-on: macos-14
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        # actions/checkout v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode Version
+        run: |
+          echo "Available Xcode installations on runner:"
+          ls -d /Applications/Xcode* || true
+          if [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app
+          elif [ -d "/Applications/Xcode_16.0.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.0.app
+          elif [ -d "/Applications/Xcode_16.1.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.1.app
+          elif [ -d "/Applications/Xcode.app" ]; then
+            sudo xcode-select -s /Applications/Xcode.app
+          fi
+          xcodebuild -version
+
+      - name: Set Up Flutter
+        # subosito/flutter-action v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.47.1'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Flutter Dependencies
+        run: flutter pub get
+
+      - name: Setup CocoaPods Dependencies
+        run: |
+          cd ios
+          pod install --repo-update
+
+      - name: Build iOS App (Unsigned for Sideloading)
+        run: |
+          EXTRA_ARGS=""
+          if [ -n "${{ inputs.build_name }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --build-name=${{ inputs.build_name }}"
+          fi
+          if [ -n "${{ inputs.build_number }}" ]; then
+            EXTRA_ARGS="$EXTRA_ARGS --build-number=${{ inputs.build_number }}"
+          fi
+
+          flutter build ios --release --no-codesign \
+            --dart-define=FLAVOR=community \
+            --dart-define=OFFICIAL_BUILD=true \
+            $EXTRA_ARGS
+
+      - name: Package Sideloadable IPA
+        run: |
+          STAGING_DIR="build/ios/ipa_staging"
+          PAYLOAD_DIR="$STAGING_DIR/Payload"
+          OUTPUT_DIR="output"
+          IPA_NAME="Yet-Another-LuCI-App.ipa"
+
+          rm -rf "$STAGING_DIR" "$OUTPUT_DIR"
+          mkdir -p "$PAYLOAD_DIR" "$OUTPUT_DIR"
+
+          # Copy compiled Runner.app bundle into Payload structure
+          cp -R "build/ios/iphoneos/Runner.app" "$PAYLOAD_DIR/"
+
+          # Package into standard sideloadable zip archive (.ipa)
+          (
+            cd "$STAGING_DIR"
+            zip -r -9 "../../$OUTPUT_DIR/$IPA_NAME" Payload
+          )
+
+          # Generate SHA256 checksum for verification
+          cd "$OUTPUT_DIR"
+          shasum -a 256 "$IPA_NAME" > "$IPA_NAME.sha256"
+          echo "Generated IPA Checksum:"
+          cat "$IPA_NAME.sha256"
+
+      - name: Upload IPA Artifact
+        # actions/upload-artifact v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: Yet-Another-LuCI-App-iOS-IPA
+          path: |
+            output/Yet-Another-LuCI-App.ipa
+            output/Yet-Another-LuCI-App.ipa.sha256
+          if-no-files-found: error
+          retention-days: 14

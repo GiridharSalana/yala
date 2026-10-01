@@ -222,41 +222,45 @@ void main() {
       expect(find.text('Swipeable Toast'), findsNothing);
     });
 
-    testWidgets('LuciToast sanitizes file errors to file guidance instead of network', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (context) {
-                return ElevatedButton(
-                  onPressed: () {
-                    context.showToastError(
-                      'Import Error',
-                      subtitle: 'FileSystemException: Cannot open file #0 /path/to.dart:42',
-                      useNativeOs: false,
-                    );
-                  },
-                  child: const Text('Show Error Toast'),
-                );
-              },
+    testWidgets(
+      'LuciToast sanitizes file errors to file guidance instead of network',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  return ElevatedButton(
+                    onPressed: () {
+                      context.showToastError(
+                        'Import Error',
+                        subtitle:
+                            'FileSystemException: Cannot open file #0 /path/to.dart:42',
+                        useNativeOs: false,
+                      );
+                    },
+                    child: const Text('Show Error Toast'),
+                  );
+                },
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      await tester.tap(find.text('Show Error Toast'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+        await tester.tap(find.text('Show Error Toast'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Import Error'), findsOneWidget);
-      expect(
-        find.text('Unable to process selected file. Please verify file format and storage permissions.'),
-        findsOneWidget,
-      );
-      // Ensures network error string was NOT shown for file error
-      expect(find.textContaining('network connection'), findsNothing);
-    });
+        expect(find.text('Import Error'), findsOneWidget);
+        expect(
+          find.text(
+            'Unable to process selected file. Please verify file format and storage permissions.',
+          ),
+          findsOneWidget,
+        );
+        // Ensures network error string was NOT shown for file error
+        expect(find.textContaining('network connection'), findsNothing);
+      },
+    );
   });
 }

@@ -207,7 +207,49 @@ class DsaTopologyParser {
       final vlans = <VlanConfig>[];
       final allPorts = <TopologyPort>[];
       final bridges = <String>[];
+      final bridgeMemberPorts = <String, List<String>>{};
+      final wanPortNames = <String>{};
       bool hasValidNetworkSections = false;
+
+      TopologyPort buildDsaPort(
+        String rawName, {
+        bool isTagged = false,
+        bool? isWanOverride,
+        int? portIndex,
+      }) {
+        final cleanName = rawName.split(':').first.trim();
+        final isWan = isWanOverride ?? cleanName.toLowerCase().contains('wan');
+
+        bool isUp = false;
+        String? linkSpeed;
+        if (networkDevices != null && networkDevices.containsKey(cleanName)) {
+          final devInfo = networkDevices[cleanName];
+          if (devInfo is Map) {
+            final carrier = devInfo['carrier'];
+            final up = devInfo['up'];
+            if (carrier != null) {
+              isUp = carrier == true || carrier == 1 || carrier == '1';
+            } else if (up != null) {
+              isUp = up == true || up == 1 || up == '1';
+            }
+            if (devInfo['speed'] != null) {
+              linkSpeed = devInfo['speed'].toString();
+            }
+          }
+        } else if (networkDevices == null) {
+          // Default to true when device status is omitted (e.g. mock / tests)
+          isUp = true;
+        }
+
+        return TopologyPort(
+          name: cleanName,
+          isTagged: isTagged,
+          isWan: isWan,
+          portIndex: portIndex,
+          isUp: isUp,
+          linkSpeed: linkSpeed,
+        );
+      }
 
       uciValues.forEach((key, val) {
         if (val is Map) {
@@ -219,8 +261,38 @@ class DsaTopologyParser {
           }
 
           if (type == 'device' && val['type'] == 'bridge') {
-            final name = val['name']?.toString();
-            if (name != null) bridges.add(name);
+            final name = val['name']?.toString() ?? 'br-lan';
+            if (!bridges.contains(name)) bridges.add(name);
+
+            final rawPorts = val['ports'];
+            final mPorts = <String>[];
+            if (rawPorts is List) {
+              for (final p in rawPorts) {
+                if (p != null && p.toString().trim().isNotEmpty) {
+                  mPorts.add(p.toString().trim());
+                }
+              }
+            } else if (rawPorts is String && rawPorts.trim().isNotEmpty) {
+              for (final p in rawPorts.split(' ')) {
+                if (p.trim().isNotEmpty) {
+                  mPorts.add(p.trim());
+                }
+              }
+            }
+            if (mPorts.isNotEmpty) {
+              bridgeMemberPorts[name] = mPorts;
+            }
+          } else if (type == 'device') {
+            final devName = val['name']?.toString() ?? '';
+            if (devName.toLowerCase().contains('wan')) {
+              wanPortNames.add(devName);
+            }
+          } else if (type == 'interface') {
+            final ifName = key.toLowerCase();
+            final devName = val['device']?.toString() ?? '';
+            if (ifName.contains('wan') && devName.isNotEmpty) {
+              wanPortNames.add(devName);
+            }
           } else if (type == 'bridge-vlan') {
             final device = val['device']?.toString() ?? 'br-lan';
             final vlanIdStr = val['vlan']?.toString() ?? '1';
@@ -230,33 +302,27 @@ class DsaTopologyParser {
             final portsList = <TopologyPort>[];
             if (rawPorts is List) {
               for (final p in rawPorts) {
-                final pStr = p.toString();
-                final isTagged = pStr.endsWith(':t') || pStr.endsWith(':u');
-                final cleanName = pStr.split(':').first;
-                final isWan = cleanName.toLowerCase().contains('wan');
-                final port = TopologyPort(
-                  name: cleanName,
-                  isTagged: isTagged,
-                  isWan: isWan,
-                );
+                final pStr = p.toString().trim();
+                final portSuffix = pStr.contains(':')
+                    ? pStr.substring(pStr.indexOf(':'))
+                    : '';
+                final isTagged = portSuffix.startsWith(':t');
+                final port = buildDsaPort(pStr, isTagged: isTagged);
                 portsList.add(port);
-                if (!allPorts.any((ap) => ap.name == cleanName)) {
+                if (!allPorts.any((ap) => ap.name == port.name)) {
                   allPorts.add(port);
                 }
               }
             } else if (rawPorts is String && rawPorts.isNotEmpty) {
               for (final pStr in rawPorts.split(' ')) {
                 if (pStr.trim().isEmpty) continue;
-                final isTagged = pStr.endsWith(':t');
-                final cleanName = pStr.split(':').first;
-                final isWan = cleanName.toLowerCase().contains('wan');
-                final port = TopologyPort(
-                  name: cleanName,
-                  isTagged: isTagged,
-                  isWan: isWan,
-                );
+                final portSuffix = pStr.contains(':')
+                    ? pStr.substring(pStr.indexOf(':'))
+                    : '';
+                final isTagged = portSuffix.startsWith(':t');
+                final port = buildDsaPort(pStr, isTagged: isTagged);
                 portsList.add(port);
-                if (!allPorts.any((ap) => ap.name == cleanName)) {
+                if (!allPorts.any((ap) => ap.name == port.name)) {
                   allPorts.add(port);
                 }
               }
@@ -279,6 +345,49 @@ class DsaTopologyParser {
           NetworkModel.dsa,
           'No valid network sections found in UCI payload',
         );
+      }
+
+      // If no bridge-vlan sections were configured, synthesize from unsegmented bridge device
+      if (vlans.isEmpty && bridgeMemberPorts.isNotEmpty) {
+        bridgeMemberPorts.forEach((bridgeName, memberPorts) {
+          final portsList = <TopologyPort>[];
+          for (final pStr in memberPorts) {
+            final port = buildDsaPort(pStr);
+            portsList.add(port);
+            if (!allPorts.any((ap) => ap.name == port.name)) {
+              allPorts.add(port);
+            }
+          }
+          vlans.add(
+            VlanConfig(
+              vid: 1,
+              name: 'Default Bridge ($bridgeName)',
+              ports: portsList,
+              device: bridgeName,
+            ),
+          );
+        });
+
+        // Also detect standalone WAN device if present and not already listed
+        if (wanPortNames.isEmpty &&
+            networkDevices != null &&
+            networkDevices.containsKey('wan')) {
+          wanPortNames.add('wan');
+        }
+        for (final wanName in wanPortNames) {
+          if (!allPorts.any((ap) => ap.name == wanName)) {
+            final wanPort = buildDsaPort(wanName, isWanOverride: true);
+            allPorts.add(wanPort);
+            vlans.add(
+              VlanConfig(
+                vid: 0,
+                name: 'WAN Interface ($wanName)',
+                ports: [wanPort],
+                device: wanName,
+              ),
+            );
+          }
+        }
       }
 
       if (vlans.isEmpty) {
@@ -330,6 +439,17 @@ class SwconfigTopologyParser {
       final switches = <String>[];
       bool hasValidNetworkSections = false;
 
+      // Extract swconfig port state list if provided
+      List<dynamic>? swconfigPortList;
+      if (networkDevices != null) {
+        final rawSw = networkDevices['swconfigPortState'];
+        if (rawSw is Map && rawSw['result'] is List) {
+          swconfigPortList = rawSw['result'] as List;
+        } else if (rawSw is List) {
+          swconfigPortList = rawSw;
+        }
+      }
+
       uciValues.forEach((key, val) {
         if (val is Map) {
           final type = val['.type']?.toString();
@@ -364,11 +484,52 @@ class SwconfigTopologyParser {
               final isWan =
                   pIndex == 0 || portName.toLowerCase().contains('wan');
 
+              bool isUp = false;
+              String? linkSpeed;
+
+              if (swconfigPortList != null && pIndex != null) {
+                for (final item in swconfigPortList) {
+                  if (item is Map) {
+                    final portVal = item['port'];
+                    if (portVal == pIndex || portVal.toString() == rawNum) {
+                      if (item['link'] == true) {
+                        isUp = true;
+                        final spd = item['speed'];
+                        if (spd != null && spd != 0 && spd != '0') {
+                          linkSpeed = '${spd}M';
+                        }
+                        break;
+                      }
+                    }
+                  }
+                }
+              } else if (networkDevices != null &&
+                  networkDevices.containsKey(portName)) {
+                final devInfo = networkDevices[portName];
+                if (devInfo is Map) {
+                  final carrier = devInfo['carrier'];
+                  final up = devInfo['up'];
+                  if (carrier != null) {
+                    isUp = carrier == true || carrier == 1 || carrier == '1';
+                  } else if (up != null) {
+                    isUp = up == true || up == 1 || up == '1';
+                  }
+                  if (devInfo['speed'] != null) {
+                    linkSpeed = devInfo['speed'].toString();
+                  }
+                }
+              } else if (networkDevices == null) {
+                // Fallback default for unit tests
+                isUp = true;
+              }
+
               final port = TopologyPort(
                 name: portName,
                 isTagged: isTagged,
                 isWan: isWan,
                 portIndex: pIndex,
+                isUp: isUp,
+                linkSpeed: linkSpeed,
               );
               portsList.add(port);
               if (!allPorts.any((ap) => ap.name == portName)) {

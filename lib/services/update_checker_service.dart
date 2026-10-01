@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 /// Manages manual update checks against GitHub Releases for the Community build flavor.
 class UpdateCheckerService {
@@ -16,21 +17,22 @@ class UpdateCheckerService {
 
   /// Performs a manual check for updates on GitHub Releases and displays an interactive dialog.
   static Future<void> checkForUpdates(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     // Display progress dialog
     unawaited(
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => const Center(
+        builder: (dialogContext) => Center(
           child: Card(
             child: Padding(
-              padding: EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Checking for updates...'),
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(l10n?.checkingForUpdates ?? 'Checking for updates...'),
                 ],
               ),
             ),
@@ -114,11 +116,18 @@ class UpdateCheckerService {
           }
         } else {
           if (!context.mounted) return;
-          _showErrorDialog(context, 'No releases found on GitHub.');
+          _showErrorDialog(
+            context,
+            l10n?.updateNoReleasesFound ?? 'No releases found on GitHub.',
+          );
         }
       } else {
         if (!context.mounted) return;
-        _showErrorDialog(context, 'Unable to check for updates at this time.');
+        _showErrorDialog(
+          context,
+          l10n?.updateCheckFailedDesc ??
+              'Unable to check for updates at this time.',
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -126,9 +135,11 @@ class UpdateCheckerService {
           context,
           rootNavigator: true,
         ).pop(); // Dismiss loading if open
+        final errL10n = AppLocalizations.of(context);
         _showErrorDialog(
           context,
-          'Could not connect to GitHub to check for updates.',
+          errL10n?.updateConnectionError ??
+              'Could not connect to GitHub to check for updates.',
         );
       }
     }
@@ -178,6 +189,7 @@ class UpdateCheckerService {
     required String downloadUrl,
   }) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -186,8 +198,8 @@ class UpdateCheckerService {
           children: [
             Icon(Icons.system_update_rounded, color: theme.colorScheme.primary),
             const SizedBox(width: 12),
-            const Expanded(
-              child: Text('Update Available'),
+            Expanded(
+              child: Text(l10n?.updateAvailableTitle ?? 'Update Available'),
             ),
           ],
         ),
@@ -196,56 +208,59 @@ class UpdateCheckerService {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Text(
-                      'v$currentVersion',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_rounded, size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      'v$latestVersion',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Text(
+                        'v$currentVersion',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward_rounded, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        'v$latestVersion',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Release Notes:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 180),
-              child: SingleChildScrollView(
-                child: Text(releaseNotes, style: theme.textTheme.bodyMedium),
+              const SizedBox(height: 16),
+              Text(
+                l10n?.updateReleaseNotes ?? 'Release Notes:',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 180),
+                child: SingleChildScrollView(
+                  child: Text(releaseNotes, style: theme.textTheme.bodyMedium),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      actionsOverflowButtonSpacing: 8,
-      actionsOverflowDirection: VerticalDirection.down,
-      actions: [
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Later'),
+            child: Text(l10n?.updateLater ?? 'Later'),
           ),
           FilledButton.icon(
             onPressed: () async {
@@ -256,7 +271,7 @@ class UpdateCheckerService {
               );
             },
             icon: const Icon(Icons.download_rounded, size: 18),
-            label: const Text('Download'),
+            label: Text(l10n?.updateDownload ?? 'Download'),
           ),
         ],
       ),
@@ -269,26 +284,30 @@ class UpdateCheckerService {
     required String currentVersion,
   }) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Icon(Icons.check_circle_outline, color: theme.colorScheme.primary),
             const SizedBox(width: 12),
-            const Expanded(
-              child: Text('Up to Date'),
-            ),
+            Expanded(child: Text(l10n?.updateUpToDate ?? 'Up to Date')),
           ],
         ),
-        content: Text(
-          'You are running the latest version of Yet Another LuCI App (v$currentVersion).',
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.updateUpToDateDesc(currentVersion) ??
+                'You are running the latest version of Yet Another LuCI App (v$currentVersion).',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(l10n?.actionConfirm ?? 'OK'),
           ),
         ],
       ),
@@ -302,16 +321,19 @@ class UpdateCheckerService {
     required String latestGithubVersion,
   }) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Icon(Icons.verified_rounded, color: theme.colorScheme.primary),
             const SizedBox(width: 12),
-            const Expanded(
-              child: Text('Pre-Release Build'),
+            Expanded(
+              child: Text(l10n?.updatePreReleaseTitle ?? 'Pre-Release Build'),
             ),
           ],
         ),
@@ -321,12 +343,14 @@ class UpdateCheckerService {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'You are running an unreleased / local build (v$currentVersion).',
+                l10n?.updatePreReleaseNotice(currentVersion) ??
+                    'You are running an unreleased / local build (v$currentVersion).',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
-                'The latest public release on GitHub is v$latestGithubVersion. No update is required.',
+                l10n?.updateNoUpdateRequired(latestGithubVersion) ??
+                    'The latest public release on GitHub is v$latestGithubVersion. No update is required.',
                 style: theme.textTheme.bodyMedium,
               ),
             ],
@@ -335,7 +359,7 @@ class UpdateCheckerService {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(l10n?.actionConfirm ?? 'OK'),
           ),
         ],
       ),
@@ -343,24 +367,27 @@ class UpdateCheckerService {
   }
 
   static void _showErrorDialog(BuildContext context, String message) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.orange),
-            SizedBox(width: 12),
+            const Icon(Icons.error_outline, color: Colors.orange),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text('Check Failed'),
+              child: Text(l10n?.updateCheckFailedTitle ?? 'Check Failed'),
             ),
           ],
         ),
-        content: Text(message),
+        content: SingleChildScrollView(child: Text(message)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(l10n?.actionConfirm ?? 'OK'),
           ),
         ],
       ),

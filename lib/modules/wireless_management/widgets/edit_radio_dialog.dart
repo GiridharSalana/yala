@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import 'package:yet_another_luci_app/widgets/luci_guardrail.dart';
@@ -243,7 +244,7 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
   }
 
   /// Get channel validation message
-  String? _getChannelValidationMessage() {
+  String? _getChannelValidationMessage([AppLocalizations? l10n]) {
     final countryCode = _selectedCountry;
     if (countryCode.isEmpty || _selectedChannel == 'auto') return null;
 
@@ -254,7 +255,12 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
       final validChannels = widget.radio.getValidChannelsForBand(
         countryCode: countryCode,
       );
-      return 'Channel $_selectedChannel is not valid for country $countryCode. Valid channels: ${validChannels.join(', ')}';
+      return l10n?.channelInvalidForCountry(
+            _selectedChannel,
+            countryCode,
+            validChannels.join(', '),
+          ) ??
+          'Channel $_selectedChannel is not valid for country $countryCode. Valid channels: ${validChannels.join(', ')}';
     }
     return null;
   }
@@ -309,15 +315,16 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     // Validate channel against country
-    final channelValidation = _getChannelValidationMessage();
+    final l10n = AppLocalizations.of(context);
+    final channelValidation = _getChannelValidationMessage(l10n);
     if (channelValidation != null) {
       if (!mounted) return;
       final proceed = await LuciGuardrail.showConfirmation(
         context,
-        title: 'Invalid Channel for Country',
+        title: 'Channel Regulatory Warning',
         subtitle: channelValidation,
-        confirmLabel: 'Proceed Anyway',
-        cancelLabel: 'Cancel',
+        confirmLabel: l10n?.btnProceedAnyway ?? 'Proceed Anyway',
+        cancelLabel: l10n?.actionCancel ?? 'Cancel',
         icon: Icons.warning_amber_rounded,
         iconColor: Colors.orange,
       );
@@ -345,11 +352,13 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
         if (!mounted) return;
         final proceed = await LuciGuardrail.showConfirmation(
           context,
-          title: 'Disabling Active Radio',
+          title:
+              l10n?.dialogDisablingActiveRadioTitle ?? 'Disabling Active Radio',
           subtitle:
+              l10n?.dialogDisablingActiveRadioMessage(radio.name) ??
               'Disabling physical radio "${radio.name}" will turn off all wireless networks hosted on it and disconnect your active session.',
-          confirmLabel: 'Proceed & Disable',
-          cancelLabel: 'Cancel',
+          confirmLabel: l10n?.btnProceedAndDisable ?? 'Proceed & Disable',
+          cancelLabel: l10n?.actionCancel ?? 'Cancel',
           icon: Icons.warning_amber_rounded,
           iconColor: Colors.orange,
           isDestructive: true,
@@ -377,35 +386,54 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
       'country': radio.country,
     };
 
-    final success = await appState.applyWirelessRadioConfig(
-      sectionName: radio.name,
-      newValues: newValues,
-      priorValuesSnapshot: priorSnapshot,
-      targetRadio: radio,
-      context: context,
-    );
+    try {
+      final success = await appState.applyWirelessRadioConfig(
+        sectionName: radio.name,
+        newValues: newValues,
+        priorValuesSnapshot: priorSnapshot,
+        targetRadio: radio,
+        context: mounted ? context : null,
+      );
 
-    if (mounted) {
-      setState(() => _isSubmitting = false);
-      if (success) {
-        Navigator.pop(context, true);
-        context.showToastSuccess('Radio settings applied directly to router.');
-      } else {
-        final username = appState.sessionUsername;
-        if ((appState.capabilities?.hasUciWriteAccess ?? true) == false ||
-            !appState.isAdministrativeUser) {
-          context.showToastError(
-            'Access Denied: Account \'$username\' lacks ubus UCI write authorization.',
+      if (mounted) {
+        if (success) {
+          Navigator.pop(context, true);
+          context.showToastSuccess(
+            l10n?.toastRadioSettingsSuccess ??
+                'Radio settings applied directly to router.',
           );
         } else {
-          context.showToastError('Failed to apply radio settings to router.');
+          final username = appState.sessionUsername;
+          if ((appState.capabilities?.hasUciWriteAccess ?? true) == false ||
+              !appState.isAdministrativeUser) {
+            context.showToastError(
+              'Access Denied: Account \'$username\' lacks ubus UCI write authorization.',
+            );
+          } else {
+            context.showToastError(
+              l10n?.toastRadioSettingsFailed ??
+                  'Failed to apply radio settings to router.',
+            );
+          }
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showToastError(
+          l10n?.toastRadioSettingsFailed ?? 'Failed to apply radio settings',
+          subtitle: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final appState = ref.watch(appStateProvider);
     final hasUciWrite =
@@ -427,7 +455,8 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Edit Physical Radio (${widget.radio.name})',
+                l10n?.editPhysicalRadioTitle(widget.radio.name) ??
+                    'Edit Physical Radio (${widget.radio.name})',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -501,7 +530,8 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Changes will be applied directly to the router.',
+                          l10n?.changesDirectRouterWarning ??
+                              'Changes will be applied directly to the router.',
                           style: TextStyle(
                             fontSize: 11,
                             color: theme.colorScheme.onSurface,
@@ -516,12 +546,18 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
                 // Radio Hardware Enabled Switch
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Radio Enabled',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  title: Text(
+                    l10n?.radioHardwareEnabled ?? 'Radio Enabled',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   subtitle: Text(
-                    'Physical ${widget.radio.bandLabel} wireless transceivers',
+                    l10n?.radioHardwareEnabledSubtitle(
+                          widget.radio.bandLabel,
+                        ) ??
+                        'Physical ${widget.radio.bandLabel} wireless transceivers',
                     style: const TextStyle(fontSize: 11),
                   ),
                   value: !_isDisabled,
@@ -534,16 +570,19 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
                 DropdownButtonFormField<String>(
                   initialValue: _selectedChannel,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Operating Channel',
-                    prefixIcon: Icon(Icons.cell_tower_rounded, size: 20),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        l10n?.operatingChannelLabel ?? 'Operating Channel',
+                    prefixIcon: const Icon(Icons.cell_tower_rounded, size: 20),
+                    border: const OutlineInputBorder(),
                   ),
                   items: channels.map((ch) {
                     return DropdownMenuItem(
                       value: ch,
                       child: Text(
-                        ch == 'auto' ? 'Auto (ACS)' : 'Channel $ch',
+                        ch == 'auto'
+                            ? (l10n?.channelAutoAcs ?? 'Auto (ACS)')
+                            : (l10n?.channelItem(ch) ?? 'Channel $ch'),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
@@ -560,9 +599,12 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
                   initialValue: _selectedHtMode,
                   isExpanded: true,
                   decoration: InputDecoration(
-                    labelText: 'Channel Width / HT Mode',
+                    labelText:
+                        l10n?.channelWidthHtModeLabel ??
+                        'Channel Width / HT Mode',
                     helperText: widget.radio.supportedHtModes.isNotEmpty
-                        ? 'Modes reported by physical driver'
+                        ? (l10n?.htModesReportedByDriver ??
+                              'Modes reported by physical driver')
                         : null,
                     prefixIcon: const Icon(Icons.swap_calls_rounded, size: 20),
                     border: const OutlineInputBorder(),
@@ -587,14 +629,15 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
                 DropdownButtonFormField<String>(
                   initialValue: _selectedTxPower,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Transmit Power (Tx Power)',
-                    prefixIcon: Icon(Icons.bolt_rounded, size: 20),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText:
+                        l10n?.transmitPowerLabel ?? 'Transmit Power (Tx Power)',
+                    prefixIcon: const Icon(Icons.bolt_rounded, size: 20),
+                    border: const OutlineInputBorder(),
                   ),
                   items: txPowers.map((tx) {
                     String label = tx == 'auto'
-                        ? 'Auto (Maximum Allowed)'
+                        ? (l10n?.txPowerAutoMax ?? 'Auto (Maximum Allowed)')
                         : '$tx dBm';
                     if (tx == '30') label += ' (1000 mW)';
                     if (tx == '23') label += ' (200 mW)';
@@ -622,13 +665,16 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
                   initialValue: _selectedCountry,
                   isExpanded: true,
                   decoration: InputDecoration(
-                    labelText: 'Country Code (Regulatory Domain)',
+                    labelText:
+                        l10n?.countryCodeRegulatoryLabel ??
+                        'Country Code (Regulatory Domain)',
                     prefixIcon: const Icon(Icons.public_rounded, size: 20),
                     border: const OutlineInputBorder(),
                     helperText:
-                        _getChannelValidationMessage() ??
-                        'Regulatory domain options reported by router',
-                    errorText: _getChannelValidationMessage(),
+                        _getChannelValidationMessage(l10n) ??
+                        (l10n?.regulatoryDomainOptionsReported ??
+                            'Regulatory domain options reported by router'),
+                    errorText: _getChannelValidationMessage(l10n),
                   ),
                   items: countryCodes.map((item) {
                     return DropdownMenuItem<String>(
@@ -650,10 +696,12 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
             ),
           ),
         ),
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         actions: [
           TextButton(
             onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           ElevatedButton.icon(
             onPressed: (_isSubmitting || !_hasChanges())
@@ -667,7 +715,9 @@ class _EditRadioDialogState extends ConsumerState<EditRadioDialog> {
                   )
                 : const Icon(Icons.verified_user_rounded, size: 18),
             label: Text(
-              hasUciWrite ? 'Save & Apply' : 'Attempt Save (Non-Root)',
+              hasUciWrite
+                  ? (l10n?.btnSaveAndApply ?? 'Save & Apply')
+                  : (l10n?.btnAttemptSaveNonRoot ?? 'Attempt Save (Non-Root)'),
             ),
           ),
         ],

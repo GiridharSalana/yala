@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
@@ -69,8 +70,10 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
   ) async {
     if (!mounted) return;
     final actionKey = 'pause_profile_${profile.id}';
+    final l10n = AppLocalizations.of(context);
     context.showToastLoading(
-      'Pausing internet for ${profile.name}…',
+      l10n?.parentalToastPausing(profile.name) ??
+          'Pausing internet for ${profile.name}…',
       actionKey: actionKey,
     );
 
@@ -96,8 +99,10 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
   Future<void> _resumeProfile(ParentalProfile profile) async {
     if (!mounted) return;
     final actionKey = 'resume_profile_${profile.id}';
+    final l10n = AppLocalizations.of(context);
     context.showToastLoading(
-      'Resuming internet for ${profile.name}…',
+      l10n?.parentalToastResuming(profile.name) ??
+          'Resuming internet for ${profile.name}…',
       actionKey: actionKey,
     );
 
@@ -153,17 +158,23 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
   }
 
   void _confirmDeleteProfile(ParentalProfile profile) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Profile'),
-        content: Text(
-          'Delete "${profile.name}"? This will not affect current firewall rules.',
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(l10n?.parentalDeleteProfileTitle ?? 'Delete Profile'),
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.parentalDeleteProfileDesc(profile.name) ??
+                'Delete "${profile.name}"? This will not affect current firewall rules.',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             onPressed: () async {
@@ -175,7 +186,7 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
               }
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(l10n?.parentalProfileBtnDelete ?? 'Delete'),
           ),
         ],
       ),
@@ -185,6 +196,7 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
     final caps = appState.capabilities;
     final isReviewerMode = appState.reviewerModeEnabled;
@@ -194,11 +206,11 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Parental Controls'),
+        title: Text(l10n?.parentalControlsTitle ?? 'Parental Controls'),
         actions: [
           IconButton(
             icon: const Icon(Icons.history_rounded),
-            tooltip: 'Activity Log',
+            tooltip: l10n?.parentalControlsTooltipLog ?? 'Activity Log',
             onPressed: () => _showActivityLog(context),
           ),
         ],
@@ -208,26 +220,29 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
         children: [
           // ── Capability banners ──────────────────────────────────────
           if (!hasFirewall)
-            const _CapabilityBanner(
+            _CapabilityBanner(
               icon: Icons.shield_outlined,
               color: Colors.orange,
               message:
+                  l10n?.parentalNoUciDesc ??
                   'No UCI write access detected. Internet pause and content filter '
-                  'features require root/admin access to the router.',
+                      'features require root/admin access to the router.',
             ),
           if (!hasFileExec)
-            const _CapabilityBanner(
+            _CapabilityBanner(
               icon: Icons.schedule_rounded,
               color: Colors.blue,
               message:
+                  l10n?.parentalNoFileExecDesc ??
                   'File execution unavailable. Time schedules require '
-                  'the file.exec ubus method (available when luci-mod-rpc is installed).',
+                      'the file.exec ubus method (available when luci-mod-rpc is installed).',
             ),
           if (isReviewerMode)
             _CapabilityBanner(
               icon: Icons.rate_review_outlined,
               color: theme.colorScheme.primary,
               message:
+                  l10n?.parentalReviewerModeBanner ??
                   'Reviewer Mode — changes are simulated and not sent to a real router.',
             ),
 
@@ -272,12 +287,13 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openAddProfile,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Profile'),
+        label: Text(l10n?.parentalBtnAddProfileFab ?? 'Add Profile'),
       ),
     );
   }
 
   void _showActivityLog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -312,13 +328,16 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
                     children: [
                       const Icon(Icons.history_rounded),
                       const SizedBox(width: 10),
-                      Text(
-                        'Activity Log',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          l10n?.parentalActivityLogTitle ?? 'Activity Log',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const Spacer(),
                       if (log.isNotEmpty)
                         TextButton(
                           onPressed: () async {
@@ -326,7 +345,7 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
                             await _controller.clearActivityLog(appState);
                             setSheetState(() {});
                           },
-                          child: const Text('Clear'),
+                          child: Text(l10n?.parentalBtnClearLog ?? 'Clear'),
                         ),
                       IconButton(
                         icon: const Icon(Icons.close_rounded),
@@ -340,7 +359,8 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
                   child: log.isEmpty
                       ? Center(
                           child: Text(
-                            'No activity recorded yet.',
+                            l10n?.parentalActivityLogEmpty ??
+                                'No activity recorded yet.',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -476,6 +496,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
@@ -489,16 +510,17 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'No Profiles Yet',
+              l10n?.parentalEmptyTitle ?? 'No Profiles Yet',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 12),
             Text(
-              'Create a profile for each family member or device group. '
-              'Assign devices to a profile to manage internet access, '
-              'schedules, and content filtering.',
+              l10n?.parentalEmptyDesc ??
+                  'Create a profile for each family member or device group. '
+                      'Assign devices to a profile to manage internet access, '
+                      'schedules, and content filtering.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -509,7 +531,9 @@ class _EmptyState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Create First Profile'),
+              label: Text(
+                l10n?.parentalBtnCreateProfile ?? 'Create First Profile',
+              ),
             ),
           ],
         ),

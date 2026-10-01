@@ -3,7 +3,7 @@
 **Yet Another LuCI App**
 Last updated: September 07, 2026
 
-Yet Another LuCI App ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how our mobile application ("App") handles your information when you use the App to manage your OpenWrt/LuCI routers.
+I am committed to protecting your privacy. This Privacy Policy explains how Yet Another LuCI App ("App") handles your information when you use the App to manage your OpenWrt/LuCI routers.
 
 ---
 
@@ -14,7 +14,7 @@ Yet Another LuCI App ("we", "our", or "us") is committed to protecting your priv
 - The App requires your router's IP address, port, username, and password to establish direct connections with your OpenWrt router on your local Wi-Fi or VPN network.
 - All router credentials are encrypted and stored locally on your device using hardware-backed secure storage (via `flutter_secure_storage` / KeyStore).
 - Credentials and network layout data are used **exclusively** for direct HTTP/HTTPS and JSON-RPC communication between your mobile device and your OpenWrt router.
-- We do **not** collect, transmit, upload, or store your router credentials, IP addresses, network topology, or router configurations on any external server or developer database.
+- I do **not** collect, transmit, upload, or store your router credentials, IP addresses, network topology, or router configurations on any external server or developer database.
 
 ### b. Local Network Access Permission
 
@@ -75,7 +75,7 @@ This Privacy Policy matches the declarations in the Google Play Console Data Saf
 
 ## 7. Contact & Official Policy Links
 
-If you have questions, concerns, or requests regarding this Privacy Policy, please contact us:
+If you have questions, concerns, or requests regarding this Privacy Policy, please contact me:
 
 - **Privacy Inquiries**: <yala+privacy@nightcode.co.in>
 - **General Support**: <yala+support@nightcode.co.in>

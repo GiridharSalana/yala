@@ -8,6 +8,7 @@ import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import 'package:yet_another_luci_app/widgets/luci_collapsible_card.dart';
 import '../models/vpn_info.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class VpnConnectivityScreen extends ConsumerWidget {
   const VpnConnectivityScreen({super.key});
@@ -15,6 +16,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appState = ref.watch(appStateProvider);
+    final l10n = AppLocalizations.of(context);
     final overview = VpnConnectivityOverview.fromDashboardData(
       appState.dashboardData,
       isReviewerMode: appState.reviewerModeEnabled,
@@ -45,7 +47,8 @@ class VpnConnectivityScreen extends ConsumerWidget {
           isActive: sortedWg.any((w) => w.isUp),
           header: _buildSectionHeader(
             context,
-            'WireGuard VPN Interfaces & Peers',
+            l10n?.vpnWireguardSectionTitle ??
+                'WireGuard VPN Interfaces & Peers',
             Icons.shield_outlined,
           ),
           cards: sortedWg
@@ -57,8 +60,9 @@ class VpnConnectivityScreen extends ConsumerWidget {
       unconfiguredCards.add(
         _buildUnconfiguredCard(
           context,
-          title: 'WireGuard VPN',
+          title: l10n?.wireguardVpnTitle ?? 'WireGuard VPN',
           message:
+              l10n?.wireguardUnconfiguredDesc ??
               'No WireGuard interfaces or peer configurations found on this router.',
           icon: Icons.shield_outlined,
         ),
@@ -79,7 +83,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
           isActive: sortedOvpn.any((o) => o.isRunning),
           header: _buildSectionHeader(
             context,
-            'OpenVPN Tunnels',
+            l10n?.vpnOpenvpnSectionTitle ?? 'OpenVPN Tunnels',
             Icons.lock_outline,
           ),
           cards: [_buildOpenVpnCard(context, ref, sortedOvpn)],
@@ -89,8 +93,9 @@ class VpnConnectivityScreen extends ConsumerWidget {
       unconfiguredCards.add(
         _buildUnconfiguredCard(
           context,
-          title: 'OpenVPN Tunnels',
+          title: l10n?.openVpnTunnelsTitle ?? 'OpenVPN Tunnels',
           message:
+              l10n?.openVpnUnconfiguredDesc ??
               'No OpenVPN instances configured in router setup (/etc/config/openvpn).',
           icon: Icons.lock_outline,
         ),
@@ -105,7 +110,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
           isActive: overview.tailscale.isRunning,
           header: _buildSectionHeader(
             context,
-            'Tailscale Mesh VPN',
+            l10n?.vpnTailscaleSectionTitle ?? 'Tailscale Mesh VPN',
             Icons.hub_outlined,
           ),
           cards: [_buildTailscaleCard(context, ref, overview.tailscale)],
@@ -115,8 +120,9 @@ class VpnConnectivityScreen extends ConsumerWidget {
       unconfiguredCards.add(
         _buildUnconfiguredCard(
           context,
-          title: 'Tailscale Mesh VPN',
+          title: l10n?.tailscaleVpnTitle ?? 'Tailscale Mesh VPN',
           message:
+              l10n?.tailscaleUnconfiguredDesc ??
               'No Tailscale configuration or authenticated node found on this router.',
           icon: Icons.hub_outlined,
         ),
@@ -131,7 +137,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
           isActive: overview.nextdns.isRunning || overview.nextdns.isEnabled,
           header: _buildSectionHeader(
             context,
-            'NextDNS Encrypted Resolver',
+            l10n?.vpnNextdnsSectionTitle ?? 'NextDNS Encrypted Resolver',
             Icons.security_outlined,
           ),
           cards: [_buildNextDnsCard(context, ref, overview.nextdns)],
@@ -157,7 +163,8 @@ class VpnConnectivityScreen extends ConsumerWidget {
           isActive: overview.cloudflared.isRunning,
           header: _buildSectionHeader(
             context,
-            'Cloudflare Tunnels (cloudflared)',
+            l10n?.vpnCloudflareSectionTitle ??
+                'Cloudflare Tunnels (cloudflared)',
             Icons.cloud_done_outlined,
           ),
           cards: [_buildCloudflaredCard(context, ref, overview.cloudflared)],
@@ -199,7 +206,8 @@ class VpnConnectivityScreen extends ConsumerWidget {
       }
       children.add(
         LuciCollapsibleCard(
-          title: 'Unconfigured Tunnels & Services',
+          title: l10n?.vpnUnconfiguredTunnelsSection ??
+              'Unconfigured Tunnels & Services',
           count: unconfiguredCards.length,
           subtitle:
               '${unconfiguredCards.length} inactive tunnel profiles • Tap to view',
@@ -214,11 +222,11 @@ class VpnConnectivityScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VPN & Secure Tunnels'),
+        title: Text(l10n?.vpnConnectivityTitle ?? 'VPN & Secure Tunnels'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh Status',
+            tooltip: l10n?.btnRefresh ?? 'Refresh Status',
             onPressed: () async {
               await appState.fetchDashboardData();
             },
@@ -240,8 +248,9 @@ class VpnConnectivityScreen extends ConsumerWidget {
   Widget _buildSectionHeader(
     BuildContext context,
     String title,
-    IconData icon,
-  ) {
+    IconData icon, {
+    int maxLines = 2,
+  }) {
     final theme = Theme.of(context);
     return Row(
       children: [
@@ -250,6 +259,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
         Expanded(
           child: Text(
             title,
+            maxLines: maxLines,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -422,10 +432,13 @@ class VpnConnectivityScreen extends ConsumerWidget {
     List<OpenVpnInstance> instances,
   ) {
     if (instances.isEmpty) {
-      return const Card(
+      final l10n = AppLocalizations.of(context);
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('No OpenVPN instances configured.'),
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            l10n?.vpnNoOpenvpnInstances ?? 'No OpenVPN instances configured.',
+          ),
         ),
       );
     }
@@ -603,7 +616,9 @@ class VpnConnectivityScreen extends ConsumerWidget {
                   onPressed: () => _confirmToggleProvider(
                     context,
                     ref,
-                    title: 'Restart Tailscale Service?',
+                    title: AppLocalizations.of(context)
+                            ?.vpnRestartTailscaleTitle ??
+                        'Restart Tailscale Service?',
                     message:
                         'Restarting Tailscale will temporarily drop active mesh connections.',
                     action: () async {
@@ -612,7 +627,10 @@ class VpnConnectivityScreen extends ConsumerWidget {
                     },
                   ),
                   icon: const Icon(Icons.restart_alt, size: 16),
-                  label: const Text('Restart Daemon'),
+                  label: Text(
+                    AppLocalizations.of(context)?.vpnRestartDaemon ??
+                        'Restart Daemon',
+                  ),
                 ),
               ],
             ),
@@ -707,7 +725,9 @@ class VpnConnectivityScreen extends ConsumerWidget {
                   onPressed: () => _confirmToggleProvider(
                     context,
                     ref,
-                    title: 'Restart NextDNS Service?',
+                    title: AppLocalizations.of(context)
+                            ?.vpnRestartNextDnsTitle ??
+                        'Restart NextDNS Service?',
                     message:
                         'Restarting NextDNS will reload DNS filtering configurations.',
                     action: () async {
@@ -716,7 +736,10 @@ class VpnConnectivityScreen extends ConsumerWidget {
                     },
                   ),
                   icon: const Icon(Icons.restart_alt, size: 16),
-                  label: const Text('Restart Resolver'),
+                  label: Text(
+                    AppLocalizations.of(context)?.vpnRestartResolver ??
+                        'Restart Resolver',
+                  ),
                 ),
               ],
             ),
@@ -827,7 +850,9 @@ class VpnConnectivityScreen extends ConsumerWidget {
                   onPressed: () => _confirmToggleProvider(
                     context,
                     ref,
-                    title: 'Restart Cloudflared Service?',
+                    title: AppLocalizations.of(context)
+                            ?.vpnRestartCloudflaredTitle ??
+                        'Restart Cloudflared Service?',
                     message:
                         'Restarting Cloudflared will re-establish edge connection tunnels to Cloudflare Zero Trust.',
                     action: () async {
@@ -836,7 +861,10 @@ class VpnConnectivityScreen extends ConsumerWidget {
                     },
                   ),
                   icon: const Icon(Icons.restart_alt, size: 16),
-                  label: const Text('Restart Tunnel'),
+                  label: Text(
+                    AppLocalizations.of(context)?.vpnRestartTunnel ??
+                        'Restart Tunnel',
+                  ),
                 ),
               ],
             ),
@@ -853,19 +881,22 @@ class VpnConnectivityScreen extends ConsumerWidget {
     required String message,
     required Future<void> Function() action,
   }) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         title: Text(title),
-        content: Text(message),
+        content: SingleChildScrollView(child: Text(message)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Confirm'),
+            child: Text(l10n?.actionConfirm ?? 'Confirm'),
           ),
         ],
       ),
@@ -890,16 +921,27 @@ class VpnConnectivityScreen extends ConsumerWidget {
         subtitle: title,
         actionKey: actionKey,
       );
-      await action();
-      final appState = ref.read(appStateProvider);
-      await appState.fetchDashboardData();
+      try {
+        await action();
+        final appState = ref.read(appStateProvider);
+        await appState.fetchDashboardData();
 
-      if (context.mounted) {
-        context.showToastSuccess(
-          'Tunnel Configuration Updated',
-          subtitle: 'State change applied successfully.',
-          actionKey: actionKey,
-        );
+        if (context.mounted) {
+          context.showToastSuccess(
+            'Tunnel Configuration Updated',
+            subtitle: l10n?.vpnStateChangeAppliedSubtitle ??
+                'State change applied successfully.',
+            actionKey: actionKey,
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          context.showToastError(
+            'Configuration Update Failed',
+            subtitle: e.toString().replaceAll('Exception: ', ''),
+            actionKey: actionKey,
+          );
+        }
       }
     }
   }

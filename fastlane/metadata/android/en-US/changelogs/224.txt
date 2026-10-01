@@ -1,0 +1,6 @@
+What's new in v2.1.0:
+• Package Manager: Filter, search, batch upgrade OPKG/APK packages & install custom URLs.
+• Network Diagnostics: Ping, traceroute, DNS lookup & connectivity testing with export.
+• Hardware Temperature: Real-time SoC thermal monitoring with 1-tap setup.
+• Bandwidth Monitoring: View live bandwidth for wireless clients.
+• Multi-Language Support (Beta): 9 locales (EN, DE, ES, FR, ID, PT, PT-BR, RU, ZH)

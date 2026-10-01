@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:yet_another_luci_app/utils/self_device_guard.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 /// Context-aware dialog for Banning a wireless client with flexible time customization,
 /// dynamic Date & Time pickers, preset durations, and self-device safety guardrails.
@@ -188,6 +189,7 @@ class _BanWirelessClientDialogState extends State<BanWirelessClientDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final formattedCustomDate = _formatDateTime(
       _customEndDateTime,
       includeYear: true,
@@ -232,15 +234,15 @@ class _BanWirelessClientDialogState extends State<BanWirelessClientDialog> {
               children: [
                 Text(
                   widget.isAlreadyBanned
-                      ? 'Edit Ban Duration'
-                      : 'Ban Client from Wi-Fi',
+                      ? (l10n?.editBanDuration ?? 'Edit Ban Duration')
+                      : (l10n?.banClientFromWifi ?? 'Ban Client from Wi-Fi'),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  'Layer-2 Association Prevention',
+                  l10n?.layer2Prevention ?? 'Layer-2 Association Prevention',
                   style: TextStyle(
                     fontSize: 12,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -254,35 +256,283 @@ class _BanWirelessClientDialogState extends State<BanWirelessClientDialog> {
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 440),
         child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Self-device Critical Warning Guardrail
-            if (_isSelfDevice) ...[
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Self-device Critical Warning Guardrail
+              if (_isSelfDevice) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade900.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.red.shade400, width: 1.2),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red.shade700,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          l10n?.selfDeviceBanWarning ??
+                              'WARNING: Banning your current device will sever your Wi-Fi access to this router.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Client Context Awareness Card
               Container(
-                margin: const EdgeInsets.only(bottom: 14),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.shade900.withValues(alpha: 0.12),
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.5,
+                  ),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.red.shade400, width: 1.2),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.6,
+                    ),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.devices_rounded,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.displayName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'MAC: ${widget.macAddress.toUpperCase()}${widget.ipAddress != null ? " • IP: ${widget.ipAddress}" : ""}',
+                      style: GoogleFonts.geistMono(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (widget.ssid != null && widget.ssid!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Target SSID: ${widget.ssid}${widget.iface != null ? " (${widget.iface})" : ""}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Ban Duration Preset Selector
+              Text(
+                l10n?.selectBanDuration ?? 'Select Ban Duration:',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _presetOptions.map((preset) {
+                  final int seconds = preset['seconds'] as int;
+                  final bool isSelected = _selectedPresetSeconds == seconds;
+
+                  String label = preset['label'] as String;
+                  if (seconds == 300) {
+                    label = l10n?.preset5Mins ?? label;
+                  } else if (seconds == 900) {
+                    label = l10n?.preset15Mins ?? label;
+                  } else if (seconds == 3600) {
+                    label = l10n?.preset1Hour ?? label;
+                  } else if (seconds == 86400) {
+                    label = l10n?.preset24HoursBan ?? label;
+                  } else if (seconds == -1) {
+                    label = l10n?.presetCustomDateTime ?? label;
+                  }
+
+                  return ChoiceChip(
+                    label: Text(label),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        if (seconds == -1) {
+                          _selectCustomDateTime();
+                        } else {
+                          setState(() => _selectedPresetSeconds = seconds);
+                        }
+                      }
+                    },
+                    selectedColor: Colors.orange.shade800.withValues(
+                      alpha: 0.2,
+                    ),
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: isSelected
+                          ? Colors.orange.shade900
+                          : theme.colorScheme.onSurface,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+
+              // Custom Date & Time Picker Card
+              InkWell(
+                onTap: _selectCustomDateTime,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _selectedPresetSeconds == -1
+                        ? Colors.orange.shade50.withValues(alpha: 0.5)
+                        : theme.colorScheme.surfaceContainerHighest.withValues(
+                            alpha: 0.3,
+                          ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _selectedPresetSeconds == -1
+                          ? Colors.orange.shade700
+                          : theme.colorScheme.outlineVariant,
+                      width: _selectedPresetSeconds == -1 ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_filled_rounded,
+                        color: _selectedPresetSeconds == -1
+                            ? Colors.orange.shade900
+                            : theme.colorScheme.primary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedPresetSeconds == -1
+                                  ? (l10n?.customBanExpiry ??
+                                        'Custom Ban Expiry')
+                                  : (l10n?.setCustomDateTime ??
+                                        'Set Custom Date & Time...'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: _selectedPresetSeconds == -1
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              formattedCustomDate,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: _selectedPresetSeconds == -1
+                                    ? Colors.orange.shade900
+                                    : theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.edit_calendar_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Dynamic Summary Banner
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _isValidDuration
+                      ? Colors.orange.shade900.withValues(alpha: 0.08)
+                      : Colors.red.shade900.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isValidDuration
+                        ? Colors.orange.shade700.withValues(alpha: 0.4)
+                        : Colors.red.shade400,
+                  ),
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      Icons.warning_amber_rounded,
-                      color: Colors.red.shade700,
-                      size: 24,
+                      _isValidDuration
+                          ? Icons.info_outline_rounded
+                          : Icons.error_outline_rounded,
+                      size: 20,
+                      color: _isValidDuration
+                          ? Colors.orange.shade900
+                          : Colors.red.shade700,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'WARNING: Banning your current device will sever your Wi-Fi access to this router.',
+                        _isValidDuration
+                            ? (l10n?.bannedForDuration(
+                                    _formatDurationString(effectiveSeconds),
+                                    banEndTimeStr,
+                                  ) ??
+                                  'Banned for ${_formatDurationString(effectiveSeconds)} (Ends $banEndTimeStr)')
+                            : (l10n?.selectValidFutureDate ??
+                                  'Please select a valid future date & time.'),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Colors.red.shade900,
+                          color: _isValidDuration
+                              ? Colors.orange.shade900
+                              : Colors.red.shade800,
                         ),
                       ),
                     ),
@@ -290,230 +540,8 @@ class _BanWirelessClientDialogState extends State<BanWirelessClientDialog> {
                 ),
               ),
             ],
-
-            // Client Context Awareness Card
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.5,
-                ),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant.withValues(
-                    alpha: 0.6,
-                  ),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.devices_rounded,
-                        size: 16,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          widget.displayName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'MAC: ${widget.macAddress.toUpperCase()}${widget.ipAddress != null ? " • IP: ${widget.ipAddress}" : ""}',
-                    style: GoogleFonts.geistMono(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (widget.ssid != null && widget.ssid!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      'Target SSID: ${widget.ssid}${widget.iface != null ? " (${widget.iface})" : ""}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Ban Duration Preset Selector
-            const Text(
-              'Select Ban Duration:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _presetOptions.map((preset) {
-                final int seconds = preset['seconds'] as int;
-                final bool isSelected = _selectedPresetSeconds == seconds;
-
-                return ChoiceChip(
-                  label: Text(preset['label'] as String),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    if (selected) {
-                      if (seconds == -1) {
-                        _selectCustomDateTime();
-                      } else {
-                        setState(() => _selectedPresetSeconds = seconds);
-                      }
-                    }
-                  },
-                  selectedColor: Colors.orange.shade800.withValues(alpha: 0.2),
-                  labelStyle: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: isSelected
-                        ? Colors.orange.shade900
-                        : theme.colorScheme.onSurface,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 14),
-
-            // Custom Date & Time Picker Card
-            InkWell(
-              onTap: _selectCustomDateTime,
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: _selectedPresetSeconds == -1
-                      ? Colors.orange.shade50.withValues(alpha: 0.5)
-                      : theme.colorScheme.surfaceContainerHighest.withValues(
-                          alpha: 0.3,
-                        ),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: _selectedPresetSeconds == -1
-                        ? Colors.orange.shade700
-                        : theme.colorScheme.outlineVariant,
-                    width: _selectedPresetSeconds == -1 ? 1.5 : 1.0,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.access_time_filled_rounded,
-                      color: _selectedPresetSeconds == -1
-                          ? Colors.orange.shade900
-                          : theme.colorScheme.primary,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _selectedPresetSeconds == -1
-                                ? 'Custom Ban Expiry'
-                                : 'Set Custom Date & Time...',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontWeight: _selectedPresetSeconds == -1
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            formattedCustomDate,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: _selectedPresetSeconds == -1
-                                  ? Colors.orange.shade900
-                                  : theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.edit_calendar_rounded,
-                      color: theme.colorScheme.primary,
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Dynamic Summary Banner
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _isValidDuration
-                    ? Colors.orange.shade900.withValues(alpha: 0.08)
-                    : Colors.red.shade900.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _isValidDuration
-                      ? Colors.orange.shade700.withValues(alpha: 0.4)
-                      : Colors.red.shade400,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _isValidDuration
-                        ? Icons.info_outline_rounded
-                        : Icons.error_outline_rounded,
-                    size: 20,
-                    color: _isValidDuration
-                        ? Colors.orange.shade900
-                        : Colors.red.shade700,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _isValidDuration
-                          ? 'Banned for ${_formatDurationString(effectiveSeconds)} (Ends $banEndTimeStr)'
-                          : 'Please select a valid future date & time.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: _isValidDuration
-                            ? Colors.orange.shade900
-                            : Colors.red.shade800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
       ),
       actions: [
         if (widget.isAlreadyBanned && widget.onUnbanConfirmed != null)
@@ -534,9 +562,9 @@ class _BanWirelessClientDialogState extends State<BanWirelessClientDialog> {
               size: 16,
               color: Colors.green,
             ),
-            label: const Text(
-              'Unban Client',
-              style: TextStyle(
+            label: Text(
+              l10n?.btnUnbanClient ?? 'Unban Client',
+              style: const TextStyle(
                 color: Colors.green,
                 fontWeight: FontWeight.bold,
               ),
@@ -544,7 +572,7 @@ class _BanWirelessClientDialogState extends State<BanWirelessClientDialog> {
           ),
         TextButton(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n?.actionCancel ?? 'Cancel'),
         ),
         FilledButton.icon(
           onPressed: (_isValidDuration && !_isSubmitting)
@@ -568,7 +596,11 @@ class _BanWirelessClientDialogState extends State<BanWirelessClientDialog> {
                   ),
                 )
               : const Icon(Icons.block_rounded, size: 16),
-          label: Text(widget.isAlreadyBanned ? 'Update Ban' : 'Ban Client'),
+          label: Text(
+            widget.isAlreadyBanned
+                ? (l10n?.btnUpdateBan ?? 'Update Ban')
+                : (l10n?.btnBanClient ?? 'Ban Client'),
+          ),
           style: FilledButton.styleFrom(
             backgroundColor: Colors.orange.shade900,
             foregroundColor: Colors.white,

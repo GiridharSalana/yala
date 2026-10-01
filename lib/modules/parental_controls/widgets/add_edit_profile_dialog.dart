@@ -5,6 +5,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/models/client.dart';
 import '../models/parental_profile.dart';
@@ -208,20 +209,28 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
   }
 
   void _addMac() {
+    final l10n = AppLocalizations.of(context);
     final raw = _macCtrl.text.trim().toUpperCase();
     if (raw.isEmpty) return;
     final isValid = RegExp(r'^([0-9A-F]{2}:){5}[0-9A-F]{2}$').hasMatch(raw);
     if (!isValid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid MAC address format (e.g. AA:BB:CC:DD:EE:FF)'),
+        SnackBar(
+          content: Text(
+            l10n?.parentalInvalidMac ??
+                'Invalid MAC address format (e.g. AA:BB:CC:DD:EE:FF)',
+          ),
         ),
       );
       return;
     }
     if (_macAddresses.any((m) => m.toUpperCase() == raw)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('MAC address already added')),
+        SnackBar(
+          content: Text(
+            l10n?.parentalMacAlreadyAdded ?? 'MAC address already added',
+          ),
+        ),
       );
       return;
     }
@@ -266,6 +275,7 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
     final availableClients = appState.clients;
     final screenH = MediaQuery.sizeOf(context).height;
@@ -277,18 +287,25 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Discard Unsaved Changes?'),
-            content: const Text(
-              'You have unsaved profile changes. Are you sure you want to discard them?',
+            actionsOverflowButtonSpacing: 8,
+            actionsOverflowDirection: VerticalDirection.down,
+            title: Text(
+              l10n?.servicesSysDiscardDialogTitle ?? 'Discard Unsaved Changes?',
+            ),
+            content: SingleChildScrollView(
+              child: Text(
+                l10n?.parentalDiscardChangesDesc ??
+                    'You have unsaved profile changes. Are you sure you want to discard them?',
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Keep Editing'),
+                child: Text(l10n?.btnKeepEditing ?? 'Keep Editing'),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Discard'),
+                child: Text(l10n?.btnDiscard ?? 'Discard'),
               ),
             ],
           ),
@@ -318,7 +335,9 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _isEditing ? 'Edit Profile' : 'New Profile',
+                        _isEditing
+                            ? (l10n?.parentalEditProfileTitle ?? 'Edit Profile')
+                            : (l10n?.parentalAddProfileTitle ?? 'New Profile'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleLarge?.copyWith(
@@ -373,8 +392,10 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                               activeThumbColor: theme.colorScheme.primary,
                               title: Text(
                                 _isEnabled
-                                    ? 'Profile Guardrails Active'
-                                    : 'Profile Bypassed (Unrestricted)',
+                                    ? (l10n?.parentalGuardrailsActive ??
+                                          'Profile Guardrails Active')
+                                    : (l10n?.parentalGuardrailsBypassed ??
+                                          'Profile Bypassed (Unrestricted)'),
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
@@ -385,8 +406,10 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                               ),
                               subtitle: Text(
                                 _isEnabled
-                                    ? 'Schedule, DNS filters, and time limits are enforced.'
-                                    : 'Devices under this profile enjoy unrestricted internet access without restrictions.',
+                                    ? (l10n?.parentalGuardrailsActiveDesc ??
+                                          'Schedule, DNS filters, and time limits are enforced.')
+                                    : (l10n?.parentalGuardrailsBypassedDesc ??
+                                          'Devices under this profile enjoy unrestricted internet access without restrictions.'),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                   fontSize: 11,
@@ -408,21 +431,27 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                         // ── Name ──────────────────────────────────────────
                         TextFormField(
                           controller: _nameCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Profile Name *',
-                            hintText: 'e.g. Kids, Gaming PC, Teenager',
-                            prefixIcon: Icon(Icons.badge_outlined),
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText:
+                                '${l10n?.parentalProfileNameLabel ?? 'Profile Name'} *',
+                            hintText:
+                                l10n?.parentalProfileNameHint ??
+                                'e.g. Kids, Gaming PC, Teenager',
+                            prefixIcon: const Icon(Icons.badge_outlined),
+                            border: const OutlineInputBorder(),
                           ),
                           onChanged: (_) => setState(() {}),
                           validator: (v) => v == null || v.trim().isEmpty
-                              ? 'Name is required'
+                              ? (l10n?.parentalProfileNameRequired ??
+                                    'Name is required')
                               : null,
                         ),
                         const SizedBox(height: 16),
 
                         // ── Icon picker ───────────────────────────────────
-                        _SectionLabel('Profile Icon'),
+                        _SectionLabel(
+                          l10n?.parentalProfileIconLabel ?? 'Profile Icon',
+                        ),
                         const SizedBox(height: 8),
                         _IconPicker(
                           selected: _selectedIcon,
@@ -431,7 +460,9 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                         const SizedBox(height: 16),
 
                         // ── Color picker ─────────────────────────────────
-                        _SectionLabel('Accent Color'),
+                        _SectionLabel(
+                          l10n?.parentalProfileColorLabel ?? 'Accent Color',
+                        ),
                         const SizedBox(height: 8),
                         _ColorPicker(
                           colors: _colorOptions,
@@ -441,10 +472,14 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                         const SizedBox(height: 20),
 
                         // ── Device MACs ───────────────────────────────────
-                        _SectionLabel('Assigned Devices'),
+                        _SectionLabel(
+                          l10n?.parentalProfileDevicesLabel ??
+                              'Assigned Devices',
+                        ),
                         const SizedBox(height: 4),
                         Text(
-                          'Select from connected network devices or enter MAC manually.',
+                          l10n?.parentalAssignedDevicesSubtitle ??
+                              'Select from connected network devices or enter MAC manually.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -482,14 +517,17 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                                 ),
                                 initialValue: null,
                                 isExpanded: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Pick from Connected Devices',
+                                decoration: InputDecoration(
+                                  labelText:
+                                      l10n?.parentalPickConnectedDevices ??
+                                      'Pick from Connected Devices',
                                   hintText:
+                                      l10n?.parentalPickConnectedDevicesHint ??
                                       'Select a connected device to add MAC...',
-                                  prefixIcon: Icon(
+                                  prefixIcon: const Icon(
                                     Icons.phonelink_setup_rounded,
                                   ),
-                                  border: OutlineInputBorder(),
+                                  border: const OutlineInputBorder(),
                                   isDense: true,
                                 ),
                                 items: uniqueClients.map((client) {
@@ -559,7 +597,8 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                                   horizontal: 8.0,
                                 ),
                                 child: Text(
-                                  'OR MANUAL MAC ENTRY',
+                                  l10n?.parentalOrManualMac ??
+                                      'OR MANUAL MAC ENTRY',
                                   style: theme.textTheme.labelSmall?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
                                     fontWeight: FontWeight.bold,
@@ -577,11 +616,16 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                             Expanded(
                               child: TextFormField(
                                 controller: _macCtrl,
-                                decoration: const InputDecoration(
-                                  labelText: 'MAC Address',
+                                decoration: InputDecoration(
+                                  labelText:
+                                      l10n?.labelMacAddress ??
+                                      l10n?.macAddress ??
+                                      'MAC Address',
                                   hintText: 'AA:BB:CC:DD:EE:FF',
-                                  prefixIcon: Icon(Icons.devices_outlined),
-                                  border: OutlineInputBorder(),
+                                  prefixIcon: const Icon(
+                                    Icons.devices_outlined,
+                                  ),
+                                  border: const OutlineInputBorder(),
                                   isDense: true,
                                 ),
                                 textCapitalization:
@@ -593,7 +637,7 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                             IconButton.filled(
                               onPressed: _addMac,
                               icon: const Icon(Icons.add),
-                              tooltip: 'Add MAC',
+                              tooltip: l10n?.parentalAddMacTooltip ?? 'Add MAC',
                             ),
                           ],
                         ),
@@ -619,7 +663,8 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'No devices assigned yet. Profile is pre-configured and ready for devices to be added later.',
+                                    l10n?.parentalProfileNoDevices ??
+                                        'No devices assigned yet. Profile is pre-configured and ready for devices to be added later.',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                       fontSize: 11,
@@ -658,11 +703,15 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                         SwitchListTile.adaptive(
                           value: _hasSchedule,
                           onChanged: (v) => setState(() => _hasSchedule = v),
-                          title: const Text('Block Schedule'),
+                          title: Text(
+                            l10n?.parentalProfileBedtimeLabel ??
+                                'Block Schedule',
+                          ),
                           subtitle: Text(
                             _hasSchedule && _schedule != null
                                 ? 'Block ${_schedule!.blockTimeFormatted} → Resume ${_schedule!.resumeTimeFormatted} · ${_schedule!.activeDaysLabel}'
-                                : 'Set recurring block/resume times',
+                                : (l10n?.parentalScheduleSubtitle ??
+                                      'Set recurring block/resume times'),
                           ),
                           secondary: const Icon(Icons.schedule_rounded),
                           contentPadding: EdgeInsets.zero,
@@ -686,11 +735,17 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                               }
                             });
                           },
-                          title: const Text('Daily Time Limit'),
+                          title: Text(
+                            l10n?.parentalDailyTimeLimit ?? 'Daily Time Limit',
+                          ),
                           subtitle: Text(
                             _hasTimeLimit && _dailyLimitMinutes != null
-                                ? '$_dailyLimitMinutes minutes per day'
-                                : 'Limit total daily internet time',
+                                ? (l10n?.parentalDailyTimeLimitMinutes(
+                                        _dailyLimitMinutes!,
+                                      ) ??
+                                      '$_dailyLimitMinutes minutes per day')
+                                : (l10n?.parentalDailyTimeLimitSubtitle ??
+                                      'Limit total daily internet time'),
                           ),
                           secondary: const Icon(Icons.timer_outlined),
                           contentPadding: EdgeInsets.zero,
@@ -717,10 +772,42 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                         ],
 
                         // ── Content Filtering ─────────────────────────────
-                        _SectionLabel('Content Filtering (DNS)'),
+                        _SectionLabel(
+                          l10n?.parentalContentFiltering ??
+                              'Content Filtering (DNS)',
+                        ),
                         const SizedBox(height: 8),
-                        ...ContentFilterDns.values.map(
-                          (opt) => ListTile(
+                        ...ContentFilterDns.values.map((opt) {
+                          final String optLabel;
+                          final String optDesc;
+                          switch (opt) {
+                            case ContentFilterDns.none:
+                              optLabel =
+                                  l10n?.parentalDnsFilterNone ?? opt.label;
+                              optDesc =
+                                  l10n?.parentalDnsFilterNoneDesc ??
+                                  opt.description;
+                            case ContentFilterDns.cloudflareFamilySafe:
+                              optLabel =
+                                  l10n?.parentalDnsFilterCloudflare ??
+                                  opt.label;
+                              optDesc =
+                                  l10n?.parentalDnsFilterCloudflareDesc ??
+                                  opt.description;
+                            case ContentFilterDns.openDnsFamilyShield:
+                              optLabel =
+                                  l10n?.parentalDnsFilterOpenDns ?? opt.label;
+                              optDesc =
+                                  l10n?.parentalDnsFilterOpenDnsDesc ??
+                                  opt.description;
+                            case ContentFilterDns.custom:
+                              optLabel =
+                                  l10n?.parentalDnsFilterCustom ?? opt.label;
+                              optDesc =
+                                  l10n?.parentalDnsFilterCustomDesc ??
+                                  opt.description;
+                          }
+                          return ListTile(
                             contentPadding: EdgeInsets.zero,
                             dense: true,
                             leading: Icon(
@@ -733,37 +820,39 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                               size: 20,
                             ),
                             title: Text(
-                              opt.label,
+                              optLabel,
                               style: const TextStyle(fontSize: 14),
                             ),
                             subtitle: Text(
-                              opt.description,
+                              optDesc,
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                             onTap: () => setState(() => _contentFilter = opt),
-                          ),
-                        ),
+                          );
+                        }),
                         if (_contentFilter == ContentFilterDns.custom) ...[
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _customDns1Ctrl,
-                            decoration: const InputDecoration(
-                              labelText: 'Primary DNS',
+                            decoration: InputDecoration(
+                              labelText:
+                                  l10n?.parentalPrimaryDns ?? 'Primary DNS',
                               hintText: '1.1.1.1',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                               isDense: true,
                             ),
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _customDns2Ctrl,
-                            decoration: const InputDecoration(
-                              labelText: 'Secondary DNS',
+                            decoration: InputDecoration(
+                              labelText:
+                                  l10n?.parentalSecondaryDns ?? 'Secondary DNS',
                               hintText: '8.8.8.8',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                               isDense: true,
                             ),
                           ),
@@ -781,7 +870,7 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: Text(l10n?.actionCancel ?? 'Cancel'),
                     ),
                     const SizedBox(width: 8),
                     Flexible(
@@ -789,7 +878,10 @@ class _AddEditProfileDialogState extends ConsumerState<AddEditProfileDialog> {
                         onPressed: _canSave ? _save : null,
                         icon: const Icon(Icons.check_rounded, size: 18),
                         label: Text(
-                          _isEditing ? 'Save Changes' : 'Create Profile',
+                          _isEditing
+                              ? (l10n?.parentalProfileBtnSave ?? 'Save Changes')
+                              : (l10n?.parentalBtnCreateProfile ??
+                                    'Create Profile'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -939,6 +1031,7 @@ class _ScheduleEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -954,7 +1047,7 @@ class _ScheduleEditor extends StatelessWidget {
             children: [
               Expanded(
                 child: _TimeButton(
-                  label: 'Block at',
+                  label: l10n?.parentalProfileBedtimeStart ?? 'Block at',
                   time: schedule.blockTimeFormatted,
                   onTap: () => _pickTime(context, isBlock: true),
                 ),
@@ -965,7 +1058,7 @@ class _ScheduleEditor extends StatelessWidget {
               ),
               Expanded(
                 child: _TimeButton(
-                  label: 'Resume at',
+                  label: l10n?.parentalProfileBedtimeEnd ?? 'Resume at',
                   time: schedule.resumeTimeFormatted,
                   onTap: () => _pickTime(context, isBlock: false),
                 ),
@@ -975,7 +1068,7 @@ class _ScheduleEditor extends StatelessWidget {
           const SizedBox(height: 10),
           // Day selector
           Text(
-            'Active on:',
+            l10n?.parentalProfileDaysActive ?? 'Active on:',
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

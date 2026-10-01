@@ -18,9 +18,13 @@ import 'package:yet_another_luci_app/design/luci_design_system.dart';
 import 'package:yet_another_luci_app/models/client.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import 'package:yet_another_luci_app/modules/system_monitoring/models/system_metrics.dart';
+import 'package:yet_another_luci_app/modules/system_monitoring/models/router_temperature.dart';
+import 'package:yet_another_luci_app/modules/system_monitoring/screens/system_monitoring_screen.dart';
+import 'package:yet_another_luci_app/modules/system_monitoring/widgets/add_rpc_handler_dialog.dart';
 import 'package:yet_another_luci_app/modules/wireless_management/screens/guest_wifi_management_screen.dart';
 import 'package:yet_another_luci_app/modules/vpn_connectivity/screens/vpn_connectivity_screen.dart';
 import 'package:yet_another_luci_app/screens/manage_routers_screen.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -121,6 +125,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildDeviceInfoCard(AppState appState) {
+    final l10n = AppLocalizations.of(context);
     final boardInfo =
         appState.dashboardData?['boardInfo'] as Map<String, dynamic>?;
     final model =
@@ -148,112 +153,79 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       context,
     ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow =
-                constraints.maxWidth < 340 ||
-                MediaQuery.textScalerOf(context).scale(14) > 18;
-            final versionRow = Wrap(
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 4,
-              runSpacing: 4,
-              children: [
-                Text(
-                  versionDisplay,
-                  style: valueStyle,
-                  textAlign: TextAlign.center,
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: channelColors.background,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    channelLabel,
-                    style: TextStyle(
-                      color: channelColors.foreground,
-                      fontWeight: FontWeight.bold,
-                      fontSize: Theme.of(context).textTheme.bodySmall?.fontSize,
+    final versionRow = Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        Text(versionDisplay, style: valueStyle, textAlign: TextAlign.center),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: channelColors.background,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            channelLabel,
+            style: TextStyle(
+              color: channelColors.foreground,
+              fontWeight: FontWeight.bold,
+              fontSize: Theme.of(context).textTheme.bodySmall?.fontSize,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l10n?.labelModel ?? 'Model',
+                      style: labelStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      model,
+                      style: valueStyle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-              ],
-            );
-
-            if (isNarrow) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Model', style: labelStyle),
-                      const SizedBox(height: 2),
-                      Text(
-                        model,
-                        style: valueStyle,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(releaseInfo.distributionName, style: labelStyle),
-                      const SizedBox(height: 2),
-                      versionRow,
-                    ],
-                  ),
-                ],
-              );
-            }
-
-            return Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Model', style: labelStyle),
-                      const SizedBox(height: 4),
-                      Text(
-                        model,
-                        style: valueStyle,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+              ),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      releaseInfo.distributionName,
+                      style: labelStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    versionRow,
+                  ],
                 ),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        releaseInfo.distributionName,
-                        style: labelStyle,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      versionRow,
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -333,6 +305,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   void _showRouterSwitchModal(BuildContext context, AppState appState) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final colorScheme = theme.colorScheme;
     final selectedRouterId = appState.selectedRouter?.id;
 
@@ -367,16 +340,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     children: [
                       Icon(Icons.router_rounded, color: colorScheme.primary),
                       const SizedBox(width: 10),
-                      Text(
-                        'Switch Router',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          l10n?.manageRoutersTitle ?? 'Switch Router',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       TextButton.icon(
                         icon: const Icon(Icons.settings_outlined, size: 16),
-                        label: const Text('Manage'),
+                        label: Text(l10n?.btnManage ?? 'Manage'),
                         onPressed: () {
                           Navigator.pop(bottomSheetContext);
                           Navigator.of(context).push(
@@ -586,19 +563,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               vertical: 8.0,
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildSpeedIndicator(
-                  Icons.arrow_downward,
-                  LuciColors.rx,
-                  '',
-                  isSwitchingRouter ? 0.0 : currentRxRate,
+                Expanded(
+                  child: Center(
+                    child: _buildSpeedIndicator(
+                      Icons.arrow_downward,
+                      LuciColors.rx,
+                      '',
+                      isSwitchingRouter ? 0.0 : currentRxRate,
+                    ),
+                  ),
                 ),
-                _buildSpeedIndicator(
-                  Icons.arrow_upward,
-                  LuciColors.tx,
-                  '',
-                  isSwitchingRouter ? 0.0 : currentTxRate,
+                Expanded(
+                  child: Center(
+                    child: _buildSpeedIndicator(
+                      Icons.arrow_upward,
+                      LuciColors.tx,
+                      '',
+                      isSwitchingRouter ? 0.0 : currentTxRate,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -769,31 +753,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       )
                     : Center(
                         key: ValueKey('loading_${appState.selectedRouter?.id}'),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.trending_up,
-                              size: 48,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.7),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              isSwitchingRouter
-                                  ? 'Switching router...'
-                                  : 'Collecting throughput data...',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.8),
-                                  ),
-                            ),
-                          ],
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.trending_up,
+                                size: 48,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                isSwitchingRouter
+                                    ? 'Switching router...'
+                                    : 'Collecting throughput data...',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.8),
+                                    ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
               ),
@@ -946,24 +933,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     BuildContext context, {
     required String label,
     required String value,
+    Color? valueColor,
   }) {
     final labelStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
       color: Theme.of(context).colorScheme.onSurface,
     );
-    final valueStyle = Theme.of(
-      context,
-    ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold);
+    final valueStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.bold,
+      color: valueColor,
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: labelStyle),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(label, style: labelStyle),
+        ),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: valueStyle,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(value, style: valueStyle, textAlign: TextAlign.center),
         ),
       ],
     );
@@ -973,7 +963,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final sysInfo = appState.dashboardData?['sysInfo'] as Map<String, dynamic>?;
     final boardInfo =
         appState.dashboardData?['boardInfo'] as Map<String, dynamic>?;
-    final metrics = SystemMetrics.fromSysInfo(sysInfo, boardInfo: boardInfo);
+    final metrics = SystemMetrics.fromSysInfo(
+      sysInfo,
+      boardInfo: boardInfo,
+      temperature: appState.dashboardData?['temperature'],
+    );
 
     final uptimeValue = metrics.formattedUptime;
     final cpuLoadValue = '${metrics.cpuUsagePercent.toStringAsFixed(0)}%';
@@ -981,27 +975,67 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final memoryValue = metrics.totalMemoryBytes > 0
         ? '${metrics.memoryUsagePercent.toStringAsFixed(0)}%'
         : 'N/A';
-
     final prefs = appState.dashboardPreferences;
+    final tempValue = metrics.formattedTemperatureForUnit(
+      prefs.temperatureUnit,
+    );
     final vitals = <Widget>[];
+    final l10n = AppLocalizations.of(context);
     if (prefs.showCpuLoad) {
       vitals.add(
-        _buildVitalsColumn(context, label: 'CPU Load', value: cpuLoadValue),
+        _buildVitalsColumn(
+          context,
+          label: l10n?.cpuUsage ?? 'CPU Load',
+          value: cpuLoadValue,
+        ),
       );
     }
     if (prefs.showRamUsage) {
       vitals.add(
-        _buildVitalsColumn(context, label: 'RAM Usage', value: memoryValue),
+        _buildVitalsColumn(
+          context,
+          label: l10n?.memoryUsage ?? 'RAM Usage',
+          value: memoryValue,
+        ),
+      );
+    }
+    final tempObj = metrics.temperature;
+    final hasUsableTemp =
+        tempObj != null &&
+        tempObj.isSupported &&
+        tempObj.mainTemperature != null;
+    if (prefs.showTemperature && hasUsableTemp) {
+      Color? tempColor;
+      if (tempObj.status == ThermalStatus.hot) {
+        tempColor = Colors.red;
+      } else if (tempObj.status == ThermalStatus.warm) {
+        tempColor = Colors.orange;
+      }
+      vitals.add(
+        _buildVitalsColumn(
+          context,
+          label: l10n?.metricTemperature ?? 'Temp',
+          value: tempValue,
+          valueColor: tempColor,
+        ),
       );
     }
     if (prefs.showLoadAverage) {
       vitals.add(
-        _buildVitalsColumn(context, label: 'Load Avg', value: loadAvgValue),
+        _buildVitalsColumn(
+          context,
+          label: l10n?.metricLoadAvg ?? 'Load Avg',
+          value: loadAvgValue,
+        ),
       );
     }
     if (prefs.showUptime) {
       vitals.add(
-        _buildVitalsColumn(context, label: 'Uptime', value: uptimeValue),
+        _buildVitalsColumn(
+          context,
+          label: l10n?.systemUptime ?? 'Uptime',
+          value: uptimeValue,
+        ),
       );
     }
 
@@ -1011,9 +1045,174 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
-        child: Row(children: vitals.map((v) => Expanded(child: v)).toList()),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SystemMonitoringScreen(),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 520;
+              if (isNarrow && vitals.length > 3) {
+                final mid = (vitals.length / 2).ceil();
+                final top = vitals.sublist(0, mid);
+                final bottom = vitals.sublist(mid);
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(children: top.map((v) => Expanded(child: v)).toList()),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: bottom.map((v) => Expanded(child: v)).toList(),
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: vitals.map((v) => Expanded(child: v)).toList(),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildTemperaturePromptPill(BuildContext context, AppState appState) {
+    final prefs = appState.dashboardPreferences;
+    if (prefs.dismissTemperaturePrompt) {
+      return null;
+    }
+    if (!prefs.showTemperature) {
+      return null;
+    }
+    final data = appState.dashboardData;
+    if (data == null) {
+      return null;
+    }
+    final rawTemp = data['temperature'];
+    final tempObj = rawTemp is RouterTemperature
+        ? rawTemp
+        : (rawTemp != null ? RouterTemperature.parse(rawTemp) : null);
+    if (tempObj == null) {
+      return null;
+    }
+    if (tempObj.isFullySupported ||
+        (tempObj.isSupported && tempObj.mainTemperature != null)) {
+      return null;
+    }
+    // Context-aware & hardware check:
+    // Only display if the router physically possesses sensors and needs the script.
+    // If the router hardware lacks thermal sensors entirely, DO NOT show!
+    if (!tempObj.needsNativeHandler) {
+      return null;
+    }
+
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Color bgColor = isDark
+        ? const Color(0xFF332A15)
+        : const Color(0xFFFEF3C7);
+    final Color borderColor = isDark
+        ? const Color(0xFF854D0E)
+        : const Color(0xFFFCD34D);
+    final Color iconColor = isDark
+        ? const Color(0xFFFBBF24)
+        : const Color(0xFFB45309);
+    final Color textColor = isDark
+        ? const Color(0xFFFDE68A)
+        : const Color(0xFF92400E);
+
+    return Container(
+      margin: const EdgeInsets.only(left: 8.0),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(13),
+              ),
+              onTap: () {
+                AddRpcHandlerDialog.show(
+                  context,
+                  onDismissPermanently: () async {
+                    await appState.saveDashboardPreferences(
+                      prefs.copyWith(dismissTemperaturePrompt: true),
+                    );
+                    if (context.mounted) {
+                      context.showToastInfo(
+                        'Temperature script prompt dismissed permanently',
+                      );
+                    }
+                  },
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 7,
+                  vertical: 3.5,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.thermostat_outlined, size: 14, color: iconColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Temp Script Missing',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(width: 1, height: 12, color: borderColor),
+            InkWell(
+              borderRadius: const BorderRadius.horizontal(
+                right: Radius.circular(13),
+              ),
+              onTap: () async {
+                await appState.saveDashboardPreferences(
+                  prefs.copyWith(dismissTemperaturePrompt: true),
+                );
+                if (context.mounted) {
+                  context.showToastInfo(
+                    'Temperature script prompt dismissed permanently',
+                  );
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 5,
+                  vertical: 3.5,
+                ),
+                child: Tooltip(
+                  message: "Permanently dismiss temperature prompt",
+                  child: Icon(Icons.close_rounded, size: 13, color: textColor),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1021,6 +1220,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildClientsSummaryCard(AppState appState) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     final clients = appState.clients;
     final connectedClients = clients.where((c) => c.isConnected).toList();
@@ -1049,7 +1249,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
       }
       return Text(
-        '$count Connected',
+        l10n?.clientsConnectedCount(count) ?? '$count Connected',
         style: theme.textTheme.titleSmall?.copyWith(
           fontWeight: FontWeight.bold,
         ),
@@ -1089,7 +1289,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           color: colorScheme.secondaryContainer,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: colorScheme.secondary.withValues(alpha: 0.25),
+                            color: colorScheme.secondary.withValues(
+                              alpha: 0.25,
+                            ),
                             width: 0.8,
                           ),
                         ),
@@ -1104,10 +1306,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Wired Clients',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                l10n?.cardWiredClients ?? 'Wired Clients',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -1165,10 +1371,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Wireless Clients',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                l10n?.cardWirelessClients ?? 'Wireless Clients',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 2),
@@ -1279,6 +1489,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     String title,
     IconData icon, {
     Widget? action,
+    int maxLines = 2,
   }) {
     final theme = Theme.of(context);
     return Padding(
@@ -1286,21 +1497,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: theme.colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                  letterSpacing: 0.3,
+          Expanded(
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: maxLines,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                      letterSpacing: 0.3,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          ?action,
+          if (action != null) ...[const SizedBox(width: 8), action],
         ],
       ),
     );
@@ -1323,6 +1540,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
+        final l10n = AppLocalizations.of(context);
         final leasesRaw = appState.dashboardData?['dhcpLeases'];
         final leases = <String, Map<String, dynamic>>{};
         if (leasesRaw is Map<String, dynamic>) {
@@ -1391,7 +1609,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ),
                     Chip(
-                      label: Text('${stations.length} connected'),
+                      label: Text(
+                        l10n?.dashStationsConnected(stations.length) ??
+                            '${stations.length} connected',
+                      ),
                       backgroundColor: Theme.of(
                         context,
                       ).colorScheme.primaryContainer,
@@ -1405,23 +1626,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 const Divider(height: 24),
                 if (stations.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24.0),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.devices_other,
-                            size: 40,
-                            color: Colors.grey.shade500,
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24.0),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.devices_other,
+                                size: 40,
+                                color: Colors.grey.shade500,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'No clients currently associated with $radioName ($ssid).',
+                                style: TextStyle(color: Colors.grey.shade600),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'No clients currently associated with $radioName ($ssid).',
-                            style: TextStyle(color: Colors.grey.shade600),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   )
@@ -1578,6 +1803,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildWirelessNetworksCard(AppState appState) {
+    final l10n = AppLocalizations.of(context);
     final overview = WirelessOverview.fromDashboardData(
       appState.dashboardData,
       isReviewerMode: appState.reviewerModeEnabled,
@@ -1597,10 +1823,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 10),
-              Text(
-                'No wireless interfaces configured',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              Expanded(
+                child: Text(
+                  l10n?.noWirelessRadiosFound ??
+                      'No wireless interfaces configured',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -1656,11 +1887,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         children: [
                           Row(
                             children: [
-                              Text(
-                                ssid,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                              Flexible(
+                                child: Text(
+                                  ssid,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -1683,7 +1917,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     color: isEnabled
                                         ? LuciStatusColors.connected
                                         : Colors.red.shade800,
-                                    fontSize: 9,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1729,7 +1963,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${iface.stations.length} clients',
+                                l10n?.cardClientsCount(iface.stations.length) ??
+                                    '${iface.stations.length} clients',
                                 style: TextStyle(
                                   color: Theme.of(
                                     context,
@@ -1743,9 +1978,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Tap for clients',
+                          l10n?.cardTapForClients ?? 'Tap for clients',
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 10,
                             color: Colors.grey.shade600,
                           ),
                         ),
@@ -1836,10 +2071,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 10),
-              Text(
-                'No network interfaces active',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              Expanded(
+                child: Text(
+                  'No network interfaces active',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -2087,8 +2326,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     final cardWidth = 220.0;
+    final textScale = MediaQuery.textScalerOf(context).scale(1.0);
+    final cardHeight = (132.0 * textScale).clamp(130.0, 168.0);
     return SizedBox(
-      height: 130,
+      height: cardHeight,
       child: ListView.separated(
         controller: _wanScrollController,
         scrollDirection: Axis.horizontal,
@@ -2157,18 +2398,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _showExitReviewerModeDialog(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Exit Reviewer Mode?'),
-        content: const Text(
-          'This will disable reviewer mode and redirect to the login screen so you can connect to a live router.',
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(l10n?.exitReviewerModeTitle ?? 'Exit Reviewer Mode?'),
+        content: const SingleChildScrollView(
+          child: Text(
+            'This will disable reviewer mode and redirect to the login screen so you can connect to a live router.',
+          ),
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton.icon(
             style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
@@ -2183,7 +2429,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               }
             },
             icon: const Icon(Icons.logout_rounded, size: 16),
-            label: const Text('Exit Reviewer Mode'),
+            label: Text(l10n?.exitReviewerModeBtn ?? 'Exit Reviewer Mode'),
           ),
         ],
       ),
@@ -2289,6 +2535,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildSkeletonVitalsCard(BuildContext context) {
+    final appState = ref.read(appStateProvider);
+    final prefs = appState.dashboardPreferences;
+    final temp = appState.dashboardData?['temperature'];
+    final tempObj = temp is RouterTemperature
+        ? temp
+        : (temp != null ? RouterTemperature.parse(temp) : null);
+    final hasUsableTemp =
+        tempObj != null &&
+        tempObj.isSupported &&
+        tempObj.mainTemperature != null;
+
+    int count = 0;
+    if (prefs.showCpuLoad) count++;
+    if (prefs.showRamUsage) count++;
+    if (prefs.showTemperature && hasUsableTemp) count++;
+    if (prefs.showLoadAverage) count++;
+    if (prefs.showUptime) count++;
+    if (count == 0) return const SizedBox.shrink();
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -2296,7 +2561,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 8.0),
         child: Row(
-          children: List.generate(4, (index) {
+          children: List.generate(count, (index) {
             return Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -2403,6 +2668,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildSkeletonDashboard(BuildContext context, AppState appState) {
+    final l10n = AppLocalizations.of(context);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -2415,25 +2681,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             _buildRpcWarningCard(context, appState),
           _buildSectionHeader(
             context,
-            'Real-time Network Traffic',
+            l10n?.cardRealtimeTraffic ?? 'Real-time Network Traffic',
             Icons.swap_vert,
           ),
           SizedBox(height: 220, child: _buildRealtimeThroughputCard(appState)),
-          _buildSectionHeader(context, 'System Vitals', Icons.monitor_heart),
+          _buildSectionHeader(
+            context,
+            l10n?.cardSystemVitals ?? 'System Vitals',
+            Icons.monitor_heart,
+          ),
           _buildSkeletonVitalsCard(context),
           _buildSectionHeader(
             context,
-            'Connected Clients Overview',
+            l10n?.cardConnectedClients ?? 'Connected Clients Overview',
             Icons.devices,
           ),
           _buildSkeletonClientsCard(context),
-          _buildSectionHeader(context, 'Wireless Radios & SSIDs', Icons.wifi),
+          _buildSectionHeader(
+            context,
+            l10n?.cardWirelessRadios ?? 'Wireless Radios & SSIDs',
+            Icons.wifi,
+          ),
           _buildSkeletonCard(context, height: 72),
-          _buildSectionHeader(context, 'Network Interfaces', Icons.lan),
+          _buildSectionHeader(
+            context,
+            l10n?.cardNetworkInterfaces ?? 'Network Interfaces',
+            Icons.lan,
+          ),
           _buildSkeletonCard(context, height: 64),
           _buildSectionHeader(
             context,
-            'System Modules & Storage',
+            l10n?.cardSystemModules ?? 'System Modules & Storage',
             Icons.storage,
           ),
           ..._buildModuleDashboardWidgets(context),
@@ -2444,9 +2722,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildBody(AppState appState) {
+    final l10n = AppLocalizations.of(context);
     if (appState.dashboardError != null && appState.dashboardData == null) {
       return LuciErrorDisplay(
-        title: 'Connection Failed',
+        title: l10n?.dashConnectionFailed ?? 'Connection Failed',
         message:
             'Unable to connect to the router. Please check your network connection and router settings.',
         actionLabel: 'Retry Connection',
@@ -2467,7 +2746,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
       }
       return LuciEmptyState(
-        title: 'No Data Available',
+        title: l10n?.dashNoDataAvailable ?? 'No Data Available',
         message:
             'Unable to fetch dashboard data. Pull down to refresh or tap the button below.',
         icon: Icons.dashboard_outlined,
@@ -2514,6 +2793,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final prefs = appState.dashboardPreferences;
     final order = prefs.cardOrder;
     final widgets = <Widget>[];
+    final l10n = AppLocalizations.of(context);
 
     widgets.add(const SizedBox(height: 12));
 
@@ -2542,7 +2822,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             widgets.add(
               _buildSectionHeader(
                 context,
-                'Real-time Network Traffic',
+                l10n?.cardRealtimeTraffic ?? 'Real-time Network Traffic',
                 Icons.swap_vert,
               ),
             );
@@ -2556,12 +2836,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           widgets.add(const SizedBox(height: 12));
           break;
         case 'system_vitals':
-          if (!isWide) {
+          final tempPill = _buildTemperaturePromptPill(context, appState);
+          if (!isWide || tempPill != null) {
             widgets.add(
               _buildSectionHeader(
                 context,
-                'System Vitals',
+                l10n?.cardSystemVitals ?? 'System Vitals',
                 Icons.monitor_heart,
+                action: tempPill,
               ),
             );
           }
@@ -2573,7 +2855,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             widgets.add(
               _buildSectionHeader(
                 context,
-                'Connected Clients Overview',
+                l10n?.cardConnectedClients ?? 'Connected Clients Overview',
                 Icons.devices,
               ),
             );
@@ -2586,7 +2868,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             widgets.add(
               _buildSectionHeader(
                 context,
-                'Wireless Radios & SSIDs',
+                l10n?.cardWirelessRadios ?? 'Wireless Radios & SSIDs',
                 Icons.wifi,
               ),
             );
@@ -2599,7 +2881,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             widgets.add(
               _buildSectionHeader(
                 context,
-                'Network Interfaces',
+                l10n?.cardNetworkInterfaces ?? 'Network Interfaces',
                 Icons.lan,
                 action: IconButton(
                   icon: Icon(
@@ -2632,7 +2914,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             widgets.add(
               _buildSectionHeader(
                 context,
-                'System Modules & Storage',
+                l10n?.cardSystemModules ?? 'System Modules & Storage',
                 Icons.storage,
               ),
             );
@@ -2649,6 +2931,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget? _buildQuickActionsCard(BuildContext context, AppState appState) {
     final enabledActions = appState.dashboardPreferences.enabledQuickActions;
     if (enabledActions.isEmpty) return null;
+    final l10n = AppLocalizations.of(context);
 
     final buttons = <Widget>[];
 
@@ -2658,7 +2941,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           context,
           icon: Icons.restart_alt,
           color: Colors.amber.shade700,
-          label: 'Reboot Router',
+          label: l10n?.quickActionReboot ?? 'Reboot',
           onTap: () => _showQuickRebootDialog(context, appState),
         ),
       );
@@ -2670,7 +2953,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           context,
           icon: Icons.cleaning_services,
           color: Colors.teal,
-          label: 'Flush DNS',
+          label: l10n?.quickActionFlushDns ?? 'Flush DNS',
           onTap: () async {
             const actionKey = 'flush_dns_action';
             context.showToastLoading(
@@ -2683,16 +2966,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               context: context,
             );
             if (context.mounted) {
+              final l10n = AppLocalizations.of(context);
               if (success) {
                 context.showToastSuccess(
                   'DNS Cache Flushed',
-                  subtitle: 'dnsmasq restarted successfully',
+                  subtitle:
+                      l10n?.dashDnsRestartSuccess ??
+                      'dnsmasq restarted successfully',
                   actionKey: actionKey,
                 );
               } else {
                 context.showToastError(
                   'Flush DNS Failed',
-                  subtitle: 'Could not send command to router',
+                  subtitle:
+                      l10n?.dashDnsRestartFailed ??
+                      'Could not send command to router',
                   actionKey: actionKey,
                 );
               }
@@ -2708,7 +2996,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           context,
           icon: Icons.wifi_tethering,
           color: Colors.indigo,
-          label: 'Guest Wi-Fi',
+          label: l10n?.quickActionGuestWifi ?? 'Guest Wi-Fi',
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -2726,7 +3014,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           context,
           icon: Icons.vpn_key,
           color: Colors.deepOrange,
-          label: 'VPN Status',
+          label: l10n?.quickActionVpn ?? 'VPN',
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const VpnConnectivityScreen()),
@@ -2742,7 +3030,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           context,
           icon: Icons.refresh,
           color: Theme.of(context).colorScheme.primary,
-          label: 'Refresh Data',
+          label: l10n?.quickActionRefresh ?? 'Refresh',
           onTap: () async {
             const actionKey = 'refresh_dashboard_action';
             context.showToastLoading(
@@ -2780,11 +3068,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Quick Actions',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    l10n?.cardQuickActions ?? 'Quick Actions',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
                 ),
               ],
             ),
@@ -2829,35 +3121,45 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _showQuickRebootDialog(BuildContext context, AppState appState) {
-    final routerName = appState.selectedRouter?.displayName ?? 'the router';
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Reboot Router?'),
-        content: Text('Are you sure you want to reboot $routerName now?'),
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(l10n?.dialogRebootTitle ?? 'Reboot Router?'),
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.dialogRebootMessage ??
+                'This will reboot the router. The app will lose connection until it comes back online. Continue?',
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             onPressed: () async {
               Navigator.of(ctx).pop();
               const actionKey = 'router_reboot';
               context.showToastLoading(
-                'Rebooting Router...',
+                l10n?.dialogRebootToast ?? 'Rebooting Router...',
                 actionKey: actionKey,
               );
               final success = await appState.reboot(context: context);
               if (context.mounted && !success) {
+                final errL10n = AppLocalizations.of(context);
                 context.showToastError(
                   'Reboot Failed',
-                  subtitle: 'Could not send command to router',
+                  subtitle:
+                      errL10n?.dashRebootCommandFailed ??
+                      'Failed to send reboot command to router.',
                   actionKey: actionKey,
                 );
               }
             },
-            child: const Text('Reboot'),
+            child: Text(l10n?.dialogRebootConfirm ?? 'Reboot'),
           ),
         ],
       ),
@@ -2865,6 +3167,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildRpcWarningCard(BuildContext context, AppState appState) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       color: Theme.of(
         context,
@@ -2922,10 +3225,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () async {
+                      final rpcL10n = AppLocalizations.of(context);
                       const actionKey = 'rpc_autofix';
                       context.showToastLoading(
                         'Installing RPC packages...',
-                        subtitle: 'Fixing router RPC permissions & modules...',
+                        subtitle:
+                            rpcL10n?.dashFixingPermissions ??
+                            'Fixing router RPC permissions & modules...',
                         actionKey: actionKey,
                       );
                       final success = await appState.autoFixPermissions(
@@ -2942,14 +3248,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         } else {
                           context.showToastError(
                             'Auto-Install Failed',
-                            subtitle: 'Tap "Manual Info" for shell commands.',
+                            subtitle:
+                                rpcL10n?.dashManualInfoHint ??
+                                'Tap "Manual Info" for shell commands.',
                             actionKey: actionKey,
                           );
                         }
                       }
                     },
                     icon: const Icon(Icons.build_circle_outlined, size: 18),
-                    label: const Text('Auto-Install RPC'),
+                    label: Text(l10n?.autoInstallRpc ?? 'Auto-Install RPC'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -2970,7 +3278,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ).colorScheme.onErrorContainer.withValues(alpha: 0.6),
                     ),
                   ),
-                  child: const Text('Manual Info'),
+                  child: Text(l10n?.manualInfo ?? 'Manual Info'),
                 ),
               ],
             ),
@@ -2981,15 +3289,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _showManualRpcInstallDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Row(
           children: [
-            Icon(Icons.terminal, color: Colors.blue),
-            SizedBox(width: 8),
+            const Icon(Icons.terminal, color: Colors.blue),
+            const SizedBox(width: 8),
             Expanded(
-              child: Text('Manual RPC Installation'),
+              child: Text(
+                l10n?.manualRpcInstallation ?? 'Manual RPC Installation',
+              ),
             ),
           ],
         ),
@@ -3014,7 +3327,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
+            child: Text(l10n?.actionClose ?? 'Close'),
           ),
         ],
       ),

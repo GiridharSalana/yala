@@ -6,6 +6,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/design/luci_theme.dart';
 import 'package:yet_another_luci_app/state/app_state.dart';
 import 'package:yet_another_luci_app/screens/login_screen.dart';
@@ -19,11 +20,15 @@ import 'package:yet_another_luci_app/models/router_capabilities.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Modern Android Edge-to-Edge System Bar Integration
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Register YALA's GPLv3 copyleft license and copyright attributions in Flutter LicenseRegistry
   LicenseRegistry.addLicense(() async* {
@@ -75,6 +80,11 @@ class LuciScrollBehavior extends MaterialScrollBehavior {
 
   @override
   ScrollPhysics getScrollPhysics(BuildContext context) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      return const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      );
+    }
     return const ClampingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
   }
 
@@ -107,6 +117,7 @@ class LuCIApp extends ConsumerWidget {
     final themePalette = ref.watch(
       appStateProvider.select((s) => s.themePalette),
     );
+    final appLocale = ref.watch(appStateProvider.select((s) => s.locale));
     final useDynamicTheme = themePalette == AppThemePalette.dynamicTheme;
 
     return DynamicColorBuilder(
@@ -133,6 +144,42 @@ class LuCIApp extends ConsumerWidget {
           theme: lightTheme,
           darkTheme: darkTheme,
           themeMode: themeMode,
+          builder: (context, child) {
+            final mediaQuery = MediaQuery.of(context);
+            // Accessibility large font support clamped within safe bounds [0.85, 1.45]
+            // Allows 45% larger font size while preventing UI destruction on dense network management views
+            final clampedTextScaler = mediaQuery.textScaler.clamp(
+              minScaleFactor: 0.85,
+              maxScaleFactor: 1.45,
+            );
+            return MediaQuery(
+              data: mediaQuery.copyWith(textScaler: clampedTextScaler),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+          locale: appLocale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localeResolutionCallback: (locale, supportedLocales) {
+            if (locale == null) return const Locale('en');
+            if (locale.languageCode == 'pt') {
+              if (locale.countryCode == 'BR') {
+                return const Locale('pt', 'BR');
+              }
+              return const Locale('pt');
+            }
+            if (locale.languageCode == 'zh') {
+              return const Locale('zh');
+            }
+            for (final supported in supportedLocales) {
+              if (supported.languageCode == locale.languageCode &&
+                  supported.countryCode == null) {
+                return supported;
+              }
+            }
+            // English is the fallback as well as base
+            return const Locale('en');
+          },
           initialRoute: '/splash',
           routes: {
             '/splash': (context) => const SplashScreen(),

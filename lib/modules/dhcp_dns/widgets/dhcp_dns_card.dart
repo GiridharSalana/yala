@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/main.dart';
 import '../models/dhcp_dns_info.dart';
 
@@ -14,6 +15,7 @@ class DhcpDnsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final appState = ref.watch(appStateProvider);
     final overview = DhcpDnsOverview.fromDashboardData(appState.dashboardData);
+    final l10n = AppLocalizations.of(context);
 
     return Card(
       elevation: 2,
@@ -38,9 +40,10 @@ class DhcpDnsCard extends ConsumerWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'DHCP & DNS Server',
+                          l10n?.dhcpDnsTitle ?? 'DHCP & DNS Server',
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -48,12 +51,20 @@ class DhcpDnsCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  '.${overview.dnsConfig.localDomain} Domain',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.7),
+                Flexible(
+                  child: Text(
+                    l10n != null
+                        ? l10n.dhcpDnsDomainSuffix(
+                            overview.dnsConfig.localDomain,
+                          )
+                        : '.${overview.dnsConfig.localDomain} Domain',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -64,7 +75,7 @@ class DhcpDnsCard extends ConsumerWidget {
                 Expanded(
                   child: _buildMetricTile(
                     context,
-                    label: 'Active Leases',
+                    label: l10n?.dhcpDnsActiveLeases ?? 'Active Leases',
                     value: '${overview.activeLeases.length}',
                     icon: Icons.badge_outlined,
                     color: Colors.blue,
@@ -73,7 +84,7 @@ class DhcpDnsCard extends ConsumerWidget {
                 Expanded(
                   child: _buildMetricTile(
                     context,
-                    label: 'Static Mappings',
+                    label: l10n?.dhcpDnsStaticMappings ?? 'Static Mappings',
                     value: '${overview.staticMappings.length}',
                     icon: Icons.pin_drop_outlined,
                     color: Colors.teal,
@@ -82,7 +93,7 @@ class DhcpDnsCard extends ConsumerWidget {
                 Expanded(
                   child: _buildMetricTile(
                     context,
-                    label: 'Upstream DNS',
+                    label: l10n?.dhcpDnsForwarders ?? 'DNS Forwarders',
                     value:
                         overview.dnsConfig.upstreamDnsServers.firstOrNull ??
                         '1.1.1.1',
@@ -93,8 +104,10 @@ class DhcpDnsCard extends ConsumerWidget {
                 Expanded(
                   child: _buildMetricTile(
                     context,
-                    label: 'DNS Rebind',
-                    value: overview.dnsConfig.rebindProtection ? 'ON' : 'OFF',
+                    label: l10n?.dhcpCardDnsRebind ?? 'DNS Rebind',
+                    value: overview.dnsConfig.rebindProtection
+                        ? (l10n?.statusEnabled ?? 'ON')
+                        : (l10n?.statusDisabled ?? 'OFF'),
                     icon: Icons.verified_user_outlined,
                     color: overview.dnsConfig.rebindProtection
                         ? Colors.green
@@ -127,17 +140,23 @@ class DhcpDnsCard extends ConsumerWidget {
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             fontSize: 10,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 2),
-        Text(
-          value,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
         ),
       ],
     );

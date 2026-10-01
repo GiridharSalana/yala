@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 enum PasswordStrength { weak, fair, strong, veryStrong }
 
@@ -47,16 +48,17 @@ class PasswordStrengthMeter extends StatelessWidget {
     }
   }
 
-  String _getLabel(PasswordStrength strength) {
+  String _getLabel(PasswordStrength strength, [AppLocalizations? l10n]) {
     switch (strength) {
       case PasswordStrength.weak:
-        return 'Weak (easy to guess)';
+        return l10n?.passwordStrengthWeak ?? 'Weak (easy to guess)';
       case PasswordStrength.fair:
-        return 'Fair (medium security)';
+        return l10n?.passwordStrengthFair ?? 'Fair (medium security)';
       case PasswordStrength.strong:
-        return 'Strong (good security)';
+        return l10n?.passwordStrengthStrong ?? 'Strong (good security)';
       case PasswordStrength.veryStrong:
-        return 'Very Strong (maximum security)';
+        return l10n?.passwordStrengthVeryStrong ??
+            'Very Strong (maximum security)';
     }
   }
 
@@ -81,6 +83,11 @@ class PasswordStrengthMeter extends StatelessWidget {
     final color = _getColor(strength);
     final activeBars = _getActiveBars(strength);
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final strengthLabel = _getLabel(strength, l10n);
+    final strengthDisplay = l10n != null
+        ? l10n.passwordStrengthPrefix(strengthLabel)
+        : 'Security Strength: $strengthLabel';
 
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 4),
@@ -106,7 +113,7 @@ class PasswordStrengthMeter extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Security Strength: ${_getLabel(strength)}',
+            strengthDisplay,
             style: theme.textTheme.bodySmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w600,

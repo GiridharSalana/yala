@@ -66,9 +66,8 @@ void main() {
                 onPressed: () {
                   showDialog(
                     context: context,
-                    builder: (ctx) => AddStaticLeaseDialog(
-                      existingMapping: mapping,
-                    ),
+                    builder: (ctx) =>
+                        AddStaticLeaseDialog(existingMapping: mapping),
                   );
                 },
                 child: const Text('Open Edit Dialog'),

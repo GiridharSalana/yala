@@ -22,6 +22,7 @@ import 'package:yet_another_luci_app/services/secure_storage_service.dart';
 import 'package:yet_another_luci_app/state/app_state.dart';
 import 'package:yet_another_luci_app/modules/core/luci_module_registry.dart';
 import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class _MoreScreenSection extends StatelessWidget {
   final List<Widget> tiles;
@@ -78,9 +79,12 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
 
   void _showRouterBackOnlineMessage() {
     if (mounted) {
+      final l10n = AppLocalizations.of(context);
       context.showToastSuccess(
-        'Router Online',
-        subtitle: 'Router is back online, reconnecting…',
+        l10n?.moreRouterOnline ?? 'Router Online',
+        subtitle:
+            l10n?.moreRouterOnlineSubtitle ??
+            'Router is back online, reconnecting…',
         actionKey: 'router_reboot',
       );
     }
@@ -88,21 +92,28 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
 
   Future<void> _showLogoutDialog(BuildContext context) async {
     final appState = ref.read(appStateProvider);
+    final l10n = AppLocalizations.of(context);
     return showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Logout?'),
-          content: const Text('Are you sure you want to logout?'),
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
+          title: Text(l10n?.dialogLogoutTitle ?? 'Logout?'),
+          content: SingleChildScrollView(
+            child: Text(
+              l10n?.dialogLogoutMessage ?? 'Are you sure you want to logout?',
+            ),
+          ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Cancel'),
+              child: Text(l10n?.actionCancel ?? 'Cancel'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: const Text('Logout'),
+              child: Text(l10n?.tileLogout ?? 'Logout'),
               onPressed: () async {
                 await appState.logout();
                 // Clear all accepted certificates on logout
@@ -139,35 +150,38 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
 
   Future<void> _showRebootDialog(BuildContext context) async {
     final appState = ref.read(appStateProvider);
-    final routerName =
-        appState.selectedRouter?.lastKnownHostname ??
-        appState.selectedRouter?.ipAddress ??
-        'the router';
+    final l10n = AppLocalizations.of(context);
     return showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Reboot Router?'),
-          content: Text(
-            'This will reboot $routerName. The app will lose connection until it comes back online. Continue?',
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
+          title: Text(l10n?.dialogRebootTitle ?? 'Reboot Router?'),
+          content: SingleChildScrollView(
+            child: Text(
+              l10n?.dialogRebootMessage ??
+                  'This will reboot the router. The app will lose connection until it comes back online. Continue?',
+            ),
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Cancel'),
+              child: Text(l10n?.actionCancel ?? 'Cancel'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             FilledButton(
-              child: const Text('Reboot'),
+              child: Text(l10n?.dialogRebootConfirm ?? 'Reboot'),
               onPressed: () async {
                 final parentContext = Navigator.of(context).context;
                 Navigator.of(context).pop();
                 const actionKey = 'router_reboot';
                 if (parentContext.mounted) {
                   parentContext.showToastLoading(
-                    'Rebooting Router',
+                    l10n?.dialogRebootToast ?? 'Rebooting Router',
                     subtitle:
+                        l10n?.dialogRebootToastSubtitle ??
                         'Router is rebooting... The app will automatically reconnect once online.',
                     actionKey: actionKey,
                     timeout: const Duration(seconds: 45),
@@ -177,9 +191,12 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                   context: parentContext.mounted ? parentContext : null,
                 );
                 if (parentContext.mounted && !success) {
+                  final parentL10n = AppLocalizations.of(parentContext);
                   parentContext.showToastError(
-                    'Reboot Failed',
-                    subtitle: 'Failed to send reboot command to router.',
+                    parentL10n?.moreRebootFailed ?? 'Reboot Failed',
+                    subtitle:
+                        parentL10n?.moreRebootFailedSubtitle ??
+                        'Failed to send reboot command to router.',
                     actionKey: actionKey,
                   );
                 }
@@ -195,12 +212,15 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
     final info = await PackageInfo.fromPlatform();
     if (!context.mounted) return;
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     unawaited(
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
+            actionsOverflowButtonSpacing: 8,
+            actionsOverflowDirection: VerticalDirection.down,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -237,7 +257,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          'Version ${info.version}',
+                          '${l10n?.dialogAboutVersion ?? "Version"} ${info.version}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -269,7 +289,8 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'A modern, high-performance OpenWrt router management mobile application.',
+                    l10n?.aboutAppDescription ??
+                        'A modern, high-performance OpenWrt router management mobile application.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -287,16 +308,17 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Attribution & Credits:',
+                          l10n?.aboutAttributionCredits ??
+                              'Attribution & Credits:',
                           style: theme.textTheme.labelMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '• Fork of cogwheel0/luci-mobile\n'
-                          '• Original work Copyright (C) 2025–2026 cogwheel0\n'
-                          '• Modifications Copyright (C) 2026 @nightcodex7',
+                          '• ${l10n?.aboutForkNotice ?? "Originally based on cogwheel0/luci-mobile"}\n'
+                          '• ${l10n?.aboutOriginalWorkNotice ?? "Original work Copyright (C) 2025–2026 cogwheel0"}\n'
+                          '• ${l10n?.aboutModificationsNotice ?? "Modifications Copyright (C) 2026 @nightcodex7"}',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                             height: 1.3,
@@ -316,7 +338,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                           _showGplLicenseDialog(context);
                         },
                         icon: const Icon(Icons.policy_outlined, size: 16),
-                        label: const Text('License (GPLv3)'),
+                        label: Text(l10n?.btnLicenseGplv3 ?? 'License (GPLv3)'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -334,7 +356,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                           );
                         },
                         icon: const Icon(Icons.code_rounded, size: 16),
-                        label: const Text('GitHub'),
+                        label: Text(l10n?.btnGitHub ?? 'GitHub'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -352,7 +374,9 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                           );
                         },
                         icon: const Icon(Icons.fork_right_rounded, size: 16),
-                        label: const Text('Original Project'),
+                        label: Text(
+                          l10n?.btnOriginalProject ?? 'Original Project',
+                        ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -377,7 +401,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                           );
                         },
                         icon: const Icon(Icons.email_outlined, size: 16),
-                        label: const Text('Support'),
+                        label: Text(l10n?.contactSupportTitle ?? 'Support'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -395,7 +419,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
+                child: Text(l10n?.actionClose ?? 'Close'),
               ),
             ],
           );
@@ -406,9 +430,12 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
 
   void _showGplLicenseDialog(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -452,8 +479,8 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'SPDX-License-Identifier: ${AppConfig.licenseSpdx}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontFamily: 'monospace',
+                      style: LuciTypography.monoStyle(
+                        fontSize: 12,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -502,7 +529,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
               );
             },
             icon: const Icon(Icons.fork_right_rounded, size: 16),
-            label: const Text('Original Project'),
+            label: Text(l10n?.btnOriginalProject ?? 'Original Project'),
           ),
           TextButton.icon(
             onPressed: () async {
@@ -512,11 +539,11 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
               );
             },
             icon: const Icon(Icons.open_in_new_rounded, size: 16),
-            label: const Text('Full GPL Text'),
+            label: Text(l10n?.btnFullGplText ?? 'Full GPL Text'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
+            child: Text(l10n?.actionClose ?? 'Close'),
           ),
         ],
       ),
@@ -525,14 +552,15 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: const LuciAppBar(title: 'More'),
+      appBar: LuciAppBar(title: l10n?.navMore ?? 'More'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(vertical: LuciSpacing.sm),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const LuciSectionHeader('Device Management'),
+            LuciSectionHeader(l10n?.secDeviceManagement ?? 'Device Management'),
             Builder(
               builder: (context) {
                 final isRebooting = ref.watch(appStateProvider).isRebooting;
@@ -542,8 +570,10 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                       context,
                       icon: Icons.router_rounded,
                       iconColor: Theme.of(context).colorScheme.primary,
-                      title: 'Manage Routers',
-                      subtitle: 'Switch, add, or edit router profiles',
+                      title: l10n?.tileManageRouters ?? 'Manage Routers',
+                      subtitle:
+                          l10n?.tileManageRoutersSubtitle ??
+                          'Switch, add, or edit router profiles',
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -556,8 +586,10 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                       context,
                       icon: Icons.restart_alt,
                       iconColor: Theme.of(context).colorScheme.primary,
-                      title: 'Reboot Router',
-                      subtitle: 'Perform a system restart',
+                      title: l10n?.tileRebootRouter ?? 'Reboot Router',
+                      subtitle:
+                          l10n?.tileRebootRouterSubtitle ??
+                          'Perform a system restart',
                       onTap: isRebooting
                           ? null
                           : () => _showRebootDialog(context),
@@ -568,17 +600,25 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                 );
               },
             ),
-            const LuciSectionHeader('Management Modules'),
+            LuciSectionHeader(
+              l10n?.secManagementModules ?? 'Management Modules',
+            ),
             _MoreScreenSection(
               tiles: LuciModuleRegistry.instance.enabledModules
                   .where((m) => !m.showInBottomNav)
                   .map((module) {
+                    final (modName, modDesc) = _getLocalizedModuleInfo(
+                      module.id,
+                      l10n,
+                      module.name,
+                      module.description,
+                    );
                     return _buildMoreTile(
                       context,
                       icon: module.icon,
                       iconColor: Theme.of(context).colorScheme.primary,
-                      title: module.name,
-                      subtitle: module.description,
+                      title: modName,
+                      subtitle: modDesc,
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -590,15 +630,16 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                   })
                   .toList(),
             ),
-            const LuciSectionHeader('Application'),
+            LuciSectionHeader(l10n?.secApplication ?? 'Application'),
             _MoreScreenSection(
               tiles: [
                 _buildMoreTile(
                   context,
                   icon: Icons.settings_outlined,
                   iconColor: Theme.of(context).colorScheme.primary,
-                  title: 'Settings',
-                  subtitle: 'Configure app preferences',
+                  title: l10n?.settingsTitle ?? 'Settings',
+                  subtitle:
+                      l10n?.moreSettingsSubtitle ?? 'Configure app preferences',
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -611,16 +652,20 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                   context,
                   icon: Icons.info_outline,
                   iconColor: Theme.of(context).colorScheme.secondary,
-                  title: 'About',
-                  subtitle: 'App version, license, and credits',
+                  title: l10n?.tileAbout ?? 'About',
+                  subtitle:
+                      l10n?.tileAboutSubtitle ??
+                      'App version, license, and credits',
                   onTap: () => _showAboutDialog(context),
                 ),
                 _buildMoreTile(
                   context,
                   icon: Icons.logout,
                   iconColor: Theme.of(context).colorScheme.error,
-                  title: 'Logout',
-                  subtitle: 'End your session and sign out',
+                  title: l10n?.tileLogout ?? 'Logout',
+                  subtitle:
+                      l10n?.tileLogoutSubtitle ??
+                      'End your session and sign out',
                   titleColor: Theme.of(context).colorScheme.error,
                   subtitleColor: Theme.of(
                     context,
@@ -634,6 +679,49 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
         ),
       ),
     );
+  }
+
+  (String, String) _getLocalizedModuleInfo(
+    String id,
+    AppLocalizations? l10n,
+    String defaultName,
+    String defaultDesc,
+  ) {
+    if (l10n == null) return (defaultName, defaultDesc);
+    switch (id) {
+      case 'system_monitoring':
+        return (l10n.modSystemMonitoringName, l10n.modSystemMonitoringDesc);
+      case 'storage_monitoring':
+        return (l10n.modStorageName, l10n.modStorageDesc);
+      case 'charting':
+        return (l10n.modChartingName, l10n.modChartingDesc);
+      case 'wireless':
+      case 'wireless_management':
+        return (l10n.modWirelessName, l10n.modWirelessDesc);
+      case 'firewall':
+      case 'firewall_security':
+        return (l10n.modFirewallName, l10n.modFirewallDesc);
+      case 'dhcp_dns':
+        return (l10n.modDhcpDnsName, l10n.modDhcpDnsDesc);
+      case 'services':
+      case 'services_system':
+        return (l10n.modServicesName, l10n.modServicesDesc);
+      case 'vpn':
+      case 'vpn_connectivity':
+        return (l10n.modVpnName, l10n.modVpnDesc);
+      case 'packages':
+      case 'package_manager':
+        return (l10n.modPackagesName, l10n.modPackagesDesc);
+      case 'backup':
+      case 'system_backup_upgrade':
+        return (l10n.modBackupName, l10n.modBackupDesc);
+      case 'parental_controls':
+        return (l10n.modParentalControlsName, l10n.modParentalControlsDesc);
+      case 'diagnostics':
+        return (l10n.modDiagnosticsName, l10n.modDiagnosticsDesc);
+      default:
+        return (defaultName, defaultDesc);
+    }
   }
 
   Widget _buildMoreTile(

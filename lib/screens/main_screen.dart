@@ -9,6 +9,7 @@ import 'package:yet_another_luci_app/screens/interfaces_screen.dart';
 import 'package:yet_another_luci_app/screens/more_screen.dart';
 import 'package:yet_another_luci_app/modules/wireless_management/screens/wireless_management_screen.dart';
 import 'package:yet_another_luci_app/main.dart';
+import 'package:yet_another_luci_app/state/app_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yet_another_luci_app/widgets/scroll_jitter_guard.dart';
 import 'package:yet_another_luci_app/design/luci_design_system.dart';
@@ -16,12 +17,26 @@ import 'package:yet_another_luci_app/utils/gateway_utils.dart';
 import 'package:yet_another_luci_app/services/secure_storage_service.dart';
 import 'package:yet_another_luci_app/screens/login_screen.dart';
 import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   final int? initialTab;
   final String? interfaceToScroll;
 
   const MainScreen({super.key, this.initialTab, this.interfaceToScroll});
+
+  /// Exposes multi-line nav measurement for adaptive layout testing and inspection.
+  static bool shouldUseMultiLineNav({
+    required BuildContext context,
+    required double slotWidth,
+    required List<String> labels,
+    required TextScaler textScaler,
+  }) => _MainScreenState.shouldUseMultiLineNav(
+    context: context,
+    slotWidth: slotWidth,
+    labels: labels,
+    textScaler: textScaler,
+  );
 
   @override
   ConsumerState<MainScreen> createState() => _MainScreenState();
@@ -46,11 +61,27 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _tabHistory.clear();
     _tabHistory.add(_selectedIndex);
     _currentInterfaceToScroll = widget.interfaceToScroll;
+    if (_selectedIndex != 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(appStateProvider).setDashboardTabActive(false);
+        }
+      });
+    }
+  }
+
+  AppState? _appState;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _appState = ref.read(appStateProvider);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _appState?.pauseThroughputTimer();
     super.dispose();
   }
 
@@ -61,9 +92,14 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden) {
-      appState.cancelThroughputTimer();
+      appState.pauseThroughputTimer();
     } else if (state == AppLifecycleState.resumed) {
       appState.handleAppResume();
+      if (_selectedIndex == 0) {
+        appState.resumeThroughputTimer(immediateTick: true);
+      } else {
+        appState.setDashboardTabActive(false);
+      }
     }
   }
 
@@ -103,6 +139,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
       _tabHistory.add(safeIndex);
     });
 
+    ref.read(appStateProvider).setDashboardTabActive(safeIndex == 0);
+
     if (_selectedIndex != 1 && _currentInterfaceToScroll != null) {
       _clearInterfaceToScroll();
     }
@@ -111,9 +149,12 @@ class _MainScreenState extends ConsumerState<MainScreen>
   Future<bool?> _showExitConfirmationDialog(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -130,21 +171,27 @@ class _MainScreenState extends ConsumerState<MainScreen>
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Exit Yala?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                l10n?.exitDialogTitle ?? 'Exit Yala?',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
         ),
-        content: const Text(
-          'Are you sure you want to exit the application?',
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.exitDialogMessage ??
+                'Are you sure you want to exit the application?',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -153,7 +200,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Exit'),
+            child: Text(l10n?.actionExit ?? 'Exit'),
           ),
         ],
       ),
@@ -222,6 +269,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             _currentInterfaceToScroll = requestedInterface;
           }
         });
+        ref.read(appStateProvider).setDashboardTabActive(safeRequestedTab == 0);
         appState.requestedTab = null;
         appState.requestedInterfaceToScroll = null;
       });
@@ -239,6 +287,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final isRebooting = appState.isRebooting;
     final colorScheme = Theme.of(context).colorScheme;
     final isTablet = LuciBreakpoints.isTablet(context);
+    final l10n = AppLocalizations.of(context);
 
     // Build the shared IndexedStack content used in both phone and tablet layouts
     final body = ScrollJitterGuard(
@@ -283,6 +332,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
               _clearInterfaceToScroll();
             }
           });
+          ref.read(appStateProvider).setDashboardTabActive(_selectedIndex == 0);
           return;
         } else if (_selectedIndex != 0) {
           setState(() {
@@ -293,6 +343,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
               _clearInterfaceToScroll();
             }
           });
+          ref.read(appStateProvider).setDashboardTabActive(true);
           return;
         }
 
@@ -317,8 +368,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
                         child: IntrinsicHeight(
                           child: NavigationRail(
                             selectedIndex: _selectedIndex,
-                            onDestinationSelected:
-                                isRebooting ? null : _onItemTapped,
+                            onDestinationSelected: isRebooting
+                                ? null
+                                : _onItemTapped,
                             labelType: NavigationRailLabelType.all,
                             useIndicator: true,
                             indicatorColor: colorScheme.primaryContainer,
@@ -341,13 +393,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
                             destinations: [
                               NavigationRailDestination(
                                 icon: const Icon(Icons.dashboard_outlined),
-                                selectedIcon: const Icon(Icons.dashboard_rounded),
-                                label: const Text('Dashboard'),
+                                selectedIcon: const Icon(
+                                  Icons.dashboard_rounded,
+                                ),
+                                label: Text(l10n?.navDashboard ?? 'Dashboard'),
                               ),
                               NavigationRailDestination(
                                 icon: const Icon(Icons.lan_outlined),
                                 selectedIcon: const Icon(Icons.lan),
-                                label: const Text('Interfaces'),
+                                label: Text(
+                                  l10n?.navInterfaces ?? 'Interfaces',
+                                ),
                               ),
                               NavigationRailDestination(
                                 icon: Builder(
@@ -367,17 +423,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
                                   },
                                 ),
                                 selectedIcon: const Icon(Icons.people),
-                                label: const Text('Clients'),
+                                label: Text(l10n?.navClients ?? 'Clients'),
                               ),
                               NavigationRailDestination(
                                 icon: const Icon(Icons.wifi_outlined),
                                 selectedIcon: const Icon(Icons.wifi),
-                                label: const Text('Wireless'),
+                                label: Text(l10n?.navWireless ?? 'Wireless'),
                               ),
                               NavigationRailDestination(
                                 icon: const Icon(Icons.more_horiz_outlined),
                                 selectedIcon: const Icon(Icons.more_horiz),
-                                label: const Text('More'),
+                                label: Text(l10n?.navMore ?? 'More'),
                               ),
                             ],
                           ),
@@ -393,147 +449,252 @@ class _MainScreenState extends ConsumerState<MainScreen>
           // ── Phone layout: Custom bottom navigation bar ─────────────────────
           : Scaffold(
               body: body,
-              bottomNavigationBar: SafeArea(
-                child: SizedBox(
-                  height: 72,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      // Flat Matt Bottom Bar Container
-                      Container(
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainer,
-                          border: Border(
-                            top: BorderSide(
-                              color: colorScheme.outlineVariant.withValues(
-                                alpha: 0.2,
-                              ),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: Row(
+              bottomNavigationBar: Container(
+                color: colorScheme.surfaceContainer,
+                child: SafeArea(
+                  top: false,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final textScaler = MediaQuery.textScalerOf(context);
+                      final textScale = textScaler.scale(1.0);
+                      final slotWidth = constraints.maxWidth / 5.0;
+
+                      final labels = [
+                        l10n?.navInterfaces ?? 'Interfaces',
+                        l10n?.navClients ?? 'Clients',
+                        l10n?.navDashboard ?? 'Dashboard',
+                        l10n?.navWireless ?? 'Wireless',
+                        l10n?.navMore ?? 'More',
+                      ];
+
+                      // Adaptive navigation layout:
+                      // If any label wraps beyond 1 line (due to translation or accessibility text scaling),
+                      // adapt bar height and items to multi-line mode (68px base, up to 2 lines).
+                      // Otherwise, maintain compact single-line mode (54px base).
+                      final isMultiLine = shouldUseMultiLineNav(
+                        context: context,
+                        slotWidth: slotWidth,
+                        labels: labels,
+                        textScaler: textScaler,
+                      );
+
+                      final barHeight = isMultiLine
+                          ? (68.0 * textScale).clamp(66.0, 88.0)
+                          : (54.0 * textScale).clamp(52.0, 64.0);
+                      const centerOffset = 8.0;
+                      final stackHeight = barHeight + centerOffset;
+                      final centerCircleSize = isMultiLine ? 44.0 : 46.0;
+                      const centerIconSize = 22.0;
+                      const sideIconSize = 22.0;
+
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeInOut,
+                        height: stackHeight,
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.bottomCenter,
                           children: [
-                            // Left Wing (Interfaces & Clients)
-                            Expanded(
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  _buildNavItem(
-                                    index: 1,
-                                    label: 'Interfaces',
-                                    icon: Icons.lan_outlined,
-                                    selectedIcon: Icons.lan,
-                                    isRebooting: isRebooting,
+                            // Flat Matt Bottom Bar Container
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeInOut,
+                              height: barHeight,
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainer,
+                                border: Border(
+                                  top: BorderSide(
+                                    color: colorScheme.outlineVariant
+                                        .withValues(alpha: 0.2),
+                                    width: 1,
                                   ),
-                                  _buildNavItem(
-                                    index: 2,
-                                    label: 'Clients',
-                                    icon: Icons.people_outline,
-                                    selectedIcon: Icons.people,
-                                    isRebooting: isRebooting,
-                                    badgeCount: appState.clients
-                                        .where((c) => c.isConnected)
-                                        .length,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  // Left Wing (Interfaces & Clients)
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildNavItem(
+                                            index: 1,
+                                            label: labels[0],
+                                            icon: Icons.lan_outlined,
+                                            selectedIcon: Icons.lan,
+                                            isRebooting: isRebooting,
+                                            isMultiLine: isMultiLine,
+                                            iconSize: sideIconSize,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _buildNavItem(
+                                            index: 2,
+                                            label: labels[1],
+                                            icon: Icons.people_outline,
+                                            selectedIcon: Icons.people,
+                                            isRebooting: isRebooting,
+                                            isMultiLine: isMultiLine,
+                                            iconSize: sideIconSize,
+                                            badgeCount: appState.clients
+                                                .where((c) => c.isConnected)
+                                                .length,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Center Clearance Spacer for Elevated Dashboard Badge
+                                  SizedBox(width: slotWidth),
+                                  // Right Wing (Wireless & More)
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildNavItem(
+                                            index: 3,
+                                            label: labels[3],
+                                            icon: Icons.wifi_outlined,
+                                            selectedIcon: Icons.wifi,
+                                            isRebooting: isRebooting,
+                                            isMultiLine: isMultiLine,
+                                            iconSize: sideIconSize,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: _buildNavItem(
+                                            index: 4,
+                                            label: labels[4],
+                                            icon: Icons.more_horiz_outlined,
+                                            selectedIcon: Icons.more_horiz,
+                                            isRebooting: false,
+                                            isMultiLine: isMultiLine,
+                                            iconSize: sideIconSize,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                            // Center Clearance Spacer for Elevated Dashboard Badge
-                            const SizedBox(width: 64),
-                            // Right Wing (Wireless & More)
-                            Expanded(
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  _buildNavItem(
-                                    index: 3,
-                                    label: 'Wireless',
-                                    icon: Icons.wifi_outlined,
-                                    selectedIcon: Icons.wifi,
-                                    isRebooting: isRebooting,
+
+                            // Solid Flat Matt Circular Center Dashboard Badge Button (Index 0)
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: Transform.translate(
+                                offset: const Offset(0, -centerOffset),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (isRebooting) return;
+                                    _onItemTapped(0);
+                                  },
+                                  behavior: HitTestBehavior.opaque,
+                                  child: SizedBox(
+                                    width: slotWidth,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 200,
+                                          ),
+                                          curve: Curves.easeInOut,
+                                          width: centerCircleSize,
+                                          height: centerCircleSize,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: _selectedIndex == 0
+                                                ? colorScheme.primary
+                                                : colorScheme
+                                                      .surfaceContainerHigh,
+                                            border: Border.all(
+                                              color: colorScheme.surface,
+                                              width: 2.5,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            _selectedIndex == 0
+                                                ? Icons.dashboard_rounded
+                                                : Icons.dashboard_outlined,
+                                            color: _selectedIndex == 0
+                                                ? colorScheme.onPrimary
+                                                : colorScheme.onSurfaceVariant,
+                                            size: centerIconSize,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 2.0,
+                                          ),
+                                          child: Text(
+                                            labels[2],
+                                            maxLines: isMultiLine ? 2 : 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: _selectedIndex == 0
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                              color: _selectedIndex == 0
+                                                  ? colorScheme.primary
+                                                  : colorScheme
+                                                        .onSurfaceVariant,
+                                              height: 1.15,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  _buildNavItem(
-                                    index: 4,
-                                    label: 'More',
-                                    icon: Icons.more_horiz_outlined,
-                                    selectedIcon: Icons.more_horiz,
-                                    isRebooting: false,
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-
-                      // Solid Flat Matt Circular Center Dashboard Badge Button (Index 0)
-                      Align(
-                        alignment: Alignment.topCenter,
-                        child: Transform.translate(
-                          offset: const Offset(0, -12),
-                          child: GestureDetector(
-                            onTap: () {
-                              if (isRebooting) return;
-                              _onItemTapped(0);
-                            },
-                            behavior: HitTestBehavior.opaque,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 52,
-                                  height: 52,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _selectedIndex == 0
-                                        ? colorScheme.primary
-                                        : colorScheme.surfaceContainerHigh,
-                                    border: Border.all(
-                                      color: colorScheme.surface,
-                                      width: 3,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    _selectedIndex == 0
-                                        ? Icons.dashboard_rounded
-                                        : Icons.dashboard_outlined,
-                                    color: _selectedIndex == 0
-                                        ? colorScheme.onPrimary
-                                        : colorScheme.onSurfaceVariant,
-                                    size: 24,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Dashboard',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: _selectedIndex == 0
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: _selectedIndex == 0
-                                        ? colorScheme.primary
-                                        : colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ),
             ),
     );
+  }
+
+  /// Determines whether bottom navigation bar needs multi-line height based on label widths.
+  static bool shouldUseMultiLineNav({
+    required BuildContext context,
+    required double slotWidth,
+    required List<String> labels,
+    required TextScaler textScaler,
+  }) {
+    if (slotWidth <= 0) return false;
+    final availableWidth = (slotWidth - 6.0).clamp(10.0, double.infinity);
+    final textDirection = Directionality.maybeOf(context) ?? TextDirection.ltr;
+    const style = TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.normal,
+      height: 1.15,
+    );
+
+    for (final label in labels) {
+      if (label.isEmpty) continue;
+      final textPainter = TextPainter(
+        text: TextSpan(text: label, style: style),
+        textDirection: textDirection,
+        textScaler: textScaler,
+        maxLines: 2,
+      )..layout(maxWidth: availableWidth);
+
+      if (textPainter.computeLineMetrics().length > 1) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Widget _buildNavItem({
@@ -542,6 +703,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
     required IconData icon,
     required IconData selectedIcon,
     required bool isRebooting,
+    required bool isMultiLine,
+    required double iconSize,
     int? badgeCount,
   }) {
     final isSelected = _selectedIndex == index;
@@ -561,48 +724,55 @@ class _MainScreenState extends ConsumerState<MainScreen>
         onTap: isRebooting ? null : () => _onItemTapped(index),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: 2.0,
+            vertical: isMultiLine ? 4.0 : 2.0,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Stack(
                 clipBehavior: Clip.none,
+                alignment: Alignment.center,
                 children: [
-                  Icon(
-                    isSelected ? selectedIcon : icon,
-                    color: color,
-                    size: 24,
+                  SizedBox(
+                    width: iconSize + 4,
+                    height: iconSize + 4,
+                    child: Icon(
+                      isSelected ? selectedIcon : icon,
+                      color: color,
+                      size: iconSize,
+                    ),
                   ),
                   if (badgeCount != null && badgeCount > 0)
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: Transform.translate(
-                        offset: const Offset(8, -4),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 1,
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? colorScheme.primary
+                              : colorScheme.secondary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
+                        child: Text(
+                          badgeCount > 99 ? '99+' : '$badgeCount',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onPrimary,
                           ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.secondary,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 14,
-                            minHeight: 14,
-                          ),
-                          child: Text(
-                            badgeCount > 99 ? '99+' : '$badgeCount',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onPrimary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
@@ -611,12 +781,14 @@ class _MainScreenState extends ConsumerState<MainScreen>
               const SizedBox(height: 2),
               Text(
                 label,
-                maxLines: 1,
+                maxLines: isMultiLine ? 2 : 1,
                 overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color: color,
+                  height: 1.15,
                 ),
               ),
             ],
@@ -646,6 +818,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         backgroundColor: colorScheme.surface,
         surfaceTintColor: Colors.transparent,

@@ -1,42 +1,45 @@
-# Flutter ProGuard & R8 rules for production release builds
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.** { *; }
--keep class io.flutter.util.** { *; }
--keep class io.flutter.view.** { *; }
--keep class io.flutter.embedding.engine.FlutterEngine { *; }
--keep class io.flutter.embedding.engine.plugins.** { *; }
--dontwarn io.flutter.embedding.**
--dontwarn io.flutter.plugins.**
-
-# App Main Activity & Generated Registrant (Narrowed for R8 obfuscation)
+# Flutter & Android entry points
 -keep class com.nightcode.luci.MainActivity { *; }
 -keep class io.flutter.plugins.GeneratedPluginRegistrant { *; }
 
-# Flutter Plugins (Future-proofed wildcard rules for any newly added pubspec plugins)
--keep class com.it_ne.flutter_secure_storage.** { *; }
--keep class androidx.security.crypto.** { *; }
--keep class dev.flutter.plugins.** { *; }
--keep class io.flutter.plugins.** { *; }
--keep class com.github.dart_lang.jni.** { *; }
--keep class dev.fluttercommunity.plus.packageinfo.** { *; }
--keep class io.github.ponnamkarthik.toast.fluttertoast.** { *; }
--keep class com.mr.flutter.plugin.filepicker.** { *; }
+# Flutter plugin lifecycle & instantiation (targeted rather than broad { *; })
+# Allows R8 to shrink, inline, and obfuscate internal plugin code while preserving
+# reflection/instantiation entry points required by Flutter's GeneratedPluginRegistrant.
+-keep class * implements io.flutter.embedding.engine.plugins.FlutterPlugin {
+    public <init>();
+}
+-keep class * implements io.flutter.embedding.engine.plugins.activity.ActivityAware {
+    public <init>();
+}
 
-# Native methods & JNI entry points (prevents UnsatisfiedLinkError in R8 release builds)
+# Preserve native JNI methods & annotations across all classes
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+-keep @androidx.annotation.Keep class * { *; }
+-keepclassmembers class * {
+    @androidx.annotation.Keep *;
+}
 
-# Anti-Decompilation, Obfuscation & APK Parser Protection
+# Preserve attributes necessary for async execution, stack de-obfuscation, and reflection
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,Exceptions
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# R8 aggressive optimization and class repackaging
+# Moving classes into package 'a' maximizes cross-package class merging and minification.
+# allowaccessmodification allows R8 to widen visibility to public to enable aggressive method inlining.
 -repackageclasses 'a'
 -allowaccessmodification
--optimizationpasses 5
--overloadaggressively
--renamesourcefileattribute SourceFile
--keepattributes SourceFile,LineNumberTable
--useuniqueclassmembernames
 
-# Strip Debug Logging in Release Bytecode
+# Suppress known non-fatal warnings from Flutter & AndroidX modular dependencies
+-dontwarn io.flutter.embedding.**
+-dontwarn io.flutter.plugins.**
+-dontwarn androidx.window.**
+-dontwarn androidx.core.**
+-dontwarn androidx.security.**
+
+# Strip verbose, debug, and info logs in production release bytecode
 -assumenosideeffects class android.util.Log {
     public static *** d(...);
     public static *** v(...);

@@ -19,6 +19,7 @@ import 'package:yet_another_luci_app/widgets/add_static_lease_dialog.dart';
 import 'package:yet_another_luci_app/utils/self_device_guard.dart';
 import '../models/wireless_info.dart';
 import '../widgets/wireless_rollback_banner.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class WifiAccessControlScreen extends ConsumerStatefulWidget {
   const WifiAccessControlScreen({super.key});
@@ -289,6 +290,7 @@ class _WifiAccessControlScreenState
       isReviewerMode: appState.reviewerModeEnabled,
     );
 
+    final l10n = AppLocalizations.of(context);
     return PopScope(
       canPop: !appState.isAccessControlPendingConfirmation,
       onPopInvokedWithResult: (didPop, result) async {
@@ -302,7 +304,9 @@ class _WifiAccessControlScreenState
         }
       },
       child: Scaffold(
-        appBar: const LuciAppBar(title: 'Wi-Fi Access Control'),
+        appBar: LuciAppBar(
+          title: l10n?.wifiAccessControlTitle ?? 'Wi-Fi Access Control',
+        ),
         body: Column(
           children: [
             const WirelessRollbackBanner(),
@@ -337,7 +341,8 @@ class _WifiAccessControlScreenState
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  'Select a device from the dropdown above or enter a valid MAC address to configure Wi-Fi access rules.',
+                                  l10n?.selectDevicePrompt ??
+                                      'Select a device from the dropdown above or enter a valid MAC address to configure Wi-Fi access rules.',
                                   textAlign: TextAlign.center,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
@@ -361,6 +366,7 @@ class _WifiAccessControlScreenState
 
   Widget _buildHeaderCard(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -381,14 +387,15 @@ class _WifiAccessControlScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'MAC Access Control (LuCI Filter)',
+                    l10n?.macAccessControlTitle ?? 'MAC Access Control',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Configure per-SSID MAC allow lists. Devices on an SSID\'s allow-list will be explicitly permitted to connect.',
+                    l10n?.macAccessControlDesc ??
+                        'Grant or deny wireless access for specific devices across SSIDs using MAC address filtering.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -404,6 +411,7 @@ class _WifiAccessControlScreenState
 
   Widget _buildDeviceSelectionCard(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -424,9 +432,12 @@ class _WifiAccessControlScreenState
             else
               DropdownButtonFormField<Client>(
                 initialValue: _selectedClient,
-                hint: const Text('Select a connected client device...'),
+                hint: Text(
+                  l10n?.wifiAclSelectClient ??
+                      'Select a connected client device...',
+                ),
                 decoration: InputDecoration(
-                  labelText: 'Connected Clients',
+                  labelText: l10n?.clientsTitle ?? 'Connected Clients',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -1041,6 +1052,7 @@ class _WifiAccessControlScreenState
     WirelessOverview overview,
     AppState appState,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final targetMac = _normalizeMac(_selectedMac);
     if (!_isValidMac(targetMac)) return;
 
@@ -1123,18 +1135,22 @@ class _WifiAccessControlScreenState
             color: Colors.red,
             size: 40,
           ),
-          title: const Text('Device Lockout Warning'),
+          title: Text(l10n?.wifiAclLockoutWarning ?? 'Device Lockout Warning'),
           content: Text(
             'You have not added this device (${_phoneMac ?? "current phone"}) to the allow-list for affected SSIDs. Enabling this filter may disconnect you from this network.',
           ),
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Proceed Without Phone'),
+              child: Text(
+                l10n?.wifiAclProceedWithoutPhone ?? 'Proceed Without Phone',
+              ),
             ),
             FilledButton.icon(
               icon: const Icon(Icons.add_link_rounded),
-              label: const Text('Add My Current Device'),
+              label: Text(l10n?.wifiAclAddMyDevice ?? 'Add My Current Device'),
               onPressed: () => Navigator.pop(ctx, true),
             ),
           ],
@@ -1162,20 +1178,26 @@ class _WifiAccessControlScreenState
           color: Colors.blue,
           size: 36,
         ),
-        title: const Text('Confirm Wi-Fi Access Rules'),
-        content: Text(
-          'Updating Wi-Fi Access Control for $targetMac on SSIDs:\n\n'
-          '${affectedSsids.isNotEmpty ? affectedSsids.join('\n') : "All (Disabled)"}\n\n'
-          'Note: This affects $targetMac specifically.',
+        title: Text(
+          l10n?.wifiAclConfirmRulesTitle ?? 'Confirm Wi-Fi Access Rules',
         ),
+        content: SingleChildScrollView(
+          child: Text(
+            'Updating Wi-Fi Access Control for $targetMac on SSIDs:\n\n'
+            '${affectedSsids.isNotEmpty ? affectedSsids.join('\n') : "All (Disabled)"}\n\n'
+            'Note: This affects $targetMac specifically.',
+          ),
+        ),
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Apply Changes'),
+            child: Text(l10n?.wifiAclApplyChanges ?? 'Apply Changes'),
           ),
         ],
       ),
@@ -1202,7 +1224,8 @@ class _WifiAccessControlScreenState
           LuciToastManager.safeShowSuccess(
             context,
             'Access Control applied.',
-            subtitle: 'Wi-Fi access rules updated successfully.',
+            subtitle: l10n?.wifiAccessRulesUpdatedToast ??
+                'Wi-Fi access rules updated successfully.',
             actionKey: actionKey,
           );
         }

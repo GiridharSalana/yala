@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import '../models/parental_profile.dart';
 
 /// Profile summary card shown in the main parental controls list.
@@ -41,6 +42,7 @@ class ParentalProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final accentColor = _parseColor(profile.color);
     final isPaused = profile.isPaused;
 
@@ -101,7 +103,10 @@ class ParentalProfileCard extends StatelessWidget {
                       Text(
                         profile.macAddresses.isEmpty
                             ? 'Ready • 0 devices assigned'
-                            : '${profile.macAddresses.length} device${profile.macAddresses.length != 1 ? 's' : ''}',
+                            : (l10n?.parentalProfileDevicesCount(
+                                    profile.macAddresses.length,
+                                  ) ??
+                                  '${profile.macAddresses.length} device${profile.macAddresses.length != 1 ? 's' : ''}'),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -126,9 +131,11 @@ class ParentalProfileCard extends StatelessWidget {
                     if (v == 'delete') onDelete();
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'edit',
-                      child: Text('Edit Profile'),
+                      child: Text(
+                        l10n?.parentalProfileBtnEdit ?? 'Edit Profile',
+                      ),
                     ),
                     if (onToggleEnabled != null)
                       PopupMenuItem(
@@ -139,11 +146,11 @@ class ParentalProfileCard extends StatelessWidget {
                               : 'Enable Guardrails',
                         ),
                       ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
+                        l10n?.parentalProfileBtnDelete ?? 'Delete',
+                        style: const TextStyle(color: Colors.red),
                       ),
                     ),
                   ],
@@ -200,7 +207,10 @@ class ParentalProfileCard extends StatelessWidget {
                     child: FilledButton.icon(
                       onPressed: onResume,
                       icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                      label: const Text('Resume Internet'),
+                      label: Text(
+                        l10n?.parentalProfileResumeInternet ??
+                            'Resume Internet',
+                      ),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
@@ -326,10 +336,11 @@ class _PauseStatusChipState extends State<_PauseStatusChip> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final remaining = widget.profile.timeRemainingInPause;
     final String label;
     if (remaining == null) {
-      label = 'Paused';
+      label = l10n?.parentalProfilePaused ?? 'Paused';
     } else {
       final h = remaining.inHours;
       final m = remaining.inMinutes % 60;
@@ -381,12 +392,13 @@ class _PauseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Tooltip(
       message: tooltip ?? '',
       child: OutlinedButton.icon(
         onPressed: enabled ? () => _showDurationPicker(context) : null,
         icon: const Icon(Icons.pause_circle_outline, size: 18),
-        label: const Text('Pause Internet'),
+        label: Text(l10n?.parentalProfilePauseInternet ?? 'Pause Internet'),
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.orange,
           side: BorderSide(
@@ -399,58 +411,76 @@ class _PauseButton extends StatelessWidget {
 
   void _showDurationPicker(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
-      // Use fixed intrinsic size; safe on all screen heights
+      isScrollControlled: true,
       builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Drag indicator
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 10, bottom: 4),
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurfaceVariant.withValues(
-                      alpha: 0.3,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drag indicator
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 10, bottom: 4),
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.3,
+                      ),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Text(
-                  'Pause internet for how long?',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Text(
+                    'Pause internet for how long?',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-              const Divider(height: 8),
-              ...PauseDuration.values.map(
-                (d) => ListTile(
-                  leading: const Icon(
-                    Icons.pause_circle_outline,
-                    color: Colors.orange,
+                const Divider(height: 8),
+                ...PauseDuration.values.map(
+                  (d) => ListTile(
+                    leading: const Icon(
+                      Icons.pause_circle_outline,
+                      color: Colors.orange,
+                    ),
+                    title: Text(_getPauseDurationLabel(l10n, d)),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      onPause(d);
+                    },
                   ),
-                  title: Text(d.label),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onPause(d);
-                  },
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  String _getPauseDurationLabel(AppLocalizations? l10n, PauseDuration d) {
+    switch (d) {
+      case PauseDuration.fifteenMinutes:
+        return '15 Minutes';
+      case PauseDuration.thirtyMinutes:
+        return l10n?.parentalProfilePause30m ?? d.label;
+      case PauseDuration.oneHour:
+        return l10n?.parentalProfilePause1h ?? d.label;
+      case PauseDuration.untilTomorrow:
+        return l10n?.parentalProfilePauseBedtime ?? d.label;
+      case PauseDuration.indefinite:
+        return l10n?.parentalProfilePauseIndefinitely ?? d.label;
+    }
   }
 }
 

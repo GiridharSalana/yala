@@ -139,6 +139,15 @@ class MockApiService implements IApiService {
   Future<Map<String, Set<String>>> fetchAssociatedStations() async => {};
 
   @override
+  Future<Map<String, List<Map<String, dynamic>>>>
+  fetchAllAssociatedWirelessStationsWithDetailsContext({
+    required String ipAddress,
+    required String sysauth,
+    required bool useHttps,
+    dynamic context,
+  }) async => {};
+
+  @override
   Future<Map<String, dynamic>?> fetchWireGuardPeers({
     required String ipAddress,
     required String sysauth,
@@ -233,7 +242,9 @@ void main() {
         expect(dashboardController.dashboardData, isNull);
 
         // Throughput tick updates sysInfo
-        dashboardController.updateSysInfo({'memory': {'total': 100}});
+        dashboardController.updateSysInfo({
+          'memory': {'total': 100},
+        });
 
         // dashboardData must STILL be null to avoid bypassing loading skeleton with N/A model
         expect(dashboardController.dashboardData, isNull);

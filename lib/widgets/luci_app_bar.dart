@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:yet_another_luci_app/design/luci_design_system.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class LuciAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? title;
@@ -28,6 +29,7 @@ class LuciAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return AppBar(
       automaticallyImplyLeading: false,
       backgroundColor: backgroundColor ?? theme.colorScheme.surface,
@@ -42,7 +44,7 @@ class LuciAppBar extends StatelessWidget implements PreferredSizeWidget {
                 color: theme.colorScheme.onSurface,
               ),
               onPressed: () => Navigator.of(context).maybePop(),
-              tooltip: 'Back',
+              tooltip: l10n?.actionBack ?? 'Back',
             )
           : null,
       title:

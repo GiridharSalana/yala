@@ -12,6 +12,7 @@ import '../models/dhcp_dns_info.dart';
 import 'package:yet_another_luci_app/widgets/luci_collapsible_card.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import 'package:yet_another_luci_app/utils/client_naming_helper.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class DhcpDnsScreen extends ConsumerWidget {
   const DhcpDnsScreen({super.key});
@@ -19,6 +20,7 @@ class DhcpDnsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appState = ref.watch(appStateProvider);
+    final l10n = AppLocalizations.of(context);
     final dashboardData = Map<String, dynamic>.from(
       appState.dashboardData ?? {},
     );
@@ -39,7 +41,9 @@ class DhcpDnsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('DHCP & DNS Management')),
+      appBar: AppBar(
+        title: Text(l10n?.dhcpDnsTitle ?? 'DHCP & DNS Management'),
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           await appState.fetchDashboardData();
@@ -50,19 +54,22 @@ class DhcpDnsScreen extends ConsumerWidget {
           children: [
             _buildSectionHeader(
               context,
-              'DNS Forwarders & Dnsmasq Config',
+              l10n?.dhcpDnsForwardersSectionTitle ??
+                  'DNS Forwarders & Dnsmasq Config',
               Icons.dns_outlined,
             ),
             const SizedBox(height: 8),
             _buildDnsConfigCard(context, overview.dnsConfig),
             const SizedBox(height: 16),
             LuciCollapsibleCard(
-              title: 'Active DHCP Leases',
+              title: l10n?.activeDhcpLeasesTitle ?? 'Active DHCP Leases',
               count: overview.activeLeases.length,
-              subtitle: '${overview.activeLeases.length} active client leases',
+              subtitle:
+                  l10n?.activeClientLeasesCount(overview.activeLeases.length) ??
+                  '${overview.activeLeases.length} active client leases',
               icon: Icons.badge_outlined,
               iconColor: Colors.blue,
-              child: _buildLeasesList(
+              childBuilder: (ctx) => _buildLeasesList(
                 context,
                 ref,
                 appState,
@@ -72,18 +79,20 @@ class DhcpDnsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             LuciCollapsibleCard(
-              title: 'Static IP Reservations',
+              title:
+                  l10n?.staticIpReservationsTitle ?? 'Static IP Reservations',
               count: overview.staticMappings.length,
               subtitle:
+                  l10n?.staticIpMappingsCount(overview.staticMappings.length) ??
                   '${overview.staticMappings.length} static IP mappings configured',
               icon: Icons.pin_drop_outlined,
               iconColor: Colors.teal,
               trailingAction: IconButton(
                 icon: const Icon(Icons.add_circle_outline, color: Colors.teal),
-                tooltip: 'Add Static Lease',
+                tooltip: l10n?.tooltipAddStaticLease ?? 'Add Static Lease',
                 onPressed: () => _showAddStaticLeaseDialog(context, ref),
               ),
-              child: _buildStaticMappingsList(
+              childBuilder: (ctx) => _buildStaticMappingsList(
                 context,
                 ref,
                 appState,
@@ -100,17 +109,22 @@ class DhcpDnsScreen extends ConsumerWidget {
   Widget _buildSectionHeader(
     BuildContext context,
     String title,
-    IconData icon,
-  ) {
+    IconData icon, {
+    int maxLines = 2,
+  }) {
     final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, size: 20, color: theme.colorScheme.primary),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+        Expanded(
+          child: Text(
+            title,
+            maxLines: maxLines,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -168,11 +182,14 @@ class DhcpDnsScreen extends ConsumerWidget {
     List<DhcpLease> leases,
     List<DhcpStaticMapping> staticMappings,
   ) {
+    final l10n = AppLocalizations.of(context);
     if (leases.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('No active DHCP leases currently assigned.'),
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            l10n?.dhcpNoLeases ?? 'No active DHCP leases currently assigned.',
+          ),
         ),
       );
     }
@@ -261,7 +278,8 @@ class DhcpDnsScreen extends ConsumerWidget {
                       size: 20,
                       color: Colors.teal,
                     ),
-                    tooltip: 'Edit Static Lease',
+                    tooltip:
+                        l10n?.editStaticLeaseTitle ?? 'Edit Static Lease',
                     onPressed: () => _showAddStaticLeaseDialog(
                       context,
                       ref,
@@ -276,7 +294,8 @@ class DhcpDnsScreen extends ConsumerWidget {
                       size: 20,
                       color: Colors.blue,
                     ),
-                    tooltip: 'Reserve as Static IP',
+                    tooltip: l10n?.dhcpReserveAsStaticIp ??
+                        'Reserve as Static IP',
                     onPressed: () =>
                         _showAddStaticLeaseDialog(context, ref, lease: lease),
                   ),
@@ -294,11 +313,15 @@ class DhcpDnsScreen extends ConsumerWidget {
     dynamic appState,
     List<DhcpStaticMapping> mappings,
   ) {
+    final l10n = AppLocalizations.of(context);
     if (mappings.isEmpty) {
-      return const Card(
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('No static host reservations configured.'),
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            l10n?.dhcpNoStaticReservations ??
+                'No static host reservations configured.',
+          ),
         ),
       );
     }
@@ -371,7 +394,8 @@ class DhcpDnsScreen extends ConsumerWidget {
                     color: Colors.teal,
                     size: 20,
                   ),
-                  tooltip: 'Edit Static Lease',
+                  tooltip:
+                      l10n?.editStaticLeaseTitle ?? 'Edit Static Lease',
                   onPressed: () => _showAddStaticLeaseDialog(
                     context,
                     ref,
@@ -384,7 +408,8 @@ class DhcpDnsScreen extends ConsumerWidget {
                     color: Colors.redAccent,
                     size: 20,
                   ),
-                  tooltip: 'Remove Static Lease',
+                  tooltip: l10n?.dialogRemoveStaticLeaseTitle ??
+                      'Remove Static Lease',
                   onPressed: () =>
                       _confirmDeleteStaticLease(context, ref, mapping),
                 ),
@@ -416,6 +441,8 @@ class DhcpDnsScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -432,21 +459,25 @@ class DhcpDnsScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Remove Static Lease',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                AppLocalizations.of(context)?.dialogRemoveStaticLeaseTitle ??
+                    'Remove Static Lease',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
-        content: Text(
-          'Are you sure you want to remove the static IP reservation for "${mapping.hostname}" (${mapping.macAddress})?',
+        content: SingleChildScrollView(
+          child: Text(
+            'Are you sure you want to remove the static IP reservation for "${mapping.hostname}" (${mapping.macAddress})?',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)?.actionCancel ?? 'Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -457,7 +488,10 @@ class DhcpDnsScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Remove Reservation'),
+            child: Text(
+              AppLocalizations.of(context)?.dhcpRemoveReservation ??
+                  'Remove Reservation',
+            ),
           ),
         ],
       ),
@@ -471,36 +505,46 @@ class DhcpDnsScreen extends ConsumerWidget {
       );
 
       final appState = ref.read(appStateProvider);
-      final success = await appState.deleteStaticLease(
-        macAddress: mapping.macAddress,
-        targetIp: mapping.ipAddress.isNotEmpty && mapping.ipAddress != 'N/A'
-            ? mapping.ipAddress
-            : null,
-        hostname:
-            mapping.hostname.isNotEmpty && mapping.hostname != 'Unnamed Host'
-                ? mapping.hostname
-                : null,
-        duid: mapping.duid.isNotEmpty && mapping.duid != 'N/A'
-            ? mapping.duid
-            : null,
-        context: context,
-      );
-
-      if (!context.mounted) return;
-
-      if (success) {
-        appState.invalidateStaticLeasesCache();
-        context.showToastSuccess(
-          'Static lease removed for ${mapping.hostname}.',
-          actionKey: actionKey,
+      try {
+        final success = await appState.deleteStaticLease(
+          macAddress: mapping.macAddress,
+          targetIp: mapping.ipAddress.isNotEmpty && mapping.ipAddress != 'N/A'
+              ? mapping.ipAddress
+              : null,
+          hostname:
+              mapping.hostname.isNotEmpty && mapping.hostname != 'Unnamed Host'
+              ? mapping.hostname
+              : null,
+          duid: mapping.duid.isNotEmpty && mapping.duid != 'N/A'
+              ? mapping.duid
+              : null,
+          context: context.mounted ? context : null,
         );
-        unawaited(appState.fetchDashboardData());
-        unawaited(appState.fetchClientsForSelectedRouter());
-      } else {
-        context.showToastError(
-          'Failed to remove static lease for ${mapping.hostname}.',
-          actionKey: actionKey,
-        );
+
+        if (!context.mounted) return;
+
+        if (success) {
+          appState.invalidateStaticLeasesCache();
+          context.showToastSuccess(
+            'Static lease removed for ${mapping.hostname}.',
+            actionKey: actionKey,
+          );
+          unawaited(appState.fetchDashboardData());
+          unawaited(appState.fetchClientsForSelectedRouter());
+        } else {
+          context.showToastError(
+            'Failed to remove static lease for ${mapping.hostname}.',
+            actionKey: actionKey,
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          context.showToastError(
+            'Failed to remove static lease for ${mapping.hostname}.',
+            subtitle: e.toString().replaceAll('Exception: ', ''),
+            actionKey: actionKey,
+          );
+        }
       }
     }
   }

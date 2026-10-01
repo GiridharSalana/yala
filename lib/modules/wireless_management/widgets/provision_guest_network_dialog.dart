@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import 'package:yet_another_luci_app/widgets/password_strength_meter.dart';
@@ -194,56 +195,70 @@ class _ProvisionGuestNetworkDialogState
           .toList();
     }
 
-    final success = await appState.provisionGuestNetwork(
-      radioName: _selectedRadio.name,
-      ssid: _ssidController.text.trim(),
-      encryption: _selectedEncryption,
-      key: _requiresPassphrase() ? _passphraseController.text.trim() : '',
-      guestIp: _guestIpController.text.trim(),
-      isolateClients: _isolateClients,
-      network: _selectedNetwork,
-      country: null,
-      channel: null,
-      htMode: null,
-      txPower: null,
-      ieee80211r: _ieee80211r,
-      ftOverDs: _ftOverDs,
-      ftPskGenerateLocal: _ftPskGenerateLocal,
-      mobilityDomain: _mobilityDomainController.text.trim().isNotEmpty
-          ? _mobilityDomainController.text.trim().toLowerCase()
-          : null,
-      wmm: _wmm,
-      hidden: _hidden,
-      dtimPeriod: int.tryParse(_dtimPeriodController.text.trim()),
-      gtkRekey: int.tryParse(_gtkRekeyController.text.trim()),
-      inactivityLimit: int.tryParse(_inactivityLimitController.text.trim()),
-      maxListenInterval: int.tryParse(_maxListenIntervalController.text.trim()),
-      disassocLowAck: _disassocLowAck,
-      multicastToUnicast: _multicastToUnicast,
-      wds: _wds,
-      macfilter: _macfilter == 'disable' ? null : _macfilter,
-      maclist: macList,
-      context: context,
-    );
+    try {
+      final success = await appState.provisionGuestNetwork(
+        radioName: _selectedRadio.name,
+        ssid: _ssidController.text.trim(),
+        encryption: _selectedEncryption,
+        key: _requiresPassphrase() ? _passphraseController.text.trim() : '',
+        guestIp: _guestIpController.text.trim(),
+        isolateClients: _isolateClients,
+        network: _selectedNetwork,
+        country: null,
+        channel: null,
+        htMode: null,
+        txPower: null,
+        ieee80211r: _ieee80211r,
+        ftOverDs: _ftOverDs,
+        ftPskGenerateLocal: _ftPskGenerateLocal,
+        mobilityDomain: _mobilityDomainController.text.trim().isNotEmpty
+            ? _mobilityDomainController.text.trim().toLowerCase()
+            : null,
+        wmm: _wmm,
+        hidden: _hidden,
+        dtimPeriod: int.tryParse(_dtimPeriodController.text.trim()),
+        gtkRekey: int.tryParse(_gtkRekeyController.text.trim()),
+        inactivityLimit: int.tryParse(_inactivityLimitController.text.trim()),
+        maxListenInterval: int.tryParse(
+          _maxListenIntervalController.text.trim(),
+        ),
+        disassocLowAck: _disassocLowAck,
+        multicastToUnicast: _multicastToUnicast,
+        wds: _wds,
+        macfilter: _macfilter == 'disable' ? null : _macfilter,
+        maclist: macList,
+        context: mounted ? context : null,
+      );
 
-    if (mounted) {
-      setState(() => _isSubmitting = false);
-      if (success) {
-        Navigator.pop(context, true);
-        context.showToastSuccess(
-          'New Guest Wi-Fi "${_ssidController.text.trim()}" created successfully!',
-        );
-      } else {
-        final username = appState.sessionUsername;
-        if (!hasUciWrite) {
-          context.showToastError(
-            'Access Denied: Account \'$username\' lacks ubus UCI write authorization.',
+      if (mounted) {
+        if (success) {
+          Navigator.pop(context, true);
+          context.showToastSuccess(
+            'New Guest Wi-Fi "${_ssidController.text.trim()}" created successfully!',
           );
         } else {
-          context.showToastError(
-            'Failed to provision guest network on router.',
-          );
+          final username = appState.sessionUsername;
+          if (!hasUciWrite) {
+            context.showToastError(
+              'Access Denied: Account \'$username\' lacks ubus UCI write authorization.',
+            );
+          } else {
+            context.showToastError(
+              'Failed to provision guest network on router.',
+            );
+          }
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showToastError(
+          'Failed to provision guest network',
+          subtitle: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -251,6 +266,7 @@ class _ProvisionGuestNetworkDialogState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final needsPass = _requiresPassphrase();
     final appState = ref.watch(appStateProvider);
     final hasUciWrite =
@@ -267,7 +283,7 @@ class _ProvisionGuestNetworkDialogState
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Create New Guest Wi-Fi',
+                l10n?.btnCreateNewGuestWifi ?? 'Create New Guest Wi-Fi',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -462,30 +478,39 @@ class _ProvisionGuestNetworkDialogState
                     prefixIcon: Icon(Icons.security_rounded, size: 20),
                     border: OutlineInputBorder(),
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'sae-mixed',
                       child: Text(
-                        'WPA2/WPA3 Personal (sae-mixed) — Recommended',
+                        l10n?.wifiSecMixedRecommended ??
+                            'WPA2/WPA3 Personal (sae-mixed) — Recommended',
                       ),
                     ),
                     DropdownMenuItem(
                       value: 'sae',
-                      child: Text('WPA3 Personal Only (sae)'),
+                      child: Text(
+                        l10n?.wifiSecWpa3Only ?? 'WPA3 Personal Only (sae)',
+                      ),
                     ),
                     DropdownMenuItem(
                       value: 'psk2',
-                      child: Text('WPA2 Personal (psk2)'),
+                      child: Text(
+                        l10n?.wifiSecWpa2Personal ?? 'WPA2 Personal (psk2)',
+                      ),
                     ),
                     DropdownMenuItem(
                       value: 'owe',
                       child: Text(
-                        'Enhanced Open (OWE — No Password, Encrypted)',
+                        l10n?.wifiSecOwe ??
+                            'Enhanced Open (OWE — No Password, Encrypted)',
                       ),
                     ),
                     DropdownMenuItem(
                       value: 'none',
-                      child: Text('Open (No Encryption / No Password)'),
+                      child: Text(
+                        l10n?.wifiSecOpen ??
+                            'Open (No Encryption / No Password)',
+                      ),
                     ),
                   ],
                   onChanged: (val) {
@@ -568,11 +593,13 @@ class _ProvisionGuestNetworkDialogState
                           color: theme.colorScheme.primary,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Advanced Options',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.primary,
+                        Expanded(
+                          child: Text(
+                            'Advanced Options',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
                         ),
                       ],
@@ -596,18 +623,27 @@ class _ProvisionGuestNetworkDialogState
                             ),
                             border: OutlineInputBorder(),
                           ),
-                          items: const [
+                          items: [
                             DropdownMenuItem(
                               value: '0',
-                              child: Text('Disabled (Not recommended)'),
+                              child: Text(
+                                l10n?.wifiPmfDisabled ??
+                                    'Disabled (Not recommended)',
+                              ),
                             ),
                             DropdownMenuItem(
                               value: '1',
-                              child: Text('Optional — recommended default'),
+                              child: Text(
+                                l10n?.wifiPmfOptional ??
+                                    'Optional — recommended default',
+                              ),
                             ),
                             DropdownMenuItem(
                               value: '2',
-                              child: Text('Required (WPA3 / strict mode)'),
+                              child: Text(
+                                l10n?.wifiPmfRequired ??
+                                    'Required (WPA3 / strict mode)',
+                              ),
                             ),
                           ],
                           onChanged:
@@ -851,20 +887,27 @@ class _ProvisionGuestNetworkDialogState
                           prefixIcon: Icon(Icons.shield_outlined, size: 20),
                           border: OutlineInputBorder(),
                         ),
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 'disable',
-                            child: Text('Disabled — Allow All MACs'),
+                            child: Text(
+                              l10n?.wifiMacFilterDisableAll ??
+                                  'Disabled — Allow All MACs',
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'allow',
                             child: Text(
-                              'Allow List — Only listed MACs can connect',
+                              l10n?.wifiMacFilterAllowList ??
+                                  'Allow List — Only listed MACs can connect',
                             ),
                           ),
                           DropdownMenuItem(
                             value: 'deny',
-                            child: Text('Deny List — Block listed MACs'),
+                            child: Text(
+                              l10n?.wifiMacFilterDenyList ??
+                                  'Deny List — Block listed MACs',
+                            ),
                           ),
                         ],
                         onChanged: (val) {
@@ -893,12 +936,14 @@ class _ProvisionGuestNetworkDialogState
             ),
           ),
         ),
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         actions: [
           TextButton(
             onPressed: _isSubmitting
                 ? null
                 : () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton.icon(
             onPressed: (_isSubmitting || !hasUciWrite)
@@ -914,7 +959,11 @@ class _ProvisionGuestNetworkDialogState
                     ),
                   )
                 : const Icon(Icons.add_moderator_rounded, size: 18),
-            label: Text(_isSubmitting ? 'Creating…' : 'Create New Guest Wi-Fi'),
+            label: Text(
+              _isSubmitting
+                  ? 'Creating…'
+                  : (l10n?.btnCreateNewGuestWifi ?? 'Create New Guest Wi-Fi'),
+            ),
           ),
         ],
       ),

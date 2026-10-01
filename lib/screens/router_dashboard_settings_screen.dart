@@ -10,6 +10,8 @@ import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
 import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
 import 'package:yet_another_luci_app/design/luci_design_system.dart';
 import 'package:yet_another_luci_app/widgets/luci_animation_system.dart';
+import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class RouterDashboardSettingsScreen extends ConsumerStatefulWidget {
   final String routerId;
@@ -220,10 +222,12 @@ class _RouterDashboardSettingsScreenState
   }
 
   Widget _buildCardOrderSection() {
+    final l10n = AppLocalizations.of(context);
     final cardOrder = List<String>.from(_preferences.cardOrder);
     return _buildSection(
-      title: 'Card Layout & Visibility',
+      title: l10n?.rdSettingsCardLayoutVisibility ?? 'Card Layout & Visibility',
       subtitle:
+          l10n?.rdSettingsCardLayoutSubtitle ??
           'Drag handle to reorder dashboard cards or toggle switch to show/hide sections',
       icon: Icons.dashboard_customize,
       initiallyExpanded: true,
@@ -232,7 +236,7 @@ class _RouterDashboardSettingsScreenState
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Dashboard Cards',
+              l10n?.rdSettingsDashboardCards ?? 'Dashboard Cards',
               style: LuciTextStyles.detailValue(
                 context,
               ).copyWith(fontWeight: FontWeight.bold),
@@ -255,7 +259,7 @@ class _RouterDashboardSettingsScreenState
                 _onPreferenceChanged();
               },
               icon: const Icon(Icons.restore, size: 16),
-              label: const Text('Reset Layout'),
+              label: Text(l10n?.rdSettingsResetLayout ?? 'Reset Layout'),
             ),
           ],
         ),
@@ -283,6 +287,52 @@ class _RouterDashboardSettingsScreenState
                 );
 
             final isVisible = _preferences.isSectionVisible(cardId);
+            final l10n = AppLocalizations.of(context);
+            String localizedCardName() {
+              switch (cardId) {
+                case 'quick_actions':
+                  return l10n?.cardQuickActions ?? meta.name;
+                case 'device_info':
+                  return l10n?.cardDeviceInfo ?? meta.name;
+                case 'realtime_traffic':
+                  return l10n?.cardRealtimeTraffic ?? meta.name;
+                case 'system_vitals':
+                  return l10n?.cardSystemVitals ?? meta.name;
+                case 'connected_clients':
+                  return l10n?.cardConnectedClients ?? meta.name;
+                case 'wireless_networks':
+                  return l10n?.cardWirelessRadios ?? meta.name;
+                case 'network_interfaces':
+                  return l10n?.cardNetworkInterfaces ?? meta.name;
+                case 'system_modules':
+                  return l10n?.cardSystemModules ?? meta.name;
+                default:
+                  return meta.name;
+              }
+            }
+
+            String localizedCardDesc() {
+              switch (cardId) {
+                case 'quick_actions':
+                  return l10n?.cardQuickActionsDesc ?? meta.desc;
+                case 'device_info':
+                  return l10n?.cardDeviceInfoDesc ?? meta.desc;
+                case 'realtime_traffic':
+                  return l10n?.cardRealtimeTrafficDesc ?? meta.desc;
+                case 'system_vitals':
+                  return l10n?.cardSystemVitalsDesc ?? meta.desc;
+                case 'connected_clients':
+                  return l10n?.cardConnectedClientsDesc ?? meta.desc;
+                case 'wireless_networks':
+                  return l10n?.cardWirelessRadiosDesc ?? meta.desc;
+                case 'network_interfaces':
+                  return l10n?.cardNetworkInterfacesDesc ?? meta.desc;
+                case 'system_modules':
+                  return l10n?.cardSystemModulesDesc ?? meta.desc;
+                default:
+                  return meta.desc;
+              }
+            }
 
             return Container(
               key: ValueKey(cardId),
@@ -319,7 +369,7 @@ class _RouterDashboardSettingsScreenState
                   ],
                 ),
                 title: Text(
-                  meta.name,
+                  localizedCardName(),
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -329,7 +379,7 @@ class _RouterDashboardSettingsScreenState
                   ),
                 ),
                 subtitle: Text(
-                  meta.desc,
+                  localizedCardDesc(),
                   style: TextStyle(
                     fontSize: 11,
                     color: Theme.of(
@@ -397,42 +447,53 @@ class _RouterDashboardSettingsScreenState
   }
 
   Widget _buildQuickActionsSection() {
-    const actions = [
+    final l10n = AppLocalizations.of(context);
+    final actions = [
       (
         id: 'reboot',
-        title: 'Reboot Router',
+        title: l10n?.rdSettingsRebootRouterTitle ?? 'Reboot Router',
         icon: Icons.restart_alt,
-        desc: 'Quick restart trigger with confirmation',
+        desc:
+            l10n?.rdSettingsRebootRouterDesc ??
+            'Quick restart trigger with confirmation',
       ),
       (
         id: 'flush_dns',
-        title: 'Flush DNS Cache',
+        title: l10n?.rdSettingsFlushDns ?? 'Flush DNS Cache',
         icon: Icons.cleaning_services,
-        desc: 'Restart dnsmasq to clear DNS resolver cache',
+        desc:
+            l10n?.rdSettingsFlushDnsDesc ??
+            'Restart dnsmasq to clear DNS resolver cache',
       ),
       (
         id: 'guest_wifi',
-        title: 'Guest Wi-Fi Shortcut',
+        title: l10n?.rdSettingsGuestWifiShortcut ?? 'Guest Wi-Fi Shortcut',
         icon: Icons.wifi_tethering,
-        desc: 'Jump to guest Wi-Fi management',
+        desc:
+            l10n?.rdSettingsGuestWifiShortcutDesc ??
+            'Jump to guest Wi-Fi management',
       ),
       (
         id: 'vpn',
-        title: 'VPN Management Shortcut',
+        title: l10n?.rdSettingsVpnShortcut ?? 'VPN Management Shortcut',
         icon: Icons.vpn_key,
-        desc: 'Jump to VPN configuration & status',
+        desc:
+            l10n?.rdSettingsVpnShortcutDesc ??
+            'Jump to VPN configuration & status',
       ),
       (
         id: 'refresh',
-        title: 'Refresh Data Button',
+        title: l10n?.rdSettingsRefreshBtn ?? 'Refresh Data Button',
         icon: Icons.refresh,
-        desc: 'Force reload dashboard metrics',
+        desc:
+            l10n?.rdSettingsRefreshBtnDesc ?? 'Force reload dashboard metrics',
       ),
     ];
 
     return _buildSection(
-      title: 'Quick Action Shortcuts',
+      title: l10n?.rdSettingsQuickActions ?? 'Quick Action Shortcuts',
       subtitle:
+          l10n?.rdSettingsQuickActionsSubtitle ??
           'Select shortcut action buttons (Reboot, Flush DNS, Guest Wi-Fi, VPN, Refresh) for your dashboard',
       icon: Icons.flash_on,
       children: [
@@ -486,15 +547,20 @@ class _RouterDashboardSettingsScreenState
   }
 
   Widget _buildSystemVitalsOptionsSection() {
+    final l10n = AppLocalizations.of(context);
     return _buildSection(
-      title: 'System Vitals Metrics',
+      title: l10n?.rdSettingsSystemVitals ?? 'System Vitals Metrics',
       subtitle:
-          'Choose hardware performance metrics (CPU, RAM, Load Average, Uptime) to display',
+          l10n?.rdSettingsSystemVitalsSubtitle ??
+          'Choose hardware performance metrics (CPU, RAM, Load Average, Uptime, Temperature) to display',
       icon: Icons.monitor_heart,
       children: [
         SwitchListTile.adaptive(
-          title: const Text('CPU Load (%)'),
-          subtitle: const Text('Real-time CPU processor utilization'),
+          title: Text(l10n?.rdSettingsCpuLoad ?? 'CPU Load (%)'),
+          subtitle: Text(
+            l10n?.rdSettingsCpuLoadDesc ??
+                'Real-time CPU processor utilization',
+          ),
           value: _preferences.showCpuLoad,
           onChanged: (val) {
             setState(() {
@@ -506,8 +572,10 @@ class _RouterDashboardSettingsScreenState
           dense: true,
         ),
         SwitchListTile.adaptive(
-          title: const Text('RAM Usage (%)'),
-          subtitle: const Text('Memory utilization percentage'),
+          title: Text(l10n?.rdSettingsRamUsage ?? 'RAM Usage (%)'),
+          subtitle: Text(
+            l10n?.rdSettingsRamUsageDesc ?? 'Memory utilization percentage',
+          ),
           value: _preferences.showRamUsage,
           onChanged: (val) {
             setState(() {
@@ -519,8 +587,10 @@ class _RouterDashboardSettingsScreenState
           dense: true,
         ),
         SwitchListTile.adaptive(
-          title: const Text('Load Average'),
-          subtitle: const Text('System 1-minute load average'),
+          title: Text(l10n?.rdSettingsLoadAverage ?? 'Load Average'),
+          subtitle: Text(
+            l10n?.rdSettingsLoadAverageDesc ?? 'System 1-minute load average',
+          ),
           value: _preferences.showLoadAverage,
           onChanged: (val) {
             setState(() {
@@ -532,8 +602,10 @@ class _RouterDashboardSettingsScreenState
           dense: true,
         ),
         SwitchListTile.adaptive(
-          title: const Text('System Uptime'),
-          subtitle: const Text('Time since router last booted'),
+          title: Text(l10n?.rdSettingsSystemUptime ?? 'System Uptime'),
+          subtitle: Text(
+            l10n?.rdSettingsSystemUptimeDesc ?? 'Time since router last booted',
+          ),
           value: _preferences.showUptime,
           onChanged: (val) {
             setState(() {
@@ -544,22 +616,121 @@ class _RouterDashboardSettingsScreenState
           activeTrackColor: Theme.of(context).colorScheme.primary,
           dense: true,
         ),
+        SwitchListTile.adaptive(
+          title: Text(
+            l10n?.rdSettingsTemperatureWithUnit(
+                  _preferences.temperatureUnit == 'fahrenheit' ? '°F' : '°C',
+                ) ??
+                'Temperature (${_preferences.temperatureUnit == 'fahrenheit' ? '°F' : '°C'})',
+          ),
+          subtitle: Text(
+            l10n?.rdSettingsThermalDesc ??
+                'Hardware thermal sensor temperature',
+          ),
+          value: _preferences.showTemperature,
+          onChanged: (val) {
+            setState(() {
+              _preferences = _preferences.copyWith(showTemperature: val);
+            });
+            _onPreferenceChanged();
+          },
+          activeTrackColor: Theme.of(context).colorScheme.primary,
+          dense: true,
+        ),
+        const Divider(height: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Text(
+            l10n?.rdSettingsThermalScale ?? 'Temperature Scale',
+            style: LuciTextStyles.detailValue(
+              context,
+            ).copyWith(fontWeight: FontWeight.bold),
+          ),
+        ),
+        RadioGroup<String>(
+          groupValue: _preferences.temperatureUnit,
+          onChanged: (val) {
+            if (val == null) return;
+            setState(() {
+              _preferences = _preferences.copyWith(temperatureUnit: val);
+            });
+            _onPreferenceChanged();
+          },
+          child: Column(
+            children: [
+              RadioListTile<String>(
+                title: Text(l10n?.rdSettingsCelsius ?? 'Celsius (°C)'),
+                subtitle: Text(
+                  l10n?.rdSettingsCelsiusDesc ??
+                      'Standard metric thermal measurement (default)',
+                ),
+                value: 'celsius',
+                activeColor: Theme.of(context).colorScheme.primary,
+                dense: true,
+              ),
+              RadioListTile<String>(
+                title: Text(l10n?.rdSettingsFahrenheit ?? 'Fahrenheit (°F)'),
+                subtitle: Text(
+                  l10n?.rdSettingsFahrenheitDesc ??
+                      'Imperial thermal measurement',
+                ),
+                value: 'fahrenheit',
+                activeColor: Theme.of(context).colorScheme.primary,
+                dense: true,
+              ),
+            ],
+          ),
+        ),
+        if (_preferences.dismissTemperaturePrompt) ...[
+          const Divider(height: 20),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              Icons.restart_alt_rounded,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            title: Text(
+              l10n?.rdSettingsResetThermalPrompt ??
+                  'Reset Dismissed Temperature Prompt',
+            ),
+            subtitle: Text(
+              l10n?.rdSettingsResetThermalPromptDesc ??
+                  'Show temperature script installation pill on dashboard again',
+            ),
+            onTap: () {
+              setState(() {
+                _preferences = _preferences.copyWith(
+                  dismissTemperaturePrompt: false,
+                );
+              });
+              _onPreferenceChanged();
+              context.showToastSuccess(
+                l10n?.rdSettingsThermalPromptRestored ??
+                    'Temperature prompt restored',
+              );
+            },
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildTrafficAndUnitsSection() {
+    final l10n = AppLocalizations.of(context);
     final interfaces = _availableWiredInterfaces.toList()..sort();
     return _buildSection(
-      title: 'Traffic & Throughput Settings',
+      title:
+          l10n?.rdSettingsTrafficSectionTitle ??
+          'Traffic & Throughput Settings',
       subtitle:
+          l10n?.rdSettingsTrafficSectionSubtitle ??
           'Select throughput speed units (Mbps vs MB/s) and interface monitoring scope',
       icon: Icons.speed,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 4.0),
           child: Text(
-            'Speed Display Unit',
+            l10n?.rdSettingsSpeedDisplayUnit ?? 'Speed Display Unit',
             style: LuciTextStyles.detailValue(
               context,
             ).copyWith(fontWeight: FontWeight.bold),
@@ -577,17 +748,27 @@ class _RouterDashboardSettingsScreenState
           child: Column(
             children: [
               RadioListTile<String>(
-                title: const Text('Bits per second (Mbps / Kbps)'),
-                subtitle: const Text(
-                  'Standard network bandwidth measurement unit',
+                title: Text(
+                  l10n?.rdSettingsBitsPerSecond ??
+                      'Bits per second (Mbps / Kbps)',
+                ),
+                subtitle: Text(
+                  l10n?.rdSettingsBitsPerSecondDesc ??
+                      'Standard network bandwidth measurement unit',
                 ),
                 value: 'bits',
                 activeColor: Theme.of(context).colorScheme.primary,
                 dense: true,
               ),
               RadioListTile<String>(
-                title: const Text('Bytes per second (MB/s / KB/s)'),
-                subtitle: const Text('File transfer rate measurement unit'),
+                title: Text(
+                  l10n?.rdSettingsBytesPerSecond ??
+                      'Bytes per second (MB/s / KB/s)',
+                ),
+                subtitle: Text(
+                  l10n?.rdSettingsBytesPerSecondDesc ??
+                      'File transfer rate measurement unit',
+                ),
                 value: 'bytes',
                 activeColor: Theme.of(context).colorScheme.primary,
                 dense: true,
@@ -605,13 +786,15 @@ class _RouterDashboardSettingsScreenState
           ),
           child: SwitchListTile.adaptive(
             title: Text(
-              'Show All Interfaces Throughput',
+              l10n?.rdSettingsShowAllInterfacesThroughput ??
+                  'Show All Interfaces Throughput',
               style: LuciTextStyles.detailValue(
                 context,
               ).copyWith(fontWeight: FontWeight.w600),
             ),
-            subtitle: const Text(
-              'Aggregate overall throughput across all interfaces',
+            subtitle: Text(
+              l10n?.rdSettingsAggregateOverallThroughputDesc ??
+                  'Aggregate overall throughput across all interfaces',
             ),
             value: _preferences.showAllThroughput,
             onChanged: (value) {
@@ -679,15 +862,21 @@ class _RouterDashboardSettingsScreenState
   }
 
   Widget _buildNetworkPrivacySection() {
+    final l10n = AppLocalizations.of(context);
     return _buildSection(
-      title: 'Network & Privacy Options',
-      subtitle: 'IP masking and inactive interface filters',
+      title: l10n?.rdSettingsNetworkPrivacyTitle ?? 'Network & Privacy Options',
+      subtitle:
+          l10n?.rdSettingsNetworkPrivacySubtitle ??
+          'IP masking and inactive interface filters',
       icon: Icons.security,
       children: [
         SwitchListTile.adaptive(
-          title: const Text('Mask Public WAN IP Address'),
-          subtitle: const Text(
-            'Hide public IP address by default for privacy & screenshots',
+          title: Text(
+            l10n?.rdSettingsMaskWanIp ?? 'Mask Public WAN IP Address',
+          ),
+          subtitle: Text(
+            l10n?.rdSettingsMaskWanIpDesc ??
+                'Hide public IP address by default for privacy & screenshots',
           ),
           value: _preferences.maskPublicIp,
           onChanged: (val) {
@@ -700,9 +889,12 @@ class _RouterDashboardSettingsScreenState
           dense: true,
         ),
         SwitchListTile.adaptive(
-          title: const Text('Show Inactive / Down Interfaces'),
-          subtitle: const Text(
-            'Display interfaces even if offline or unassigned',
+          title: Text(
+            l10n?.rdSettingsShowInactive ?? 'Show Inactive / Down Interfaces',
+          ),
+          subtitle: Text(
+            l10n?.rdSettingsShowInactiveDesc ??
+                'Display interfaces even if offline or unassigned',
           ),
           value: _preferences.showInactiveInterfaces,
           onChanged: (val) {
@@ -719,11 +911,14 @@ class _RouterDashboardSettingsScreenState
   }
 
   Widget _buildWirelessInterfacesSection() {
+    final l10n = AppLocalizations.of(context);
     if (_availableWirelessInterfaces.isEmpty) return const SizedBox.shrink();
     final sortedInterfaces = _availableWirelessInterfaces.toList()..sort();
     return _buildSection(
-      title: 'Wireless Networks',
-      subtitle: 'Choose which wireless networks to display',
+      title: l10n?.rdSettingsWirelessNetworksTitle ?? 'Wireless Networks',
+      subtitle:
+          l10n?.rdSettingsWirelessNetworksSubtitle ??
+          'Choose which wireless networks to display',
       icon: Icons.wifi,
       children: [
         Container(
@@ -735,7 +930,7 @@ class _RouterDashboardSettingsScreenState
           ),
           child: SwitchListTile.adaptive(
             title: Text(
-              'Show All Networks',
+              l10n?.rdSettingsShowAllNetworks ?? 'Show All Networks',
               style: LuciTextStyles.detailValue(
                 context,
               ).copyWith(fontWeight: FontWeight.w600),
@@ -812,11 +1007,15 @@ class _RouterDashboardSettingsScreenState
   }
 
   Widget _buildWiredInterfacesSection() {
+    final l10n = AppLocalizations.of(context);
     if (_availableWiredInterfaces.isEmpty) return const SizedBox.shrink();
     final sortedInterfaces = _availableWiredInterfaces.toList()..sort();
     return _buildSection(
-      title: 'Wired & Virtual Interfaces',
-      subtitle: 'Choose which interface status cards to display',
+      title:
+          l10n?.rdSettingsWiredInterfacesTitle ?? 'Wired & Virtual Interfaces',
+      subtitle:
+          l10n?.rdSettingsWiredInterfacesSubtitle ??
+          'Choose which interface status cards to display',
       icon: Icons.cable,
       children: [
         Container(
@@ -828,7 +1027,7 @@ class _RouterDashboardSettingsScreenState
           ),
           child: SwitchListTile.adaptive(
             title: Text(
-              'Show All Interfaces',
+              l10n?.rdSettingsShowAllInterfaces ?? 'Show All Interfaces',
               style: LuciTextStyles.detailValue(
                 context,
               ).copyWith(fontWeight: FontWeight.w600),
@@ -905,24 +1104,31 @@ class _RouterDashboardSettingsScreenState
   }
 
   Widget? _getInterfaceDescription(String interface) {
+    final l10n = AppLocalizations.of(context);
     final lower = interface.toLowerCase();
     if (lower.startsWith('wan')) {
       return Text(
-        'Wide Area Network',
+        l10n?.interfaceTypeWan ?? 'Wide Area Network',
         style: LuciTextStyles.cardSubtitle(context),
       );
     } else if (lower.startsWith('lan')) {
       return Text(
-        'Local Area Network',
+        l10n?.interfaceTypeLan ?? 'Local Area Network',
         style: LuciTextStyles.cardSubtitle(context),
       );
     } else if (lower.contains('wireguard') || lower.startsWith('wg')) {
-      return Text('WireGuard VPN', style: LuciTextStyles.cardSubtitle(context));
+      return Text(
+        l10n?.interfaceTypeWireguard ?? 'WireGuard VPN',
+        style: LuciTextStyles.cardSubtitle(context),
+      );
     } else if (lower.contains('openvpn')) {
-      return Text('OpenVPN', style: LuciTextStyles.cardSubtitle(context));
+      return Text(
+        l10n?.interfaceTypeOpenVpn ?? 'OpenVPN',
+        style: LuciTextStyles.cardSubtitle(context),
+      );
     } else if (lower.contains('pppoe')) {
       return Text(
-        'PPPoE Connection',
+        l10n?.interfaceTypePppoe ?? 'PPPoE Connection',
         style: LuciTextStyles.cardSubtitle(context),
       );
     }
@@ -931,21 +1137,23 @@ class _RouterDashboardSettingsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final title = l10n?.dashboardSettingsTitle ?? 'Dashboard Settings';
     if (_isLoading) {
-      return const Scaffold(
-        appBar: LuciAppBar(title: 'Dashboard Settings', showBack: true),
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        appBar: LuciAppBar(title: title, showBack: true),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
     if (_errorMessage != null) {
       return Scaffold(
-        appBar: const LuciAppBar(title: 'Dashboard Settings', showBack: true),
+        appBar: LuciAppBar(title: title, showBack: true),
         body: Center(child: Text(_errorMessage!)),
       );
     }
 
     return Scaffold(
-      appBar: const LuciAppBar(title: 'Dashboard Settings', showBack: true),
+      appBar: LuciAppBar(title: title, showBack: true),
       body: ListView(
         padding: EdgeInsets.symmetric(vertical: LuciSpacing.sm),
         children: [

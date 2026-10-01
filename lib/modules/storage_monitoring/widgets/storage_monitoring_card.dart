@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/main.dart';
 import '../models/storage_info.dart';
 
@@ -18,6 +19,7 @@ class StorageMonitoringCard extends ConsumerWidget {
       mountData,
       isReviewerMode: appState.reviewerModeEnabled,
     );
+    final l10n = AppLocalizations.of(context);
 
     final displayItems = storage.priorityDisplayMounts;
 
@@ -44,9 +46,10 @@ class StorageMonitoringCard extends ConsumerWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Storage & Overlay',
+                          l10n?.storageMonitoringTitle ?? 'Storage & Overlay',
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -55,22 +58,28 @@ class StorageMonitoringCard extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '${storage.mountedDevices.length} Mounts',
+                  l10n != null
+                      ? l10n.storageMountsCount(storage.mountedDevices.length)
+                      : '${storage.mountedDevices.length} Mounts',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(
                       context,
                     ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
             const SizedBox(height: 12),
             if (displayItems.isEmpty)
               Text(
-                'No storage devices detected.',
+                l10n?.storageNoDevices ?? 'No storage devices detected.',
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               )
             else
               Column(
@@ -153,14 +162,17 @@ class StorageMonitoringCard extends ConsumerWidget {
                   fontWeight: FontWeight.w500,
                 ),
                 overflow: TextOverflow.ellipsis,
-                maxLines: 1,
+                maxLines: 2,
               ),
             ),
             const SizedBox(width: 8),
-            Text(
-              '$formattedUsed / $formattedTotal (${percent.toStringAsFixed(0)}%)',
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.bold,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$formattedUsed / $formattedTotal (${percent.toStringAsFixed(0)}%)',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],

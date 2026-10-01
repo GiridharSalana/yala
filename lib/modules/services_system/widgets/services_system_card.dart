@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/main.dart';
 import '../models/services_system_info.dart';
 
@@ -12,6 +13,7 @@ class ServicesSystemCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
     final overview = ServicesSystemOverview.fromDashboardData(
       appState.dashboardData,
@@ -30,28 +32,42 @@ class ServicesSystemCard extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.settings_applications_outlined,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Services & System',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.settings_applications_outlined,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n?.servicesSysCardTitle ?? 'Services & System',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Text(
-                  '${overview.runningServicesCount} Active / ${overview.services.length} Total',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.7),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    l10n?.servicesSysCardSubtitle(
+                          overview.runningServicesCount,
+                          overview.services.length,
+                        ) ??
+                        '${overview.runningServicesCount} Active / ${overview.services.length} Total',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -62,8 +78,12 @@ class ServicesSystemCard extends ConsumerWidget {
                 Expanded(
                   child: _buildMetricTile(
                     context,
-                    label: 'Procd Services',
-                    value: '${overview.runningServicesCount} Running',
+                    label: l10n?.servicesSysCardProcd ?? 'Procd Services',
+                    value:
+                        l10n?.servicesSysCardProcdRunning(
+                          overview.runningServicesCount,
+                        ) ??
+                        '${overview.runningServicesCount} Running',
                     icon: Icons.miscellaneous_services_outlined,
                     color: Colors.green,
                   ),
@@ -71,8 +91,12 @@ class ServicesSystemCard extends ConsumerWidget {
                 Expanded(
                   child: _buildMetricTile(
                     context,
-                    label: 'Init Scripts',
-                    value: '${overview.initScripts.length} Scripts',
+                    label: l10n?.servicesSysCardInitScripts ?? 'Init Scripts',
+                    value:
+                        l10n?.servicesSysCardInitScriptsCount(
+                          overview.initScripts.length,
+                        ) ??
+                        '${overview.initScripts.length} Scripts',
                     icon: Icons.playlist_add_check_outlined,
                     color: Colors.blue,
                   ),
@@ -80,8 +104,12 @@ class ServicesSystemCard extends ConsumerWidget {
                 Expanded(
                   child: _buildMetricTile(
                     context,
-                    label: 'Cron Tasks',
-                    value: '${overview.cronJobs.length} Jobs',
+                    label: l10n?.servicesSysCardCronTasks ?? 'Cron Tasks',
+                    value:
+                        l10n?.servicesSysCardCronTasksCount(
+                          overview.cronJobs.length,
+                        ) ??
+                        '${overview.cronJobs.length} Jobs',
                     icon: Icons.schedule_outlined,
                     color: Colors.orange,
                   ),
@@ -112,17 +140,23 @@ class ServicesSystemCard extends ConsumerWidget {
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             fontSize: 10,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 2),
-        Text(
-          value,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
         ),
       ],
     );

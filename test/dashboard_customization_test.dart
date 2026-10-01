@@ -26,10 +26,13 @@ void main() {
 
         expect(prefs.showCpuLoad, isTrue);
         expect(prefs.showRamUsage, isTrue);
+        expect(prefs.showTemperature, isTrue);
+        expect(prefs.dismissTemperaturePrompt, isFalse);
         expect(prefs.showLoadAverage, isTrue);
         expect(prefs.showUptime, isTrue);
 
         expect(prefs.speedUnit, equals('bits'));
+        expect(prefs.temperatureUnit, equals('celsius'));
         expect(prefs.showInactiveInterfaces, isTrue);
         expect(prefs.maskPublicIp, isFalse);
       },
@@ -53,7 +56,10 @@ void main() {
         final customPrefs = DashboardPreferences(
           showQuickActions: false,
           showCpuLoad: false,
+          showTemperature: false,
+          dismissTemperaturePrompt: true,
           speedUnit: 'bytes',
+          temperatureUnit: 'fahrenheit',
           maskPublicIp: true,
           showInactiveInterfaces: false,
           enabledQuickActions: {'reboot', 'flush_dns'},
@@ -74,7 +80,10 @@ void main() {
 
         expect(restored.showQuickActions, isFalse);
         expect(restored.showCpuLoad, isFalse);
+        expect(restored.showTemperature, isFalse);
+        expect(restored.dismissTemperaturePrompt, isTrue);
         expect(restored.speedUnit, equals('bytes'));
+        expect(restored.temperatureUnit, equals('fahrenheit'));
         expect(restored.maskPublicIp, isTrue);
         expect(restored.showInactiveInterfaces, isFalse);
         expect(
@@ -89,12 +98,18 @@ void main() {
       final prefs = DashboardPreferences();
       final updated = prefs.copyWith(
         speedUnit: 'bytes',
+        temperatureUnit: 'fahrenheit',
         showRamUsage: false,
+        showTemperature: false,
+        dismissTemperaturePrompt: true,
         cardOrder: ['device_info', 'quick_actions'],
       );
 
       expect(updated.speedUnit, equals('bytes'));
+      expect(updated.temperatureUnit, equals('fahrenheit'));
       expect(updated.showRamUsage, isFalse);
+      expect(updated.showTemperature, isFalse);
+      expect(updated.dismissTemperaturePrompt, isTrue);
       expect(updated.showCpuLoad, isTrue);
       expect(updated.cardOrder.first, equals('device_info'));
     });

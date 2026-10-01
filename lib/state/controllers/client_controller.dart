@@ -52,6 +52,8 @@ class ClientController {
 
   final Set<String> _knownWirelessMacs = {};
   final Map<String, DateTime> _recentWiredActiveTime = {};
+  final Map<String, ({int rxBytes, int txBytes, DateTime timestamp})>
+  _previousStationTraffic = {};
   DateTime? _lastNeighborProbeTime;
   List<Client>? lastFetchedClients;
   bool _isFetchingClients = false;
@@ -64,6 +66,7 @@ class ClientController {
   void resetState() {
     _knownWirelessMacs.clear();
     _recentWiredActiveTime.clear();
+    _previousStationTraffic.clear();
     _lastNeighborProbeTime = null;
     lastFetchedClients = null;
     _isFetchingClients = false;
@@ -112,6 +115,101 @@ class ClientController {
     }
 
     return false;
+  }
+
+  static int? _extractInt(dynamic val) {
+    if (val == null) return null;
+    if (val is int) return val;
+    if (val is num) return val.toInt();
+    if (val is String) return int.tryParse(val);
+    return null;
+  }
+
+  static num? _extractNum(dynamic val) {
+    if (val == null) return null;
+    if (val is num) return val;
+    if (val is String) return num.tryParse(val);
+    return null;
+  }
+
+  ({
+    int? rxBytes,
+    int? txBytes,
+    int? rxPackets,
+    int? txPackets,
+    num? rxRate,
+    num? txRate,
+    int? signalDbm,
+    int? noiseDbm,
+    int? throughput,
+    double? rxSpeed,
+    double? txSpeed,
+    int? connectedTime,
+  })
+  _computeStationVitals(String mac, Map<String, dynamic> station) {
+    final rxMap = station['rx'] is Map ? (station['rx'] as Map) : null;
+    final txMap = station['tx'] is Map ? (station['tx'] as Map) : null;
+
+    final rxBytes = _extractInt(rxMap?['bytes'] ?? station['rx_bytes']);
+    final txBytes = _extractInt(txMap?['bytes'] ?? station['tx_bytes']);
+    final rxPackets = _extractInt(rxMap?['packets'] ?? station['rx_packets']);
+    final txPackets = _extractInt(txMap?['packets'] ?? station['tx_packets']);
+    final rxRate = _extractNum(rxMap?['rate'] ?? station['rx_rate']);
+    final txRate = _extractNum(txMap?['rate'] ?? station['tx_rate']);
+    final signalDbm = _extractInt(station['signal']);
+    final noiseDbm = _extractInt(station['noise']);
+    final throughput = _extractInt(station['thr'] ?? station['throughput']);
+    final connectedTime = _extractInt(station['connected_time']);
+
+    final now = DateTime.now();
+    double? rxSpeed;
+    double? txSpeed;
+
+    final prev = _previousStationTraffic[mac];
+    if (prev != null && rxBytes != null && txBytes != null) {
+      final deltaSeconds =
+          now.difference(prev.timestamp).inMilliseconds / 1000.0;
+      if (deltaSeconds >= 0.5 && deltaSeconds <= 120.0) {
+        if (rxBytes >= prev.rxBytes) {
+          rxSpeed = (rxBytes - prev.rxBytes) / deltaSeconds;
+        } else if (prev.rxBytes > 0x7FFFFFFF && rxBytes < 0x20000000) {
+          // 32-bit unsigned counter rollover: 2^32 = 4294967296
+          final delta = (4294967296 - prev.rxBytes) + rxBytes;
+          rxSpeed = delta / deltaSeconds;
+        }
+
+        if (txBytes >= prev.txBytes) {
+          txSpeed = (txBytes - prev.txBytes) / deltaSeconds;
+        } else if (prev.txBytes > 0x7FFFFFFF && txBytes < 0x20000000) {
+          // 32-bit unsigned counter rollover: 2^32 = 4294967296
+          final delta = (4294967296 - prev.txBytes) + txBytes;
+          txSpeed = delta / deltaSeconds;
+        }
+      }
+    }
+
+    if (rxBytes != null && txBytes != null) {
+      _previousStationTraffic[mac] = (
+        rxBytes: rxBytes,
+        txBytes: txBytes,
+        timestamp: now,
+      );
+    }
+
+    return (
+      rxBytes: rxBytes,
+      txBytes: txBytes,
+      rxPackets: rxPackets,
+      txPackets: txPackets,
+      rxRate: rxRate,
+      txRate: txRate,
+      signalDbm: signalDbm,
+      noiseDbm: noiseDbm,
+      throughput: throughput,
+      rxSpeed: rxSpeed,
+      txSpeed: txSpeed,
+      connectedTime: connectedTime,
+    );
   }
 
   IApiService? get _apiService => _apiServiceRef();
@@ -174,6 +272,19 @@ class ClientController {
             final ipv6Addrs = existing.ipv6Addresses ?? c.ipv6Addresses;
             final vendor = existing.vendor ?? c.vendor;
 
+            final rxBytes = c.rxBytes ?? existing.rxBytes;
+            final txBytes = c.txBytes ?? existing.txBytes;
+            final rxPackets = c.rxPackets ?? existing.rxPackets;
+            final txPackets = c.txPackets ?? existing.txPackets;
+            final rxRate = c.rxRate ?? existing.rxRate;
+            final txRate = c.txRate ?? existing.txRate;
+            final signalDbm = c.signalDbm ?? existing.signalDbm;
+            final noiseDbm = c.noiseDbm ?? existing.noiseDbm;
+            final throughput = c.throughput ?? existing.throughput;
+            final rxSpeed = c.rxSpeed ?? existing.rxSpeed;
+            final txSpeed = c.txSpeed ?? existing.txSpeed;
+            final connectedTime = c.connectedTime ?? existing.connectedTime;
+
             clientsMap[macNorm] = existing.copyWith(
               hostname: preferredHostname,
               ipAddress: preferredIp,
@@ -187,6 +298,18 @@ class ClientController {
               isStaticLease: isStatic,
               ipv6Addresses: ipv6Addrs,
               vendor: vendor,
+              rxBytes: rxBytes,
+              txBytes: txBytes,
+              rxPackets: rxPackets,
+              txPackets: txPackets,
+              rxRate: rxRate,
+              txRate: txRate,
+              signalDbm: signalDbm,
+              noiseDbm: noiseDbm,
+              throughput: throughput,
+              rxSpeed: rxSpeed,
+              txSpeed: txSpeed,
+              connectedTime: connectedTime,
             );
           }
         }
@@ -215,9 +338,15 @@ class ClientController {
     _isFetchingClients = true;
     try {
       if (_isReviewerMode) {
-        final stationsMap = await _apiService!.fetchAssociatedStations();
+        final stationsMap = await _apiService!
+            .fetchAllAssociatedWirelessStationsWithDetailsContext(
+              ipAddress: '192.168.1.1',
+              sysauth: 'mock',
+              useHttps: false,
+            );
         final macToSsidMap = <String, String>{};
         final macToIfaceMap = <String, String>{};
+        final macToStationDetailsMap = <String, Map<String, dynamic>>{};
         final macs = <String>{};
         stationsMap.forEach((key, stations) {
           String iface = key;
@@ -227,16 +356,42 @@ class ClientController {
             iface = parts[0];
             ssid = parts.sublist(1).join('|');
           }
-          for (final m in stations) {
-            final macLower = m.toLowerCase();
+          for (final station in stations) {
+            final rawMac = station['mac']?.toString();
+            if (rawMac == null || rawMac.isEmpty) continue;
+            final macLower = rawMac.toLowerCase();
             macs.add(macLower);
-            final macNorm = m.toUpperCase().replaceAll('-', ':');
+            final macNorm = rawMac.toUpperCase().replaceAll('-', ':');
             macToIfaceMap[macNorm] = iface;
             if (ssid.isNotEmpty) {
               macToSsidMap[macNorm] = ssid;
             }
+            macToStationDetailsMap[macNorm] = station;
           }
         });
+
+        final vitalsMap =
+            <
+              String,
+              ({
+                int? rxBytes,
+                int? txBytes,
+                int? rxPackets,
+                int? txPackets,
+                num? rxRate,
+                num? txRate,
+                int? signalDbm,
+                int? noiseDbm,
+                int? throughput,
+                double? rxSpeed,
+                double? txSpeed,
+                int? connectedTime,
+              })
+            >{};
+        macToStationDetailsMap.forEach((mac, data) {
+          vitalsMap[mac] = _computeStationVitals(mac, data);
+        });
+
         final result = await _apiService!.callSimple(
           'luci-rpc',
           'getDHCPLeases',
@@ -276,6 +431,7 @@ class ClientController {
               : c.ipv6Addresses;
           final vendorName =
               hostHints[macNorm]?['vendor']?.toString() ?? c.vendor;
+          final vitals = vitalsMap[macNorm];
 
           clientMap[macNorm] = c.copyWith(
             connectionType: isWireless
@@ -287,6 +443,18 @@ class ClientController {
             isStaticLease: isStaticEntry,
             ipv6Addresses: v6List,
             vendor: vendorName,
+            rxBytes: vitals?.rxBytes,
+            txBytes: vitals?.txBytes,
+            rxPackets: vitals?.rxPackets,
+            txPackets: vitals?.txPackets,
+            rxRate: vitals?.rxRate,
+            txRate: vitals?.txRate,
+            signalDbm: vitals?.signalDbm,
+            noiseDbm: vitals?.noiseDbm,
+            throughput: vitals?.throughput,
+            rxSpeed: vitals?.rxSpeed,
+            txSpeed: vitals?.txSpeed,
+            connectedTime: vitals?.connectedTime,
           );
         }
         for (final mac in normalizedMacs) {
@@ -298,11 +466,24 @@ class ClientController {
                 ? hintV6.map((e) => e.toString()).toList()
                 : null;
             final vendorName = hostHints[mac]?['vendor']?.toString();
+            final vitals = vitalsMap[mac];
             clientMap[mac] =
                 Client.fromWirelessStation(
                   mac,
                   ssid: macToSsidMap[mac],
                   wirelessIface: macToIfaceMap[mac],
+                  rxBytes: vitals?.rxBytes,
+                  txBytes: vitals?.txBytes,
+                  rxPackets: vitals?.rxPackets,
+                  txPackets: vitals?.txPackets,
+                  rxRate: vitals?.rxRate,
+                  txRate: vitals?.txRate,
+                  signalDbm: vitals?.signalDbm,
+                  noiseDbm: vitals?.noiseDbm,
+                  throughput: vitals?.throughput,
+                  rxSpeed: vitals?.rxSpeed,
+                  txSpeed: vitals?.txSpeed,
+                  connectedTime: vitals?.connectedTime,
                 ).copyWith(
                   staticLeaseName: staticName,
                   isStaticLease: isStaticEntry,
@@ -331,6 +512,7 @@ class ClientController {
                 ? hintV6.map((e) => e.toString()).toList()
                 : null;
             final vendorName = info['vendor']?.toString();
+            final vitals = vitalsMap[macN];
 
             clientMap[macN] = Client(
               ipAddress: ip,
@@ -345,6 +527,18 @@ class ClientController {
               isStaticLease: isStaticEntry,
               ipv6Addresses: v6List,
               vendor: vendorName,
+              rxBytes: vitals?.rxBytes,
+              txBytes: vitals?.txBytes,
+              rxPackets: vitals?.rxPackets,
+              txPackets: vitals?.txPackets,
+              rxRate: vitals?.rxRate,
+              txRate: vitals?.txRate,
+              signalDbm: vitals?.signalDbm,
+              noiseDbm: vitals?.noiseDbm,
+              throughput: vitals?.throughput,
+              rxSpeed: vitals?.rxSpeed,
+              txSpeed: vitals?.txSpeed,
+              connectedTime: vitals?.connectedTime,
             );
           }
         });
@@ -421,17 +615,18 @@ class ClientController {
     try {
       String normMac(String mac) => normalizeMac(mac);
 
-      // 1. Fetch live associated wireless stations
+      // 1. Fetch live associated wireless stations with full traffic & PHY stats
       final stationsMap = await _apiService!
-          .fetchAllAssociatedWirelessMacsWithContext(
+          .fetchAllAssociatedWirelessStationsWithDetailsContext(
             ipAddress: router.ipAddress,
             sysauth: activeSysauth,
             useHttps: actualUseHttps,
           );
       final macToSsidMap = <String, String>{};
       final macToIfaceMap = <String, String>{};
+      final macToStationDetailsMap = <String, Map<String, dynamic>>{};
       final wireless = <String>{};
-      stationsMap.forEach((key, s) {
+      stationsMap.forEach((key, stationList) {
         String iface = key;
         String? ssid = key;
         if (key.contains('|')) {
@@ -439,14 +634,39 @@ class ClientController {
           iface = parts[0];
           ssid = parts.sublist(1).join('|');
         }
-        for (final m in s) {
-          final n = normMac(m);
+        for (final station in stationList) {
+          final rawMac = station['mac']?.toString();
+          if (rawMac == null || rawMac.isEmpty) continue;
+          final n = normMac(rawMac);
           wireless.add(n);
           macToIfaceMap[n] = iface;
           if (ssid.isNotEmpty) {
             macToSsidMap[n] = ssid;
           }
+          macToStationDetailsMap[n] = station;
         }
+      });
+
+      final vitalsMap =
+          <
+            String,
+            ({
+              int? rxBytes,
+              int? txBytes,
+              int? rxPackets,
+              int? txPackets,
+              num? rxRate,
+              num? txRate,
+              int? signalDbm,
+              int? noiseDbm,
+              int? throughput,
+              double? rxSpeed,
+              double? txSpeed,
+              int? connectedTime,
+            })
+          >{};
+      macToStationDetailsMap.forEach((mac, data) {
+        vitalsMap[mac] = _computeStationVitals(mac, data);
       });
 
       // Fallback: Shell station dump if station map is empty
@@ -550,6 +770,72 @@ class ClientController {
           (otherRouters.isNotEmpty &&
               router.id != _routerService?.selectedRouter?.id);
 
+      final wanDevices = <String>{};
+      final wanIps = <String>{};
+      final wanMacs = <String>{};
+
+      try {
+        final ifaceRes = await _apiService!.call(
+          router.ipAddress,
+          activeSysauth,
+          router.useHttps,
+          object: 'network.interface',
+          method: 'dump',
+          params: {},
+        );
+        if (ifaceRes is List &&
+            ifaceRes.length > 1 &&
+            ifaceRes[0] == 0 &&
+            ifaceRes[1] is Map) {
+          final data = ifaceRes[1] as Map<String, dynamic>;
+          final ifaces = data['interface'] as List?;
+          if (ifaces != null) {
+            for (final item in ifaces) {
+              if (item is Map<String, dynamic>) {
+                final name = (item['interface'] as String? ?? '').toLowerCase();
+                final dev = (item['device'] as String? ?? '').toLowerCase();
+                final l3Dev = (item['l3_device'] as String? ?? '')
+                    .toLowerCase();
+                final isWan =
+                    name == 'wan' ||
+                    name == 'wan6' ||
+                    name.startsWith('wan') ||
+                    name.startsWith('wwan') ||
+                    item['defaultroute'] == true;
+                if (isWan) {
+                  if (dev.isNotEmpty) wanDevices.add(dev);
+                  if (l3Dev.isNotEmpty) wanDevices.add(l3Dev);
+                  final v4 = item['ipv4-address'] as List?;
+                  if (v4 != null) {
+                    for (final a in v4) {
+                      if (a is Map && a['address'] != null) {
+                        wanIps.add(a['address'].toString());
+                      }
+                    }
+                  }
+                  final v6 = item['ipv6-address'] as List?;
+                  if (v6 != null) {
+                    for (final a in v6) {
+                      if (a is Map && a['address'] != null) {
+                        wanIps.add(a['address'].toString());
+                      }
+                    }
+                  }
+                  final routes = item['route'] as List?;
+                  if (routes != null) {
+                    for (final r in routes) {
+                      if (r is Map && r['nexthop'] != null) {
+                        wanIps.add(r['nexthop'].toString());
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
       List<Map<String, dynamic>> parseIpNeighOutput(String raw) {
         final list = <Map<String, dynamic>>[];
         for (final line in raw.split('\n')) {
@@ -567,9 +853,21 @@ class ClientController {
           }
           if (mac == null || !mac.contains(':')) continue;
           if (mac == '00:00:00:00:00:00') continue;
+          final norm = normMac(mac);
+          final devLower = dev.toLowerCase();
+          final isWanNeigh =
+              wanDevices.contains(devLower) ||
+              devLower.startsWith('wan') ||
+              devLower.startsWith('wwan') ||
+              devLower.contains('wan');
+          if (isWanNeigh) {
+            wanMacs.add(norm);
+            wanIps.add(ip);
+            continue;
+          }
           list.add({
             'ipaddr': ip,
-            'macaddr': normMac(mac),
+            'macaddr': norm,
             'device': dev,
             'nud_state': nudState,
           });
@@ -688,9 +986,21 @@ class ClientController {
                 if (mac != '00:00:00:00:00:00' &&
                     mac.contains(':') &&
                     flags != '0x0') {
+                  final norm = normMac(mac);
+                  final devLower = dev.toLowerCase();
+                  final isWanNeigh =
+                      wanDevices.contains(devLower) ||
+                      devLower.startsWith('wan') ||
+                      devLower.startsWith('wwan') ||
+                      devLower.contains('wan');
+                  if (isWanNeigh) {
+                    wanMacs.add(norm);
+                    wanIps.add(ip);
+                    continue;
+                  }
                   neighClients.add({
                     'ipaddr': ip,
-                    'macaddr': normMac(mac),
+                    'macaddr': norm,
                     'device': dev,
                     'nud_state': 'UNKNOWN',
                   });
@@ -708,7 +1018,12 @@ class ClientController {
         useHttps: router.useHttps,
       );
 
-      final routerIps = <String>{router.ipAddress, '127.0.0.1', '0.0.0.0'};
+      final routerIps = <String>{
+        router.ipAddress,
+        '127.0.0.1',
+        '0.0.0.0',
+        ...wanIps,
+      };
       final routerMacs = <String>{};
 
       try {
@@ -825,6 +1140,7 @@ class ClientController {
             ? hintV6.map((e) => e.toString()).toList()
             : c.ipv6Addresses;
 
+        final vitals = vitalsMap[macN];
         clientMap[macN] = c.copyWith(
           hostname: hostname,
           connectionType: isWireless
@@ -836,6 +1152,18 @@ class ClientController {
           isStaticLease: isStaticEntry,
           staticLeaseTime: staticTime,
           ipv6Addresses: v6List,
+          rxBytes: vitals?.rxBytes,
+          txBytes: vitals?.txBytes,
+          rxPackets: vitals?.rxPackets,
+          txPackets: vitals?.txPackets,
+          rxRate: vitals?.rxRate,
+          txRate: vitals?.txRate,
+          signalDbm: vitals?.signalDbm,
+          noiseDbm: vitals?.noiseDbm,
+          throughput: vitals?.throughput,
+          rxSpeed: vitals?.rxSpeed,
+          txSpeed: vitals?.txSpeed,
+          connectedTime: vitals?.connectedTime,
         );
       }
 
@@ -892,6 +1220,7 @@ class ClientController {
                   ?.toString();
               final isStaticEntry =
                   hostHints[matchedMac]?['isStaticLease'] == true;
+              final vitals = vitalsMap[matchedMac!];
               clientMap[matchedMac!] = Client(
                 ipAddress: 'N/A',
                 macAddress: matchedMac!,
@@ -906,6 +1235,18 @@ class ClientController {
                 staticLeaseName: staticName,
                 isStaticLease: isStaticEntry,
                 ipv6Addresses: v6Addrs,
+                rxBytes: vitals?.rxBytes,
+                txBytes: vitals?.txBytes,
+                rxPackets: vitals?.rxPackets,
+                txPackets: vitals?.txPackets,
+                rxRate: vitals?.rxRate,
+                txRate: vitals?.txRate,
+                signalDbm: vitals?.signalDbm,
+                noiseDbm: vitals?.noiseDbm,
+                throughput: vitals?.throughput,
+                rxSpeed: vitals?.rxSpeed,
+                txSpeed: vitals?.txSpeed,
+                connectedTime: vitals?.connectedTime,
               );
             }
           }
@@ -932,6 +1273,7 @@ class ClientController {
           final v6List = (hintV6 != null && hintV6.isNotEmpty)
               ? hintV6.map((e) => e.toString()).toList()
               : null;
+          final vitals = vitalsMap[macN];
 
           clientMap[macN] = Client(
             ipAddress: ip,
@@ -945,6 +1287,18 @@ class ClientController {
             staticLeaseName: staticName,
             isStaticLease: isStaticEntry,
             ipv6Addresses: v6List,
+            rxBytes: vitals?.rxBytes,
+            txBytes: vitals?.txBytes,
+            rxPackets: vitals?.rxPackets,
+            txPackets: vitals?.txPackets,
+            rxRate: vitals?.rxRate,
+            txRate: vitals?.txRate,
+            signalDbm: vitals?.signalDbm,
+            noiseDbm: vitals?.noiseDbm,
+            throughput: vitals?.throughput,
+            rxSpeed: vitals?.rxSpeed,
+            txSpeed: vitals?.txSpeed,
+            connectedTime: vitals?.connectedTime,
           );
         }
       });
@@ -961,6 +1315,7 @@ class ClientController {
           final vendorName = hostHints[mac]?['vendor']?.toString();
           final resolvedSsid = macToSsidMap[mac];
           final resolvedIface = macToIfaceMap[mac];
+          final vitals = vitalsMap[mac];
 
           clientMap[mac] =
               Client.fromWirelessStation(
@@ -969,6 +1324,18 @@ class ClientController {
                 wirelessIface: resolvedIface,
                 isDumbApClient: isRouterDumbAp,
                 apName: isRouterDumbAp ? router.displayName : null,
+                rxBytes: vitals?.rxBytes,
+                txBytes: vitals?.txBytes,
+                rxPackets: vitals?.rxPackets,
+                txPackets: vitals?.txPackets,
+                rxRate: vitals?.rxRate,
+                txRate: vitals?.txRate,
+                signalDbm: vitals?.signalDbm,
+                noiseDbm: vitals?.noiseDbm,
+                throughput: vitals?.throughput,
+                rxSpeed: vitals?.rxSpeed,
+                txSpeed: vitals?.txSpeed,
+                connectedTime: vitals?.connectedTime,
               ).copyWith(
                 staticLeaseName: staticName,
                 isStaticLease: isStaticEntry,
@@ -984,9 +1351,17 @@ class ClientController {
 
       for (final c in clientMap.values) {
         final macN = normMac(c.macAddress);
+        final hasActiveLease = c.leaseTime != null && c.leaseTime! > 0;
+        final isStaticLease =
+            hostHints[macN]?['isStaticLease'] == true || c.isStaticLease;
 
-        if (routerMacs.contains(macN) || routerIps.contains(c.ipAddress)) {
-          continue;
+        if (routerMacs.contains(macN) ||
+            routerIps.contains(c.ipAddress) ||
+            wanMacs.contains(macN) ||
+            wanIps.contains(c.ipAddress)) {
+          if (!hasActiveLease && !isStaticLease) {
+            continue;
+          }
         }
         if (sysHostname.isNotEmpty) {
           final nameLower = c.displayName.trim().toLowerCase();
@@ -1017,6 +1392,12 @@ class ClientController {
           }
         }
 
+        if (routerIps.contains(resolvedIp) || wanIps.contains(resolvedIp)) {
+          if (!hasActiveLease && !isStaticLease) {
+            continue;
+          }
+        }
+
         final isWirelessActive = normalizedWireless.contains(macN);
 
         Map<String, dynamic>? wiredNeighEntry;
@@ -1031,7 +1412,12 @@ class ClientController {
               dev.startsWith('ra') ||
               dev.startsWith('wifi') ||
               dev.startsWith('ath');
-          if (!isWlanDev) {
+          final isWanDev =
+              wanDevices.contains(dev) ||
+              dev.startsWith('wan') ||
+              dev.startsWith('wwan') ||
+              dev.contains('wan');
+          if (!isWlanDev && !isWanDev) {
             final nud = (a['nud_state'] as String? ?? '').toUpperCase();
             int rank = 0;
             switch (nud) {
@@ -1108,10 +1494,6 @@ class ClientController {
           neighState = NeighborReachability.failed;
         }
 
-        final hasActiveLease = c.leaseTime != null && c.leaseTime! > 0;
-        final isStaticLease =
-            hostHints[macN]?['isStaticLease'] == true || c.isStaticLease;
-
         bool isConnected;
         ConnectionType finalConnType;
 
@@ -1166,6 +1548,7 @@ class ClientController {
               c.isDumbApClient || (isWirelessActive && isRouterDumbAp);
           final clientApName =
               c.apName ?? (isClientDumbAp ? router.displayName : null);
+          final vitals = vitalsMap[macN];
           processedClients.add(
             c.copyWith(
               ipAddress: resolvedIp,
@@ -1176,6 +1559,18 @@ class ClientController {
               wirelessIface: resolvedIface,
               isDumbApClient: isClientDumbAp,
               apName: clientApName,
+              rxBytes: c.rxBytes ?? vitals?.rxBytes,
+              txBytes: c.txBytes ?? vitals?.txBytes,
+              rxPackets: c.rxPackets ?? vitals?.rxPackets,
+              txPackets: c.txPackets ?? vitals?.txPackets,
+              rxRate: c.rxRate ?? vitals?.rxRate,
+              txRate: c.txRate ?? vitals?.txRate,
+              signalDbm: c.signalDbm ?? vitals?.signalDbm,
+              noiseDbm: c.noiseDbm ?? vitals?.noiseDbm,
+              throughput: c.throughput ?? vitals?.throughput,
+              rxSpeed: c.rxSpeed ?? vitals?.rxSpeed,
+              txSpeed: c.txSpeed ?? vitals?.txSpeed,
+              connectedTime: c.connectedTime ?? vitals?.connectedTime,
             ),
           );
         }

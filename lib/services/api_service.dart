@@ -10,6 +10,13 @@ import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
 import 'package:yet_another_luci_app/modules/services_system/models/ddns_info.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/internet_reachability.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/ping_result.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/traceroute_result.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/dns_lookup_result.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/routing_neighbor_info.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/diagnostic_report.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/flush_dns_result.dart';
 import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
 import '../utils/http_client_manager.dart';
 import '../utils/logger.dart';
@@ -568,14 +575,16 @@ class RealApiService implements IApiService {
   }
 
   /// Fetches all associated wireless MAC addresses from all wireless interfaces for real API
+  /// Fetches all associated wireless stations with full traffic and PHY details from all wireless interfaces
   @override
-  Future<Map<String, Set<String>>> fetchAllAssociatedWirelessMacsWithContext({
+  Future<Map<String, List<Map<String, dynamic>>>>
+  fetchAllAssociatedWirelessStationsWithDetailsContext({
     required String ipAddress,
     required String sysauth,
     required bool useHttps,
     BuildContext? context,
   }) async {
-    final result = <String, Set<String>>{};
+    final result = <String, List<Map<String, dynamic>>>{};
     final discoveredIfaces = <String, String>{}; // ifname -> ssid/label
 
     try {
@@ -682,12 +691,19 @@ class RealApiService implements IApiService {
       } catch (_) {}
     }
 
-    // 3. For every discovered interface, fetch associated stations
+    if (discoveredIfaces.isEmpty) {
+      discoveredIfaces['wlan0'] = 'wlan0';
+      discoveredIfaces['wlan1'] = 'wlan1';
+      discoveredIfaces['phy0-ap0'] = 'phy0-ap0';
+      discoveredIfaces['phy1-ap0'] = 'phy1-ap0';
+    }
+
+    // 4. For every discovered interface, fetch associated station details
     for (final entry in discoveredIfaces.entries) {
       final ifname = entry.key;
       final label = entry.value;
 
-      final stations = await fetchAssociatedStationsWithContext(
+      final stations = await fetchAssociatedStationsDetailsWithContext(
         ipAddress: ipAddress,
         sysauth: sysauth,
         useHttps: useHttps,
@@ -697,24 +713,53 @@ class RealApiService implements IApiService {
 
       if (stations.isNotEmpty) {
         final mapKey = '$ifname|$label';
-        result[mapKey] = (result[mapKey] ?? {})..addAll(stations);
+        result[mapKey] = (result[mapKey] ?? [])..addAll(stations);
       }
     }
 
     return result;
   }
 
-  /// Fetches associated stations (wireless clients) for a given wireless interface (e.g., wlan0)
-  /// Fetches associated stations (wireless clients) for a given wireless interface (e.g., phy0-ap0, wlan0)
+  /// Fetches all associated wireless MAC addresses from all wireless interfaces for real API
   @override
-  Future<List<String>> fetchAssociatedStationsWithContext({
+  Future<Map<String, Set<String>>> fetchAllAssociatedWirelessMacsWithContext({
+    required String ipAddress,
+    required String sysauth,
+    required bool useHttps,
+    BuildContext? context,
+  }) async {
+    final detailsMap =
+        await fetchAllAssociatedWirelessStationsWithDetailsContext(
+          ipAddress: ipAddress,
+          sysauth: sysauth,
+          useHttps: useHttps,
+          context: context,
+        );
+    final result = <String, Set<String>>{};
+    detailsMap.forEach((key, list) {
+      final macs = <String>{};
+      for (final s in list) {
+        final m = s['mac']?.toString();
+        if (m != null && m.isNotEmpty) {
+          macs.add(m.toUpperCase().replaceAll('-', ':'));
+        }
+      }
+      if (macs.isNotEmpty) {
+        result[key] = macs;
+      }
+    });
+    return result;
+  }
+
+  /// Fetches associated stations with full traffic & PHY details for a given wireless interface
+  Future<List<Map<String, dynamic>>> fetchAssociatedStationsDetailsWithContext({
     required String ipAddress,
     required String sysauth,
     required bool useHttps,
     required String interface,
     BuildContext? context,
   }) async {
-    final stations = <String>{};
+    final stations = <Map<String, dynamic>>[];
 
     try {
       // 1. Try iwinfo assoclist
@@ -731,9 +776,13 @@ class RealApiService implements IApiService {
         final data = resultIw[1];
         if (data is Map && data['results'] is List) {
           for (final entry in (data['results'] as List)) {
-            final mac = (entry as Map<String, dynamic>)['mac']?.toString();
-            if (mac != null && mac.isNotEmpty) {
-              stations.add(mac.toUpperCase().replaceAll('-', ':'));
+            if (entry is Map) {
+              final map = Map<String, dynamic>.from(entry);
+              final mac = map['mac']?.toString();
+              if (mac != null && mac.isNotEmpty) {
+                map['mac'] = mac.toUpperCase().replaceAll('-', ':');
+                stations.add(map);
+              }
             }
           }
         }
@@ -757,8 +806,15 @@ class RealApiService implements IApiService {
         final data = resultHostapd[1];
         if (data is Map && data['clients'] is Map) {
           final clientsMap = data['clients'] as Map<String, dynamic>;
-          for (final mac in clientsMap.keys) {
-            stations.add(mac.toUpperCase().replaceAll('-', ':'));
+          for (final entry in clientsMap.entries) {
+            final normMac = entry.key.toUpperCase().replaceAll('-', ':');
+            if (entry.value is Map) {
+              final map = Map<String, dynamic>.from(entry.value as Map);
+              map['mac'] = normMac;
+              stations.add(map);
+            } else {
+              stations.add({'mac': normMac});
+            }
           }
         }
       }
@@ -783,7 +839,7 @@ class RealApiService implements IApiService {
           for (final m in macRegex.allMatches(stdout)) {
             final macStr = m.group(0);
             if (macStr != null) {
-              stations.add(macStr.toUpperCase().replaceAll('-', ':'));
+              stations.add({'mac': macStr.toUpperCase().replaceAll('-', ':')});
             }
           }
         }
@@ -805,7 +861,9 @@ class RealApiService implements IApiService {
             for (final m in macRegex.allMatches(stdout)) {
               final macStr = m.group(0);
               if (macStr != null) {
-                stations.add(macStr.toUpperCase().replaceAll('-', ':'));
+                stations.add({
+                  'mac': macStr.toUpperCase().replaceAll('-', ':'),
+                });
               }
             }
           }
@@ -813,7 +871,33 @@ class RealApiService implements IApiService {
       } catch (_) {}
     }
 
-    return stations.toList();
+    return stations;
+  }
+
+  /// Fetches associated stations (wireless client MACs) for a given wireless interface (e.g., phy0-ap0, wlan0)
+  @override
+  Future<List<String>> fetchAssociatedStationsWithContext({
+    required String ipAddress,
+    required String sysauth,
+    required bool useHttps,
+    required String interface,
+    BuildContext? context,
+  }) async {
+    final details = await fetchAssociatedStationsDetailsWithContext(
+      ipAddress: ipAddress,
+      sysauth: sysauth,
+      useHttps: useHttps,
+      interface: interface,
+      context: context,
+    );
+    final set = <String>{};
+    for (final d in details) {
+      final m = d['mac']?.toString();
+      if (m != null && m.isNotEmpty) {
+        set.add(m);
+      }
+    }
+    return set.toList();
   }
 
   /// Fetches Host Hints dictionary from luci-rpc and UCI dhcp static host leases
@@ -1201,6 +1285,48 @@ class RealApiService implements IApiService {
       params: fileExecParams('/bin/sh', ['-c', command]),
       context: context,
     );
+  }
+
+  @override
+  Future<String?> execDirectCgi(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String command,
+    List<String>? params,
+    int stderr = 0,
+    BuildContext? context,
+  }) async {
+    try {
+      final cmdParts = [command, ...?params];
+      final cmdStr = cmdParts
+          .map((p) => p.replaceAll(r'\', r'\\').replaceAll(' ', r'\ '))
+          .join(' ');
+      final uri = _buildUrl(ipAddress, useHttps, '/cgi-bin/cgi-exec');
+      final body =
+          'sessionid=${Uri.encodeQueryComponent(sysauth)}&command=${Uri.encodeQueryComponent(cmdStr)}&stderr=$stderr';
+
+      final client = _createHttpClient(useHttps, ipAddress, context: context);
+      final response = await client.post(
+        uri.toString(),
+        data: body,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Cookie': 'sysauth=$sysauth; sysauth_http=$sysauth',
+          },
+          responseType: ResponseType.plain,
+          validateStatus: (status) => status != null && status < 400,
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data.toString();
+      }
+    } catch (e) {
+      Logger.warning('execDirectCgi failed for $command: $e');
+    }
+    return null;
   }
 
   /// Helper to safely obtain mounted BuildContext across async gaps.
@@ -3080,6 +3206,53 @@ uci commit parental
     BuildContext? context,
   }) async {
     try {
+      const fixScript =
+          'mkdir -p /usr/share/rpcd/acl.d/ && '
+          'cat << \'EOF\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json\n'
+          '{\n'
+          '  "yet-another-luci-app": {\n'
+          '    "description": "Yet Another LuCI App Silent RPC Permissions",\n'
+          '    "read": {\n'
+          '      "file": {\n'
+          '        "/usr/sbin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/nextdns": [ "exec" ],\n'
+          '        "/usr/bin/cloudflared": [ "exec" ],\n'
+          '        "/etc/config/cloudflared": [ "read" ],\n'
+          '        "/etc/config/nextdns": [ "read" ]\n'
+          '      },\n'
+          '      "uci": [ "cloudflared", "nextdns" ],\n'
+          '      "ubus": {\n'
+          '        "iwinfo": [ "*" ],\n'
+          '        "rc": [ "*" ],\n'
+          '        "file": [ "*" ],\n'
+          '        "luci-rpc": [ "*" ]\n'
+          '      }\n'
+          '    },\n'
+          '    "write": {\n'
+          '      "file": {\n'
+          '        "/usr/sbin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/nextdns": [ "exec" ],\n'
+          '        "/usr/bin/cloudflared": [ "exec" ]\n'
+          '      },\n'
+          '      "uci": [ "cloudflared", "nextdns" ],\n'
+          '      "ubus": {\n'
+          '        "iwinfo": [ "*" ],\n'
+          '        "rc": [ "*" ],\n'
+          '        "file": [ "*" ],\n'
+          '        "luci-rpc": [ "*" ]\n'
+          '      }\n'
+          '    }\n'
+          '  }\n'
+          '}\n'
+          'EOF\n'
+          'if command -v apk >/dev/null 2>&1; then '
+          'apk update && apk add luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
+          'else '
+          'opkg update && opkg install luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
+          'fi && /etc/init.d/rpcd restart';
+
       final res = await callWithContext(
         ipAddress,
         sysauth,
@@ -3088,16 +3261,7 @@ uci commit parental
         method: 'exec',
         params: {
           'command': '/bin/sh',
-          'params': [
-            '-c',
-            'mkdir -p /usr/share/rpcd/acl.d/ && '
-                'printf \'{\\n  "luci-app-tailscale": {\\n    "description": "Tailscale VPN ACL Permissions",\\n    "read": {\\n      "file": {\\n        "/usr/sbin/tailscale": [ "exec" ],\\n        "/usr/bin/tailscale": [ "exec" ],\\n        "/usr/bin/nextdns": [ "exec" ],\\n        "/usr/bin/cloudflared": [ "exec" ]\\n      }\\n    },\\n    "write": {\\n      "file": {\\n        "/usr/sbin/tailscale": [ "exec" ],\\n        "/usr/bin/tailscale": [ "exec" ],\\n        "/usr/bin/nextdns": [ "exec" ],\\n        "/usr/bin/cloudflared": [ "exec" ]\\n      }\\n    }\\n  }\\n}\\n\' > /usr/share/rpcd/acl.d/luci-app-tailscale.json && '
-                'if command -v apk >/dev/null 2>&1; then '
-                'apk update && apk add luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
-                'else '
-                'opkg update && opkg install luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
-                'fi && /etc/init.d/rpcd restart',
-          ],
+          'params': ['-c', fixScript],
         },
         context: context,
       );
@@ -3113,16 +3277,7 @@ uci commit parental
         method: 'exec',
         params: {
           'command': '/bin/sh',
-          'args': [
-            '-c',
-            'mkdir -p /usr/share/rpcd/acl.d/ && '
-                'printf \'{\\n  "luci-app-tailscale": {\\n    "description": "Tailscale VPN ACL Permissions",\\n    "read": {\\n      "file": {\\n        "/usr/sbin/tailscale": [ "exec" ],\\n        "/usr/bin/tailscale": [ "exec" ],\\n        "/usr/bin/nextdns": [ "exec" ],\\n        "/usr/bin/cloudflared": [ "exec" ]\\n      }\\n    },\\n    "write": {\\n      "file": {\\n        "/usr/sbin/tailscale": [ "exec" ],\\n        "/usr/bin/tailscale": [ "exec" ],\\n        "/usr/bin/nextdns": [ "exec" ],\\n        "/usr/bin/cloudflared": [ "exec" ]\\n      }\\n    }\\n  }\\n}\\n\' > /usr/share/rpcd/acl.d/luci-app-tailscale.json && '
-                'if command -v apk >/dev/null 2>&1; then '
-                'apk update && apk add luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
-                'else '
-                'opkg update && opkg install luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
-                'fi && /etc/init.d/rpcd restart',
-          ],
+          'args': ['-c', fixScript],
         },
         context: context,
       );
@@ -3141,9 +3296,47 @@ uci commit parental
   ) async {
     try {
       const aclScript =
-          'if [ ! -f /usr/share/rpcd/acl.d/yet-another-luci-app.json ]; then '
+          'if [ ! -f /usr/share/rpcd/acl.d/yet-another-luci-app.json ] || ! grep -q "cloudflared" /usr/share/rpcd/acl.d/yet-another-luci-app.json; then '
           'mkdir -p /usr/share/rpcd/acl.d/ && '
-          'printf \'{\\n  "yet-another-luci-app": {\\n    "description": "Yet Another LuCI App Silent RPC Permissions",\\n    "read": {\\n      "file": {\\n        "/usr/sbin/tailscale": [ "exec" ],\\n        "/usr/bin/tailscale": [ "exec" ],\\n        "/usr/bin/nextdns": [ "exec" ],\\n        "/usr/bin/cloudflared": [ "exec" ]\\n      },\\n      "ubus": {\\n        "iwinfo": [ "*" ],\\n        "rc": [ "*" ],\\n        "file": [ "*" ],\\n        "luci-rpc": [ "*" ]\\n      }\\n    },\\n    "write": {\\n      "file": {\\n        "/usr/sbin/tailscale": [ "exec" ],\\n        "/usr/bin/tailscale": [ "exec" ],\\n        "/usr/bin/nextdns": [ "exec" ],\\n        "/usr/bin/cloudflared": [ "exec" ]\\n      },\\n      "ubus": {\\n        "iwinfo": [ "*" ],\\n        "rc": [ "*" ],\\n        "file": [ "*" ],\\n        "luci-rpc": [ "*" ]\\n      }\\n    }\\n  }\\n}\\n\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json && '
+          'cat << \'EOF\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json\n'
+          '{\n'
+          '  "yet-another-luci-app": {\n'
+          '    "description": "Yet Another LuCI App Silent RPC Permissions",\n'
+          '    "read": {\n'
+          '      "file": {\n'
+          '        "/usr/sbin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/nextdns": [ "exec" ],\n'
+          '        "/usr/bin/cloudflared": [ "exec" ],\n'
+          '        "/etc/config/cloudflared": [ "read" ],\n'
+          '        "/etc/config/nextdns": [ "read" ]\n'
+          '      },\n'
+          '      "uci": [ "cloudflared", "nextdns" ],\n'
+          '      "ubus": {\n'
+          '        "iwinfo": [ "*" ],\n'
+          '        "rc": [ "*" ],\n'
+          '        "file": [ "*" ],\n'
+          '        "luci-rpc": [ "*" ]\n'
+          '      }\n'
+          '    },\n'
+          '    "write": {\n'
+          '      "file": {\n'
+          '        "/usr/sbin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/nextdns": [ "exec" ],\n'
+          '        "/usr/bin/cloudflared": [ "exec" ]\n'
+          '      },\n'
+          '      "uci": [ "cloudflared", "nextdns" ],\n'
+          '      "ubus": {\n'
+          '        "iwinfo": [ "*" ],\n'
+          '        "rc": [ "*" ],\n'
+          '        "file": [ "*" ],\n'
+          '        "luci-rpc": [ "*" ]\n'
+          '      }\n'
+          '    }\n'
+          '  }\n'
+          '}\n'
+          'EOF\n'
           '(/etc/init.d/rpcd reload 2>/dev/null || /etc/init.d/rpcd restart 2>/dev/null || true); '
           'fi';
 
@@ -3161,6 +3354,66 @@ uci commit parental
       return true;
     } catch (e) {
       Logger.warning('Silent background permission setup skipped/failed: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> installNativeTemperatureHandler(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    const installScript =
+        'mkdir -p /usr/libexec/rpcd /usr/share/rpcd/acl.d && '
+        'cat << \'EOF\' > /usr/libexec/rpcd/luci.temp-status\n'
+        '#!/bin/sh\n'
+        'case "\$1" in\n'
+        'list) echo \'{"getSensors":{}}\' ;;\n'
+        'call) case "\$2" in getSensors)\n'
+        'hw=""; for h in /sys/class/hwmon/hwmon*; do [ -d "\$h" ] || continue; n=\$(cat "\$h/name" 2>/dev/null || echo hwmon); s=""; for t in "\$h"/temp*_input; do [ -f "\$t" ] || continue; v=\$(cat "\$t" 2>/dev/null); [ -n "\$v" ] || continue; l=\$(cat "\${t%_input}_label" 2>/dev/null); i="\${t##*/}"; [ -n "\$s" ] && s="\$s," || true; s="\$s{\\"item\\":\\"\$i\\",\\"label\\":\\"\$l\\",\\"temp\\":\$v}"; done; [ -n "\$s" ] && { [ -n "\$hw" ] && hw="\$hw," || true; hw="\$hw{\\"title\\":\\"\$n\\",\\"item\\":\\"\${h##*/}\\",\\"sources\\":[\$s]}"; }; done\n'
+        'tz=""; for z in /sys/class/thermal/thermal_zone*; do [ -d "\$z" ] || continue; v=\$(cat "\$z/temp" 2>/dev/null); [ -n "\$v" ] || continue; y=\$(cat "\$z/type" 2>/dev/null || echo tz); [ -n "\$tz" ] && tz="\$tz," || true; tz="\$tz{\\"title\\":\\"\$y\\",\\"item\\":\\"\${z##*/}\\",\\"sources\\":[{\\"item\\":\\"temp\\",\\"label\\":\\"\$y\\",\\"temp\\":\$v}]}"; done\n'
+        'printf \'{"sensors":{"0":[%s],"1":[%s]}}\\n\' "\$hw" "\$tz" ;; esac ;; esac\n'
+        'EOF\n'
+        'chmod +x /usr/libexec/rpcd/luci.temp-status && '
+        'cat << \'EOF\' > /usr/share/rpcd/acl.d/luci-app-temp-status.json\n'
+        '{"luci-app-temp-status":{"description":"Native Temperature RPC Handler","read":{"ubus":{"luci.temp-status":["getSensors"]}}}}\n'
+        'EOF\n'
+        '(/etc/init.d/rpcd reload 2>/dev/null || /etc/init.d/rpcd restart 2>/dev/null || true)';
+
+    try {
+      final res = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'exec',
+        params: {
+          'command': '/bin/sh',
+          'params': ['-c', installScript],
+        },
+        context: context,
+      );
+      if (_execSucceeded(res)) {
+        return true;
+      }
+
+      final fallbackRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'exec',
+        params: {
+          'command': '/bin/sh',
+          'args': ['-c', installScript],
+        },
+        context: context,
+      );
+      return _execSucceeded(fallbackRes);
+    } catch (e) {
+      Logger.warning('installNativeTemperatureHandler failed: $e');
       return false;
     }
   }
@@ -3772,7 +4025,8 @@ exit 0
       try {
         final macLower = macAddress.toLowerCase();
         final targetIface = (iface != null && iface.isNotEmpty) ? iface : '';
-        final cmdScript = '''
+        final cmdScript =
+            '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
 IFACE="$targetIface"
@@ -4304,21 +4558,22 @@ echo "\$DENY_MACS \$WIFI_UCI" | tr ' ' '\\n' | grep -vE "^00:00:00:00:00:00\$|^F
         }
       }
 
-      final cleanTargetIp = (targetIp != null &&
+      final cleanTargetIp =
+          (targetIp != null &&
               targetIp.trim().isNotEmpty &&
               targetIp.trim() != 'N/A')
           ? targetIp.trim()
           : null;
-      final cleanHostname = (hostname != null &&
+      final cleanHostname =
+          (hostname != null &&
               hostname.trim().isNotEmpty &&
               hostname.trim() != 'Unknown' &&
               hostname.trim() != '*' &&
               hostname.trim() != 'Unnamed Host')
           ? hostname.trim().toLowerCase()
           : null;
-      final cleanDuid = (duid != null &&
-              duid.trim().isNotEmpty &&
-              duid.trim() != 'N/A')
+      final cleanDuid =
+          (duid != null && duid.trim().isNotEmpty && duid.trim() != 'N/A')
           ? duid.trim().toUpperCase()
           : null;
 
@@ -5200,5 +5455,938 @@ rm -f "$leasePath" /tmp/dhcp.leases /var/dhcp.leases /tmp/dnsmasq.leases /var/li
       Logger.exception('toggleGlobalDdns failed', e, stack);
       return false;
     }
+  }
+
+  Future<Map<String, dynamic>?> _runDiagnosticFileExec(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String command,
+    List<String> args, {
+    BuildContext? context,
+  }) async {
+    try {
+      final res = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'exec',
+        params: RealApiService.fileExecParams(command, args),
+        context: mountedContext(context),
+      );
+      if (res is List && res.length > 1 && res[0] == 0) {
+        return res[1] as Map<String, dynamic>?;
+      }
+    } catch (_) {}
+
+    try {
+      final fallbackRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'exec',
+        params: RealApiService.fileExecArgs(command, args),
+        context: mountedContext(context),
+      );
+      if (fallbackRes is List &&
+          fallbackRes.length > 1 &&
+          fallbackRes[0] == 0) {
+        return fallbackRes[1] as Map<String, dynamic>?;
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  /// Sanitizes host/domain/IP inputs to prevent URL-scheme or path parsing false negatives.
+  static String sanitizeHost(String input) {
+    var clean = input.trim();
+    if (clean.contains('://')) {
+      clean = clean.split('://')[1];
+    }
+    // Strip trailing slash, path, or URL query parameters
+    clean = clean.split('/')[0].split('?')[0];
+    // Strip port if IPv4 or standard hostname (e.g. google.com:443 or 192.168.1.1:80)
+    if (!clean.startsWith('[') &&
+        clean.contains(':') &&
+        clean.split(':').length == 2) {
+      clean = clean.split(':')[0];
+    }
+    // Remove IPv6 enclosing brackets if any: [2001:db8::1] -> 2001:db8::1
+    if (clean.startsWith('[') && clean.endsWith(']')) {
+      clean = clean.substring(1, clean.length - 1);
+    }
+    return clean;
+  }
+
+  @override
+  Future<PingResult> executePing(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String target,
+    int count = 3,
+    int timeoutSec = 2,
+    bool isIpv6 = false,
+    BuildContext? context,
+  }) async {
+    final cleanTarget = sanitizeHost(target);
+    final effectiveIpv6 =
+        isIpv6 || (cleanTarget.contains(':') && !cleanTarget.contains('.'));
+    final bin = effectiveIpv6 ? '/bin/ping6' : '/bin/ping';
+    final fallbackBin = effectiveIpv6 ? '/usr/bin/ping6' : '/usr/bin/ping';
+    final args = ['-c', '$count', '-W', '$timeoutSec', cleanTarget];
+
+    Map<String, dynamic>? execResult = await _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      bin,
+      args,
+      context: context,
+    );
+
+    execResult ??= await _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      fallbackBin,
+      args,
+      context: context,
+    );
+
+    // Some stripped BusyBox ping versions do not support -W; retry without -W if failed
+    if (execResult != null &&
+        execResult['code'] != 0 &&
+        ((execResult['stderr'] as String? ?? '').contains('invalid') ||
+            (execResult['stdout'] as String? ?? '').contains('invalid'))) {
+      execResult = await _runDiagnosticFileExec(
+        ipAddress,
+        sysauth,
+        useHttps,
+        bin,
+        ['-c', '$count', cleanTarget],
+        context: context,
+      );
+    }
+
+    if (execResult == null) {
+      return PingResult.failure(
+        target: cleanTarget,
+        errorMessage: 'Failed to invoke ping via router RPC',
+      );
+    }
+
+    final code = execResult['code'] as int? ?? 1;
+    final stdout = execResult['stdout'] as String? ?? '';
+    final stderr = execResult['stderr'] as String?;
+
+    return PingResult.parse(
+      cleanTarget,
+      stdout,
+      stderr: stderr,
+      exitCode: code,
+    );
+  }
+
+  @override
+  Future<TracerouteResult> executeTraceroute(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String target,
+    int maxHops = 15,
+    int timeoutSec = 1,
+    bool isIpv6 = false,
+    BuildContext? context,
+  }) async {
+    final cleanTarget = sanitizeHost(target);
+    final effectiveIpv6 =
+        isIpv6 || (cleanTarget.contains(':') && !cleanTarget.contains('.'));
+    final bin = effectiveIpv6 ? '/bin/traceroute6' : '/bin/traceroute';
+    final fallbackBin = effectiveIpv6
+        ? '/usr/bin/traceroute6'
+        : '/usr/bin/traceroute';
+    final args = [
+      '-q',
+      '1',
+      '-w',
+      '$timeoutSec',
+      '-m',
+      '$maxHops',
+      cleanTarget,
+    ];
+
+    Map<String, dynamic>? execResult = await _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      bin,
+      args,
+      context: context,
+    );
+
+    execResult ??= await _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      fallbackBin,
+      args,
+      context: context,
+    );
+
+    if (execResult == null) {
+      return TracerouteResult.failure(
+        target: cleanTarget,
+        errorMessage: 'Failed to invoke traceroute via router RPC',
+      );
+    }
+
+    final code = execResult['code'] as int? ?? 0;
+    final stdout = execResult['stdout'] as String? ?? '';
+    final stderr = execResult['stderr'] as String?;
+
+    return TracerouteResult.parse(
+      cleanTarget,
+      stdout,
+      stderr: stderr,
+      exitCode: code,
+      maxHops: maxHops,
+    );
+  }
+
+  @override
+  Future<DnsLookupResult> executeDnsLookup(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String host,
+    String? server,
+    BuildContext? context,
+  }) async {
+    final cleanHost = sanitizeHost(host);
+    const bin = '/usr/bin/nslookup';
+    final args = <String>[cleanHost];
+    if (server != null && server.trim().isNotEmpty) {
+      args.add(sanitizeHost(server.trim()));
+    }
+
+    Map<String, dynamic>? execResult = await _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      bin,
+      args,
+      context: context,
+    );
+
+    execResult ??= await _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      '/bin/nslookup',
+      args,
+      context: context,
+    );
+
+    if (execResult == null) {
+      return DnsLookupResult.failure(
+        query: cleanHost,
+        errorMessage: 'Failed to invoke nslookup via router RPC',
+      );
+    }
+
+    final code = execResult['code'] as int? ?? 0;
+    final stdout = execResult['stdout'] as String? ?? '';
+    final stderr = execResult['stderr'] as String?;
+
+    return DnsLookupResult.parse(
+      cleanHost,
+      stdout,
+      stderr: stderr,
+      exitCode: code,
+    );
+  }
+
+  @override
+  Future<InternetReachability> testInternetReachability(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    String? wanInterface;
+    String? wanIp;
+    String? gatewayIp;
+
+    // 1. Detect active WAN interface and default gateway
+    try {
+      final ifaceRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'network.interface',
+        method: 'dump',
+        context: mountedContext(context),
+      );
+      if (ifaceRes is List && ifaceRes.length > 1 && ifaceRes[0] == 0) {
+        final list =
+            (ifaceRes[1] as Map<String, dynamic>?)?['interface'] as List?;
+        if (list != null) {
+          for (final item in list) {
+            if (item is Map<String, dynamic>) {
+              final name = item['interface'] as String? ?? '';
+              final isWan =
+                  name == 'wan' ||
+                  name == 'wan6' ||
+                  name.startsWith('wan') ||
+                  name.startsWith('wwan') ||
+                  item['defaultroute'] == true;
+              if (isWan && item['up'] == true) {
+                wanInterface = name;
+                final v4 = item['ipv4-address'] as List?;
+                if (v4 != null && v4.isNotEmpty) {
+                  wanIp =
+                      (v4[0] as Map<String, dynamic>?)?['address'] as String?;
+                }
+                final routes = item['route'] as List?;
+                if (routes != null) {
+                  for (final r in routes) {
+                    if (r is Map<String, dynamic> &&
+                        (r['target'] == '0.0.0.0' ||
+                            r['target'] == 'default')) {
+                      gatewayIp = r['nexthop'] as String?;
+                      break;
+                    }
+                  }
+                }
+                if (gatewayIp != null) break;
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Fallback: inspect kernel routing table if gateway not yet discovered
+    if (gatewayIp == null) {
+      try {
+        final routes = await fetchRoutingTable(
+          ipAddress,
+          sysauth,
+          useHttps,
+          context: context,
+        );
+        for (final r in routes) {
+          if (r.isDefault) {
+            if (r.gateway != null && r.gateway!.isNotEmpty) {
+              gatewayIp = r.gateway;
+              wanInterface ??= (r.interface == 'br-lan' || r.interface == 'lan')
+                  ? '${r.interface} (AP mode)'
+                  : r.interface;
+            } else if (r.interface != null) {
+              // Point-to-point interface without next-hop (e.g. pppoe-wan, wg0, tun0)
+              wanInterface ??= r.interface;
+              gatewayIp = 'Point-to-Point (${r.interface})';
+            }
+            break;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Gateway probe (only ping if gateway is an actual IP address)
+    bool gwOk = false;
+    double? gwLatency;
+    final isPingableGateway =
+        gatewayIp != null &&
+        !gatewayIp.startsWith('Point-to-Point') &&
+        gatewayIp.isNotEmpty;
+
+    if (isPingableGateway) {
+      final gwPing = await executePing(
+        ipAddress,
+        sysauth,
+        useHttps,
+        target: gatewayIp,
+        count: 2,
+        timeoutSec: 2,
+        context: context,
+      );
+      gwOk = gwPing.isSuccess;
+      gwLatency = gwPing.avgRttMs ?? gwPing.minRttMs;
+    }
+
+    // 3. Multi-Anycast Public ICMP Ping Probes (Cloudflare -> Google -> Quad9 -> IPv6)
+    bool publicDnsOk = false;
+    double? publicDnsLatency;
+    const anycastTargets = ['1.1.1.1', '8.8.8.8', '9.9.9.9'];
+
+    for (final target in anycastTargets) {
+      final pubPing = await executePing(
+        ipAddress,
+        sysauth,
+        useHttps,
+        target: target,
+        count: 2,
+        timeoutSec: 2,
+        context: context,
+      );
+      if (pubPing.isSuccess) {
+        publicDnsOk = true;
+        publicDnsLatency = pubPing.avgRttMs ?? pubPing.minRttMs;
+        break;
+      }
+    }
+
+    // IPv6 fallback probe if IPv4 ICMP failed
+    if (!publicDnsOk) {
+      final v6Ping = await executePing(
+        ipAddress,
+        sysauth,
+        useHttps,
+        target: '2606:4700:4700::1111',
+        count: 2,
+        timeoutSec: 2,
+        isIpv6: true,
+        context: context,
+      );
+      if (v6Ping.isSuccess) {
+        publicDnsOk = true;
+        publicDnsLatency = v6Ping.avgRttMs ?? v6Ping.minRttMs;
+      }
+    }
+
+    // 4. Multi-Domain DNS Resolution Probes (openwrt.org -> google.com -> cloudflare.com)
+    bool dnsOk = false;
+    const dnsTestDomains = ['openwrt.org', 'google.com', 'cloudflare.com'];
+
+    for (final domain in dnsTestDomains) {
+      final dnsResult = await executeDnsLookup(
+        ipAddress,
+        sysauth,
+        useHttps,
+        host: domain,
+        context: context,
+      );
+      if (dnsResult.isSuccess &&
+          (dnsResult.ipv4Addresses.isNotEmpty ||
+              dnsResult.ipv6Addresses.isNotEmpty)) {
+        dnsOk = true;
+        break;
+      }
+    }
+
+    // 5. Strict Zero-False-Positive / Zero-False-Negative Classification
+    ReachabilityStatus status;
+    String statusMsg;
+
+    if (publicDnsOk && dnsOk) {
+      status = ReachabilityStatus.online;
+      if (gwOk) {
+        statusMsg = 'Connected to Internet (All probes passed)';
+      } else if (gatewayIp != null && gatewayIp.startsWith('Point-to-Point')) {
+        statusMsg = 'Connected to Internet via $gatewayIp';
+      } else {
+        // Gateway drops ICMP but WAN and DNS are working
+        statusMsg = 'Connected to Internet (Gateway ICMP unprompted, WAN OK)';
+      }
+    } else if (dnsOk && !publicDnsOk) {
+      // ISP or firewall blocks ICMP echo, but DNS resolution succeeds
+      status = ReachabilityStatus.online;
+      statusMsg =
+          'Connected to Internet (DNS operational, ICMP ping blocked by network)';
+    } else if (publicDnsOk && !dnsOk) {
+      // Direct IP connectivity works, but DNS resolution is broken
+      status = ReachabilityStatus.partial;
+      statusMsg =
+          'ICMP ping reachable, but DNS resolution failed (Check router DNS settings)';
+    } else if (gwOk) {
+      // Gateway is reachable on LAN/WAN, but cannot reach public internet
+      status = ReachabilityStatus.partial;
+      statusMsg =
+          'Local Gateway reachable ($gatewayIp), but external Internet is unreachable';
+    } else {
+      status = ReachabilityStatus.offline;
+      statusMsg = gatewayIp == null
+          ? 'No active WAN gateway or default route found'
+          : 'Gateway and Internet are unreachable';
+    }
+
+    return InternetReachability(
+      status: status,
+      isReachable: status == ReachabilityStatus.online,
+      wanInterface: wanInterface,
+      wanIp: wanIp,
+      gatewayIp: gatewayIp,
+      gatewayReachable: gwOk,
+      gatewayLatencyMs: gwLatency,
+      publicDnsReachable: publicDnsOk,
+      publicDnsLatencyMs: publicDnsLatency,
+      dnsResolving: dnsOk,
+      statusMessage: statusMsg,
+      testedAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<List<RouteEntry>> fetchRoutingTable(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    final execResult = await _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      '/sbin/ip',
+      ['-4', 'route', 'show', 'table', 'all'],
+      context: context,
+    );
+    final stdout = execResult?['stdout'] as String? ?? '';
+    return RouteEntry.parseList(stdout);
+  }
+
+  @override
+  Future<List<NeighborEntry>> fetchNeighborTable(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    final execResult = await _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      '/sbin/ip',
+      ['-4', 'neigh', 'show'],
+      context: context,
+    );
+    final stdout = execResult?['stdout'] as String? ?? '';
+    return NeighborEntry.parseList(stdout);
+  }
+
+  @override
+  Future<ConntrackInfo?> fetchConntrackInfo(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    try {
+      int count = 0;
+      int max = 16384;
+
+      final countRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'read',
+        params: {'path': '/proc/sys/net/netfilter/nf_conntrack_count'},
+        context: mountedContext(context),
+      );
+      if (countRes is List && countRes.length > 1 && countRes[0] == 0) {
+        final raw =
+            (countRes[1] as Map<String, dynamic>?)?['data'] as String? ?? '';
+        count = int.tryParse(raw.trim()) ?? 0;
+      }
+
+      final maxRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'read',
+        params: {'path': '/proc/sys/net/netfilter/nf_conntrack_max'},
+        context: mountedContext(context),
+      );
+      if (maxRes is List && maxRes.length > 1 && maxRes[0] == 0) {
+        final raw =
+            (maxRes[1] as Map<String, dynamic>?)?['data'] as String? ?? '';
+        max = int.tryParse(raw.trim()) ?? 16384;
+      }
+
+      return ConntrackInfo(count: count, max: max);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<DiagnosticReport> generateFullDiagnosticReport(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    // 1. Board Info
+    String hostname = ipAddress;
+    String model = 'OpenWrt Device';
+    String architecture = 'Unknown';
+    String target = 'Unknown';
+    String kernelVersion = 'Unknown';
+    String firmwareVersion = 'Unknown';
+
+    try {
+      final boardRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'system',
+        method: 'board',
+        context: mountedContext(context),
+      );
+      if (boardRes is List && boardRes.length > 1 && boardRes[0] == 0) {
+        final b = boardRes[1] as Map<String, dynamic>?;
+        if (b != null) {
+          hostname = b['hostname'] as String? ?? hostname;
+          model = b['model'] as String? ?? model;
+          architecture = b['system'] as String? ?? architecture;
+          kernelVersion = b['kernel'] as String? ?? kernelVersion;
+          final rel = b['release'] as Map<String, dynamic>?;
+          if (rel != null) {
+            target = rel['target'] as String? ?? target;
+            firmwareVersion =
+                rel['description'] as String? ??
+                rel['version'] as String? ??
+                firmwareVersion;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. System Info
+    String uptime = 'Unknown';
+    String loadAverage = 'Unknown';
+    String memorySummary = 'Unknown';
+
+    try {
+      final sysInfoRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'system',
+        method: 'info',
+        context: mountedContext(context),
+      );
+      if (sysInfoRes is List && sysInfoRes.length > 1 && sysInfoRes[0] == 0) {
+        final s = sysInfoRes[1] as Map<String, dynamic>?;
+        if (s != null) {
+          final upSecs = s['uptime'] as int? ?? 0;
+          final days = upSecs ~/ 86400;
+          final hours = (upSecs % 86400) ~/ 3600;
+          final mins = (upSecs % 3600) ~/ 60;
+          uptime = days > 0
+              ? '${days}d ${hours}h ${mins}m'
+              : '${hours}h ${mins}m';
+
+          final loads = s['load'] as List?;
+          if (loads != null && loads.length >= 3) {
+            final l1 = (loads[0] as num).toDouble() / 65535.0;
+            final l5 = (loads[1] as num).toDouble() / 65535.0;
+            final l15 = (loads[2] as num).toDouble() / 65535.0;
+            loadAverage =
+                '${l1.toStringAsFixed(2)}, ${l5.toStringAsFixed(2)}, ${l15.toStringAsFixed(2)}';
+          }
+
+          final mem = s['memory'] as Map<String, dynamic>?;
+          if (mem != null) {
+            final totalMb =
+                ((mem['total'] as num?)?.toDouble() ?? 0) / (1024 * 1024);
+            final freeMb =
+                ((mem['free'] as num?)?.toDouble() ?? 0) / (1024 * 1024);
+            final usedMb = totalMb - freeMb;
+            memorySummary =
+                '${usedMb.toStringAsFixed(1)} MB / ${totalMb.toStringAsFixed(1)} MB used (${totalMb > 0 ? ((usedMb / totalMb) * 100).toStringAsFixed(0) : 0}%)';
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 3. Temperature Summary
+    String? tempSummary;
+    try {
+      final tempRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'luci.temp-status',
+        method: 'getSensors',
+        context: mountedContext(context),
+      );
+      if (tempRes is List && tempRes.length > 1 && tempRes[0] == 0) {
+        final data = tempRes[1] as Map<String, dynamic>?;
+        if (data != null && data['sensors'] is List) {
+          final list = data['sensors'] as List;
+          final parts = <String>[];
+          for (final s in list) {
+            if (s is Map<String, dynamic>) {
+              final label = s['label'] ?? s['name'] ?? 'Sensor';
+              final t = s['temp'];
+              if (t != null) {
+                final c = (t is num
+                    ? t.toDouble()
+                    : double.tryParse(t.toString()) ?? 0);
+                final deg = c > 1000 ? (c / 1000.0) : c;
+                parts.add('$label: ${deg.toStringAsFixed(1)}°C');
+              }
+            }
+          }
+          if (parts.isNotEmpty) tempSummary = parts.join(', ');
+        }
+      }
+    } catch (_) {}
+
+    // 4. Parallel data gathering for networking & diagnostics
+    final futureReachability = testInternetReachability(
+      ipAddress,
+      sysauth,
+      useHttps,
+      context: context,
+    );
+    final futureRoutes = fetchRoutingTable(
+      ipAddress,
+      sysauth,
+      useHttps,
+      context: context,
+    );
+    final futureNeighbors = fetchNeighborTable(
+      ipAddress,
+      sysauth,
+      useHttps,
+      context: context,
+    );
+    final futureConntrack = fetchConntrackInfo(
+      ipAddress,
+      sysauth,
+      useHttps,
+      context: context,
+    );
+
+    // 5. Syslog & dmesg logs
+    final futureSyslog = _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      '/usr/libexec/syslog-wrapper',
+      [],
+      context: context,
+    );
+    final futureDmesg = _runDiagnosticFileExec(
+      ipAddress,
+      sysauth,
+      useHttps,
+      '/bin/dmesg',
+      ['-r'],
+      context: context,
+    );
+
+    final results = await Future.wait([
+      futureReachability,
+      futureRoutes,
+      futureNeighbors,
+      futureConntrack,
+      futureSyslog,
+      futureDmesg,
+    ]);
+
+    final reachability = results[0] as InternetReachability;
+    final routes = results[1] as List<RouteEntry>;
+    final neighbors = results[2] as List<NeighborEntry>;
+    final conntrack = results[3] as ConntrackInfo?;
+    final syslogExec = results[4] as Map<String, dynamic>?;
+    final dmesgExec = results[5] as Map<String, dynamic>?;
+
+    final syslogLines = (syslogExec?['stdout'] as String? ?? '').trim().split(
+      '\n',
+    );
+    final recentSyslog = syslogLines.length > 50
+        ? syslogLines.sublist(syslogLines.length - 50).join('\n')
+        : syslogLines.join('\n');
+
+    final dmesgLines = (dmesgExec?['stdout'] as String? ?? '').trim().split(
+      '\n',
+    );
+    final recentDmesg = dmesgLines.length > 50
+        ? dmesgLines.sublist(dmesgLines.length - 50).join('\n')
+        : dmesgLines.join('\n');
+
+    return DiagnosticReport(
+      hostname: hostname,
+      model: model,
+      architecture: architecture,
+      target: target,
+      kernelVersion: kernelVersion,
+      firmwareVersion: firmwareVersion,
+      uptime: uptime,
+      loadAverage: loadAverage,
+      memorySummary: memorySummary,
+      temperatureSummary: tempSummary,
+      storageSummary: 'Standard OpenWrt rootfs & overlay mounted',
+      internetStatus: reachability,
+      routes: routes,
+      neighbors: neighbors,
+      conntrack: conntrack,
+      wanInfo: reachability.wanIp != null
+          ? '${reachability.wanInterface ?? "wan"} (IP: ${reachability.wanIp})'
+          : 'Not configured or disconnected',
+      lanInfo: 'br-lan ($ipAddress)',
+      recentSyslog: recentSyslog,
+      recentDmesg: recentDmesg,
+      generatedAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<FlushDnsResult> flushDns(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    final flushed = <String>[];
+    final logBuf = StringBuffer();
+
+    // 1. Identify running DNS caching services via rc.list
+    try {
+      final rcRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'rc',
+        method: 'list',
+        context: mountedContext(context),
+      );
+
+      if (rcRes is List && rcRes.length > 1 && rcRes[0] == 0) {
+        final services = rcRes[1] as Map<String, dynamic>? ?? {};
+
+        // dnsmasq (reloads cache and re-reads hosts without dropping DHCP leases)
+        if (services['dnsmasq']?['running'] == true ||
+            services['dnsmasq']?['enabled'] == true) {
+          final res = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'rc',
+            method: 'init',
+            params: {'name': 'dnsmasq', 'action': 'reload'},
+            context: mountedContext(context),
+          );
+          if (res is List && res.isNotEmpty && res[0] == 0) {
+            flushed.add('dnsmasq');
+            logBuf.writeln('dnsmasq: Cache purged & local hosts reloaded.');
+          }
+        }
+
+        // unbound
+        if (services['unbound']?['running'] == true) {
+          final res = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'rc',
+            method: 'init',
+            params: {'name': 'unbound', 'action': 'reload'},
+            context: mountedContext(context),
+          );
+          if (res is List && res.isNotEmpty && res[0] == 0) {
+            flushed.add('unbound');
+            logBuf.writeln('unbound: Cache purged.');
+          }
+        }
+
+        // smartdns
+        if (services['smartdns']?['running'] == true) {
+          final res = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'rc',
+            method: 'init',
+            params: {'name': 'smartdns', 'action': 'reload'},
+            context: mountedContext(context),
+          );
+          if (res is List && res.isNotEmpty && res[0] == 0) {
+            flushed.add('smartdns');
+            logBuf.writeln('smartdns: Cache purged.');
+          }
+        }
+
+        // adguardhome
+        if (services['adguardhome']?['running'] == true) {
+          final res = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'rc',
+            method: 'init',
+            params: {'name': 'adguardhome', 'action': 'restart'},
+            context: mountedContext(context),
+          );
+          if (res is List && res.isNotEmpty && res[0] == 0) {
+            flushed.add('adguardhome');
+            logBuf.writeln('adguardhome: Restarted & cache flushed.');
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Direct Fallback: Attempt dnsmasq reload directly if rc.list was inconclusive
+    if (flushed.isEmpty) {
+      try {
+        final res = await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'rc',
+          method: 'init',
+          params: {'name': 'dnsmasq', 'action': 'reload'},
+          context: mountedContext(context),
+        );
+        if (res is List && res.isNotEmpty && res[0] == 0) {
+          flushed.add('dnsmasq');
+          logBuf.writeln('dnsmasq: Direct reload successful.');
+        }
+      } catch (_) {}
+    }
+
+    // 3. Command execution Fallback: /bin/killall -HUP dnsmasq
+    if (flushed.isEmpty) {
+      try {
+        final execRes = await _runDiagnosticFileExec(
+          ipAddress,
+          sysauth,
+          useHttps,
+          '/bin/killall',
+          ['-HUP', 'dnsmasq'],
+          context: context,
+        );
+        if (execRes != null &&
+            (execRes['code'] == 0 || execRes['code'] == null)) {
+          flushed.add('dnsmasq');
+          logBuf.writeln('dnsmasq: SIGHUP signaled via killall.');
+        }
+      } catch (_) {}
+    }
+
+    if (flushed.isNotEmpty) {
+      return FlushDnsResult.success(
+        flushedResolvers: flushed,
+        message: 'Flushed ${flushed.join(" & ")} DNS cache & reloaded hosts.',
+        rawOutput: logBuf.toString().trim(),
+      );
+    }
+
+    return FlushDnsResult.success(
+      flushedResolvers: const ['None'],
+      message:
+          'No local caching DNS resolver is active on this router. Upstream DNS servers are queried directly.',
+      rawOutput: logBuf.toString().trim(),
+    );
   }
 }

@@ -9,6 +9,7 @@ import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import '../models/wireless_info.dart';
 import 'edit_ssid_dialog.dart';
 import 'wifi_qr_dialog.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 /// Context-aware responsive card component for managing a individual virtual Wi-Fi SSID interface.
 /// Features non-truncating title header, responsive badge toolbar, full security overview,
@@ -49,17 +50,29 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
   }
 
   void _confirmDeleteInterface() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Virtual Interface'),
-        content: Text(
-          'Are you sure you want to remove interface "${widget.interface.ssid}" (${widget.interface.sectionName}) from ${widget.radio.name.toUpperCase()}?\n\nThis will remove the wireless configuration section from UCI.',
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(
+          l10n?.deleteVirtualInterfaceTitle ?? 'Delete Virtual Interface',
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.deleteVirtualInterfacePrompt(
+                  widget.interface.ssid,
+                  widget.interface.sectionName,
+                  widget.radio.name.toUpperCase(),
+                ) ??
+                'Are you sure you want to remove interface "${widget.interface.ssid}" (${widget.interface.sectionName}) from ${widget.radio.name.toUpperCase()}?\n\nThis will remove the wireless configuration section from UCI.',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.btnCancel ?? 'Cancel'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -67,7 +80,7 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete Interface'),
+            child: Text(l10n?.btnDeleteInterface ?? 'Delete Interface'),
           ),
         ],
       ),
@@ -82,13 +95,17 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
     );
     if (!mounted) return;
     if (success) {
-      context.showToastSuccess('Deleted interface "${widget.interface.ssid}"');
+      context.showToastSuccess(
+        l10n?.toastDeletedInterface(widget.interface.ssid) ??
+            'Deleted interface "${widget.interface.ssid}"',
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
     final iface = widget.interface;
     final isGuest = iface.isGuestInterface(
@@ -104,7 +121,9 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
     final isDarkMode = theme.brightness == Brightness.dark;
     final cardBg = isGuest
         ? Color.alphaBlend(
-            theme.colorScheme.tertiary.withValues(alpha: isDarkMode ? 0.05 : 0.03),
+            theme.colorScheme.tertiary.withValues(
+              alpha: isDarkMode ? 0.05 : 0.03,
+            ),
             theme.colorScheme.surfaceContainer,
           )
         : theme.colorScheme.surfaceContainer;
@@ -201,23 +220,29 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                               borderRadius: BorderRadius.circular(10),
                               border: iface.stations.isNotEmpty
                                   ? Border.all(
-                                      color: (isGuest
-                                              ? theme.colorScheme.tertiary
-                                              : theme.colorScheme.primary)
-                                          .withValues(alpha: 0.3),
+                                      color:
+                                          (isGuest
+                                                  ? theme.colorScheme.tertiary
+                                                  : theme.colorScheme.primary)
+                                              .withValues(alpha: 0.3),
                                       width: 0.8,
                                     )
                                   : null,
                             ),
                             child: Text(
-                              '${iface.stations.length} ${iface.stations.length == 1 ? 'client' : 'clients'}',
+                              l10n?.cardClientsCount(iface.stations.length) ??
+                                  '${iface.stations.length} ${iface.stations.length == 1 ? 'client' : 'clients'}',
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.bold,
                                 color: iface.stations.isNotEmpty
                                     ? (isGuest
-                                          ? theme.colorScheme.onTertiaryContainer
-                                          : theme.colorScheme.onPrimaryContainer)
+                                          ? theme
+                                                .colorScheme
+                                                .onTertiaryContainer
+                                          : theme
+                                                .colorScheme
+                                                .onPrimaryContainer)
                                     : theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
@@ -234,7 +259,8 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                             ? widget.onToggleEnabled
                             : (val) {
                                 context.showToastError(
-                                  'Read-only session: Wireless interface toggle is disabled.',
+                                  l10n?.readOnlyWirelessToggle ??
+                                      'Read-only session: wireless interface toggle is disabled.',
                                 );
                               },
                       ),
@@ -280,10 +306,12 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                                   color: Colors.red.withValues(alpha: 0.4),
                                 ),
                               ),
-                              child: const Text(
-                                'DISABLED',
-                                style: TextStyle(
-                                  fontSize: 9.5,
+                              child: Text(
+                                l10n?.statusDisabled ?? 'DISABLED',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.red,
                                 ),
@@ -315,9 +343,9 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                                   ),
                                   const SizedBox(width: 3),
                                   Text(
-                                    'Guest Network',
+                                    l10n?.pillGuestNetwork ?? 'Guest Network',
                                     style: TextStyle(
-                                      fontSize: 9.5,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.bold,
                                       color:
                                           theme.colorScheme.onTertiaryContainer,
@@ -344,8 +372,10 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                             ),
                             child: Text(
                               iface.securityMode.shortBadgeLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 9.5,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: iface.securityMode.badgeColor,
                               ),
@@ -368,8 +398,10 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                             ),
                             child: Text(
                               iface.mode,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 9.5,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: theme.colorScheme.onSecondaryContainer,
                               ),
@@ -385,10 +417,12 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                                 color: Colors.grey.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text(
-                                'HIDDEN',
-                                style: TextStyle(
-                                  fontSize: 9,
+                              child: Text(
+                                l10n?.statusHidden ?? 'HIDDEN',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.grey,
                                 ),
@@ -422,7 +456,8 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                           onPressed: () {
                             if (!hasWriteAccess) {
                               context.showToastError(
-                                'Read-only session: UCI write permission required.',
+                                l10n?.readOnlyUciWrite ??
+                                    'Read-only session: UCI write permission required.',
                               );
                               return;
                             }
@@ -458,7 +493,8 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                           onPressed: () {
                             if (!hasWriteAccess) {
                               context.showToastError(
-                                'Read-only session: UCI write permission required to delete interface.',
+                                l10n?.readOnlyDeleteInterface ??
+                                    'Read-only session: UCI write permission required to delete interface.',
                               );
                               return;
                             }
@@ -592,15 +628,15 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Wireless Interface Technical Parameters',
-                    style: TextStyle(
+                  Text(
+                    l10n?.wifiTechParams ?? 'Wireless Interface Parameters',
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 12.5,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _buildDetailGrid(context, iface, isGuest),
+                  _buildDetailGrid(context, iface, isGuest, l10n),
                 ],
               ),
             ),
@@ -614,6 +650,7 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
     BuildContext context,
     WirelessInterface iface,
     bool isGuest,
+    AppLocalizations? l10n,
   ) {
     return Column(
       children: [
@@ -622,7 +659,7 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
             Expanded(
               child: _buildDetailChip(
                 context,
-                'Mode',
+                l10n?.wifiDetailMode ?? 'Mode',
                 iface.mode,
                 Icons.router_rounded,
               ),
@@ -644,7 +681,7 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
             Expanded(
               child: _buildDetailChip(
                 context,
-                'Encryption',
+                l10n?.wifiDetailEncryption ?? 'Encryption',
                 iface.securityMode.displayName,
                 Icons.lock_rounded,
               ),
@@ -653,8 +690,10 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
             Expanded(
               child: _buildDetailChip(
                 context,
-                'Client Isolation',
-                iface.isolateClients ? 'Enabled' : 'Disabled',
+                l10n?.wifiDetailClientIsolation ?? 'Client Isolation',
+                iface.isolateClients
+                    ? (l10n?.wifiDetailEnabled ?? 'Enabled')
+                    : (l10n?.wifiDetailDisabled ?? 'Disabled'),
                 Icons.do_not_disturb_on_rounded,
               ),
             ),
@@ -666,7 +705,7 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
             Expanded(
               child: _buildDetailChip(
                 context,
-                'Network Bridge',
+                l10n?.wifiDetailNetworkBridge ?? 'Network Bridge',
                 iface.networkBridge ?? (isGuest ? 'br-guest' : 'lan'),
                 Icons.alt_route_rounded,
               ),
@@ -675,8 +714,10 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
             Expanded(
               child: _buildDetailChip(
                 context,
-                'Broadcast SSID',
-                iface.isHidden ? 'Hidden' : 'Visible',
+                l10n?.wifiDetailBroadcastSsid ?? 'Broadcast SSID',
+                iface.isHidden
+                    ? (l10n?.wifiDetailHidden ?? 'Hidden')
+                    : (l10n?.wifiDetailVisible ?? 'Visible'),
                 Icons.cell_tower_rounded,
               ),
             ),
@@ -689,8 +730,8 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
               Expanded(
                 child: _buildDetailChip(
                   context,
-                  '802.11r Fast Roaming',
-                  'Enabled (FT)',
+                  l10n?.wifiDetailFastRoaming ?? '802.11r Fast Roaming',
+                  l10n?.wifiDetailFastRoamingEnabled ?? 'Enabled (FT)',
                   Icons.bolt_rounded,
                 ),
               ),
@@ -698,7 +739,7 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
               Expanded(
                 child: _buildDetailChip(
                   context,
-                  'Mobility Domain',
+                  l10n?.wifiDetailMobilityDomain ?? 'Mobility Domain',
                   iface.mobilityDomain ?? '4f4b',
                   Icons.domain_rounded,
                 ),

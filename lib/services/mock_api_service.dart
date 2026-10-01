@@ -8,6 +8,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
 import 'package:yet_another_luci_app/modules/services_system/models/ddns_info.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/internet_reachability.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/ping_result.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/traceroute_result.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/dns_lookup_result.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/routing_neighbor_info.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/diagnostic_report.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/flush_dns_result.dart';
 import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
 import 'package:yet_another_luci_app/config/app_config.dart';
 import 'package:yet_another_luci_app/models/router_capabilities.dart';
@@ -1221,6 +1228,48 @@ class MockApiService implements IApiService {
   }
 
   @override
+  Future<Map<String, List<Map<String, dynamic>>>>
+  fetchAllAssociatedWirelessStationsWithDetailsContext({
+    required String ipAddress,
+    required String sysauth,
+    required bool useHttps,
+    BuildContext? context,
+  }) async {
+    final macMap = await fetchAssociatedStations();
+    final result = <String, List<Map<String, dynamic>>>{};
+
+    macMap.forEach((iface, macs) {
+      final list = <Map<String, dynamic>>[];
+      int i = 0;
+      for (final mac in macs) {
+        i++;
+        final rxBytes = 25000000 * i;
+        final txBytes = 120000000 * i;
+        list.add({
+          'mac': mac,
+          'signal': -40 - (i * 3 % 40),
+          'noise': -95,
+          'thr': 500000,
+          'connected_time': 3600 * i,
+          'rx': {
+            'bytes': rxBytes,
+            'packets': (rxBytes / 1000).toInt(),
+            'rate': 866700,
+          },
+          'tx': {
+            'bytes': txBytes,
+            'packets': (txBytes / 1200).toInt(),
+            'rate': 866700,
+          },
+        });
+      }
+      result[iface] = list;
+    });
+
+    return result;
+  }
+
+  @override
   Future<Map<String, Map<String, dynamic>>> fetchHostHintsWithContext({
     required String ipAddress,
     required String sysauth,
@@ -1910,6 +1959,12 @@ class MockApiService implements IApiService {
         {'data': '#/etc/sysupgrade.conf\n/etc/config/\n/etc/dropbear/\n'},
       ];
     }
+    if (path.contains('thermal') || path.contains('hwmon')) {
+      return [
+        0,
+        {'data': '51500\n'},
+      ];
+    }
     return [
       0,
       {'data': ''},
@@ -1923,6 +1978,18 @@ class MockApiService implements IApiService {
         ? rawArgs.map((e) => e.toString()).toList()
         : <String>[];
     final fullCmd = '$cmd ${argsList.join(" ")}';
+
+    if (fullCmd.contains('thermal_zone') || fullCmd.contains('hwmon')) {
+      return [
+        0,
+        {
+          'code': 0,
+          'stdout':
+              'thermal|cpu-thermal|thermal_zone0|51500\nhwmon|ath10k_hwmon|hwmon0/temp1_input|54000\nhwmon|ath10k_hwmon|hwmon1/temp1_input|48000\n',
+          'stderr': '',
+        },
+      ];
+    }
 
     if (fullCmd.contains('df -k /tmp') || fullCmd.contains('df ')) {
       return [
@@ -2018,6 +2085,444 @@ class MockApiService implements IApiService {
           0,
           {'code': 127, 'stdout': '', 'stderr': 'apk: not found'},
         ];
+      }
+    }
+    if (cmd == '/usr/libexec/package-manager-call') {
+      if (argsList.contains('list-installed')) {
+        if (mockPackageEngine == PackageManagerEngine.apk) {
+          return [
+            0,
+            {
+              'code': 0,
+              'stdout': jsonEncode([
+                {
+                  'package': 'apk-mbedtls-3.0.5-r2',
+                  'name': 'apk-mbedtls',
+                  'version': '3.0.5-r2',
+                  'description': 'apk package manager (mbedtls)',
+                  'arch': 'x86_64',
+                  'license': 'GPL-2.0',
+                  'installed-size': 19821,
+                  'file-size': 9821,
+                  'depends': ['libc', 'libmbedtls21', 'zlib'],
+                  'status': ['installed'],
+                },
+                {
+                  'package': 'luci-base-git-24.010',
+                  'name': 'luci-base',
+                  'version': 'git-24.010',
+                  'description': 'LuCI core libraries',
+                  'arch': 'all',
+                  'license': 'Apache-2.0',
+                  'installed-size': 145000,
+                  'file-size': 65000,
+                  'depends': ['rpcd', 'ucode'],
+                  'status': ['installed'],
+                },
+                {
+                  'package': 'wireguard-tools-1.0.20210914-1',
+                  'name': 'wireguard-tools',
+                  'version': '1.0.20210914-1',
+                  'description': 'WireGuard tools',
+                  'arch': 'x86_64',
+                  'license': 'GPL-2.0',
+                  'installed-size': 32768,
+                  'file-size': 16384,
+                  'depends': ['kmod-wireguard'],
+                  'status': ['installed'],
+                },
+              ]),
+              'stderr': '',
+            },
+          ];
+        } else {
+          return [
+            0,
+            {
+              'code': 0,
+              'stdout': '''
+Package: base-files
+Version: 1570-r23805
+Depends: libc, netifd
+Status: install ok installed
+Architecture: x86_64
+Installed-Size: 45000
+Description: OpenWrt core base files
+
+Package: luci-app-firewall
+Version: 1.0.0-1
+Depends: firewall4, luci-base
+Status: install ok installed
+Architecture: all
+Installed-Size: 25000
+Description: Firewall configuration user interface
+''',
+              'stderr': '',
+            },
+          ];
+        }
+      } else if (argsList.contains('list-available')) {
+        if (mockPackageEngine == PackageManagerEngine.apk) {
+          return [
+            0,
+            {
+              'code': 0,
+              'stdout': jsonEncode([
+                {
+                  'package': 'htop-3.3.0',
+                  'name': 'htop',
+                  'version': '3.3.0',
+                  'description': 'Interactive process viewer',
+                  'arch': 'x86_64',
+                  'license': 'GPL-2.0',
+                  'installed-size': 85000,
+                  'file-size': 45000,
+                  'depends': ['libc', 'libncurses'],
+                },
+                {
+                  'package': 'curl-8.5.0-r0',
+                  'name': 'curl',
+                  'version': '8.5.0-r0',
+                  'description': 'Command line tool for transferring data',
+                  'arch': 'x86_64',
+                  'license': 'MIT',
+                  'installed-size': 450560,
+                  'file-size': 250000,
+                  'depends': ['libc', 'libcurl'],
+                },
+              ]),
+              'stderr': '',
+            },
+          ];
+        } else {
+          return [
+            0,
+            {
+              'code': 0,
+              'stdout': '''
+Package: htop
+Version: 3.3.0
+Depends: libc, libncurses
+Architecture: x86_64
+Size: 45000
+Description: Interactive process viewer
+
+Package: curl
+Version: 8.5.0-r0
+Depends: libc, libcurl
+Architecture: x86_64
+Size: 250000
+Description: Command line tool for transferring data
+''',
+              'stderr': '',
+            },
+          ];
+        }
+      } else {
+        return [
+          0,
+          {
+            'code': 0,
+            'stdout':
+                '{"code":0,"pkmcmd":"${mockPackageEngine.name} ${argsList.join(" ")}","stdout":"Operation completed successfully","stderr":""}',
+            'stderr': '',
+          },
+        ];
+      }
+    }
+    return null;
+  }
+
+  bool installNativeTemperatureHandlerReturns = true;
+
+  @override
+  Future<bool> installNativeTemperatureHandler(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    return installNativeTemperatureHandlerReturns;
+  }
+
+  @override
+  Future<PingResult> executePing(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String target,
+    int count = 3,
+    int timeoutSec = 2,
+    bool isIpv6 = false,
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return PingResult(
+      target: target,
+      isSuccess: true,
+      packetsTransmitted: count,
+      packetsReceived: count,
+      packetLossPercent: 0.0,
+      minRttMs: 8.5,
+      avgRttMs: 9.1,
+      maxRttMs: 9.8,
+      mdevRttMs: 0.5,
+      replies: List.generate(
+        count,
+        (i) => PingPacketReply(
+          seq: i,
+          ttl: 57,
+          timeMs: 8.5 + (i * 0.4),
+          ip: target,
+        ),
+      ),
+      rawOutput:
+          'PING $target ($target): 56 data bytes\n'
+          '64 bytes from $target: seq=0 ttl=57 time=8.5 ms\n'
+          '64 bytes from $target: seq=1 ttl=57 time=8.9 ms\n'
+          '64 bytes from $target: seq=2 ttl=57 time=9.8 ms\n'
+          '--- $target ping statistics ---\n'
+          '$count packets transmitted, $count packets received, 0% packet loss\n'
+          'round-trip min/avg/max = 8.5/9.1/9.8 ms\n',
+      timestamp: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<TracerouteResult> executeTraceroute(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String target,
+    int maxHops = 15,
+    int timeoutSec = 1,
+    bool isIpv6 = false,
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return TracerouteResult(
+      target: target,
+      isSuccess: true,
+      maxHops: maxHops,
+      hops: const [
+        TracerouteHop(
+          hopNumber: 1,
+          host: 'gateway',
+          ip: '10.0.0.1',
+          rttMs: [0.6],
+        ),
+        TracerouteHop(
+          hopNumber: 2,
+          host: 'isp-gw',
+          ip: '172.16.0.1',
+          rttMs: [1.1],
+        ),
+        TracerouteHop(hopNumber: 3, isTimeout: true),
+        TracerouteHop(
+          hopNumber: 4,
+          host: 'edge.cloudflare.com',
+          ip: '1.1.1.1',
+          rttMs: [8.9],
+        ),
+      ],
+      rawOutput:
+          'traceroute to $target, $maxHops hops max\n'
+          ' 1  10.0.0.1  0.6 ms\n'
+          ' 2  172.16.0.1  1.1 ms\n'
+          ' 3  *\n'
+          ' 4  1.1.1.1  8.9 ms\n',
+      timestamp: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<DnsLookupResult> executeDnsLookup(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String host,
+    String? server,
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 250));
+    return DnsLookupResult(
+      query: host,
+      server: server ?? '127.0.0.1',
+      serverPort: 53,
+      ipv4Addresses: const ['142.251.222.206', '142.251.222.196'],
+      ipv6Addresses: const ['2404:6800:4007:81f::200e'],
+      isSuccess: true,
+      rawOutput:
+          'Server: 127.0.0.1\nAddress: 127.0.0.1#53\n\n'
+          'Non-authoritative answer:\nName: $host\n'
+          'Address: 142.251.222.206\nAddress: 2404:6800:4007:81f::200e\n',
+      timestamp: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<InternetReachability> testInternetReachability(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return InternetReachability(
+      status: ReachabilityStatus.online,
+      isReachable: true,
+      wanInterface: 'wan',
+      wanIp: '100.64.0.123',
+      gatewayIp: '10.0.0.1',
+      gatewayReachable: true,
+      gatewayLatencyMs: 0.6,
+      publicDnsReachable: true,
+      publicDnsLatencyMs: 8.9,
+      dnsResolving: true,
+      statusMessage: 'Connected to Internet (All probes passed)',
+      testedAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<List<RouteEntry>> fetchRoutingTable(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    return const [
+      RouteEntry(
+        destination: 'default',
+        gateway: '10.0.0.1',
+        interface: 'eth1',
+        isDefault: true,
+      ),
+      RouteEntry(
+        destination: '10.0.0.0/24',
+        interface: 'eth1',
+        source: '10.0.0.125',
+      ),
+      RouteEntry(
+        destination: '192.168.1.0/24',
+        interface: 'br-lan',
+        source: '192.168.1.1',
+      ),
+    ];
+  }
+
+  @override
+  Future<List<NeighborEntry>> fetchNeighborTable(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    return const [
+      NeighborEntry(
+        ip: '10.0.0.1',
+        mac: 'e8:9f:80:a5:7d:8c',
+        interface: 'eth1',
+        state: 'REACHABLE',
+      ),
+      NeighborEntry(
+        ip: '10.0.0.2',
+        mac: 'e4:a8:df:ca:41:8c',
+        interface: 'eth1',
+        state: 'REACHABLE',
+      ),
+      NeighborEntry(
+        ip: '192.168.1.150',
+        mac: 'b8:27:eb:12:34:56',
+        interface: 'br-lan',
+        state: 'STALE',
+      ),
+    ];
+  }
+
+  @override
+  Future<ConntrackInfo?> fetchConntrackInfo(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    return const ConntrackInfo(count: 142, max: 16384);
+  }
+
+  @override
+  Future<DiagnosticReport> generateFullDiagnosticReport(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    final reach = await testInternetReachability(ipAddress, sysauth, useHttps);
+    final routes = await fetchRoutingTable(ipAddress, sysauth, useHttps);
+    final neighbors = await fetchNeighborTable(ipAddress, sysauth, useHttps);
+
+    return DiagnosticReport(
+      hostname: 'OpenWrt-Router',
+      model: 'TP-Link Archer C6 v3',
+      architecture: 'MediaTek MT7621',
+      target: 'ramips/mt7621',
+      kernelVersion: '6.6.35',
+      firmwareVersion: 'OpenWrt 23.05.3',
+      uptime: '3d 14h 22m',
+      loadAverage: '0.12, 0.08, 0.02',
+      memorySummary: '48.2 MB / 128.0 MB used (38%)',
+      temperatureSummary: 'CPU: 52.0°C, Wi-Fi: 49.0°C',
+      storageSummary: 'overlay 12.4 MB / 16.0 MB (78%)',
+      internetStatus: reach,
+      routes: routes,
+      neighbors: neighbors,
+      conntrack: const ConntrackInfo(count: 142, max: 16384),
+      wanInfo: 'wan (IP: 100.64.0.123, Gateway: 10.0.0.1)',
+      lanInfo: 'br-lan (192.168.1.1/24)',
+      recentSyslog:
+          'daemon.info hostapd: phy0-ap0: STA e4:a8:df:ca:41:8c IEEE 802.11: associated\n'
+          'daemon.info dnsmasq-dhcp[1]: DHCPACK(br-lan) 192.168.1.150 e4:a8:df:ca:41:8c Pixel-7\n',
+      recentDmesg:
+          'ath10k_pci 0000:00:00.0: qca9888 hw2.0 target 0x01000000 chip_id 0x00000000\n'
+          'br-lan: port 1(eth0.1) entered forwarding state\n',
+      generatedAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<FlushDnsResult> flushDns(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return FlushDnsResult.success(
+      flushedResolvers: const ['dnsmasq'],
+      message: 'Flushed dnsmasq DNS cache & reloaded 12 local hosts.',
+      rawOutput:
+          'dnsmasq[1]: read /etc/hosts - 12 names\ndnsmasq[1]: read /tmp/hosts/dhcp - 4 names\n',
+    );
+  }
+
+  @override
+  Future<String?> execDirectCgi(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String command,
+    List<String>? params,
+    int stderr = 0,
+    BuildContext? context,
+  }) async {
+    final execRes = _handleFileExec({
+      'command': command,
+      'params': params ?? <String>[],
+    });
+    if (execRes != null && execRes is List && execRes.length > 1) {
+      final map = execRes[1];
+      if (map is Map && map['stdout'] != null) {
+        return map['stdout'].toString();
       }
     }
     return null;

@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/design/luci_design_system.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
@@ -27,6 +28,12 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   final Map<String, bool> _stagedInitScriptStates = {};
   bool _isSaving = false;
 
+  /// In-flight state tracking for DDNS service and instance toggles
+  bool _isTogglingGlobalDdns = false;
+  bool? _optimisticGlobalDdns;
+  final Set<String> _pendingDdnsInstanceToggles = {};
+  final Map<String, bool> _optimisticDdnsInstanceStates = {};
+
   bool get _hasUnsavedChanges => _stagedInitScriptStates.isNotEmpty;
 
   void _toggleInitScriptState(InitScript script, bool newValue) {
@@ -44,29 +51,43 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       _stagedInitScriptStates.clear();
     });
     if (mounted) {
-      context.showToastInfo('Discarded all unsaved init script changes.');
+      final l10n = AppLocalizations.of(context);
+      context.showToastInfo(
+        l10n?.servicesSysToastDiscarded ??
+            'Discarded all unsaved init script changes.',
+      );
     }
   }
 
   Future<void> _confirmAndDiscardChanges() async {
+    final l10n = AppLocalizations.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Discard Unsaved Changes?'),
-        content: Text(
-          'Are you sure you want to discard staged changes for ${_stagedInitScriptStates.length} init script(s)?',
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(
+          l10n?.servicesSysDiscardDialogTitle ?? 'Discard Unsaved Changes?',
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.servicesSysDiscardDialogDesc(
+                  _stagedInitScriptStates.length,
+                ) ??
+                'Are you sure you want to discard staged changes for ${_stagedInitScriptStates.length} init script(s)?',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Discard'),
+            child: Text(l10n?.servicesSysBtnDiscard ?? 'Discard'),
           ),
         ],
       ),
@@ -84,6 +105,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       _isSaving = true;
     });
 
+    final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
     final modifiedEntries = Map<String, bool>.from(_stagedInitScriptStates);
     final succeededScripts = <String>[];
@@ -91,35 +113,49 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
 
     if (mounted) {
       context.showToastInfo(
-        'Saving Init Scripts',
-        subtitle: 'Saving ${modifiedEntries.length} init script change(s)...',
+        l10n?.servicesSysToastSavingInit ?? 'Saving Init Scripts',
+        subtitle:
+            l10n?.servicesSysToastSavingInitSubtitle(modifiedEntries.length) ??
+            'Saving ${modifiedEntries.length} init script change(s)...',
       );
     }
 
-    for (final entry in modifiedEntries.entries) {
-      final scriptName = entry.key;
-      final targetEnabled = entry.value;
-      final action = targetEnabled ? 'enable' : 'disable';
+    try {
+      for (final entry in modifiedEntries.entries) {
+        if (!mounted) break;
+        final scriptName = entry.key;
+        final targetEnabled = entry.value;
+        final action = targetEnabled ? 'enable' : 'disable';
 
-      final success = await appState.manageServiceAction(
-        scriptName,
-        action,
-        context: context,
-      );
+        final success = await appState.manageServiceAction(
+          scriptName,
+          action,
+          context: mounted ? context : null,
+        );
 
-      if (success) {
-        succeededScripts.add(scriptName);
-      } else {
-        failedScripts.add(scriptName);
+        if (success) {
+          succeededScripts.add(scriptName);
+        } else {
+          failedScripts.add(scriptName);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showToastError(
+          'Error saving init scripts',
+          subtitle: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          for (final name in succeededScripts) {
+            _stagedInitScriptStates.remove(name);
+          }
+          _isSaving = false;
+        });
       }
     }
-
-    setState(() {
-      for (final name in succeededScripts) {
-        _stagedInitScriptStates.remove(name);
-      }
-      _isSaving = false;
-    });
 
     await appState.fetchDashboardData();
 
@@ -127,7 +163,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
 
     if (failedScripts.isEmpty) {
       context.showToastSuccess(
-        'Init Scripts Updated',
+        l10n?.servicesSysToastInitSuccess ?? 'Init Scripts Updated',
         subtitle: 'Successfully updated ${succeededScripts.length} script(s).',
       );
       return true;
@@ -135,15 +171,21 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Init Script Save Warning'),
-          content: Text(
-            'Updated ${succeededScripts.length} script(s), but failed to update ${failedScripts.length} script(s):\n\n'
-            '${failedScripts.join(", ")}',
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
+          title: Text(
+            l10n?.servicesSysInitSaveWarningTitle ?? 'Init Script Save Warning',
+          ),
+          content: SingleChildScrollView(
+            child: Text(
+              'Updated ${succeededScripts.length} script(s), but failed to update ${failedScripts.length} script(s):\n\n'
+              '${failedScripts.join(", ")}',
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
+              child: Text(l10n?.btnOk ?? 'OK'),
             ),
           ],
         ),
@@ -153,17 +195,24 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   }
 
   Future<bool?> _showUnsavedChangesDialog() async {
+    final l10n = AppLocalizations.of(context);
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Unsaved Init Script Changes'),
-        content: Text(
-          'You have ${_stagedInitScriptStates.length} unsaved change(s) to startup init scripts. Would you like to save them before leaving?',
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(
+          l10n?.servicesSysDiscardDialogTitle ?? 'Unsaved Init Script Changes',
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            'You have ${_stagedInitScriptStates.length} unsaved change(s) to startup init scripts. Would you like to save them before leaving?',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(null),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           OutlinedButton(
             style: OutlinedButton.styleFrom(
@@ -173,7 +222,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
               _discardChanges();
               Navigator.of(ctx).pop(true);
             },
-            child: const Text('Discard & Leave'),
+            child: Text(l10n?.servicesSysBtnDiscard ?? 'Discard & Leave'),
           ),
           FilledButton(
             onPressed: () async {
@@ -183,7 +232,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                 Navigator.of(context).pop();
               }
             },
-            child: const Text('Save & Exit'),
+            child: Text(l10n?.servicesSysBtnSave ?? 'Save & Exit'),
           ),
         ],
       ),
@@ -192,6 +241,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
     final overview = ServicesSystemOverview.fromDashboardData(
       appState.dashboardData,
@@ -214,18 +264,18 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Services & System'),
+          title: Text(l10n?.servicesSysTitle ?? 'Services & System'),
           actions: [
             if (_hasUnsavedChanges)
               IconButton(
                 icon: const Icon(Icons.undo),
-                tooltip: 'Discard Changes',
+                tooltip: l10n?.servicesSysTooltipDiscard ?? 'Discard Changes',
                 onPressed: _isSaving ? null : _confirmAndDiscardChanges,
               ),
             if (_hasUnsavedChanges)
               IconButton(
                 icon: const Icon(Icons.save),
-                tooltip: 'Save Changes',
+                tooltip: l10n?.servicesSysTooltipSave ?? 'Save Changes',
                 onPressed: _isSaving ? null : () => _saveChanges(),
               ),
           ],
@@ -238,13 +288,14 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
             padding: const EdgeInsets.all(16.0),
             children: [
               LuciCollapsibleCard(
-                title: 'Procd System Services',
+                title: l10n?.servicesSysProcdHeader ?? 'Procd System Services',
                 count: overview.services.length,
                 subtitle:
+                    l10n?.servicesSysProcdSubtitle(overview.services.length) ??
                     '${overview.services.length} system services configured',
                 icon: Icons.miscellaneous_services_outlined,
                 iconColor: Colors.teal,
-                child: Column(
+                childBuilder: (ctx) => Column(
                   children: overview.services
                       .map((svc) => _buildProcdServiceCard(context, ref, svc))
                       .toList(),
@@ -252,27 +303,23 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
               ),
               const SizedBox(height: 16),
               LuciCollapsibleCard(
-                title: 'Startup Init Scripts',
+                title: l10n?.servicesSysInitHeader ?? 'Startup Init Scripts',
                 count: overview.initScripts.length,
                 subtitle:
+                    l10n?.servicesSysInitSubtitle(
+                      overview.initScripts.length,
+                    ) ??
                     '${overview.initScripts.length} /etc/init.d startup scripts',
                 icon: Icons.playlist_add_check_outlined,
                 iconColor: Colors.blue,
-                child: _buildInitScriptsCard(context, overview.initScripts),
+                childBuilder: (ctx) =>
+                    _buildInitScriptsCard(context, overview.initScripts),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: _buildSectionHeader(
-                      context,
-                      'System Scheduled Cron Jobs',
-                      Icons.schedule_outlined,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 460;
+                  final addButton = FilledButton.icon(
                     onPressed: _isSaving
                         ? null
                         : () => _showAddEditCronDialog(
@@ -280,9 +327,9 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                             cronJobs: overview.cronJobs,
                           ),
                     icon: const Icon(Icons.add, size: 16),
-                    label: const Text(
-                      'Add Task',
-                      style: TextStyle(fontSize: 12),
+                    label: Text(
+                      l10n?.servicesSysBtnAddTask ?? 'Add Task',
+                      style: const TextStyle(fontSize: 12),
                     ),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -292,8 +339,45 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                  ),
-                ],
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionHeader(
+                          context,
+                          l10n?.servicesSysCronHeader ??
+                              'System Scheduled Cron Jobs',
+                          Icons.schedule_outlined,
+                          maxLines: 2,
+                        ),
+                        const SizedBox(height: 6),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: addButton,
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildSectionHeader(
+                          context,
+                          l10n?.servicesSysCronHeader ??
+                              'System Scheduled Cron Jobs',
+                          Icons.schedule_outlined,
+                          maxLines: 2,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      addButton,
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 8),
               _buildCronJobsCard(context, overview.cronJobs),
@@ -320,25 +404,45 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       _isSaving = true;
     });
 
+    final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
-    final success = await appState.saveCronJobs(cronLines, context: context);
-
-    setState(() {
-      _isSaving = false;
-    });
+    bool success = false;
+    try {
+      success = await appState.saveCronJobs(
+        cronLines,
+        context: mounted ? context : null,
+      );
+    } catch (e) {
+      if (mounted) {
+        context.showToastError(
+          l10n?.servicesSysToastCronFail ?? 'Update Failed',
+          subtitle: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
 
     if (!mounted) return;
 
     if (success) {
       context.showToastSuccess(
-        'Cron Updated',
-        subtitle: 'System cron jobs updated successfully.',
+        l10n?.servicesSysToastCronSuccess ?? 'Cron Updated',
+        subtitle:
+            l10n?.servicesSysToastCronSuccessSubtitle ??
+            'System cron jobs updated successfully.',
       );
       await appState.fetchDashboardData();
     } else {
       context.showToastError(
-        'Update Failed',
-        subtitle: 'Failed to update system cron jobs.',
+        l10n?.servicesSysToastCronFail ?? 'Update Failed',
+        subtitle:
+            l10n?.servicesSysToastCronFailSubtitle ??
+            'Failed to update system cron jobs.',
       );
     }
   }
@@ -374,30 +478,38 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   }
 
   void _confirmDeleteCronJob(int index, List<CronJob> cronJobs) {
+    final l10n = AppLocalizations.of(context);
     final targetJob = cronJobs[index];
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Scheduled Task?'),
-        content: Text.rich(
-          TextSpan(
-            children: [
-              const TextSpan(
-                text:
-                    'Are you sure you want to delete this scheduled cron job?\n\n',
-              ),
-              TextSpan(
-                text: targetJob.command,
-                style: GoogleFonts.geistMono(fontWeight: FontWeight.bold),
-              ),
-              TextSpan(text: '\nSchedule: ${targetJob.expression}'),
-            ],
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(
+          l10n?.servicesSysDeleteCronTitle ?? 'Delete Scheduled Task?',
+        ),
+        content: SingleChildScrollView(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: l10n?.servicesSysDeleteCronDesc != null
+                      ? '${l10n!.servicesSysDeleteCronDesc}\n\n'
+                      : 'Are you sure you want to delete this scheduled cron job?\n\n',
+                ),
+                TextSpan(
+                  text: targetJob.command,
+                  style: GoogleFonts.geistMono(fontWeight: FontWeight.bold),
+                ),
+                TextSpan(text: '\nSchedule: ${targetJob.expression}'),
+              ],
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -409,7 +521,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
               final cronLines = updatedJobs.map((j) => j.toCronLine()).toList();
               await _saveCronJobsList(cronLines);
             },
-            child: const Text('Delete'),
+            child: Text(l10n?.servicesSysBtnDelete ?? 'Delete'),
           ),
         ],
       ),
@@ -430,6 +542,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   }
 
   Widget _buildCronJobsCard(BuildContext context, List<CronJob> cronJobs) {
+    final l10n = AppLocalizations.of(context);
     if (cronJobs.isEmpty) {
       return Card(
         elevation: 1,
@@ -456,7 +569,9 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                     ? null
                     : () => _showAddEditCronDialog(context, cronJobs: cronJobs),
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('Create First Task'),
+                label: Text(
+                  l10n?.servicesSysBtnCreateFirstTask ?? 'Create First Task',
+                ),
               ),
             ],
           ),
@@ -474,7 +589,10 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
           final index = entry.key;
           final cron = entry.value;
           final isEnabled = !cron.isCommented;
-          final scheduleText = CronValidator.describeSchedule(cron.expression);
+          final scheduleText = CronValidator.describeSchedule(
+            cron.expression,
+            l10n,
+          );
 
           return Column(
             children: [
@@ -541,13 +659,15 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  isEnabled ? 'ACTIVE' : 'DISABLED',
+                                  isEnabled
+                                      ? (l10n?.statusActive ?? 'ACTIVE')
+                                      : (l10n?.statusDisabled ?? 'DISABLED'),
                                   style: TextStyle(
                                     color: isEnabled
                                         ? LuciStatusColors.connected
                                         : Colors.grey,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 9,
+                                    fontSize: 10,
                                   ),
                                 ),
                               ),
@@ -555,12 +675,16 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Schedule: ${cron.expression} • $scheduleText',
+                            l10n?.cronSchedulePrefix(
+                                  cron.expression,
+                                  scheduleText,
+                                ) ??
+                                'Schedule: ${cron.expression} • $scheduleText',
                             style: TextStyle(
                               fontSize: 11,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -592,7 +716,8 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                         size: 18,
                         color: theme.colorScheme.error,
                       ),
-                      tooltip: 'Delete Task',
+                      tooltip:
+                          l10n?.servicesSysDeleteTaskTooltip ?? 'Delete Task',
                       onPressed: _isSaving
                           ? null
                           : () => _confirmDeleteCronJob(index, cronJobs),
@@ -610,8 +735,9 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   Widget _buildSectionHeader(
     BuildContext context,
     String title,
-    IconData icon,
-  ) {
+    IconData icon, {
+    int maxLines = 2,
+  }) {
     final theme = Theme.of(context);
     return Row(
       children: [
@@ -620,6 +746,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
         Expanded(
           child: Text(
             title,
+            maxLines: maxLines,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -635,6 +762,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     WidgetRef ref,
     ProcdService svc,
   ) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       key: ValueKey(svc.name),
       margin: const EdgeInsets.only(bottom: 8),
@@ -765,7 +893,10 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                     }
                   },
                   icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('Restart', style: TextStyle(fontSize: 11)),
+                  label: Text(
+                    l10n?.actionRestart ?? 'Restart',
+                    style: const TextStyle(fontSize: 11),
+                  ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -836,10 +967,13 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     List<InitScript> initScripts,
   ) {
     if (initScripts.isEmpty) {
-      return const Card(
+      final l10n = AppLocalizations.of(context);
+      return Card(
         child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text('No init startup scripts found.'),
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            l10n?.servicesSysInitNoScripts ?? 'No init startup scripts found.',
+          ),
         ),
       );
     }
@@ -913,7 +1047,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                         style: TextStyle(
                           color: Colors.amber.shade900,
                           fontWeight: FontWeight.bold,
-                          fontSize: 9,
+                          fontSize: 10,
                         ),
                       ),
                     ),
@@ -968,6 +1102,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
 
   Widget _buildUnsavedChangesBottomBar(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final count = _stagedInitScriptStates.length;
 
     return Container(
@@ -988,7 +1123,8 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '$count script(s) modified',
+                l10n?.servicesSysUnsavedBannerText(count) ??
+                    '$count script(s) modified',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -996,7 +1132,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
             ),
             OutlinedButton(
               onPressed: _isSaving ? null : _confirmAndDiscardChanges,
-              child: const Text('Discard'),
+              child: Text(l10n?.servicesSysBtnDiscard ?? 'Discard'),
             ),
             const SizedBox(width: 8),
             FilledButton.icon(
@@ -1011,7 +1147,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                       ),
                     )
                   : const Icon(Icons.check, size: 18),
-              label: const Text('Save'),
+              label: Text(l10n?.servicesSysBtnSave ?? 'Save'),
             ),
           ],
         ),
@@ -1020,120 +1156,250 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   }
 
   Widget _buildDdnsSectionHeader(BuildContext context, DdnsOverview ddns) {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: _buildSectionHeader(
-            context,
-            'Dynamic DNS (DDNS)',
-            Icons.dns_outlined,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (ddns.isInstalled) ...[
-              Transform.scale(
-                scale: 0.8,
-                child: Switch(
-                  value: ddns.isGlobalEnabled,
-                  onChanged: (val) async {
-                    final success = await appState.toggleGlobalDdns(val);
-                    await appState.fetchDashboardData();
-                    if (context.mounted) {
-                      if (success) {
-                        context.showToastSuccess(
-                          'DDNS service ${val ? "enabled" : "disabled"}',
-                        );
-                      } else {
-                        context.showToastError(
-                          'Failed to update DDNS service state',
-                        );
-                      }
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 4),
-              FilledButton.icon(
-                onPressed: () =>
-                    _showAddEditDdnsDialog(context, existingInstance: null),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add DDNS', style: TextStyle(fontSize: 12)),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 20),
-              tooltip: 'DDNS Menu',
-              onSelected: (choice) {
-                if (choice == 'install_pkg') {
-                  _installDdnsPackage(context);
-                } else if (choice == 'uninstall_pkg') {
-                  _confirmUninstallDdnsPackage(context);
-                } else if (choice == 'refresh') {
-                  appState.fetchDashboardData();
-                }
-              },
-              itemBuilder: (ctx) => [
-                if (!ddns.isInstalled)
-                  const PopupMenuItem(
-                    value: 'install_pkg',
-                    child: Row(
-                      children: [
-                        Icon(Icons.download, size: 18),
-                        SizedBox(width: 8),
-                        Text('Install DDNS Core Package'),
-                      ],
-                    ),
-                  ),
-                if (ddns.isInstalled)
-                  const PopupMenuItem(
-                    value: 'uninstall_pkg',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.delete_outline,
-                          color: LuciColors.error,
-                          size: 18,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Uninstall DDNS Package',
-                          style: TextStyle(color: LuciColors.error),
-                        ),
-                      ],
-                    ),
-                  ),
-                const PopupMenuItem(
-                  value: 'refresh',
-                  child: Row(
-                    children: [
-                      Icon(Icons.refresh, size: 18),
-                      SizedBox(width: 8),
-                      Text('Refresh Status'),
-                    ],
-                  ),
+    final theme = Theme.of(context);
+
+    Widget buildMenu() => PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, size: 20),
+      tooltip: l10n?.servicesSysDdnsTooltipMenu ?? 'DDNS Menu',
+      onSelected: (choice) {
+        if (choice == 'install_pkg') {
+          _installDdnsPackage(context);
+        } else if (choice == 'uninstall_pkg') {
+          _confirmUninstallDdnsPackage(context);
+        } else if (choice == 'refresh') {
+          appState.fetchDashboardData();
+        }
+      },
+      itemBuilder: (ctx) => [
+        if (!ddns.isInstalled)
+          PopupMenuItem(
+            value: 'install_pkg',
+            child: Row(
+              children: [
+                const Icon(Icons.download, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  l10n?.servicesSysDdnsInstallAction ??
+                      'Install DDNS Core Package',
                 ),
               ],
             ),
-          ],
+          ),
+        if (ddns.isInstalled) ...[
+          PopupMenuItem(
+            value: 'uninstall_pkg',
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.delete_outline,
+                  color: LuciColors.error,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  l10n?.servicesSysDdnsUninstallAction ??
+                      'Uninstall DDNS Package',
+                  style: const TextStyle(color: LuciColors.error),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: 'refresh',
+            child: Row(
+              children: [
+                const Icon(Icons.refresh, size: 18),
+                const SizedBox(width: 8),
+                Text(l10n?.servicesSysDdnsRefreshAction ?? 'Refresh Status'),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+
+    final isGlobalPending = _isTogglingGlobalDdns;
+    final effectiveGlobalValue =
+        _optimisticGlobalDdns ?? ddns.isGlobalEnabled;
+
+    Widget buildGlobalSwitch() => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isGlobalPending)
+          Padding(
+            padding: const EdgeInsets.only(right: 6.0),
+            child: SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+        Transform.scale(
+          scale: 0.8,
+          child: Switch(
+            value: effectiveGlobalValue,
+            onChanged: isGlobalPending
+                ? null
+                : (val) async {
+                    if (_isTogglingGlobalDdns) {
+                      return;
+                    }
+                    setState(() {
+                      _isTogglingGlobalDdns = true;
+                      _optimisticGlobalDdns = val;
+                    });
+                    const actionKey = 'toggle_global_ddns';
+                    context.showToastLoading(
+                      val
+                          ? (l10n?.servicesSysDdnsEnablingToast ??
+                              'Enabling DDNS service...')
+                          : (l10n?.servicesSysDdnsDisablingToast ??
+                              'Disabling DDNS service...'),
+                      actionKey: actionKey,
+                    );
+                    try {
+                      final success = await appState.toggleGlobalDdns(val);
+                      if (context.mounted) {
+                        if (success) {
+                          context.showToastSuccess(
+                            val
+                                ? (l10n?.servicesSysDdnsEnabledToast ??
+                                    'DDNS service enabled')
+                                : (l10n?.servicesSysDdnsDisabledToast ??
+                                    'DDNS service disabled'),
+                            actionKey: actionKey,
+                          );
+                        } else {
+                          context.showToastError(
+                            l10n?.servicesSysDdnsToggleFailedToast ??
+                                'Failed to update DDNS service state',
+                            actionKey: actionKey,
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        context.showToastError(
+                          l10n?.servicesSysDdnsToggleFailedToast ??
+                              'Failed to update DDNS service state',
+                          subtitle: e.toString().replaceAll('Exception: ', ''),
+                          actionKey: actionKey,
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isTogglingGlobalDdns = false;
+                          _optimisticGlobalDdns = null;
+                        });
+                      }
+                    }
+                  },
+          ),
         ),
       ],
+    );
+
+    Widget buildAddButton() => FilledButton.icon(
+      onPressed: () => _showAddEditDdnsDialog(context, existingInstance: null),
+      icon: const Icon(Icons.add, size: 16),
+      label: Text(
+        l10n?.servicesSysBtnAddDdns ?? 'Add DDNS',
+        style: const TextStyle(fontSize: 12),
+      ),
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 540;
+        if (isCompact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: _buildSectionHeader(
+                      context,
+                      l10n?.servicesSysDdnsHeader ?? 'Dynamic DNS (DDNS)',
+                      Icons.dns_outlined,
+                      maxLines: 2,
+                    ),
+                  ),
+                  buildMenu(),
+                ],
+              ),
+              if (ddns.isInstalled) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          ddns.isGlobalEnabled
+                              ? (l10n?.statusActive ?? 'ACTIVE')
+                              : (l10n?.statusDisabled ?? 'DISABLED'),
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        buildGlobalSwitch(),
+                      ],
+                    ),
+                    buildAddButton(),
+                  ],
+                ),
+              ],
+            ],
+          );
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: _buildSectionHeader(
+                context,
+                l10n?.servicesSysDdnsHeader ?? 'Dynamic DNS (DDNS)',
+                Icons.dns_outlined,
+                maxLines: 2,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (ddns.isInstalled) ...[
+                  buildGlobalSwitch(),
+                  const SizedBox(width: 4),
+                  buildAddButton(),
+                ],
+                buildMenu(),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildDdnsUninstalledBanner(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       elevation: 0,
       color: LuciStatusColors.warningBg(context),
@@ -1155,7 +1421,8 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'DDNS Core Package (ddns-scripts) Not Installed',
+                    l10n?.servicesSysDdnsUninstalledTitle ??
+                        'DDNS Core Package (ddns-scripts) Not Installed',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
@@ -1167,7 +1434,8 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Dynamic DNS updates router IP addresses automatically with services like Cloudflare, No-IP, DuckDNS, DynDNS, and FreeDNS. One-tap install will automatically fetch DDNS scripts for your router.',
+              l10n?.servicesSysDdnsUninstalledDesc ??
+                  'Dynamic DNS updates router IP addresses automatically with services like Cloudflare, No-IP, DuckDNS, DynDNS, and FreeDNS. One-tap install will automatically fetch DDNS scripts for your router.',
               style: TextStyle(
                 fontSize: 12,
                 color: Theme.of(context).textTheme.bodyMedium?.color,
@@ -1179,7 +1447,10 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
               child: FilledButton.icon(
                 onPressed: () => _installDdnsPackage(context),
                 icon: const Icon(Icons.download, size: 18),
-                label: const Text('One-Tap Install DDNS Package'),
+                label: Text(
+                  l10n?.servicesSysBtnInstallDdns ??
+                      'One-Tap Install DDNS Package',
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: LuciColors.primary,
                 ),
@@ -1192,6 +1463,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   }
 
   Widget _buildDdnsInstancesCard(BuildContext context, DdnsOverview ddns) {
+    final l10n = AppLocalizations.of(context);
     if (ddns.instances.isEmpty) {
       return Card(
         elevation: 0,
@@ -1220,7 +1492,9 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                 onPressed: () =>
                     _showAddEditDdnsDialog(context, existingInstance: null),
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add DDNS Instance'),
+                label: Text(
+                  l10n?.servicesSysBtnAddDdnsInstance ?? 'Add DDNS Instance',
+                ),
               ),
             ],
           ),
@@ -1243,6 +1517,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   }
 
   Widget _buildDdnsInstanceTile(BuildContext context, DdnsInstance instance) {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
     final preset = kDdnsProviderPresets.firstWhere(
       (p) => p.serviceName == instance.serviceName,
@@ -1307,25 +1582,115 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Transform.scale(
-                  scale: 0.8,
-                  child: Switch(
-                    value: instance.enabled,
-                    onChanged: (val) async {
-                      final updated = instance.copyWith(enabled: val);
-                      final ok = await appState.saveDdnsInstance(updated);
-                      await appState.fetchDashboardData();
-                      if (context.mounted) {
-                        if (ok) {
-                          context.showToastSuccess(
-                            '${instance.name} ${val ? "enabled" : "disabled"}',
-                          );
-                        } else {
-                          context.showToastError('Failed to update instance');
-                        }
-                      }
-                    },
-                  ),
+                Builder(
+                  builder: (context) {
+                    final isInstancePending =
+                        _pendingDdnsInstanceToggles.contains(instance.name);
+                    final effectiveInstanceValue =
+                        _optimisticDdnsInstanceStates[instance.name] ??
+                        instance.enabled;
+
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isInstancePending)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6.0),
+                            child: SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        Transform.scale(
+                          scale: 0.8,
+                          child: Switch(
+                            value: effectiveInstanceValue,
+                            onChanged: isInstancePending
+                                ? null
+                                : (val) async {
+                                    if (_pendingDdnsInstanceToggles
+                                        .contains(instance.name)) {
+                                      return;
+                                    }
+                                    setState(() {
+                                      _pendingDdnsInstanceToggles
+                                          .add(instance.name);
+                                      _optimisticDdnsInstanceStates[
+                                          instance.name] = val;
+                                    });
+                                    final actionKey =
+                                        'toggle_ddns_instance_${instance.name}';
+                                    context.showToastLoading(
+                                      val
+                                          ? (l10n?.servicesSysDdnsInstanceEnablingToast(
+                                                    instance.name,
+                                                  ) ??
+                                              'Enabling DDNS instance "${instance.name}"...')
+                                          : (l10n?.servicesSysDdnsInstanceDisablingToast(
+                                                    instance.name,
+                                                  ) ??
+                                              'Disabling DDNS instance "${instance.name}"...'),
+                                      actionKey: actionKey,
+                                    );
+                                    try {
+                                      final updated =
+                                          instance.copyWith(enabled: val);
+                                      final ok = await appState
+                                          .saveDdnsInstance(updated);
+                                      if (context.mounted) {
+                                        if (ok) {
+                                          final statusStr = val
+                                              ? (l10n?.statusActive ??
+                                                  'enabled')
+                                              : (l10n?.statusDisabled ??
+                                                  'disabled');
+                                          context.showToastSuccess(
+                                            l10n?.servicesSysDdnsInstanceToggleToast(
+                                                  instance.name,
+                                                  statusStr,
+                                                ) ??
+                                                '${instance.name} $statusStr',
+                                            actionKey: actionKey,
+                                          );
+                                        } else {
+                                          context.showToastError(
+                                            l10n?.servicesSysDdnsUpdateFailedToast ??
+                                                'Failed to update instance',
+                                            actionKey: actionKey,
+                                          );
+                                        }
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        context.showToastError(
+                                          l10n?.servicesSysDdnsUpdateFailedToast ??
+                                              'Failed to update instance',
+                                          subtitle: e
+                                              .toString()
+                                              .replaceAll('Exception: ', ''),
+                                          actionKey: actionKey,
+                                        );
+                                      }
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() {
+                                          _pendingDdnsInstanceToggles
+                                              .remove(instance.name);
+                                          _optimisticDdnsInstanceStates
+                                              .remove(instance.name);
+                                        });
+                                      }
+                                    }
+                                  },
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -1348,12 +1713,16 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
               children: [
                 const Icon(Icons.swap_horiz, size: 14, color: Colors.grey),
                 const SizedBox(width: 4),
-                Text(
-                  'Interface: ${instance.interface.toUpperCase()} • Interval: ${instance.checkInterval} ${instance.checkUnit}',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                Expanded(
+                  child: Text(
+                    'Interface: ${instance.interface.toUpperCase()} • Interval: ${instance.checkInterval} ${instance.checkUnit}',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 if (instance.statusStr != null) ...[
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
@@ -1392,9 +1761,9 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                 OutlinedButton.icon(
                   onPressed: () => _testDdnsConfiguration(instance),
                   icon: const Icon(Icons.published_with_changes, size: 14),
-                  label: const Text(
-                    'Test Config',
-                    style: TextStyle(fontSize: 11),
+                  label: Text(
+                    l10n?.servicesSysBtnTestConfig ?? 'Test Config',
+                    style: const TextStyle(fontSize: 11),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
@@ -1408,7 +1777,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 18),
-                  tooltip: 'Edit Configuration',
+                  tooltip: l10n?.actionEdit ?? 'Edit',
                   onPressed: () => _showAddEditDdnsDialog(
                     context,
                     existingInstance: instance,
@@ -1420,7 +1789,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                     color: LuciColors.error,
                     size: 18,
                   ),
-                  tooltip: 'Delete Configuration',
+                  tooltip: l10n?.actionDelete ?? 'Delete',
                   onPressed: () =>
                       _confirmDeleteDdnsInstance(context, instance.name),
                 ),
@@ -1433,22 +1802,29 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   }
 
   Future<void> _installDdnsPackage(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Install DDNS Scripts Package'),
-        content: const Text(
-          'This will install the official OpenWrt ddns-scripts core package and dynamic DNS provider scripts.\n\nDo you want to proceed?',
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(
+          l10n?.servicesSysInstallDdnsTitle ?? 'Install DDNS Scripts Package',
+        ),
+        content: const SingleChildScrollView(
+          child: Text(
+            'This will install the official OpenWrt ddns-scripts core package and dynamic DNS provider scripts.\n\nDo you want to proceed?',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Install Now'),
+            child: Text(l10n?.actionInstallNow ?? 'Install Now'),
           ),
         ],
       ),
@@ -1486,29 +1862,40 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   }
 
   Future<void> _confirmUninstallDdnsPackage(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Row(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: LuciColors.error),
-            SizedBox(width: 8),
-            Text('Uninstall DDNS Package?'),
+            const Icon(Icons.warning_amber_rounded, color: LuciColors.error),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                l10n?.servicesSysDdnsUninstallTitle ??
+                    'Uninstall DDNS Package?',
+              ),
+            ),
           ],
         ),
-        content: const Text(
-          'This will remove ddns-scripts from your router. Any active dynamic DNS updates will be disabled.\n\nAre you sure?',
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.servicesSysDdnsUninstallConfirm ??
+                'This will remove ddns-scripts from your router. Any active dynamic DNS updates will be disabled.\n\nAre you sure?',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: LuciColors.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Uninstall'),
+            child: Text(l10n?.actionUninstall ?? 'Uninstall'),
           ),
         ],
       ),
@@ -1522,9 +1909,14 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     );
     if (mounted && context.mounted) {
       if (success) {
-        context.showToastSuccess('DDNS package uninstalled.');
+        context.showToastSuccess(
+          l10n?.servicesSysDdnsUninstalledToast ?? 'DDNS package uninstalled.',
+        );
       } else {
-        context.showToastError('Failed to uninstall DDNS package.');
+        context.showToastError(
+          l10n?.servicesSysDdnsUninstallFailedToast ??
+              'Failed to uninstall DDNS package.',
+        );
       }
       await appState.fetchDashboardData();
     }
@@ -1534,23 +1926,31 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     BuildContext context,
     String name,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Delete DDNS "$name"?'),
-        content: Text(
-          'Are you sure you want to delete configuration section "$name"?',
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(
+          l10n?.servicesSysDdnsDeleteTitle(name) ?? 'Delete DDNS "$name"?',
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.servicesSysDdnsDeleteConfirm(name) ??
+                'Are you sure you want to delete configuration section "$name"?',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: LuciColors.error),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
+            child: Text(l10n?.actionDelete ?? 'Delete'),
           ),
         ],
       ),
@@ -1562,9 +1962,15 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
         await appState.fetchDashboardData();
         if (context.mounted) {
           if (success) {
-            context.showToastSuccess('Deleted DDNS instance "$name".');
+            context.showToastSuccess(
+              l10n?.servicesSysDdnsDeletedToast(name) ??
+                  'Deleted DDNS instance "$name".',
+            );
           } else {
-            context.showToastError('Failed to delete DDNS instance "$name".');
+            context.showToastError(
+              l10n?.servicesSysDdnsDeleteFailedToast(name) ??
+                  'Failed to delete DDNS instance "$name".',
+            );
           }
         }
       }
@@ -1572,18 +1978,24 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   }
 
   Future<void> _testDdnsConfiguration(DdnsInstance instance) async {
+    final l10n = AppLocalizations.of(context);
     final navigator = Navigator.of(context);
     final appState = ref.read(appStateProvider);
     unawaited(
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => const AlertDialog(
+        builder: (ctx) => AlertDialog(
           content: Row(
             children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Testing DDNS lookup & resolution...'),
+              const CircularProgressIndicator(),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  AppLocalizations.of(context)?.servicesSysTestingDdns ??
+                      'Testing DDNS lookup & resolution...',
+                ),
+              ),
             ],
           ),
         ),
@@ -1599,6 +2011,8 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
           title: Row(
             children: [
               Icon(
@@ -1652,7 +2066,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Close'),
+              child: Text(l10n?.actionClose ?? 'Close'),
             ),
           ],
         ),
@@ -1664,6 +2078,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     BuildContext context, {
     DdnsInstance? existingInstance,
   }) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => _DdnsEditDialog(
@@ -1676,13 +2091,17 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
             if (context.mounted) {
               if (success) {
                 context.showToastSuccess(
-                  'DDNS Saved',
-                  subtitle: 'DDNS instance saved successfully!',
+                  l10n?.servicesSysDdnsSavedToast ?? 'DDNS Saved',
+                  subtitle:
+                      l10n?.servicesSysDdnsSavedSubtitle ??
+                      'DDNS instance saved successfully!',
                 );
               } else {
                 context.showToastError(
-                  'Save Failed',
-                  subtitle: 'Failed to save DDNS instance.',
+                  l10n?.servicesSysDdnsSaveFailedToast ?? 'Save Failed',
+                  subtitle:
+                      l10n?.servicesSysDdnsSaveFailedSubtitle ??
+                      'Failed to save DDNS instance.',
                 );
               }
             }
@@ -1699,21 +2118,59 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
 }
 
 class CronPreset {
+  final String id;
   final String label;
   final String expression;
-  const CronPreset(this.label, this.expression);
+  const CronPreset(this.id, this.label, this.expression);
+
+  String getLocalizedLabel(AppLocalizations? l10n) {
+    switch (id) {
+      case 'every_5_min':
+        return l10n?.cronPresetEvery5Min ?? label;
+      case 'every_15_min':
+        return l10n?.cronPresetEvery15Min ?? label;
+      case 'every_hour':
+        return l10n?.cronPresetEveryHour ?? label;
+      case 'every_day_midnight':
+        return l10n?.cronPresetEveryDayMidnight ?? label;
+      case 'every_day_4am':
+        return l10n?.cronPresetEveryDay4Am ?? label;
+      case 'every_weekday_midnight':
+        return l10n?.cronPresetEveryWeekdayMidnight ?? label;
+      case 'every_sunday_midnight':
+        return l10n?.cronPresetEverySundayMidnight ?? label;
+      case 'first_day_month_midnight':
+        return l10n?.cronPresetFirstDayMonthMidnight ?? label;
+      case 'custom':
+        return l10n?.cronPresetCustomExpression ?? label;
+      default:
+        return label;
+    }
+  }
 }
 
 const List<CronPreset> kCronPresets = [
-  CronPreset('Every 5 Minutes', '*/5 * * * *'),
-  CronPreset('Every 15 Minutes', '*/15 * * * *'),
-  CronPreset('Every Hour', '0 * * * *'),
-  CronPreset('Every Day at Midnight (12:00 AM)', '0 0 * * *'),
-  CronPreset('Every Day at 4:00 AM', '0 4 * * *'),
-  CronPreset('Every Weekday (Mon-Fri) at Midnight', '0 0 * * 1-5'),
-  CronPreset('Every Sunday at Midnight', '0 0 * * 0'),
-  CronPreset('First Day of Every Month at Midnight', '0 0 1 * *'),
-  CronPreset('Custom Expression', ''),
+  CronPreset('every_5_min', 'Every 5 Minutes', '*/5 * * * *'),
+  CronPreset('every_15_min', 'Every 15 Minutes', '*/15 * * * *'),
+  CronPreset('every_hour', 'Every Hour', '0 * * * *'),
+  CronPreset(
+    'every_day_midnight',
+    'Every Day at Midnight (12:00 AM)',
+    '0 0 * * *',
+  ),
+  CronPreset('every_day_4am', 'Every Day at 4:00 AM', '0 4 * * *'),
+  CronPreset(
+    'every_weekday_midnight',
+    'Every Weekday (Mon-Fri) at Midnight',
+    '0 0 * * 1-5',
+  ),
+  CronPreset('every_sunday_midnight', 'Every Sunday at Midnight', '0 0 * * 0'),
+  CronPreset(
+    'first_day_month_midnight',
+    'First Day of Every Month at Midnight',
+    '0 0 1 * *',
+  ),
+  CronPreset('custom', 'Custom Expression', ''),
 ];
 
 class CronValidator {
@@ -1787,13 +2244,15 @@ class CronValidator {
     return null;
   }
 
-  static String describeSchedule(String expr) {
+  static String describeSchedule(String expr, [AppLocalizations? l10n]) {
     final trimmed = expr.trim();
-    if (validateExpression(trimmed) != null) return 'Custom schedule';
+    if (validateExpression(trimmed) != null) {
+      return l10n?.cronCustomSchedule ?? 'Custom schedule';
+    }
 
     for (final preset in kCronPresets) {
       if (preset.expression == trimmed) {
-        return preset.label;
+        return preset.getLocalizedLabel(l10n);
       }
     }
 
@@ -1806,20 +2265,22 @@ class CronValidator {
       final dow = parts[4];
 
       if (min == '*' && hour == '*' && dom == '*' && mon == '*' && dow == '*') {
-        return 'Runs every minute';
+        return l10n?.cronRunsEveryMinute ?? 'Runs every minute';
       }
       if (min.startsWith('*/') &&
           hour == '*' &&
           dom == '*' &&
           mon == '*' &&
           dow == '*') {
-        return 'Runs every ${min.substring(2)} minutes';
+        final step = min.substring(2);
+        return l10n?.cronRunsEveryXMinutes(step) ?? 'Runs every $step minutes';
       }
       if (hour.startsWith('*/') && dom == '*' && mon == '*' && dow == '*') {
         final step = hour.substring(2);
         final m = int.tryParse(min) ?? 0;
         final mStr = m.toString().padLeft(2, '0');
-        return 'Runs every $step hours at :$mStr';
+        return l10n?.cronRunsEveryXHoursAt(step, mStr) ??
+            'Runs every $step hours at :$mStr';
       }
 
       final h = int.tryParse(hour);
@@ -1832,20 +2293,24 @@ class CronValidator {
         final timeStr = '$h12:$mStr $period';
 
         if (dom == '*' && mon == '*' && dow == '*') {
-          return 'Runs every day at $timeStr';
+          return l10n?.cronRunsEveryDayAt(timeStr) ??
+              'Runs every day at $timeStr';
         }
         if (dom == '*' && mon == '*' && (dow == '0' || dow == '7')) {
-          return 'Runs every Sunday at $timeStr';
+          return l10n?.cronRunsEverySundayAt(timeStr) ??
+              'Runs every Sunday at $timeStr';
         }
         if (dom == '*' && mon == '*' && dow == '1-5') {
-          return 'Runs on weekdays (Mon-Fri) at $timeStr';
+          return l10n?.cronRunsOnWeekdaysAt(timeStr) ??
+              'Runs on weekdays (Mon-Fri) at $timeStr';
         }
         if (dom != '*' && mon == '*' && dow == '*') {
-          return 'Runs on day $dom of every month at $timeStr';
+          return l10n?.cronRunsOnDayOfMonthAt(dom, timeStr) ??
+              'Runs on day $dom of every month at $timeStr';
         }
       }
     }
-    return 'Runs on schedule ($trimmed)';
+    return l10n?.cronRunsOnSchedule(trimmed) ?? 'Runs on schedule ($trimmed)';
   }
 
   static String? validateCommand(String command) {
@@ -1889,7 +2354,7 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
   late TextEditingController _exprController;
   late TextEditingController _cmdController;
   late bool _isEnabled;
-  String? _selectedPreset;
+  String? _selectedPresetId;
 
   @override
   void initState() {
@@ -1916,11 +2381,11 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
     final trimmed = expr.trim();
     for (final preset in kCronPresets) {
       if (preset.expression == trimmed) {
-        _selectedPreset = preset.label;
+        _selectedPresetId = preset.id;
         return;
       }
     }
-    _selectedPreset = 'Custom Expression';
+    _selectedPresetId = 'custom';
   }
 
   @override
@@ -1933,6 +2398,7 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isEditing = widget.existingJob != null;
     final dangerousWarning = CronValidator.checkDangerousCommandWarning(
       _cmdController.text,
@@ -1943,6 +2409,8 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
     final canSave = isValid && (!isEditing || _isDirty);
 
     return AlertDialog(
+      actionsOverflowButtonSpacing: 8,
+      actionsOverflowDirection: VerticalDirection.down,
       title: Row(
         children: [
           Icon(
@@ -1952,7 +2420,9 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isEditing ? 'Edit Scheduled Task' : 'Add New Scheduled Task',
+              isEditing
+                  ? (l10n?.servicesSysEditCronTitle ?? 'Edit Scheduled Task')
+                  : (l10n?.servicesSysAddCronTitle ?? 'Add New Scheduled Task'),
             ),
           ),
         ],
@@ -1965,17 +2435,17 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               DropdownButtonFormField<String>(
-                initialValue: _selectedPreset,
-                decoration: const InputDecoration(
-                  labelText: 'Schedule Preset',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.speed),
+                initialValue: _selectedPresetId,
+                decoration: InputDecoration(
+                  labelText: l10n?.cronSchedulePreset ?? 'Schedule Preset',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.speed),
                 ),
                 items: kCronPresets.map((preset) {
                   return DropdownMenuItem<String>(
-                    value: preset.label,
+                    value: preset.id,
                     child: Text(
-                      preset.label,
+                      preset.getLocalizedLabel(l10n),
                       style: const TextStyle(fontSize: 13),
                     ),
                   );
@@ -1983,9 +2453,9 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {
-                      _selectedPreset = value;
+                      _selectedPresetId = value;
                       final match = kCronPresets.firstWhere(
-                        (p) => p.label == value,
+                        (p) => p.id == value,
                       );
                       if (match.expression.isNotEmpty) {
                         _exprController.text = match.expression;
@@ -1997,11 +2467,13 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _exprController,
-                decoration: const InputDecoration(
-                  labelText: 'Cron Expression (5 fields)',
+                decoration: InputDecoration(
+                  labelText:
+                      l10n?.servicesSysCronExpressionLabel ??
+                      'Cron Expression (5 fields)',
                   hintText: 'min hour dom month dow (e.g. 0 4 * * *)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.timelapse),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.timelapse),
                 ),
                 style: GoogleFonts.geistMono(fontSize: 13),
                 validator: (value) =>
@@ -2016,7 +2488,7 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
               ValueListenableBuilder<TextEditingValue>(
                 valueListenable: _exprController,
                 builder: (context, val, _) {
-                  final desc = CronValidator.describeSchedule(val.text);
+                  final desc = CronValidator.describeSchedule(val.text, l10n);
                   final err = CronValidator.validateExpression(val.text);
                   return Container(
                     padding: const EdgeInsets.symmetric(
@@ -2065,11 +2537,12 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _cmdController,
-                decoration: const InputDecoration(
-                  labelText: 'Command to Execute',
+                decoration: InputDecoration(
+                  labelText:
+                      l10n?.servicesSysCronCommandLabel ?? 'Command to Execute',
                   hintText: '/sbin/reboot or /usr/bin/ping-check.sh',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.terminal),
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.terminal),
                 ),
                 style: GoogleFonts.geistMono(fontSize: 13),
                 validator: (value) =>
@@ -2081,14 +2554,26 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
                 spacing: 6,
                 runSpacing: 4,
                 children: [
-                  _buildCommandChip('/sbin/reboot', 'Reboot Router'),
-                  _buildCommandChip('/usr/bin/ping-check.sh', 'Ping Check'),
-                  _buildCommandChip('/sbin/wifi reload', 'Reload Wi-Fi'),
+                  _buildCommandChip(
+                    '/sbin/reboot',
+                    l10n?.cronChipRebootRouter ?? 'Reboot Router',
+                  ),
+                  _buildCommandChip(
+                    '/usr/bin/ping-check.sh',
+                    l10n?.cronChipPingCheck ?? 'Ping Check',
+                  ),
+                  _buildCommandChip(
+                    '/sbin/wifi reload',
+                    l10n?.cronChipReloadWifi ?? 'Reload Wi-Fi',
+                  ),
                   _buildCommandChip(
                     '/etc/init.d/network restart',
-                    'Restart Net',
+                    l10n?.cronChipRestartNet ?? 'Restart Net',
                   ),
-                  _buildCommandChip('/etc/init.d/ddns restart', 'Restart DDNS'),
+                  _buildCommandChip(
+                    '/etc/init.d/ddns restart',
+                    l10n?.cronChipRestartDdns ?? 'Restart DDNS',
+                  ),
                 ],
               ),
               if (dangerousWarning != null) ...[
@@ -2125,14 +2610,19 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
               const SizedBox(height: 12),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text(
-                  'Task Active State',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                title: Text(
+                  l10n?.cronTaskActiveState ?? 'Task Active State',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
                 subtitle: Text(
                   _isEnabled
-                      ? 'Task is enabled and will run on schedule'
-                      : 'Task is disabled (commented out)',
+                      ? (l10n?.cronTaskEnabledDesc ??
+                            'Task is enabled and will run on schedule')
+                      : (l10n?.cronTaskDisabledDesc ??
+                            'Task is disabled (commented out)'),
                   style: const TextStyle(fontSize: 11),
                 ),
                 value: _isEnabled,
@@ -2145,7 +2635,7 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n?.actionCancel ?? 'Cancel'),
         ),
         FilledButton.icon(
           onPressed: canSave
@@ -2161,7 +2651,11 @@ class _CronJobEditDialogState extends State<_CronJobEditDialog> {
                 }
               : null,
           icon: const Icon(Icons.check, size: 16),
-          label: Text(isEditing ? 'Save Task' : 'Add Task'),
+          label: Text(
+            isEditing
+                ? (l10n?.servicesSysBtnSaveCron ?? 'Save Task')
+                : (l10n?.servicesSysBtnAddTask ?? 'Add Task'),
+          ),
         ),
       ],
     );
@@ -2355,6 +2849,7 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final preset = _currentPreset;
     final isEditing = widget.existingInstance != null;
@@ -2366,7 +2861,10 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              isEditing ? 'Edit DDNS Configuration' : 'Add DDNS Configuration',
+              isEditing
+                  ? (l10n?.servicesSysEditDdnsTitle ??
+                        'Edit DDNS Configuration')
+                  : (l10n?.servicesSysAddDdnsTitle ?? 'Add DDNS Configuration'),
             ),
           ),
         ],
@@ -2383,9 +2881,10 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
                 // Provider Selector
                 DropdownButtonFormField<String>(
                   initialValue: _selectedServiceName,
-                  decoration: const InputDecoration(
-                    labelText: 'Service Provider',
-                    prefixIcon: Icon(Icons.hub_outlined),
+                  decoration: InputDecoration(
+                    labelText:
+                        l10n?.servicesSysServiceProvider ?? 'Service Provider',
+                    prefixIcon: const Icon(Icons.hub_outlined),
                   ),
                   items: kDdnsProviderPresets
                       .map(
@@ -2474,7 +2973,10 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
                     const SizedBox(width: 12),
                     Column(
                       children: [
-                        const Text('Enabled', style: TextStyle(fontSize: 11)),
+                        Text(
+                          l10n?.statusEnabled ?? 'Enabled',
+                          style: const TextStyle(fontSize: 11),
+                        ),
                         Switch(
                           value: _enabled,
                           onChanged: (v) => setState(() => _enabled = v),
@@ -2563,23 +3065,34 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _ipSource,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'IP address source',
-                          helperText: 'Method used to determine system IP',
+                          helperText:
+                              l10n?.servicesIpMethodHelper ??
+                              'Method used to determine system IP',
                           helperMaxLines: 2,
                         ),
-                        items: const [
+                        items: [
                           DropdownMenuItem(
                             value: 'web',
-                            child: Text('URL / Web Service'),
+                            child: Text(
+                              l10n?.servicesSysSourceUrlWeb ??
+                                  'URL / Web Service',
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'network',
-                            child: Text('Network Interface'),
+                            child: Text(
+                              l10n?.servicesSysSourceNetwork ??
+                                  'Network Interface',
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'interface',
-                            child: Text('Direct Interface'),
+                            child: Text(
+                              l10n?.servicesSysSourceDirect ??
+                                  'Direct Interface',
+                            ),
                           ),
                         ],
                         onChanged: (v) => setState(() => _ipSource = v!),
@@ -2590,19 +3103,28 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           initialValue: _interface,
-                          decoration: const InputDecoration(
-                            labelText: 'Network Interface',
+                          decoration: InputDecoration(
+                            labelText:
+                                l10n?.servicesNetworkInterface ??
+                                'Network Interface',
                           ),
-                          items: const [
+                          items: [
                             DropdownMenuItem(
                               value: 'wan',
-                              child: Text('WAN (IPv4)'),
+                              child: Text(
+                                l10n?.servicesSysWanIpv4 ?? 'WAN (IPv4)',
+                              ),
                             ),
                             DropdownMenuItem(
                               value: 'wan6',
-                              child: Text('WAN6 (IPv6)'),
+                              child: Text(
+                                l10n?.servicesSysWan6Ipv6 ?? 'WAN6 (IPv6)',
+                              ),
                             ),
-                            DropdownMenuItem(value: 'lan', child: Text('LAN')),
+                            DropdownMenuItem(
+                              value: 'lan',
+                              child: Text(l10n?.servicesSysLan ?? 'LAN'),
+                            ),
                           ],
                           onChanged: (v) => setState(() => _interface = v!),
                         ),
@@ -2616,15 +3138,16 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
                 if (_ipSource == 'web') ...[
                   TextFormField(
                     controller: _ipUrlController,
-                    decoration: const InputDecoration(
-                      labelText: 'URL to detect',
+                    decoration: InputDecoration(
+                      labelText: l10n?.servicesUrlToDetect ?? 'URL to detect',
                       hintText: 'https://ipv4.icanhazip.com',
-                      prefixIcon: Icon(Icons.travel_explore),
+                      prefixIcon: const Icon(Icons.travel_explore),
                     ),
                     validator: (val) =>
                         (_ipSource == 'web' &&
                             (val == null || val.trim().isEmpty))
-                        ? 'Enter URL to detect system IP'
+                        ? (l10n?.servicesSysEnterUrlToDetect ??
+                              'Enter URL to detect system IP')
                         : null,
                     onChanged: (_) => setState(() {}),
                   ),
@@ -2673,8 +3196,9 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
                       child: TextFormField(
                         controller: _checkIntervalController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Check Interval',
+                        decoration: InputDecoration(
+                          labelText:
+                              l10n?.servicesCheckInterval ?? 'Check Interval',
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -2684,17 +3208,24 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
                       flex: 2,
                       child: DropdownButtonFormField<String>(
                         initialValue: _checkUnit,
-                        decoration: const InputDecoration(labelText: 'Unit'),
-                        items: const [
+                        decoration: InputDecoration(
+                          labelText: l10n?.servicesUnit ?? 'Unit',
+                        ),
+                        items: [
                           DropdownMenuItem(
                             value: 'minutes',
-                            child: Text('Minutes'),
+                            child: Text(
+                              l10n?.servicesSysUnitMinutes ?? 'Minutes',
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'hours',
-                            child: Text('Hours'),
+                            child: Text(l10n?.servicesSysUnitHours ?? 'Hours'),
                           ),
-                          DropdownMenuItem(value: 'days', child: Text('Days')),
+                          DropdownMenuItem(
+                            value: 'days',
+                            child: Text(l10n?.servicesSysUnitDays ?? 'Days'),
+                          ),
                         ],
                         onChanged: (v) => setState(() => _checkUnit = v!),
                       ),
@@ -2702,7 +3233,10 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
                     const SizedBox(width: 12),
                     Column(
                       children: [
-                        const Text('Use HTTPS', style: TextStyle(fontSize: 11)),
+                        Text(
+                          l10n?.servicesSysUseHttps ?? 'Use HTTPS',
+                          style: const TextStyle(fontSize: 11),
+                        ),
                         Switch(
                           value: _useHttps,
                           onChanged: (v) => setState(() => _useHttps = v),
@@ -2715,19 +3249,21 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
 
                 // Live Validation Test Output Box
                 if (_isTesting)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
                     child: Row(
-                      children: [
+                      children: const [
                         SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                         SizedBox(width: 8),
-                        Text(
-                          'Performing DNS resolution test on router...',
-                          style: TextStyle(fontSize: 12),
+                        Expanded(
+                          child: Text(
+                            'Performing DNS resolution test on router...',
+                            style: TextStyle(fontSize: 12),
+                          ),
                         ),
                       ],
                     ),
@@ -2763,16 +3299,18 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
                                   : LuciStatusColors.errorText(context),
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              _testResult!.isValid
-                                  ? 'Test Passed'
-                                  : 'Test Failed',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                color: _testResult!.isValid
-                                    ? LuciStatusColors.successText(context)
-                                    : LuciStatusColors.errorText(context),
+                            Expanded(
+                              child: Text(
+                                _testResult!.isValid
+                                    ? 'Test Passed'
+                                    : 'Test Failed',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: _testResult!.isValid
+                                      ? LuciStatusColors.successText(context)
+                                      : LuciStatusColors.errorText(context),
+                                ),
                               ),
                             ),
                           ],
@@ -2820,13 +3358,13 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
         OutlinedButton.icon(
           onPressed: (_isSaving || _isTesting) ? null : _runTest,
           icon: const Icon(Icons.published_with_changes, size: 14),
-          label: const Text('Test Config'),
+          label: Text(l10n?.servicesSysBtnTestConfig ?? 'Test Config'),
         ),
         TextButton(
           onPressed: (_isSaving || _isTesting)
               ? null
               : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n?.actionCancel ?? 'Cancel'),
         ),
         FilledButton(
           onPressed: (_isSaving || _isTesting || (isEditing && !_isDirty))

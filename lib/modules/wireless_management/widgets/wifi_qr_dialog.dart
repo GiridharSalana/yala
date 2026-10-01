@@ -11,6 +11,8 @@ import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import '../models/wireless_info.dart';
 
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+
 /// Modal dialog displaying a standardized WIFI: URI QR code for rapid mobile quick-connect
 /// with automatic passphrase prefetching and quick copy controls.
 class WifiQrDialog extends ConsumerStatefulWidget {
@@ -82,6 +84,7 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final iface = widget.interface;
     final payload = _qrPayload;
     final hasPassword =
@@ -105,7 +108,7 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Wi-Fi Quick Connect',
+                      l10n?.wifiQuickConnectTitle ?? 'Wi-Fi Quick Connect',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -129,11 +132,14 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                         onTap: () {
                           Clipboard.setData(ClipboardData(text: payload));
                           context.showToastSuccess(
-                            'WIFI QR Payload copied to clipboard',
+                            l10n?.toastPayloadCopied ??
+                                'WIFI QR Payload copied to clipboard',
                           );
                         },
                         child: Tooltip(
-                          message: 'Tap QR code to copy full WIFI payload',
+                          message:
+                              l10n?.tapQrCodeToCopyPayload ??
+                              'Tap QR code to copy full WIFI payload',
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -174,8 +180,10 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 6,
+                        runSpacing: 6,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -197,8 +205,7 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                               ),
                             ),
                           ),
-                          if (iface.isHidden) ...[
-                            const SizedBox(width: 6),
+                          if (iface.isHidden)
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -208,16 +215,15 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                                 color: Colors.purple.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
-                                'Hidden Network',
-                                style: TextStyle(
+                              child: Text(
+                                l10n?.hiddenNetworkBadge ?? 'Hidden Network',
+                                style: const TextStyle(
                                   color: Colors.purple,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 11,
                                 ),
                               ),
                             ),
-                          ],
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -266,8 +272,10 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                                   () => _showPassword = !_showPassword,
                                 ),
                                 tooltip: _showPassword
-                                    ? 'Hide Passphrase'
-                                    : 'Show Passphrase',
+                                    ? (l10n?.btnHidePassphrase ??
+                                          'Hide Passphrase')
+                                    : (l10n?.btnShowPassphrase ??
+                                          'Show Passphrase'),
                               ),
                             ],
                           ),
@@ -275,7 +283,8 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                       ] else if (iface.securityMode ==
                           WifiSecurityMode.open) ...[
                         Text(
-                          'Open Wi-Fi Network (No Passphrase Required)',
+                          l10n?.openWifiNoPassword ??
+                              'Open Wi-Fi Network (No Passphrase Required)',
                           style: TextStyle(
                             fontSize: 12,
                             color: theme.colorScheme.onSurfaceVariant,
@@ -307,12 +316,16 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    Text(
-                                      'Fetching passphrase from router…',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
+                                    Flexible(
+                                      child: Text(
+                                        l10n?.wifiFetchingPassphrase ??
+                                            'Fetching passphrase from router…',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: theme
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -329,7 +342,8 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                                       );
                                       if (mounted && currentContext.mounted) {
                                         currentContext.showToastSuccess(
-                                          'Passphrase copied to clipboard',
+                                          l10n?.wifiPassphraseCopied ??
+                                              'Passphrase copied to clipboard',
                                         );
                                       }
                                     } else if (mounted &&
@@ -343,9 +357,10 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                                     Icons.copy_rounded,
                                     size: 16,
                                   ),
-                                  label: const Text(
-                                    'Fetch & Copy Passphrase',
-                                    style: TextStyle(fontSize: 12),
+                                  label: Text(
+                                    l10n?.wifiFetchAndCopyPassphrase ??
+                                        'Fetch & Copy Passphrase',
+                                    style: const TextStyle(fontSize: 12),
                                   ),
                                   style: ElevatedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(
@@ -361,23 +376,27 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                       ],
 
                       const SizedBox(height: 16),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          if (hasPassword) ...[
-                            Expanded(
+                          if (hasPassword)
+                            SizedBox(
+                              width: double.infinity,
                               child: FilledButton.icon(
                                 onPressed: () {
                                   Clipboard.setData(
                                     ClipboardData(text: _passphrase!),
                                   );
                                   context.showToastSuccess(
-                                    'Passphrase copied to clipboard',
+                                    l10n?.wifiPassphraseCopied ??
+                                        'Passphrase copied to clipboard',
                                   );
                                 },
                                 icon: const Icon(Icons.copy_rounded, size: 16),
-                                label: const Text(
-                                  'Copy Password',
-                                  style: TextStyle(fontSize: 12),
+                                label: Text(
+                                  l10n?.wifiCopyPassword ?? 'Copy Password',
+                                  style: const TextStyle(fontSize: 12),
                                 ),
                                 style: FilledButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
@@ -388,23 +407,23 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                          ],
-                          Expanded(
+                          SizedBox(
+                            width: double.infinity,
                             child: OutlinedButton.icon(
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(text: payload));
                                 context.showToastSuccess(
-                                  'WIFI QR Payload copied to clipboard',
+                                  l10n?.wifiPayloadCopied ??
+                                      'WIFI QR Payload copied to clipboard',
                                 );
                               },
                               icon: const Icon(
                                 Icons.qr_code_2_rounded,
                                 size: 16,
                               ),
-                              label: const Text(
-                                'Copy QR Payload',
-                                style: TextStyle(fontSize: 12),
+                              label: Text(
+                                l10n?.wifiCopyQrPayload ?? 'Copy QR Payload',
+                                style: const TextStyle(fontSize: 12),
                               ),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
@@ -426,7 +445,7 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Close'),
+                  child: Text(l10n?.actionClose ?? 'Close'),
                 ),
               ),
             ],

@@ -9,6 +9,7 @@ import '../../system_monitoring/models/system_metrics.dart';
 import '../services/metrics_chart_engine.dart';
 import '../widgets/realtime_line_chart.dart';
 import 'package:yet_another_luci_app/design/luci_design_system.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 class ChartingScreen extends ConsumerWidget {
   const ChartingScreen({super.key});
@@ -66,8 +67,10 @@ class ChartingScreen extends ConsumerWidget {
       });
     }
 
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Real-Time Metrics')),
+      appBar: AppBar(title: Text(l10n?.chartingTitle ?? 'Real-Time Metrics')),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
@@ -75,7 +78,7 @@ class ChartingScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _buildChartCard(
             context,
-            title: 'CPU Usage (%)',
+            title: l10n?.chartingCpuUsage ?? 'CPU Usage (%)',
             icon: Icons.memory,
             color: Colors.orange,
             chart: RealtimeLineChart(
@@ -90,7 +93,7 @@ class ChartingScreen extends ConsumerWidget {
                     Colors.orange.shade700,
                     Colors.orange.shade300,
                   ],
-                  label: 'CPU Usage',
+                  label: l10n?.chartingCpuUsageLabel ?? 'CPU Usage',
                 ),
               ],
             ),
@@ -98,7 +101,7 @@ class ChartingScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _buildChartCard(
             context,
-            title: 'RAM Usage (%)',
+            title: l10n?.chartingRamUsage ?? 'RAM Usage (%)',
             icon: Icons.pie_chart,
             color: Colors.blue,
             chart: RealtimeLineChart(
@@ -110,7 +113,7 @@ class ChartingScreen extends ConsumerWidget {
                 ChartSeriesData(
                   spots: metricsData.ramHistory,
                   gradientColors: [Colors.blue.shade700, Colors.blue.shade300],
-                  label: 'RAM Usage',
+                  label: l10n?.chartingRamUsageLabel ?? 'RAM Usage',
                 ),
               ],
             ),
@@ -118,7 +121,8 @@ class ChartingScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           _buildChartCard(
             context,
-            title: 'Network RX / TX Throughput',
+            title:
+                l10n?.chartingNetworkThroughput ?? 'Network RX / TX Throughput',
             icon: Icons.swap_vert,
             color: Colors.teal,
             chart: RealtimeLineChart(
@@ -128,12 +132,12 @@ class ChartingScreen extends ConsumerWidget {
                 ChartSeriesData(
                   spots: metricsData.txHistory,
                   gradientColors: [LuciColors.tx, LuciColors.txLight],
-                  label: 'TX (Upload)',
+                  label: l10n?.chartingTxUpload ?? 'TX (Upload)',
                 ),
                 ChartSeriesData(
                   spots: metricsData.rxHistory,
                   gradientColors: [LuciColors.rx, LuciColors.rxLight],
-                  label: 'RX (Download)',
+                  label: l10n?.chartingRxDownload ?? 'RX (Download)',
                 ),
               ],
             ),
@@ -153,6 +157,7 @@ class ChartingScreen extends ConsumerWidget {
     RealtimeMetricsData metricsData,
   ) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final currentInterval = metricsData.pollingIntervalSeconds;
     final currentWindow = metricsData.timeWindowSeconds;
 
@@ -169,10 +174,15 @@ class ChartingScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Polling Engine Interval',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    l10n?.chartingPollingInterval ?? 'Polling Engine Interval',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    maxLines: 2,
+                    overflow: TextOverflow.visible,
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Text(
                   '${currentInterval}s',
                   style: const TextStyle(
@@ -198,10 +208,15 @@ class ChartingScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Rolling Chart Window',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    l10n?.chartingRollingWindow ?? 'Rolling Chart Window',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    maxLines: 2,
+                    overflow: TextOverflow.visible,
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Text(
                   '${currentWindow}s',
                   style: TextStyle(
@@ -303,6 +318,7 @@ class ChartingScreen extends ConsumerWidget {
     }
 
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Card(
       elevation: 2,
@@ -320,10 +336,15 @@ class ChartingScreen extends ConsumerWidget {
                   color: Colors.teal,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'RX/TX Throughput Metrics (Tabular)',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    l10n?.chartingThroughputTableTitle ??
+                        'RX/TX Throughput Metrics (Tabular)',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.visible,
                   ),
                 ),
               ],
@@ -335,41 +356,41 @@ class ChartingScreen extends ConsumerWidget {
                 headingRowHeight: 40,
                 dataRowMinHeight: 44,
                 dataRowMaxHeight: 44,
-                columns: const [
+                columns: [
                   DataColumn(
                     label: Text(
-                      'Device',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      l10n?.chartingColDevice ?? 'Device',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   DataColumn(
                     label: Text(
-                      'RX Bytes',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      l10n?.chartingColRxBytes ?? 'RX Bytes',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   DataColumn(
                     label: Text(
-                      'TX Bytes',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      l10n?.chartingColTxBytes ?? 'TX Bytes',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   DataColumn(
                     label: Text(
-                      'RX Packets',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      l10n?.chartingColRxPackets ?? 'RX Packets',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   DataColumn(
                     label: Text(
-                      'TX Packets',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      l10n?.chartingColTxPackets ?? 'TX Packets',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   DataColumn(
                     label: Text(
-                      'Errors',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      l10n?.chartingColErrors ?? 'Errors',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],

@@ -1,6 +1,6 @@
 # Contributing to YALA (Yet Another LuCI App)
 
-Thank you for your interest in contributing to YALA! This project is an open-source, GPLv3-licensed mobile client for OpenWrt, directly forked from [`cogwheel0/luci-mobile`](https://github.com/cogwheel0/luci-mobile). We welcome contributions, bug fixes, and feature enhancements that respect open-source licensing and upstream authorship.
+Thank you for your interest in contributing to YALA! This project is an independent, open-source, GPLv3-licensed mobile client for OpenWrt, originally derived from [`cogwheel0/luci-mobile`](https://github.com/cogwheel0/luci-mobile). I welcome contributions, bug fixes, and feature enhancements that respect open-source licensing and original authorship.
 
 ## Table of Contents
 
@@ -17,33 +17,33 @@ Thank you for your interest in contributing to YALA! This project is an open-sou
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our Code of Conduct. Please be respectful and inclusive in all interactions.
+By participating in this project, you agree to abide by the Code of Conduct. Please be respectful and inclusive in all interactions.
 
 ## Licensing Requirements
 
-All contributions to this repository must be licensed under the **GNU General Public License v3.0 (GPL-3.0-or-later)**. By submitting a pull request, you confirm that your contributions comply with GPLv3 and do not incorporate proprietary code or conflicting open-source licenses. Original upstream authorship from `cogwheel0/luci-mobile` is strictly preserved.
+All contributions to this repository must be licensed under the **GNU General Public License v3.0 (GPL-3.0-or-later)**. By submitting a pull request, you confirm that your contributions comply with GPLv3 and do not incorporate proprietary code or conflicting open-source licenses. Original authorship from `cogwheel0/luci-mobile` is strictly preserved.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Flutter SDK (version 3.8.1 or higher)
-- Dart SDK
+- Flutter SDK (version 3.27.0 or higher)
+- Dart SDK (version 3.8.1 or higher)
 - Git
 - An IDE (VS Code, Android Studio, or IntelliJ IDEA)
 - OpenWrt router for testing (optional but recommended)
 
 ### Fork and Clone
 
-1. Fork the repository on GitHub
+1. Fork this repository on GitHub (`nightcodex7/yala`).
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/nightcodex7/yala.git
+   git clone https://github.com/YOUR_USERNAME/yala.git
    cd yala
    ```
-3. Track the repositories:
+3. Set the upstream remote to track this main repository:
    ```bash
-   git remote add upstream https://github.com/cogwheel0/luci-mobile.git
+   git remote add upstream https://github.com/nightcodex7/yala.git
    ```
 
 ## Development Setup
@@ -131,8 +131,8 @@ flutter analyze
 dart format .
 
 # Build for different platforms
-flutter build apk
-flutter build ios
+flutter build apk --split-per-abi
+flutter build ios --no-codesign
 ```
 
 ### 4. Commit Your Changes
@@ -303,7 +303,7 @@ flutter test --coverage
 
 ### Versioning
 
-We follow [Semantic Versioning](https://semver.org/):
+This project follows [Semantic Versioning](https://semver.org/):
 
 - **MAJOR**: Breaking changes
 - **MINOR**: New features (backward compatible)
@@ -324,11 +324,11 @@ We follow [Semantic Versioning](https://semver.org/):
 - Check the documentation first
 - Search existing issues
 - Ask questions in discussions
-- Join our community channels
+- Join the community channels
 
 ### Mentorship
 
-New contributors are welcome! We're happy to:
+New contributors are welcome! I am happy to:
 
 - Help you get started
 - Review your first PR

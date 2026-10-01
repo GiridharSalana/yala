@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/network_topology.dart';
 import '../models/router_capabilities.dart';
 import '../design/luci_design_system.dart';
+import '../l10n/app_localizations.dart';
 
 class NetworkTopologyCard extends StatelessWidget {
   final NetworkTopology? topology;
@@ -17,6 +18,7 @@ class NetworkTopologyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     if (topology == null || !topology!.isAvailable) {
       return Card(
@@ -51,7 +53,8 @@ class NetworkTopologyCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Switch Topology Unavailable',
+                      l10n?.switchTopologyUnavailable ??
+                          'Switch Topology Unavailable',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -76,7 +79,7 @@ class NetworkTopologyCard extends StatelessWidget {
                 IconButton(
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
-                  tooltip: 'Re-probe Capabilities',
+                  tooltip: l10n?.reprobeCapabilities ?? 'Re-probe Capabilities',
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.all(4),
                   constraints: const BoxConstraints(),
@@ -122,7 +125,8 @@ class NetworkTopologyCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Flat Network (0 Configured VLANs)',
+                      l10n?.flatNetworkTitle ??
+                          'Flat Network (0 Configured VLANs)',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -130,7 +134,12 @@ class NetworkTopologyCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Router uses a single unsegmented ${topology!.modelType == NetworkModel.dsa ? "DSA bridge" : "switch"} interface.',
+                      l10n?.flatNetworkMessage(
+                            topology!.modelType == NetworkModel.dsa
+                                ? "DSA bridge"
+                                : "switch",
+                          ) ??
+                          'Router uses a single unsegmented ${topology!.modelType == NetworkModel.dsa ? "DSA bridge" : "switch"} interface.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                         fontSize: 11,
@@ -176,8 +185,10 @@ class NetworkTopologyCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           isDsa
-                              ? 'DSA Switch Topology'
-                              : 'Legacy swconfig Topology',
+                              ? (l10n?.dsaSwitchTopology ??
+                                    'DSA Switch Topology')
+                              : (l10n?.legacySwconfigTopology ??
+                                    'Legacy swconfig Topology'),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -211,7 +222,8 @@ class NetworkTopologyCard extends StatelessWidget {
             const Divider(height: 1),
             const SizedBox(height: LuciSpacing.sm),
             Text(
-              'Configured VLANs & Port Memberships',
+              l10n?.configuredVlansHeader ??
+                  'Configured VLANs & Port Memberships',
               style: theme.textTheme.labelMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.bold,
@@ -229,6 +241,15 @@ class NetworkTopologyCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final isWanVlan = vlan.vid <= 0 || vlan.name.toLowerCase().contains('wan');
+    final tagText = isWanVlan ? 'WAN' : 'VID ${vlan.vid}';
+    final tagBgColor = isWanVlan
+        ? Colors.amber.shade700.withValues(alpha: 0.2)
+        : colorScheme.secondaryContainer;
+    final tagTextColor = isWanVlan
+        ? Colors.amber.shade900
+        : colorScheme.onSecondaryContainer;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8.0),
       padding: const EdgeInsets.all(10.0),
@@ -244,14 +265,14 @@ class NetworkTopologyCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: colorScheme.secondaryContainer,
+                  color: tagBgColor,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  'VID ${vlan.vid}',
+                  tagText,
                   style: theme.textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: colorScheme.onSecondaryContainer,
+                    color: tagTextColor,
                   ),
                 ),
               ),
@@ -284,18 +305,32 @@ class NetworkTopologyCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final isUp = port.isUp;
     final isWan = port.isWan;
     final isTagged = port.isTagged;
 
-    final badgeColor = isWan
-        ? Colors.amber.shade700
-        : (isTagged ? colorScheme.primary : colorScheme.secondary);
+    final Color badgeColor;
+    if (!isUp) {
+      badgeColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.45);
+    } else if (isWan) {
+      badgeColor = Colors.amber.shade700;
+    } else if (isTagged) {
+      badgeColor = colorScheme.primary;
+    } else {
+      badgeColor = colorScheme.secondary;
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: badgeColor.withValues(alpha: 0.15),
-        border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
+        color: !isUp
+            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
+            : badgeColor.withValues(alpha: 0.12),
+        border: Border.all(
+          color: !isUp
+              ? colorScheme.outlineVariant.withValues(alpha: 0.4)
+              : badgeColor.withValues(alpha: 0.45),
+        ),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -306,14 +341,36 @@ class NetworkTopologyCard extends StatelessWidget {
             size: 14,
             color: badgeColor,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 5),
           Text(
             port.name,
             style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+              fontWeight: isUp ? FontWeight.bold : FontWeight.normal,
               color: badgeColor,
             ),
           ),
+          if (port.linkSpeed != null && isUp) ...[
+            const SizedBox(width: 4),
+            Text(
+              '(${port.linkSpeed})',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: badgeColor.withValues(alpha: 0.85),
+              ),
+            ),
+          ],
+          if (!isUp) ...[
+            const SizedBox(width: 4),
+            Text(
+              '(Down)',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 10,
+                fontStyle: FontStyle.italic,
+                color: badgeColor,
+              ),
+            ),
+          ],
           if (isTagged) ...[
             const SizedBox(width: 4),
             Container(
@@ -322,10 +379,10 @@ class NetworkTopologyCard extends StatelessWidget {
                 color: badgeColor,
                 borderRadius: BorderRadius.circular(3),
               ),
-              child: const Text(
+              child: Text(
                 'T',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: isUp ? Colors.white : colorScheme.surface,
                   fontSize: 9,
                   fontWeight: FontWeight.bold,
                 ),

@@ -28,6 +28,7 @@ import 'package:yet_another_luci_app/models/router.dart' as model;
 import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
 import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
 import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
+import 'package:yet_another_luci_app/services/interfaces/ssh_service_interface.dart';
 import 'package:yet_another_luci_app/services/service_factory.dart';
 import 'package:yet_another_luci_app/utils/http_client_manager.dart';
 import 'package:yet_another_luci_app/utils/logger.dart';
@@ -55,7 +56,26 @@ class AppState extends ChangeNotifier {
   late final SecureStorageService _secureStorageService;
   IApiService? _apiService;
   IAuthService? _authService;
+  ISshService? _sshService;
   RouterService? _routerService;
+
+  ISshService? get sshService => _sshService;
+
+  @visibleForTesting
+  void setSshServiceForTesting(ISshService service) => _sshService = service;
+
+  @visibleForTesting
+  void setDashboardDataForTesting(Map<String, dynamic>? data) {
+    _dashboardController?.setDashboardDataForTesting(data);
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void setDashboardPreferencesForTesting(DashboardPreferences prefs) {
+    _sessionController?.setDashboardPreferencesForTesting(prefs);
+    notifyListeners();
+  }
+
   ThroughputService? _throughputService;
   ThroughputController? _throughputController;
   SessionController? _sessionController;
@@ -110,6 +130,9 @@ class AppState extends ChangeNotifier {
   AppThemePalette get themePalette =>
       _sessionController?.themePalette ?? AppThemePalette.amber;
   bool get useDynamicTheme => _sessionController?.useDynamicTheme ?? false;
+
+  // Selected locale (null = System default)
+  Locale? get locale => _sessionController?.locale;
 
   // Clients view mode (aggregate across routers)
   bool get clientsAggregateAllRouters =>
@@ -197,6 +220,7 @@ class AppState extends ChangeNotifier {
 
     await _sessionController?.loadThemeMode();
     await _sessionController?.loadDynamicTheme();
+    await _sessionController?.loadLocale();
     await loadRouters(); // Load routers on app start (sets selectedRouter)
     await _sessionController
         ?.migrateGlobalDashboardPreferencesIfNeeded(); // Proactively migrate legacy prefs
@@ -214,6 +238,7 @@ class AppState extends ChangeNotifier {
     final factory = ServiceContainer.instance.factory;
     _authService = factory.createAuthService();
     _apiService = factory.createApiService();
+    _sshService = factory.createSshService();
     _routerService = factory.createRouterService();
     _throughputService = factory.createThroughputService();
     _throughputController = ThroughputController(
@@ -222,6 +247,7 @@ class AppState extends ChangeNotifier {
     _dashboardController = DashboardController(
       apiServiceRef: () => _apiService,
       authServiceRef: () => _authService,
+      sshServiceRef: () => _sshService,
       routerServiceRef: () => _routerService,
       secureStorageServiceRef: () => _secureStorageService,
       throughputControllerRef: () => _throughputController,
@@ -336,6 +362,9 @@ class AppState extends ChangeNotifier {
   Future<void> setDynamicTheme(bool enable) =>
       _sessionController!.setDynamicTheme(enable);
 
+  Future<void> setLocale(Locale? locale) =>
+      _sessionController!.setLocale(locale);
+
   Future<void> setClientsAggregateAllRouters(bool aggregate) =>
       _sessionController!.setClientsAggregateAllRouters(aggregate);
 
@@ -348,6 +377,7 @@ class AppState extends ChangeNotifier {
   String? get sysauth => _sessionController?.sysauth;
   bool get isAuthenticated => sysauth != null && sysauth!.isNotEmpty;
   bool get hasActiveSession => isAuthenticated || reviewerModeEnabled;
+  IApiService? get apiService => _apiService;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -467,6 +497,11 @@ class AppState extends ChangeNotifier {
     await _dashboardController?.redetectCapabilities();
   }
 
+  /// Update package engine dynamically if detected during package operations
+  void updatePackageEngine(PackageManagerEngine engine) {
+    _dashboardController?.updatePackageEngine(engine);
+  }
+
   /// Probe and cache actual ubus objects, methods, package manager engine, firewall backend, and network model.
   Future<RouterCapabilities> probeRouterCapabilities({
     bool forceRefresh = false,
@@ -489,6 +524,14 @@ class AppState extends ChangeNotifier {
   /// Capability-aware fetch for installed packages returning RpcResult
   Future<RpcResult<dynamic>> fetchPackagesDataResult() =>
       _packageController!.fetchPackagesDataResult();
+
+  /// Capability-aware fetch for available packages returning list of OpenWrtPackage
+  Future<RpcResult<List<OpenWrtPackage>>> fetchAvailablePackages() =>
+      _packageController!.fetchAvailablePackages();
+
+  /// Fetch complete LuCI-parity package overview (installed, available, upgradable, disk space)
+  Future<RpcResult<PackageManagerOverview>> fetchPackageManagerOverview() =>
+      _packageController!.fetchPackageManagerOverview();
 
   /// Capability-aware fetch for available packages returning RpcResult
   Future<RpcResult<dynamic>> fetchAvailablePackagesDataResult() =>
@@ -660,6 +703,26 @@ class AppState extends ChangeNotifier {
     packageName: packageName,
     action: action,
   );
+
+  /// Update package lists from feeds (/usr/libexec/package-manager-call update)
+  Future<RpcResult<String>> updatePackageLists() =>
+      _packageController!.updatePackageLists();
+
+  /// Safely install single package by exact name
+  Future<RpcResult<String>> installPackage(String packageName) =>
+      _packageController!.installPackage(packageName);
+
+  /// Safely remove single package by exact name
+  Future<RpcResult<String>> removePackage(String packageName) =>
+      _packageController!.removePackage(packageName);
+
+  /// Safely upgrade single package by exact name
+  Future<RpcResult<String>> upgradePackage(String packageName) =>
+      _packageController!.upgradePackage(packageName);
+
+  /// Install custom package from URL or custom name
+  Future<RpcResult<String>> installCustomPackage(String target) =>
+      _packageController!.installCustomPackage(target);
 
   /// Check and fetch upgradable packages returning classified RpcResult
   Future<RpcResult<List<OpenWrtPackage>>> fetchUpgradablePackagesResult() =>
@@ -992,7 +1055,24 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  bool _isDashboardTabActive = true;
+
+  /// Returns true if the dashboard tab is currently active.
+  bool get isDashboardTabActive => _isDashboardTabActive;
+
+  /// Updates whether the dashboard tab is active. Automatically pauses or resumes throughput polling.
+  void setDashboardTabActive(bool active) {
+    if (_isDashboardTabActive == active) return;
+    _isDashboardTabActive = active;
+    if (active) {
+      resumeThroughputTimer(immediateTick: true);
+    } else {
+      pauseThroughputTimer();
+    }
+  }
+
   void _startThroughputTimer() {
+    if (!_isDashboardTabActive || !hasActiveSession) return;
     _throughputController?.startTimer(
       isRebooting: _isRebooting,
       onTick: _updateThroughputOnly,
@@ -1036,12 +1116,16 @@ class AppState extends ChangeNotifier {
     _isHeavyTaskRunning = running;
   }
 
+  bool _isUpdatingThroughput = false;
+
   /// Updates only throughput data without refetching the entire dashboard
   Future<void> _updateThroughputOnly() async {
-    // Don't try to update throughput during reboot or heavy RPC binary transfers
-    if (_isRebooting || _isHeavyTaskRunning) {
+    // Don't try to update throughput during reboot, heavy tasks, or concurrent updates
+    if (_isRebooting || _isHeavyTaskRunning || _isUpdatingThroughput) {
       return;
     }
+    _isUpdatingThroughput = true;
+    try {
 
     if (reviewerModeEnabled) {
       // For reviewer mode, get network devices and system info
@@ -1115,8 +1199,26 @@ class AppState extends ChangeNotifier {
         }
       }
 
-      if (netResult is List && netResult.length > 1 && netResult[0] == 0) {
-        final networkData = netResult[1] as Map<String, dynamic>?;
+      dynamic netDataResult = netResult;
+      if (netDataResult is! List ||
+          netDataResult.length <= 1 ||
+          netDataResult[0] != 0) {
+        try {
+          netDataResult = await _apiService!.call(
+            ip,
+            _authService!.sysauth!,
+            useHttps,
+            object: 'network.device',
+            method: 'status',
+            params: {},
+          );
+        } catch (_) {}
+      }
+
+      if (netDataResult is List &&
+          netDataResult.length > 1 &&
+          netDataResult[0] == 0) {
+        final networkData = netDataResult[1] as Map<String, dynamic>?;
 
         // Get ALL device names from cached dashboard data (except loopback)
         final wanDeviceNames = <String>{};
@@ -1155,7 +1257,10 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       // Don't log throughput update errors as they're non-critical
     }
+  } finally {
+    _isUpdatingThroughput = false;
   }
+}
 
   void startThroughputTimer() {
     _startThroughputTimer();
@@ -1163,6 +1268,22 @@ class AppState extends ChangeNotifier {
 
   void cancelThroughputTimer() {
     _throughputController?.cancelAndClear();
+  }
+
+  /// Pauses periodic throughput polling without clearing accumulated rate history.
+  void pauseThroughputTimer() {
+    _throughputController?.pauseTimer();
+  }
+
+  /// Resumes periodic throughput polling if the dashboard tab is active, a session is active, and not rebooting.
+  void resumeThroughputTimer({bool immediateTick = false}) {
+    if (_isDashboardTabActive && hasActiveSession && !_isRebooting) {
+      _throughputController?.resumeTimer(
+        isRebooting: _isRebooting,
+        onTick: _updateThroughputOnly,
+        immediateTick: immediateTick,
+      );
+    }
   }
 
   void _cancelThroughputTimer() {
@@ -1764,8 +1885,165 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  Future<bool> autoFixPermissions({BuildContext? context}) =>
-      _networkActionsController!.autoFixPermissions(context: context);
+  Future<bool> autoFixPermissions({BuildContext? context}) async {
+    final rpcSuccess = await _networkActionsController!.autoFixPermissions(
+      context: context,
+    );
+    if (rpcSuccess) return true;
+
+    final ip = selectedRouter?.ipAddress;
+    final username = selectedRouter?.username ?? 'root';
+    String? password = selectedRouter?.password;
+    if (password == null || password.isEmpty) {
+      final creds = await _secureStorageService.getCredentials();
+      password = creds['password'];
+    }
+
+    if (ip != null &&
+        password != null &&
+        password.isNotEmpty &&
+        _sshService != null) {
+      Logger.info(
+        'HTTP RPC autoFixPermissions restricted. Falling back to SSH for $username@$ip...',
+      );
+      const fixScript =
+          'mkdir -p /usr/share/rpcd/acl.d/ && '
+          'cat << \'EOF\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json\n'
+          '{\n'
+          '  "yet-another-luci-app": {\n'
+          '    "description": "Yet Another LuCI App Silent RPC Permissions",\n'
+          '    "read": {\n'
+          '      "file": {\n'
+          '        "/usr/sbin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/nextdns": [ "exec" ],\n'
+          '        "/usr/bin/cloudflared": [ "exec" ],\n'
+          '        "/etc/config/cloudflared": [ "read" ],\n'
+          '        "/etc/config/nextdns": [ "read" ]\n'
+          '      },\n'
+          '      "uci": [ "cloudflared", "nextdns" ],\n'
+          '      "ubus": {\n'
+          '        "iwinfo": [ "*" ],\n'
+          '        "rc": [ "*" ],\n'
+          '        "file": [ "*" ],\n'
+          '        "luci-rpc": [ "*" ]\n'
+          '      }\n'
+          '    },\n'
+          '    "write": {\n'
+          '      "file": {\n'
+          '        "/usr/sbin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/tailscale": [ "exec" ],\n'
+          '        "/usr/bin/nextdns": [ "exec" ],\n'
+          '        "/usr/bin/cloudflared": [ "exec" ]\n'
+          '      },\n'
+          '      "uci": [ "cloudflared", "nextdns" ],\n'
+          '      "ubus": {\n'
+          '        "iwinfo": [ "*" ],\n'
+          '        "rc": [ "*" ],\n'
+          '        "file": [ "*" ],\n'
+          '        "luci-rpc": [ "*" ]\n'
+          '      }\n'
+          '    }\n'
+          '  }\n'
+          '}\n'
+          'EOF\n'
+          'if command -v apk >/dev/null 2>&1; then '
+          'apk update && apk add luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
+          'else '
+          'opkg update && opkg install luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
+          'fi && /etc/init.d/rpcd restart';
+
+      final res = await _sshService!.executeCommand(
+        host: ip,
+        username: username,
+        password: password,
+        command: fixScript,
+      );
+
+      if (res.success) {
+        Logger.info('Automated SSH autoFixPermissions succeeded on $ip');
+        await fetchDashboardData();
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  Future<bool> installNativeTemperatureHandler({BuildContext? context}) async {
+    final ip = selectedRouter?.ipAddress;
+    final auth = sysauth;
+    final useHttps = selectedRouter?.useHttps ?? false;
+    if (ip == null) return false;
+
+    // 1. Try native OpenWrt HTTP ubus RPC first (if firmware permissions allow it)
+    if (auth != null) {
+      try {
+        final rpcSuccess = await _apiService!.installNativeTemperatureHandler(
+          ip,
+          auth,
+          useHttps,
+          context: context,
+        );
+        if (rpcSuccess) {
+          await fetchDashboardData();
+          return true;
+        }
+      } catch (e) {
+        Logger.warning('HTTP RPC install attempt failed: $e');
+      }
+    }
+
+    // 2. Fall back to SSH installation using router credentials
+    final router = selectedRouter;
+    final username = router?.username ?? 'root';
+    String? password = router?.password;
+    if (password == null || password.isEmpty) {
+      final creds = await _secureStorageService.getCredentials();
+      password = creds['password'];
+    }
+
+    if (password != null && password.isNotEmpty && _sshService != null) {
+      Logger.info(
+        'HTTP RPC installation was restricted. Falling back to SSH installation for $username@$ip...',
+      );
+      const installScript =
+          'mkdir -p /usr/libexec/rpcd /usr/share/rpcd/acl.d && '
+          'cat << \'EOF\' > /usr/libexec/rpcd/luci.temp-status\n'
+          '#!/bin/sh\n'
+          'case "\$1" in\n'
+          'list) echo \'{"getSensors":{}}\' ;;\n'
+          'call) case "\$2" in getSensors)\n'
+          'hw=""; for h in /sys/class/hwmon/hwmon*; do [ -d "\$h" ] || continue; n=\$(cat "\$h/name" 2>/dev/null || echo hwmon); s=""; for t in "\$h"/temp*_input; do [ -f "\$t" ] || continue; v=\$(cat "\$t" 2>/dev/null); [ -n "\$v" ] || continue; l=\$(cat "\${t%_input}_label" 2>/dev/null); i="\${t##*/}"; [ -n "\$s" ] && s="\$s," || true; s="\$s{\\"item\\":\\"\$i\\",\\"label\\":\\"\$l\\",\\"temp\\":\$v}"; done; [ -n "\$s" ] && { [ -n "\$hw" ] && hw="\$hw," || true; hw="\$hw{\\"title\\":\\"\$n\\",\\"item\\":\\"\${h##*/}\\",\\"sources\\":[\$s]}"; }; done\n'
+          'tz=""; for z in /sys/class/thermal/thermal_zone*; do [ -d "\$z" ] || continue; v=\$(cat "\$z/temp" 2>/dev/null); [ -n "\$v" ] || continue; y=\$(cat "\$z/type" 2>/dev/null || echo tz); [ -n "\$tz" ] && tz="\$tz," || true; tz="\$tz{\\"title\\":\\"\$y\\",\\"item\\":\\"\${z##*/}\\",\\"sources\\":[{\\"item\\":\\"temp\\",\\"label\\":\\"\$y\\",\\"temp\\":\$v}]}"; done\n'
+          'printf \'{"sensors":{"0":[%s],"1":[%s]}}\\n\' "\$hw" "\$tz" ;; esac ;; esac\n'
+          'EOF\n'
+          'chmod +x /usr/libexec/rpcd/luci.temp-status && '
+          'cat << \'EOF\' > /usr/share/rpcd/acl.d/luci-app-temp-status.json\n'
+          '{"luci-app-temp-status":{"description":"Native Temperature RPC Handler","read":{"ubus":{"luci.temp-status":["getSensors"]}}}}\n'
+          'EOF\n'
+          '(/etc/init.d/rpcd reload 2>/dev/null || /etc/init.d/rpcd restart 2>/dev/null || true)';
+
+      final res = await _sshService!.executeCommand(
+        host: ip,
+        username: username,
+        password: password,
+        command: installScript,
+      );
+
+      if (res.success) {
+        Logger.info('Automated SSH temperature installation succeeded on $ip');
+        await fetchDashboardData();
+        return true;
+      } else {
+        Logger.warning(
+          'Automated SSH temperature installation failed: ${res.errorMessage ?? res.stderr}',
+        );
+      }
+    }
+
+    return false;
+  }
 
   Future<bool> manageServiceAction(
     String serviceName,
@@ -2505,6 +2783,11 @@ class AppState extends ChangeNotifier {
   /// Returns clients for the currently selected router only
   Future<List<Client>> fetchClientsForSelectedRouter() =>
       _clientController!.fetchClientsForSelectedRouter();
+
+  @visibleForTesting
+  set clientControllerForTesting(ClientController? controller) {
+    _clientController = controller;
+  }
 
   set clients(List<Client> clientList) {
     _clientController?.lastFetchedClients = clientList;

@@ -5,9 +5,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:yet_another_luci_app/config/app_config.dart';
 import 'package:yet_another_luci_app/design/luci_theme.dart';
@@ -97,6 +97,11 @@ class SessionController {
   bool get useDynamicTheme => _themePalette == AppThemePalette.dynamicTheme;
   static const String _dynamicThemeKey = 'useDynamicTheme';
 
+  // Locale state (null = System default)
+  Locale? _locale;
+  Locale? get locale => _locale;
+  static const String _localeKey = 'app_locale';
+
   // Clients view mode (aggregate across routers)
   bool _clientsAggregateAllRouters = true;
   static const String _clientsAggregateKey = 'clients_aggregate_all';
@@ -182,7 +187,9 @@ class SessionController {
   }
 
   Future<void> loadDynamicTheme() async {
-    final storedPalette = await _secureStorageService.readValue(_themePaletteKey);
+    final storedPalette = await _secureStorageService.readValue(
+      _themePaletteKey,
+    );
     if (storedPalette != null) {
       var found = false;
       for (final p in AppThemePalette.values) {
@@ -225,6 +232,32 @@ class SessionController {
         await setThemePalette(AppThemePalette.amber);
       }
     }
+  }
+
+  Future<void> loadLocale() async {
+    final stored = await _secureStorageService.readValue(_localeKey);
+    if (stored == null || stored.isEmpty || stored == 'system') {
+      _locale = null;
+    } else if (stored.contains('_') || stored.contains('-')) {
+      final parts = stored.replaceAll('-', '_').split('_');
+      _locale = Locale(parts[0], parts.length > 1 ? parts[1] : null);
+    } else {
+      _locale = Locale(stored);
+    }
+    _notifyListeners();
+  }
+
+  Future<void> setLocale(Locale? locale) async {
+    _locale = locale;
+    if (locale == null) {
+      await _secureStorageService.writeValue(_localeKey, 'system');
+    } else {
+      final code = locale.countryCode != null && locale.countryCode!.isNotEmpty
+          ? '${locale.languageCode}_${locale.countryCode}'
+          : locale.languageCode;
+      await _secureStorageService.writeValue(_localeKey, code);
+    }
+    _notifyListeners();
   }
 
   Future<void> loadClientsViewMode() async {
@@ -283,6 +316,11 @@ class SessionController {
       Logger.exception('Failed to save dashboard preferences', e, stack);
       rethrow;
     }
+  }
+
+  void setDashboardPreferencesForTesting(DashboardPreferences prefs) {
+    _dashboardPreferences = prefs;
+    _notifyListeners();
   }
 
   /// One-time migration: if a global 'dashboard_preferences' exists,
@@ -647,7 +685,17 @@ class SessionController {
         return false;
       }
     } catch (e) {
-      _setErrorState('An error occurred: $e');
+      final errStr = e.toString().toLowerCase();
+      if (!kIsWeb &&
+          Platform.isIOS &&
+          (errStr.contains('operation not permitted') ||
+              errStr.contains('errno = 1'))) {
+        _setErrorState(
+          'Local network permission required. Please allow access in iOS Settings > Yet Another LuCI App.',
+        );
+      } else {
+        _setErrorState('An error occurred: $e');
+      }
       _setLoadingState(false);
       _notifyListeners();
       return false;

@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yet_another_luci_app/main.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import '../models/vpn_info.dart';
 
 class VpnConnectivityCard extends ConsumerWidget {
@@ -12,6 +13,7 @@ class VpnConnectivityCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
     final overview = VpnConnectivityOverview.fromDashboardData(
       appState.dashboardData,
@@ -30,22 +32,28 @@ class VpnConnectivityCard extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.vpn_lock_outlined,
-                      size: 20,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'VPN & Secure Tunnels',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.vpn_lock_outlined,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n?.vpnConnectivityTitle ?? 'VPN & Secure Tunnels',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Text(
                   '${overview.activeServicesCount}/${overview.totalConfiguredServices} Active',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -54,6 +62,8 @@ class VpnConnectivityCard extends ConsumerWidget {
                     ).colorScheme.onSurface.withValues(alpha: 0.7),
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -170,13 +180,17 @@ class VpnConnectivityCard extends ConsumerWidget {
             ).colorScheme.onSurface.withValues(alpha: 0.4),
           ),
           const SizedBox(width: 8),
-          Text(
-            'No Active Connections',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.5),
-              fontWeight: FontWeight.w600,
+          Flexible(
+            child: Text(
+              'No Active Connections',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.5),
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -202,17 +216,23 @@ class VpnConnectivityCard extends ConsumerWidget {
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             fontSize: 10,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 2),
-        Text(
-          value,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
         ),
       ],
     );

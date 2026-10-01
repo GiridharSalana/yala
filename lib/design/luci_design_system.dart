@@ -2,6 +2,7 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:ui' show DisplayFeatureType;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -134,6 +135,59 @@ class LuciTextStyles {
   static TextStyle errorText(BuildContext context) {
     return Theme.of(context).textTheme.bodyMedium!.copyWith(
       color: Theme.of(context).colorScheme.onErrorContainer,
+    );
+  }
+
+  static TextStyle badge(BuildContext context, {Color? color}) {
+    return Theme.of(context).textTheme.labelSmall!.copyWith(
+      fontSize: 10,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.5,
+      color: color ?? Theme.of(context).colorScheme.primary,
+    );
+  }
+
+  static TextStyle chipLabel(
+    BuildContext context, {
+    bool isSelected = false,
+    Color? color,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Theme.of(context).textTheme.labelMedium!.copyWith(
+      fontSize: 12,
+      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+      color:
+          color ??
+          (isSelected
+              ? colorScheme.onPrimaryContainer
+              : colorScheme.onSurfaceVariant),
+    );
+  }
+
+  static TextStyle formHelper(BuildContext context) {
+    return Theme.of(context).textTheme.bodySmall!.copyWith(
+      fontSize: 12,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+  }
+
+  static TextStyle actionButton(BuildContext context, {Color? color}) {
+    return Theme.of(context).textTheme.labelLarge!.copyWith(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.4,
+      color: color ?? Theme.of(context).colorScheme.onPrimary,
+    );
+  }
+
+  static TextStyle cardHeaderSection(BuildContext context) {
+    return Theme.of(context).textTheme.labelSmall!.copyWith(
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.6,
+      color: Theme.of(
+        context,
+      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
     );
   }
 }
@@ -321,10 +375,40 @@ class LuciBreakpoints {
   static const double expanded = 840.0;
 
   /// Returns true when the layout width is in the Medium or Expanded window class
-  /// and the available height is sufficient for vertical navigation rail display (≥ 600dp width & ≥ 400dp height).
+  /// and the available height is sufficient for vertical navigation rail display (≥ 600dp width & ≥ 400dp height),
+  /// or when spanned across a dual-screen device (e.g. Apple Duo or foldables).
   static bool isTablet(BuildContext context) {
+    if (isDualScreenSpanned(context)) return true;
     final size = MediaQuery.sizeOf(context);
     return size.width >= compact && size.height >= 400.0;
+  }
+
+  /// Returns true if the device currently has an active physical hinge or fold (e.g. Apple Duo or foldables).
+  static bool hasHinge(BuildContext context) {
+    final features = MediaQuery.of(context).displayFeatures;
+    return features.any((f) =>
+        f.type == DisplayFeatureType.hinge ||
+        f.type == DisplayFeatureType.fold);
+  }
+
+  /// Returns the active hinge or fold Rect if present (e.g. Apple Duo seam), or null.
+  static Rect? getHingeBounds(BuildContext context) {
+    final features = MediaQuery.of(context).displayFeatures;
+    for (final f in features) {
+      if (f.type == DisplayFeatureType.hinge ||
+          f.type == DisplayFeatureType.fold) {
+        return f.bounds;
+      }
+    }
+    return null;
+  }
+
+  /// Returns true if the device is spanned across a vertical hinge in dual-screen mode (e.g. Apple Duo book posture).
+  static bool isDualScreenSpanned(BuildContext context) {
+    final hinge = getHingeBounds(context);
+    if (hinge == null) return false;
+    final size = MediaQuery.sizeOf(context);
+    return hinge.height >= size.height * 0.7 && hinge.width > 0;
   }
 
   /// Returns true only for the Expanded window class (>= 840dp).

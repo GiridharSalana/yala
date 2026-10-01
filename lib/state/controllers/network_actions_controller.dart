@@ -1515,7 +1515,10 @@ heal_dns() {
         final hints = dashboardData['hostHints'];
         if (hints is Map) {
           for (final entry in hints.entries) {
-            final normKey = entry.key.toString().toUpperCase().replaceAll('-', ':');
+            final normKey = entry.key.toString().toUpperCase().replaceAll(
+              '-',
+              ':',
+            );
             final val = entry.value;
             bool matches = normKey == macUpper;
             if (!matches && targetIp != null && val is Map) {
@@ -1604,7 +1607,10 @@ heal_dns() {
         if (dashboardData['hostHints'] is Map) {
           final hints = dashboardData['hostHints'] as Map;
           for (final entry in hints.entries) {
-            final normKey = entry.key.toString().toUpperCase().replaceAll('-', ':');
+            final normKey = entry.key.toString().toUpperCase().replaceAll(
+              '-',
+              ':',
+            );
             final val = entry.value;
             bool matches = normKey == macUpper;
             if (!matches && targetIp != null && val is Map) {

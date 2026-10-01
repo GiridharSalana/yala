@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import 'package:yet_another_luci_app/widgets/password_strength_meter.dart';
@@ -243,40 +244,53 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
     setState(() => _isSubmitting = true);
     final appState = ref.read(appStateProvider);
 
-    final success = await appState.addWirelessInterface(
-      radioName: _selectedRadio.name,
-      ssid: _ssidController.text.trim(),
-      encryption: _selectedEncryption,
-      key: _requiresPassphrase() ? _passphraseController.text.trim() : '',
-      network: _selectedNetwork,
-      context: context,
-    );
+    try {
+      final success = await appState.addWirelessInterface(
+        radioName: _selectedRadio.name,
+        ssid: _ssidController.text.trim(),
+        encryption: _selectedEncryption,
+        key: _requiresPassphrase() ? _passphraseController.text.trim() : '',
+        network: _selectedNetwork,
+        context: mounted ? context : null,
+      );
 
-    if (mounted) {
-      setState(() => _isSubmitting = false);
-      if (success) {
-        Navigator.pop(context, true);
-        context.showToastSuccess(
-          'New SSID "${_ssidController.text.trim()}" created successfully.',
-        );
-      } else {
-        final username = appState.sessionUsername;
-        if ((appState.capabilities?.hasUciWriteAccess ?? true) == false ||
-            !appState.isAdministrativeUser) {
-          context.showToastError(
-            'Access Denied: Account \'$username\' lacks UCI write authorization.',
+      if (mounted) {
+        if (success) {
+          Navigator.pop(context, true);
+          context.showToastSuccess(
+            'New SSID "${_ssidController.text.trim()}" created successfully.',
           );
         } else {
-          context.showToastError(
-            'Failed to create wireless interface on router',
-          );
+          final username = appState.sessionUsername;
+          if ((appState.capabilities?.hasUciWriteAccess ?? true) == false ||
+              !appState.isAdministrativeUser) {
+            context.showToastError(
+              'Access Denied: Account \'$username\' lacks UCI write authorization.',
+            );
+          } else {
+            context.showToastError(
+              'Failed to create wireless interface on router',
+            );
+          }
         }
+      }
+    } catch (e) {
+      if (mounted) {
+        context.showToastError(
+          'Failed to create wireless interface',
+          subtitle: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final appState = ref.watch(appStateProvider);
     final hasUciWrite =
@@ -297,7 +311,7 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Add Virtual SSID Interface',
+                l10n?.tooltipAddVirtualSsid ?? 'Add Virtual SSID Interface',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -523,7 +537,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
 
                   // ── Client Isolation ─────────────────────────────────────
                   _buildSwitch(
-                    title: 'Client Isolation',
+                    title:
+                        l10n?.wifiDetailClientIsolation ?? 'Client Isolation',
                     subtitle:
                         'Prevents clients on this SSID from communicating with each other',
                     value: _isolateClients,
@@ -576,25 +591,28 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                               helperText:
                                   'Management frame protection against deauth attacks',
                             ),
-                            items: const [
+                            items: [
                               DropdownMenuItem(
                                 value: '0',
                                 child: Text(
-                                  'Disabled (Not recommended)',
+                                  l10n?.wifiPmfDisabled ??
+                                      'Disabled (Not recommended)',
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               DropdownMenuItem(
                                 value: '1',
                                 child: Text(
-                                  'Optional — recommended default',
+                                  l10n?.wifiPmfOptional ??
+                                      'Optional — recommended default',
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               DropdownMenuItem(
                                 value: '2',
                                 child: Text(
-                                  'Required (WPA3 / strict mode)',
+                                  l10n?.wifiPmfRequired ??
+                                      'Required (WPA3 / strict mode)',
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -788,18 +806,26 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                             prefixIcon: Icon(Icons.security_rounded, size: 20),
                             border: OutlineInputBorder(),
                           ),
-                          items: const [
+                          items: [
                             DropdownMenuItem(
                               value: 'disable',
-                              child: Text('Disabled'),
+                              child: Text(
+                                l10n?.wifiMacFilterDisabled ?? 'Disabled',
+                              ),
                             ),
                             DropdownMenuItem(
                               value: 'allow',
-                              child: Text('Allow List (only listed MACs)'),
+                              child: Text(
+                                l10n?.wifiMacFilterAllowList ??
+                                    'Allow List (only listed MACs)',
+                              ),
                             ),
                             DropdownMenuItem(
                               value: 'deny',
-                              child: Text('Deny List (block listed MACs)'),
+                              child: Text(
+                                l10n?.wifiMacFilterDenyListAlt ??
+                                    'Deny List (block listed MACs)',
+                              ),
                             ),
                           ],
                           onChanged: (val) {
@@ -839,7 +865,7 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
         actions: [
           TextButton(
             onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           ElevatedButton.icon(
             onPressed: _isFormValid() ? _submitAddSsid : null,
@@ -865,12 +891,14 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
       children: [
         Icon(icon, size: 16, color: theme.colorScheme.primary),
         const SizedBox(width: 6),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.primary,
+            ),
           ),
         ),
       ],
@@ -929,13 +957,39 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
   }
 
   List<DropdownMenuItem<String>> _buildEncryptionItems() {
+    final l10n = AppLocalizations.of(context);
     final static_ = [
-      {'value': 'sae-mixed', 'label': 'WPA2/WPA3 Mixed — Recommended default'},
-      {'value': 'sae', 'label': 'WPA3-SAE Personal — Strict / Max security'},
-      {'value': 'psk2', 'label': 'WPA2-PSK (CCMP/AES) — Legacy compatible'},
-      {'value': 'psk', 'label': 'WPA-PSK — Legacy only (WPA1)'},
-      {'value': 'owe', 'label': 'Enhanced Open (OWE) — Encrypted, no password'},
-      {'value': 'none', 'label': 'Open — No encryption (not recommended)'},
+      {
+        'value': 'sae-mixed',
+        'label':
+            l10n?.wifiSecMixedRecommended ??
+            'WPA2/WPA3 Mixed — Recommended default',
+      },
+      {
+        'value': 'sae',
+        'label':
+            l10n?.wifiSecWpa3Strict ??
+            'WPA3-SAE Personal — Strict / Max security',
+      },
+      {
+        'value': 'psk2',
+        'label':
+            l10n?.wifiSecWpa2Legacy ??
+            'WPA2-PSK (CCMP/AES) — Legacy compatible',
+      },
+      {
+        'value': 'psk',
+        'label': l10n?.wifiSecWpa1Legacy ?? 'WPA-PSK — Legacy only (WPA1)',
+      },
+      {
+        'value': 'owe',
+        'label':
+            l10n?.wifiSecOwe ?? 'Enhanced Open (OWE) — Encrypted, no password',
+      },
+      {
+        'value': 'none',
+        'label': l10n?.wifiSecNone ?? 'Open — No encryption (not recommended)',
+      },
     ];
     final raw = _dynamicEncryptions.isNotEmpty ? _dynamicEncryptions : static_;
     final list = List<Map<String, String>>.from(raw);
@@ -964,12 +1018,25 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
   }
 
   List<DropdownMenuItem<String>> _buildCipherItems() {
+    final l10n = AppLocalizations.of(context);
     final static_ = [
-      {'value': 'auto', 'label': 'Auto — Hardware default'},
-      {'value': 'ccmp', 'label': 'CCMP (AES) — Recommended'},
-      {'value': 'gcmp256', 'label': 'GCMP-256 — High security (WPA3)'},
+      {
+        'value': 'auto',
+        'label': l10n?.wifiCipherAuto ?? 'Auto — Hardware default',
+      },
+      {
+        'value': 'ccmp',
+        'label': l10n?.wifiCipherCcmp ?? 'CCMP (AES) — Recommended',
+      },
+      {
+        'value': 'gcmp256',
+        'label': l10n?.wifiCipherGcmp256 ?? 'GCMP-256 — High security (WPA3)',
+      },
       {'value': 'gcmp128', 'label': 'GCMP-128'},
-      {'value': 'tkip', 'label': 'TKIP — Legacy only (avoid)'},
+      {
+        'value': 'tkip',
+        'label': l10n?.wifiCipherTkip ?? 'TKIP — Legacy only (avoid)',
+      },
     ];
     final raw = _dynamicCiphers.isNotEmpty ? _dynamicCiphers : static_;
     final list = List<Map<String, String>>.from(raw);

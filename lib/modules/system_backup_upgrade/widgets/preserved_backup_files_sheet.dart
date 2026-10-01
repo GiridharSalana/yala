@@ -5,6 +5,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/state/app_state.dart';
 import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
@@ -142,30 +143,44 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
   Future<bool> _confirmDiscardIfDirty() async {
     if (!_hasUnsavedChanges) return true;
 
+    final l10n = AppLocalizations.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 24),
-            SizedBox(width: 8),
-            Text('Discard Unsaved Changes?'),
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                l10n?.servicesSysDiscardDialogTitle ??
+                    'Discard Unsaved Changes?',
+              ),
+            ),
           ],
         ),
-        content: const Text(
-          'You have unsaved edits to /etc/sysupgrade.conf. Are you sure you want to exit without saving?',
-          style: TextStyle(fontSize: 13),
+        content: const SingleChildScrollView(
+          child: Text(
+            'You have unsaved edits to /etc/sysupgrade.conf. Are you sure you want to exit without saving?',
+            style: TextStyle(fontSize: 13),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Keep Editing'),
+            child: Text(l10n?.actionCancel ?? 'Keep Editing'),
           ),
           OutlinedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent),
-            child: const Text('Discard'),
+            child: Text(l10n?.servicesSysBtnDiscard ?? 'Discard'),
           ),
           FilledButton.icon(
             style: FilledButton.styleFrom(backgroundColor: Colors.teal),
@@ -174,7 +189,7 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
               await _saveCustomConfToRouter();
             },
             icon: const Icon(Icons.save_rounded, size: 16),
-            label: const Text('Save & Apply'),
+            label: Text(l10n?.actionSave ?? 'Save & Apply'),
           ),
         ],
       ),
@@ -334,6 +349,7 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final colorScheme = theme.colorScheme;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
@@ -408,13 +424,14 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Preserved Backup Files',
+                          l10n?.backupFilesTitle ?? 'Preserved Backup Files',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         Text(
-                          'Files retained across firmware upgrades (sysupgrade)',
+                          l10n?.backupFilesSubtitle ??
+                              'Files retained across firmware upgrades (sysupgrade)',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                             fontSize: 11,
@@ -424,7 +441,8 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Refresh from Router',
+                    tooltip: l10n?.backupRefreshFromRouter ??
+                        'Refresh from Router',
                     icon: _isRefreshing
                         ? SizedBox(
                             width: 18,
@@ -454,27 +472,37 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
             // Tab Bar
             TabBar(
               controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 14),
               labelColor: colorScheme.primary,
               unselectedLabelColor: colorScheme.onSurfaceVariant,
               indicatorColor: colorScheme.primary,
               tabs: [
                 Tab(
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.list_alt_rounded, size: 18),
                       const SizedBox(width: 6),
-                      Text('Preserved (${_preservedPaths.length})'),
+                      Text(
+                        l10n?.backupFilesTabSysupgradeList ??
+                            'Preserved (${_preservedPaths.length})',
+                      ),
                     ],
                   ),
                 ),
                 Tab(
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.edit_note_rounded, size: 18),
                       const SizedBox(width: 6),
-                      const Text('Edit /etc/sysupgrade.conf'),
+                      Text(
+                        l10n?.backupFilesTabCustomConf ??
+                            'Edit /etc/sysupgrade.conf',
+                      ),
                     ],
                   ),
                 ),
@@ -511,6 +539,7 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
     ThemeData theme,
     List<String> filteredPaths,
   ) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         // Search & Copy Header
@@ -563,12 +592,16 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                     OsPlatformIntegration.copyToClipboard(
                       context,
                       text: textToCopy,
-                      label: 'Preserved Files List',
+                      label: l10n?.backupPreservedFilesList ??
+                          'Preserved Files List',
                     ),
                   );
                 },
                 icon: const Icon(Icons.copy_rounded, size: 16),
-                label: const Text('Copy All', style: TextStyle(fontSize: 12)),
+                label: Text(
+                  l10n?.backupCopyAll ?? 'Copy All',
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
             ],
           ),
@@ -664,7 +697,7 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                               child: const Text(
                                 'Custom',
                                 style: TextStyle(
-                                  fontSize: 9,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.teal,
                                 ),
@@ -700,6 +733,7 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
     ColorScheme colorScheme,
     ThemeData theme,
   ) {
+    final l10n = AppLocalizations.of(context);
     final hasUnsaved = _hasUnsavedChanges;
 
     return Column(
@@ -748,7 +782,7 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                     ),
                     onPressed: _addCustomPath,
                     icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('Add'),
+                    label: Text(l10n?.actionAdd ?? 'Add'),
                   ),
                 ],
               ),
@@ -781,7 +815,7 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                           child: const Text(
                             'Unsaved Changes',
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: Colors.orange,
                             ),
@@ -910,7 +944,7 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                               size: 18,
                               color: Colors.redAccent,
                             ),
-                            tooltip: 'Remove Path',
+                            tooltip: l10n?.backupRemovePath ?? 'Remove Path',
                             onPressed: () => _removeCustomPath(path),
                           ),
                         ],
@@ -963,7 +997,7 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
                 _isSaving
                     ? 'Saving & Applying to Router...'
                     : hasUnsaved
-                    ? 'Save & Apply to Router'
+                    ? (l10n?.backupFilesSaveBtn ?? 'Save & Apply to Router')
                     : 'No Unsaved Changes (Saved)',
               ),
             ),

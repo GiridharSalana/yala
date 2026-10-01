@@ -1,72 +1,78 @@
-Manage your OpenWrt routers directly from Android with a modern, high-performance native interface built for everyday administration, wireless monitoring, and advanced network control.
+Manage OpenWrt routers directly from Android with a modern, high-performance native interface built for administration, wireless monitoring, and network control.
 
 Yet Another LuCI App (YALA) is a privacy-first mobile client connecting directly to your router via standard LuCI HTTP/HTTPS and ubus JSON-RPC APIs. Designed for speed, it provides a touch-friendly alternative to mobile browsers without depending on cloud servers, external accounts, or remote telemetry.
 
 COMPATIBLE FIRMWARES & ROUTERS
-Works with stock OpenWrt (19.07–24.10+), ImmortalWrt, Turris OS, GL.iNet, Gargoyle, LEDE, X-WRT, and FriendlyWrt across TP-Link, Netgear, Linksys, Xiaomi, Asus, and custom x86/ARM devices with LuCI or ubus RPC.
+Works with OpenWrt (19.07–24.10+), ImmortalWrt, Turris OS, GL.iNet, Gargoyle, and FriendlyWrt across TP-Link, Netgear, Linksys, Asus, and x86/ARM devices with LuCI or ubus RPC.
 
 KEY FEATURES
 
 MULTI-ROUTER MANAGEMENT & SECURE VAULT
 • Manage multiple OpenWrt routers with quick profile switching
 • Encrypted local vault backed by Android Keystore
-• Supports LuCI RPC, ubus JSON-RPC, and sysauth session logins
+• Supports LuCI RPC, ubus JSON-RPC, and sysauth logins
 
 CONNECTED CLIENTS & DUMB AP SUPPORT
 • Live view of active wired, wireless, and DHCP lease clients
 • Dumb AP support: inspect clients connected to secondary bridged APs
-• Filter clients by hostname, IP, MAC address, or radio band
-• One-tap MAC access control (allowlist / banlist) and static DHCP leases
-• Clear IPv4, IPv6, and SSID connection details
+• Per-client real-time transfer speed badges (RX / TX)
+• Filter by hostname, IP, MAC address, or Wi-Fi band
+• 1-tap MAC access control and static DHCP lease management
+
+HARDWARE TEMPERATURE & REAL-TIME VITALS
+• Live SoC hardware temperature across thermal zones (°C / °F)
+• CPU load, RAM usage, load averages, and uptime
+• Live network throughput graphs with continuous streaming
+• One-tap SSH terminal launcher and quick reboot actions
+
+NETWORK DIAGNOSTICS SUITE
+• Integrated Ping utility with latency and jitter tracking
+• Visual Traceroute showing route hops and transit delays
+• Real-time DNS lookup resolver (A, AAAA, CNAME)
+• Gateway and WAN reachability verification
+
+OPKG & APK PACKAGE MANAGER
+• Dual package manager for opkg and modern apk (OpenWrt 24.10+)
+• Tabbed browsing: Installed, Upgradable (with update badges), Available
+• 1-tap batch upgrades (Upgrade All) with real-time logs
+• Custom package install by name or external package URL
+• Manage package feeds, repositories, and distribution URLs
+• Manage system services (start/stop/restart) and crontab tasks
 
 PARENTAL CONTROLS & SCHEDULES
 • Group devices into customizable parental profiles
-• Set access schedules with automatic firewall enforcement
-• 1-tap internet pause and resume for individual devices
-• Unrestricted bypass mode for temporary overrides
-• Activity logs and usage duration metrics
+• Access schedules with automatic firewall enforcement
+• 1-tap internet pause, resume, and temporary bypass modes
 
 ISOLATED GUEST WI-FI
 • 1-tap provisioning of dedicated guest Wi-Fi networks
 • Firewall rules isolating guests from your private LAN
-• L2 client isolation (ap_isolate) preventing client-to-client snooping
+• L2 client isolation (ap_isolate) preventing client snooping
 • Wi-Fi QR code sharing for instant guest onboarding
 
-REAL-TIME MONITORING & DIAGNOSTICS
-• Live CPU load, RAM usage, swap space, and storage gauges
-• Real-time network throughput graphs (Rx/Tx)
-• Built-in Ping, Traceroute, and NSLookup diagnostic network tools
-• System log inspection and procd daemon status monitoring
+WIRELESS & FAST ROAMING
+• Tri-band 2.4, 5, and 6 GHz radios, channels, and transmit power
+• 802.11r/k/v fast roaming for seamless mesh transitions
+• Monitor connected stations, signal strength (dBm), and noise floor
 
-WIRELESS NETWORK MANAGEMENT
-• Tri-band support for 2.4, 5, and 6 GHz (Wi-Fi 6E/7) radios
-• Monitor stations, signal strength (dBm), channel, and noise floor
-• Configure SSID visibility, transmit power, and WPA2/WPA3 security
-
-FIREWALL, ROUTING & NETWORKING
+FIREWALL, ROUTING & VPN
 • Supports both iptables (fw3) and modern nftables (fw4)
-• Enable, disable, or reorder firewall rules, zones, and port forwards
-• Inspect interfaces, physical bindings, and switch / DSA topologies
+• Manage firewall zones, port forwards, and custom traffic rules
+• Inspect kernel IPv4 routing tables and ARP neighbor lists
+• Monitor WireGuard, OpenVPN, Tailscale, Cloudflare Tunnels, and NextDNS
 
-VPN & ENCRYPTED TUNNELS
-• Monitor WireGuard, OpenVPN, Tailscale, and ZeroTier tunnels
-• Live tunnel handshake status and transfer statistics
-• Manage DNS settings (dnsmasq), domain aliases, and upstream resolvers
-
-OPKG & APK PACKAGE MANAGER
-• Dual package manager supporting legacy opkg and OpenWrt 24.10+ apk
-• Discover, install, update, or remove packages and LuCI apps
-• Start, stop, restart, or toggle autostart for system services
-• View, add, and edit cron scheduled tasks
+LOCALIZATION & MULTI-LANGUAGE (BETA)
+• Available in English, German, Spanish, French, Indonesian, Portuguese, Russian, and Simplified Chinese
+• Adaptive responsive UI supporting system accessibility text scaling
 
 SECURITY & SAFETY GUARDRAILS
 • Active self-device guard prevents accidental management lockout
+• Debounced, asynchronous state management for toggles & DDNS services
 • Atomic UCI commits with automatic rollback on network error
-• Pre-upload archive header check (gzip/tar) for safe backup restores
-• 100% Cloud-Free: Direct local connection with zero ads or telemetry
+• 100% Cloud-Free: Direct local connection with zero telemetry
 
 ORIGIN & ACKNOWLEDGEMENTS
-Yet Another LuCI App is free, open-source software licensed under the GNU General Public License v3.0 (GPLv3). It is a fork of the open-source luci-mobile project originally authored by cogwheel0, modernized with Material 3 design, new network modules, robust safety guardrails, and an automated test suite.
+Free, open-source software licensed under GPLv3. Modernized standalone app originally based on cogwheel0's luci-mobile with Material 3 design, new network modules, and robust safety guardrails.
 
 DISCLAIMER
-Yet Another LuCI App is an independent open-source application and is not affiliated with or endorsed by the OpenWrt Project or GL.iNet. OpenWrt, LuCI, and brand names are trademarks of their respective owners.
+Independent open-source application not affiliated with or endorsed by the OpenWrt Project or GL.iNet. OpenWrt, LuCI, and brand names are trademarks of their respective owners.

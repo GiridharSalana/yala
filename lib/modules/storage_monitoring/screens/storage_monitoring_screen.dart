@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
 import 'package:yet_another_luci_app/widgets/luci_collapsible_card.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import '../models/storage_info.dart';
 
 class StorageMonitoringScreen extends ConsumerWidget {
@@ -14,11 +15,14 @@ class StorageMonitoringScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
 
     if (appState.isDashboardLoading && appState.dashboardData == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Storage Monitoring')),
+        appBar: AppBar(
+          title: Text(l10n?.storageMonTitle ?? 'Storage Monitoring'),
+        ),
         body: const LuciLoadingWidget(),
       );
     }
@@ -31,11 +35,11 @@ class StorageMonitoringScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Storage Monitoring'),
+        title: Text(l10n?.storageMonTitle ?? 'Storage Monitoring'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh Storage',
+            tooltip: l10n?.storageMonTooltipRefresh ?? 'Refresh Storage',
             onPressed: () => appState.fetchDashboardData(),
           ),
         ],
@@ -56,7 +60,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No Storage Data Found',
+                    l10n?.storageMonNoDataTitle ?? 'No Storage Data Found',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
@@ -64,7 +68,8 @@ class StorageMonitoringScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Could not query filesystem mount points from the router. Ensure RPC permissions or busybox df executable are available.',
+                    l10n?.storageMonNoDataDesc ??
+                        'Could not query filesystem mount points from the router. Ensure RPC permissions or busybox df executable are available.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -75,7 +80,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
                     child: ElevatedButton.icon(
                       onPressed: () => appState.fetchDashboardData(),
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Refresh Data'),
+                      label: Text(l10n?.storageMonBtnRefresh ?? 'Refresh Data'),
                     ),
                   ),
                 ],
@@ -85,7 +90,8 @@ class StorageMonitoringScreen extends ConsumerWidget {
                 children: [
                   _buildSectionHeader(
                     context,
-                    'Filesystem Usage Overview',
+                    l10n?.storageMonOverviewHeader ??
+                        'Filesystem Usage Overview',
                     Icons.pie_chart_outline,
                   ),
                   const SizedBox(height: 8),
@@ -93,7 +99,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   _buildSectionHeader(
                     context,
-                    'Overlay FS Status',
+                    l10n?.storageMonOverlayHeader ?? 'Overlay FS Status',
                     Icons.layers_outlined,
                   ),
                   const SizedBox(height: 8),
@@ -101,7 +107,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   _buildSectionHeader(
                     context,
-                    'Flash Memory & Root FS',
+                    l10n?.storageMonFlashHeader ?? 'Flash Memory & Root FS',
                     Icons.memory_outlined,
                   ),
                   const SizedBox(height: 8),
@@ -109,15 +115,21 @@ class StorageMonitoringScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   _buildSectionHeader(
                     context,
-                    'Mounted Storage Devices (${storage.mountPoints.length})',
+                    l10n?.storageMonMountedHeader(storage.mountPoints.length) ??
+                        'Mounted Storage Devices (${storage.mountPoints.length})',
                     Icons.storage_outlined,
                   ),
                   const SizedBox(height: 8),
                   if (storage.mountPoints.length > 2)
                     LuciCollapsibleCard(
-                      title: 'All Mounted Storage Devices',
+                      title:
+                          l10n?.storageMonAllMountedTitle ??
+                          'All Mounted Storage Devices',
                       count: storage.mountPoints.length,
                       subtitle:
+                          l10n?.storageMonAllMountedSubtitle(
+                            storage.mountPoints.length,
+                          ) ??
                           '${storage.mountPoints.length} active filesystems • Tap to view all',
                       icon: Icons.storage_outlined,
                       iconColor: Colors.blue,
@@ -143,8 +155,9 @@ class StorageMonitoringScreen extends ConsumerWidget {
   Widget _buildSectionHeader(
     BuildContext context,
     String title,
-    IconData icon,
-  ) {
+    IconData icon, {
+    int maxLines = 2,
+  }) {
     final theme = Theme.of(context);
     return Row(
       children: [
@@ -153,6 +166,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
         Expanded(
           child: Text(
             title,
+            maxLines: maxLines,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -165,6 +179,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
 
   Widget _buildOverallUsageCard(BuildContext context, StorageOverview storage) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final percent = storage.overallUsedPercent;
 
     return Card(
@@ -178,12 +193,13 @@ class StorageMonitoringScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Total System Storage',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                Text(
+                  l10n?.storageMonTotalSystemStorage ?? 'Total System Storage',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  '${percent.toStringAsFixed(1)}% Used',
+                  l10n?.storageMonPercentUsed(percent.toStringAsFixed(1)) ??
+                      '${percent.toStringAsFixed(1)}% Used',
                   style: TextStyle(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -210,15 +226,15 @@ class StorageMonitoringScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildStatColumn(
-                  'Total Space',
+                  l10n?.storageMonTotalSpace ?? 'Total Space',
                   StorageOverview.formatBytes(storage.totalSizeBytes),
                 ),
                 _buildStatColumn(
-                  'Used Space',
+                  l10n?.storageMonUsedSpace ?? 'Used Space',
                   StorageOverview.formatBytes(storage.totalUsedBytes),
                 ),
                 _buildStatColumn(
-                  'Free Space',
+                  l10n?.storageMonFreeSpace ?? 'Free Space',
                   StorageOverview.formatBytes(
                     storage.totalSizeBytes - storage.totalUsedBytes,
                   ),
@@ -232,20 +248,22 @@ class StorageMonitoringScreen extends ConsumerWidget {
   }
 
   Widget _buildOverlayFsCard(BuildContext context, MountPointItem? overlay) {
+    final l10n = AppLocalizations.of(context);
     if (overlay == null) {
       return Card(
         elevation: 1,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Padding(
-          padding: EdgeInsets.all(16.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.blue, size: 20),
-              SizedBox(width: 12),
+              const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Overlay filesystem (/overlay) is either integrated into Root FS or not separately mounted.',
-                  style: TextStyle(fontSize: 13),
+                  l10n?.storageMonOverlayMissing ??
+                      'Overlay filesystem (/overlay) is either integrated into Root FS or not separately mounted.',
+                  style: const TextStyle(fontSize: 13),
                 ),
               ),
             ],
@@ -271,24 +289,31 @@ class StorageMonitoringScreen extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Overlay Active on ${overlay.device}',
+                  l10n?.storageMonOverlayActiveOn(overlay.device) ??
+                      'Overlay Active on ${overlay.device}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const Divider(height: 20),
-            _buildDetailRow('Mount Target', overlay.mountPath),
-            _buildDetailRow('Block Device', overlay.device),
             _buildDetailRow(
-              'Filesystem Type',
+              l10n?.storageMonMountTarget ?? 'Mount Target',
+              overlay.mountPath,
+            ),
+            _buildDetailRow(
+              l10n?.storageMonBlockDevice ?? 'Block Device',
+              overlay.device,
+            ),
+            _buildDetailRow(
+              l10n?.storageMonFilesystemType ?? 'Filesystem Type',
               overlay.filesystemType.toUpperCase(),
             ),
             _buildDetailRow(
-              'Used Space',
+              l10n?.storageMonUsedSpace ?? 'Used Space',
               '${StorageOverview.formatBytes(overlay.usedBytes)} (${overlay.usedPercent.toStringAsFixed(1)}%)',
             ),
             _buildDetailRow(
-              'Available Space',
+              l10n?.storageMonAvailableSpace ?? 'Available Space',
               StorageOverview.formatBytes(overlay.availableBytes),
             ),
           ],
@@ -298,6 +323,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
   }
 
   Widget _buildFlashMemoryCard(BuildContext context, MountPointItem? root) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -306,23 +332,29 @@ class StorageMonitoringScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'On-board Flash Memory Info',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            Text(
+              l10n?.storageMonFlashInfo ?? 'On-board Flash Memory Info',
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _buildDetailRow('Root Directory', root?.mountPath ?? '/'),
-            _buildDetailRow('Flash Device', root?.device ?? '/dev/root'),
             _buildDetailRow(
-              'Root FS Format',
+              l10n?.storageMonRootDir ?? 'Root Directory',
+              root?.mountPath ?? '/',
+            ),
+            _buildDetailRow(
+              l10n?.storageMonFlashDevice ?? 'Flash Device',
+              root?.device ?? '/dev/root',
+            ),
+            _buildDetailRow(
+              l10n?.storageMonRootFsFormat ?? 'Root FS Format',
               (root?.filesystemType ?? 'squashfs').toUpperCase(),
             ),
             _buildDetailRow(
-              'Size',
+              l10n?.storageMonSize ?? 'Size',
               StorageOverview.formatBytes(root?.sizeBytes ?? 0),
             ),
             _buildDetailRow(
-              'Free Space',
+              l10n?.storageMonFreeSpace ?? 'Free Space',
               StorageOverview.formatBytes(root?.availableBytes ?? 0),
             ),
           ],
@@ -332,6 +364,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
   }
 
   Widget _buildMountPointCard(BuildContext context, MountPointItem item) {
+    final l10n = AppLocalizations.of(context);
     final mountTarget = item.mountPath;
     final blockDevice = item.device;
 
@@ -370,7 +403,8 @@ class StorageMonitoringScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              '${item.usedPercent.toStringAsFixed(0)}% used',
+              l10n?.storageMonUsedLabel(item.usedPercent.toStringAsFixed(0)) ??
+                  '${item.usedPercent.toStringAsFixed(0)}% used',
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             Text(

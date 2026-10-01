@@ -71,7 +71,6 @@ class AppConfig {
   /// Disabled by default in release builds.
   static const bool isSupportDevEnabled = false;
 
-
   static AppFlavor get flavor {
     if (_flavorStr.toLowerCase() == 'playstore') {
       return AppFlavor.playstore;

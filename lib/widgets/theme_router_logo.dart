@@ -37,12 +37,13 @@ class ThemeRouterLogo extends StatelessWidget {
       isDynamic = AppState.instance.useDynamicTheme;
     } catch (_) {}
 
-    final Color effectiveColor = customColor ??
+    final Color effectiveColor =
+        customColor ??
         ((followDynamicTheme && isDynamic)
             ? primaryColor
             : (theme.brightness == Brightness.dark
-                ? Colors.white
-                : colorScheme.onSurface));
+                  ? Colors.white
+                  : colorScheme.onSurface));
 
     final double size = width ?? height ?? 80;
 

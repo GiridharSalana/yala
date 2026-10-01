@@ -25,6 +25,7 @@ class ThroughputService {
   static const int _maxHistoryLength = 50;
   static const double _maxRate = 1000.0 * 1024.0 * 1024.0; // 1 GB/s
   static const double _minElapsedSeconds = 0.1;
+  static const double _maxElapsedSeconds = 15.0; // Discontinuity threshold for paused app or tab gaps
 
   List<double> get rxHistory => _rxHistory.toList();
   List<double> get txHistory => _txHistory.toList();
@@ -144,13 +145,22 @@ class ThroughputService {
       if (_lastStats == null || _lastTimestamp == null) {
         _lastStats = networkData;
         _lastTimestamp = now;
-        // Add an initial zero-rate data point so the UI has something to display
-        _addToHistory(0.0, 0.0);
+        // Only seed an initial zero-rate data point if history is completely empty
+        if (_rxHistory.isEmpty && _txHistory.isEmpty) {
+          _addToHistory(0.0, 0.0);
+        }
         return;
       }
 
       final elapsedSeconds =
           now.difference(_lastTimestamp!).inMilliseconds / 1000.0;
+
+      // Handle timing gaps (e.g. app paused in background, tab switched away, or device slept)
+      if (elapsedSeconds > _maxElapsedSeconds) {
+        _lastStats = networkData;
+        _lastTimestamp = now;
+        return;
+      }
 
       // Only calculate throughput if we have a reasonable time difference
       if (elapsedSeconds >= _minElapsedSeconds) {
@@ -175,19 +185,41 @@ class ThroughputService {
           wanDeviceNames: wanDeviceNames,
         );
 
+        num diffRx = currentRx - lastRx;
+        num diffTx = currentTx - lastTx;
+
+        // Counter rollover / router reboot handling
+        if (diffRx < 0 || diffTx < 0) {
+          const num uint32Max = 4294967296;
+          if (diffRx < 0 &&
+              (currentRx + uint32Max - lastRx) < _maxRate * elapsedSeconds) {
+            diffRx = currentRx + uint32Max - lastRx;
+          }
+          if (diffTx < 0 &&
+              (currentTx + uint32Max - lastTx) < _maxRate * elapsedSeconds) {
+            diffTx = currentTx + uint32Max - lastTx;
+          }
+          if (diffRx < 0 || diffTx < 0) {
+            // Router rebooted or interface reset - re-establish baseline cleanly
+            _lastStats = networkData;
+            _lastTimestamp = now;
+            return;
+          }
+        }
+
         // Calculate rates with a reasonable maximum to prevent spikes
-        final rxRate = max(0, (currentRx - lastRx) / elapsedSeconds);
-        final txRate = max(0, (currentTx - lastTx) / elapsedSeconds);
+        final rxRate = max(0, diffRx / elapsedSeconds);
+        final txRate = max(0, diffTx / elapsedSeconds);
 
         // Cap the rates to prevent unrealistic spikes
         _currentRxRate = min(rxRate.toDouble(), _maxRate);
         _currentTxRate = min(txRate.toDouble(), _maxRate);
 
         _addToHistory(_currentRxRate, _currentTxRate);
-      }
 
-      _lastStats = networkData;
-      _lastTimestamp = now;
+        _lastStats = networkData;
+        _lastTimestamp = now;
+      }
     }
   }
 
@@ -205,16 +237,31 @@ class ThroughputService {
       _lastStatsPerInterface[interface] = devData;
       _lastTimestampPerInterface[interface] = now;
 
-      // Initialize history for this interface
-      _rxHistoryPerInterface.putIfAbsent(interface, () => Queue<double>());
-      _txHistoryPerInterface.putIfAbsent(interface, () => Queue<double>());
-      _rxHistoryPerInterface[interface]!.add(0.0);
-      _txHistoryPerInterface[interface]!.add(0.0);
+      // Initialize history for this interface only if empty
+      final rxQ = _rxHistoryPerInterface.putIfAbsent(
+        interface,
+        () => Queue<double>(),
+      );
+      final txQ = _txHistoryPerInterface.putIfAbsent(
+        interface,
+        () => Queue<double>(),
+      );
+      if (rxQ.isEmpty && txQ.isEmpty) {
+        rxQ.add(0.0);
+        txQ.add(0.0);
+      }
       return;
     }
 
     final elapsedSeconds =
         now.difference(lastTimestamp).inMilliseconds / 1000.0;
+
+    // Handle timing gaps for per-interface tracking
+    if (elapsedSeconds > _maxElapsedSeconds) {
+      _lastStatsPerInterface[interface] = devData;
+      _lastTimestampPerInterface[interface] = now;
+      return;
+    }
 
     if (elapsedSeconds >= _minElapsedSeconds) {
       // Handle both formats: stats.rx_bytes and direct rx_bytes
@@ -229,8 +276,28 @@ class ThroughputService {
       final currentTx =
           (devData['stats']?['tx_bytes'] ?? devData['tx_bytes'] ?? 0) as num;
 
-      final rxRate = max(0, (currentRx - lastRx) / elapsedSeconds);
-      final txRate = max(0, (currentTx - lastTx) / elapsedSeconds);
+      num diffRx = currentRx - lastRx;
+      num diffTx = currentTx - lastTx;
+
+      if (diffRx < 0 || diffTx < 0) {
+        const num uint32Max = 4294967296;
+        if (diffRx < 0 &&
+            (currentRx + uint32Max - lastRx) < _maxRate * elapsedSeconds) {
+          diffRx = currentRx + uint32Max - lastRx;
+        }
+        if (diffTx < 0 &&
+            (currentTx + uint32Max - lastTx) < _maxRate * elapsedSeconds) {
+          diffTx = currentTx + uint32Max - lastTx;
+        }
+        if (diffRx < 0 || diffTx < 0) {
+          _lastStatsPerInterface[interface] = devData;
+          _lastTimestampPerInterface[interface] = now;
+          return;
+        }
+      }
+
+      final rxRate = max(0, diffRx / elapsedSeconds);
+      final txRate = max(0, diffTx / elapsedSeconds);
 
       _currentRxRatePerInterface[interface] = min(rxRate.toDouble(), _maxRate);
       _currentTxRatePerInterface[interface] = min(txRate.toDouble(), _maxRate);
@@ -240,10 +307,10 @@ class ThroughputService {
         _currentRxRatePerInterface[interface]!,
         _currentTxRatePerInterface[interface]!,
       );
-    }
 
-    _lastStatsPerInterface[interface] = devData;
-    _lastTimestampPerInterface[interface] = now;
+      _lastStatsPerInterface[interface] = devData;
+      _lastTimestampPerInterface[interface] = now;
+    }
   }
 
   void _updateSpecificInterfaceThroughput(
@@ -263,7 +330,7 @@ class ThroughputService {
     final rxHist = _rxHistoryPerInterface[interface];
     final txHist = _txHistoryPerInterface[interface];
 
-    if (rxHist != null && txHist != null) {
+    if (rxHist != null && txHist != null && rxHist.isNotEmpty) {
       _rxHistory.clear();
       _txHistory.clear();
       _rxHistory.addAll(rxHist);
@@ -329,6 +396,15 @@ class ThroughputService {
       }
     });
     return total;
+  }
+
+  /// Resets the baseline timestamp and stats without clearing historical rate queues.
+  /// Used when resuming from background or tab switching after an interruption.
+  void resetBaseline() {
+    _lastStats = null;
+    _lastTimestamp = null;
+    _lastStatsPerInterface.clear();
+    _lastTimestampPerInterface.clear();
   }
 
   void clear() {

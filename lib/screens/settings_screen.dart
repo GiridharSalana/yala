@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:yet_another_luci_app/main.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 import 'package:yet_another_luci_app/config/app_config.dart';
 import 'package:yet_another_luci_app/design/luci_design_system.dart';
@@ -16,6 +17,7 @@ import 'package:yet_another_luci_app/screens/dashboard_settings_list_screen.dart
 import 'package:yet_another_luci_app/screens/manage_routers_screen.dart';
 import 'package:yet_another_luci_app/services/update_checker_service.dart';
 import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
+import 'package:yet_another_luci_app/widgets/language_picker_dialog.dart';
 import 'package:yet_another_luci_app/state/app_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -30,18 +32,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   void _showReviewerModeResetDialog(BuildContext context, WidgetRef ref) {
     final appState = ref.read(appStateProvider);
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Exit Reviewer Mode?'),
-        content: const Text(
-          'This will disable reviewer mode and return to normal authentication. '
-          'You will need to log in with real router credentials.',
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
+        title: Text(l10n?.settingsExitReviewerTitle ?? 'Exit Reviewer Mode?'),
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.settingsExitReviewerContent ??
+                'This will disable reviewer mode and return to normal authentication. '
+                    'You will need to log in with real router credentials.',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           FilledButton(
             onPressed: () async {
@@ -53,7 +61,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ).pushNamedAndRemoveUntil('/login', (route) => false);
               }
             },
-            child: const Text('Exit'),
+            child: Text(l10n?.settingsExitReviewerBtn ?? 'Exit'),
           ),
         ],
       ),
@@ -64,9 +72,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final appState = ref.watch(appStateProvider);
     final activeRouter = appState.selectedRouter;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: const LuciAppBar(title: 'Settings', showBack: true),
+      appBar: LuciAppBar(
+        title: l10n?.settingsTitle ?? 'Settings',
+        showBack: true,
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         children: [
@@ -77,27 +89,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
 
           // Theme / Appearance Section
-          _buildSectionHeader(context, 'APPEARANCE', Icons.palette_outlined),
+          _buildSectionHeader(
+            context,
+            l10n?.appearanceSection ?? 'APPEARANCE',
+            Icons.palette_outlined,
+          ),
           const SizedBox(height: 8),
           _buildThemeSegmentedSelector(context, appState),
           const SizedBox(height: 12),
           _buildPaletteSelector(context, appState),
+          const SizedBox(height: 12),
+          _buildLanguageSelector(context, appState),
           const SizedBox(height: 24),
 
           // Dashboard Section
           _buildSectionHeader(
             context,
-            'DASHBOARD',
+            l10n?.dashboardSection ?? 'DASHBOARD',
             Icons.dashboard_customize_outlined,
           ),
           const SizedBox(height: 8),
           _buildCustomizeDashboardTile(context),
           const SizedBox(height: 24),
 
-          // Router Diagnostics & Surface Section
+          // Router Diagnostics & Features Section
           _buildSectionHeader(
             context,
-            'ROUTER DIAGNOSTICS & SURFACE',
+            l10n?.diagnosticsSection ?? 'ROUTER DIAGNOSTICS & FEATURES',
             Icons.radar_outlined,
           ),
           const SizedBox(height: 8),
@@ -108,7 +126,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           if (AppConfig.isCommunityFlavor) ...[
             _buildSectionHeader(
               context,
-              'APP UPDATES',
+              l10n?.appUpdatesSection ?? 'APP UPDATES',
               Icons.system_update_outlined,
             ),
             const SizedBox(height: 8),
@@ -119,7 +137,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // Build Verification & Privacy
           _buildSectionHeader(
             context,
-            'BUILD VERIFICATION & PRIVACY',
+            l10n?.buildVerificationSection ?? 'BUILD VERIFICATION & PRIVACY',
             Icons.verified_user_outlined,
           ),
           const SizedBox(height: 8),
@@ -127,7 +145,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 24),
 
           // Legal & Policy
-          _buildSectionHeader(context, 'LEGAL & POLICY', Icons.gavel_outlined),
+          _buildSectionHeader(
+            context,
+            l10n?.legalSection ?? 'LEGAL & POLICY',
+            Icons.gavel_outlined,
+          ),
           const SizedBox(height: 8),
           _buildLegalGroupCard(context),
           const SizedBox(height: 24),
@@ -145,21 +167,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildSectionHeader(
     BuildContext context,
     String title,
-    IconData icon,
-  ) {
+    IconData icon, {
+    int maxLines = 2,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
       child: Row(
         children: [
           Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
-          Text(title, style: LuciTextStyles.sectionHeader(context)),
+          Expanded(
+            child: Text(
+              title,
+              style: LuciTextStyles.sectionHeader(context),
+              maxLines: maxLines,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildActiveRouterBanner(BuildContext context, AppState appState) {
+    final l10n = AppLocalizations.of(context);
     final router = appState.selectedRouter!;
     final colorScheme = Theme.of(context).colorScheme;
     final hostname = router.lastKnownHostname?.isNotEmpty == true
@@ -246,7 +277,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            appState.hasActiveSession ? 'Active' : 'Offline',
+                            appState.hasActiveSession
+                                ? (AppLocalizations.of(context)?.statusActive ??
+                                      'Active')
+                                : (AppLocalizations.of(
+                                        context,
+                                      )?.statusOffline ??
+                                      'Offline'),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -264,6 +301,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -272,7 +310,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(width: 8),
           IconButton.filledTonal(
             icon: const Icon(Icons.swap_horiz_rounded),
-            tooltip: 'Switch or Manage Routers',
+            tooltip:
+                l10n?.settingsSwitchManageRouters ?? 'Switch or Manage Routers',
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -289,15 +328,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildThemeSegmentedSelector(BuildContext context, AppState appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final currentMode = appState.themeMode;
+    final l10n = AppLocalizations.of(context);
 
     final options = [
       (
         mode: ThemeMode.system,
-        label: 'System',
+        label: l10n?.themeModeSystem ?? 'System',
         icon: Icons.brightness_auto_rounded,
       ),
-      (mode: ThemeMode.light, label: 'Light', icon: Icons.light_mode_rounded),
-      (mode: ThemeMode.dark, label: 'Dark', icon: Icons.dark_mode_rounded),
+      (
+        mode: ThemeMode.light,
+        label: l10n?.themeModeLight ?? 'Light',
+        icon: Icons.light_mode_rounded,
+      ),
+      (
+        mode: ThemeMode.dark,
+        label: l10n?.themeModeDark ?? 'Dark',
+        icon: Icons.dark_mode_rounded,
+      ),
     ];
 
     return Container(
@@ -365,14 +413,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildPaletteSelector(
-    BuildContext context,
-    AppState appState,
-  ) {
+  Widget _buildPaletteSelector(BuildContext context, AppState appState) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final currentPalette = appState.themePalette;
+    final l10n = AppLocalizations.of(context);
+
+    String getPaletteSubtitle(AppThemePalette p) {
+      switch (p) {
+        case AppThemePalette.amber:
+          return l10n?.paletteAmberDesc ?? p.subtitle;
+        case AppThemePalette.dynamicTheme:
+          return l10n?.paletteMaterialYouDesc ?? p.subtitle;
+      }
+    }
 
     return Container(
       decoration: LuciCardStyles.standardCard(context),
@@ -390,15 +445,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   color: colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Color Palette',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context)?.colorPalette ??
+                        'Color Palette',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Text(
                   currentPalette.label,
                   style: TextStyle(
@@ -436,16 +496,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: swatch.withValues(alpha: isDark ? 0.22 : 0.15),
-                          border: Border.all(
-                            color: swatch,
-                            width: 2,
-                          ),
+                          border: Border.all(color: swatch, width: 2),
                         ),
-                        child: Icon(
-                          palette.icon,
-                          size: 16,
-                          color: swatch,
-                        ),
+                        child: Icon(palette.icon, size: 16, color: swatch),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -464,7 +517,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ),
                             ),
                             Text(
-                              palette.subtitle,
+                              getPaletteSubtitle(palette),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: colorScheme.onSurfaceVariant,
@@ -485,7 +538,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           border: Border.all(
                             color: isSelected
                                 ? colorScheme.primary
-                                : colorScheme.outlineVariant.withValues(alpha: 0.5),
+                                : colorScheme.outlineVariant.withValues(
+                                    alpha: 0.5,
+                                  ),
                             width: 1.5,
                           ),
                         ),
@@ -504,6 +559,84 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             );
           }),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageSelector(BuildContext context, AppState appState) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final currentLocale = appState.locale;
+    final l10n = AppLocalizations.of(context);
+
+    final currentOption = kAppLanguages.firstWhere((opt) {
+      if (opt.locale == null && currentLocale == null) return true;
+      if (opt.locale != null && currentLocale != null) {
+        if (opt.locale!.languageCode == currentLocale.languageCode) {
+          if (opt.locale!.countryCode == null ||
+              opt.locale!.countryCode == currentLocale.countryCode) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }, orElse: () => kAppLanguages.first);
+
+    return Container(
+      decoration: LuciCardStyles.standardCard(context),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: LuciCardStyles.standardRadius,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          leading: Icon(Icons.language_rounded, color: colorScheme.primary),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n?.languageTitle ?? 'Language',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const LocalizationBetaBadge(),
+            ],
+          ),
+          subtitle: Text(
+            currentOption.locale == null
+                ? (l10n?.languageSystemDefault ?? 'System Default')
+                : '${currentOption.nativeLabel} (${currentOption.label})',
+            style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                currentOption.locale == null
+                    ? (l10n?.languageSystemDefault ?? 'System Default')
+                    : currentOption.nativeLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+          onTap: () => showLanguagePickerDialog(context, appState: appState),
+        ),
       ),
     );
   }
@@ -533,14 +666,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               size: 24,
             ),
           ),
-          title: const Text(
-            'Customize Dashboard',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          title: Text(
+            AppLocalizations.of(context)?.customizeDashboardTitle ??
+                'Customize Dashboard',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 4.0),
             child: Text(
-              'Rearrange layout, toggle card visibility, quick action shortcuts & interface throughput monitoring',
+              AppLocalizations.of(context)?.customizeDashboardSubtitle ??
+                  'Rearrange layout, toggle card visibility, quick action shortcuts & interface throughput monitoring',
               style: TextStyle(
                 fontSize: 12,
                 color: colorScheme.onSurfaceVariant,
@@ -567,6 +702,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildCapabilitiesTile(BuildContext context, AppState appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final caps = appState.capabilities;
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       decoration: LuciCardStyles.standardCard(context),
@@ -597,16 +733,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Re-detect Router Capabilities',
-                          style: TextStyle(
+                        Text(
+                          l10n?.redetectCapabilitiesTitle ??
+                              'Re-detect Router Capabilities',
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Probe active router ubus objects & package manager capabilities',
+                          l10n?.redetectCapabilitiesSubtitle ??
+                              'Probe active router ubus objects & package manager capabilities',
                           style: TextStyle(
                             fontSize: 12,
                             color: colorScheme.onSurfaceVariant,
@@ -624,8 +762,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             if (mounted && context.mounted) {
                               setState(() => _isRedetecting = false);
                               context.showToastSuccess(
-                                'Capabilities Detected',
+                                l10n?.capDetectedSuccess ??
+                                    'Capabilities Detected',
                                 subtitle:
+                                    l10n?.capDetectedSuccessSubtitle ??
                                     'Router capabilities re-detected & cached successfully!',
                               );
                             }
@@ -651,19 +791,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     _buildCapabilityChip(
                       context,
-                      'Package Engine',
+                      l10n?.capPackageEngine ?? 'Package Engine',
                       caps.packageEngine.name.toUpperCase(),
                       Icons.inventory_2_outlined,
                     ),
                     _buildCapabilityChip(
                       context,
-                      'Firewall',
+                      l10n?.capFirewall ?? 'Firewall',
                       caps.firewallBackend.name.toUpperCase(),
                       Icons.shield_outlined,
                     ),
                     _buildCapabilityChip(
                       context,
-                      'Network Model',
+                      l10n?.capNetworkModel ?? 'Network Model',
                       caps.networkModel.name.toUpperCase(),
                       Icons.lan_outlined,
                     ),
@@ -717,6 +857,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildUpdatesTile(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: LuciCardStyles.standardCard(context),
       child: Material(
@@ -739,12 +880,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               size: 24,
             ),
           ),
-          title: const Text(
-            'Check for Updates',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          title: Text(
+            l10n?.checkForUpdatesTitle ?? 'Check for Updates',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           subtitle: Text(
-            'Check for new release builds on GitHub',
+            l10n?.checkForUpdatesSubtitle ??
+                'Check for new release builds on GitHub',
             style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
           ),
           trailing: Icon(
@@ -762,6 +904,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildBuildVerificationTile(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isOfficial = AppConfig.isOfficialBuild;
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       decoration: LuciCardStyles.standardCard(context),
@@ -793,16 +936,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           title: Text(
             isOfficial
-                ? 'Official Build & Privacy Guarantee'
-                : 'Unofficial / Self-Built Build',
+                ? (l10n?.buildOfficialTitle ??
+                      'Official Build & Privacy Guarantee')
+                : (l10n?.buildUnofficialTitle ??
+                      'Unofficial / Self-Built Build'),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 2.0),
             child: Text(
               isOfficial
-                  ? 'Flavor: ${AppConfig.flavorName} • Zero Analytics & Telemetry'
-                  : 'Flavor: ${AppConfig.flavorName} (Unverified) • Zero Analytics',
+                  ? (l10n?.buildOfficialSubtitle ??
+                        'Flavor: ${AppConfig.flavorName} • Zero Analytics & Telemetry')
+                  : (l10n?.buildUnofficialSubtitle ??
+                        'Flavor: ${AppConfig.flavorName} (Unverified) • Zero Analytics'),
               style: TextStyle(
                 fontSize: 12,
                 color: colorScheme.onSurfaceVariant,
@@ -822,6 +969,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             showDialog(
               context: context,
               builder: (context) => AlertDialog(
+                actionsOverflowButtonSpacing: 8,
+                actionsOverflowDirection: VerticalDirection.down,
                 title: Row(
                   children: [
                     Icon(
@@ -836,8 +985,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     Expanded(
                       child: Text(
                         isOfficial
-                            ? 'Build Verification'
-                            : 'Unofficial Build Notice',
+                            ? (l10n?.buildVerificationTitle ??
+                                  'Build Verification')
+                            : (l10n?.buildUnofficialNotice ??
+                                  'Unofficial Build Notice'),
                       ),
                     ),
                   ],
@@ -848,14 +999,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Build Channel: ${AppConfig.flavorName} Edition ${isOfficial ? "(Official)" : "(Unofficial / Local)"}',
+                        l10n != null
+                            ? 'Build Channel: ${AppConfig.flavorName} Edition ${isOfficial ? (l10n.settingsBuildOfficial) : (l10n.settingsBuildUnofficial)}'
+                            : 'Build Channel: ${AppConfig.flavorName} Edition ${isOfficial ? "(Official)" : "(Unofficial / Local)"}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         isOfficial
-                            ? '• Verified Official Release Build'
-                            : '• Unofficial / Self-Compiled Build',
+                            ? '• ${l10n?.settingsBuildVerified ?? "Verified Official Release Build"}'
+                            : '• ${l10n?.settingsBuildSelfCompiled ?? "Unofficial / Self-Compiled Build"}',
                         style: TextStyle(
                           color: isOfficial
                               ? LuciStatusColors.connected
@@ -863,8 +1016,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const Text('• 100% On-Device RPC Communication'),
-                      const Text('• Zero Analytics, Tracking, or Telemetry'),
+                      Text(
+                        '• ${l10n?.settingsPrivacyBulletRpc ?? "100% On-Device RPC Communication"}',
+                      ),
+                      Text(
+                        '• ${l10n?.settingsPrivacyBulletAnalytics ?? "Zero Analytics, Tracking, or Telemetry"}',
+                      ),
                       const SizedBox(height: 12),
                       SelectableText(
                         'Repository: ${AppConfig.githubRepositoryUrl}',
@@ -876,7 +1033,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('OK'),
+                    child: Text(l10n?.actionConfirm ?? 'OK'),
                   ),
                 ],
               ),
@@ -889,6 +1046,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildLegalGroupCard(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     return Container(
       decoration: LuciCardStyles.standardCard(context),
@@ -927,13 +1085,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Icons.description_outlined,
                   color: colorScheme.primary,
                 ),
-                title: const Text(
-                  'Terms & Conditions',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                title: Text(
+                  l10n?.termsAndConditionsTitle ?? 'Terms & Conditions',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                subtitle: const Text(
-                  'Terms of service and usage guidelines',
-                  style: TextStyle(fontSize: 12),
+                subtitle: Text(
+                  l10n?.termsAndConditionsSubtitle ??
+                      'Terms of service and usage guidelines',
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: const Icon(Icons.open_in_new_rounded, size: 18),
                 onTap: () => launchUrlString(
@@ -951,13 +1113,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Icons.contact_support_outlined,
                   color: colorScheme.primary,
                 ),
-                title: const Text(
-                  'Contact & Support',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                title: Text(
+                  l10n?.contactSupportTitle ?? 'Contact & Support',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                subtitle: const Text(
-                  'Get in touch or request support',
-                  style: TextStyle(fontSize: 12),
+                subtitle: Text(
+                  l10n?.contactSupportSubtitle ??
+                      'Get in touch or request support',
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: const Icon(Icons.open_in_new_rounded, size: 18),
                 onTap: () => launchUrlString(
@@ -1024,9 +1190,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   void _showGplLicenseDialog(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -1070,8 +1239,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'SPDX-License-Identifier: ${AppConfig.licenseSpdx}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontFamily: 'monospace',
+                      style: LuciTypography.monoStyle(
+                        fontSize: 12,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -1120,7 +1289,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               );
             },
             icon: const Icon(Icons.fork_right_rounded, size: 16),
-            label: const Text('Original Project'),
+            label: Text(l10n?.btnOriginalProject ?? 'Original Project'),
           ),
           TextButton.icon(
             onPressed: () async {
@@ -1130,11 +1299,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               );
             },
             icon: const Icon(Icons.open_in_new_rounded, size: 16),
-            label: const Text('Full GPL Text'),
+            label: Text(l10n?.btnFullGplText ?? 'Full GPL Text'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
+            child: Text(l10n?.actionClose ?? 'Close'),
           ),
         ],
       ),
@@ -1142,6 +1311,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildReviewerModeCard(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -1161,10 +1331,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               const Icon(Icons.info_outline_rounded, color: Colors.orange),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Reviewer Mode Active',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  l10n?.settingsReviewerModeActive ?? 'Reviewer Mode Active',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
                 ),
               ),
               Tooltip(
@@ -1180,7 +1353,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Mock data is being used for demonstration. No live router is currently connected.',
+            l10n?.settingsReviewerModeDesc ??
+                'Mock data is being used for demonstration. No live router is currently connected.',
             style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
           ),
           const SizedBox(height: 12),
@@ -1189,7 +1363,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: FilledButton.icon(
               onPressed: () => _showReviewerModeResetDialog(context, ref),
               icon: const Icon(Icons.exit_to_app_rounded, size: 18),
-              label: const Text('Exit Reviewer Mode'),
+              label: Text(
+                l10n?.settingsExitReviewerMode ?? 'Exit Reviewer Mode',
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: colorScheme.error,
                 foregroundColor: colorScheme.onError,

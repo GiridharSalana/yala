@@ -2,6 +2,8 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:math';
+
 enum ClientCategoryFilter { all, wired, wireless, banned, dumbAp }
 
 enum ConnectionType { wired, wireless, unknown }
@@ -47,6 +49,18 @@ class Client {
   final String? staticLeaseTime;
   final bool isDumbApClient;
   final String? apName;
+  final int? rxBytes;
+  final int? txBytes;
+  final int? rxPackets;
+  final int? txPackets;
+  final num? rxRate;
+  final num? txRate;
+  final int? signalDbm;
+  final int? noiseDbm;
+  final int? throughput;
+  final double? rxSpeed;
+  final double? txSpeed;
+  final int? connectedTime;
 
   Client({
     required this.ipAddress,
@@ -70,6 +84,18 @@ class Client {
     this.staticLeaseTime,
     this.isDumbApClient = false,
     this.apName,
+    this.rxBytes,
+    this.txBytes,
+    this.rxPackets,
+    this.txPackets,
+    this.rxRate,
+    this.txRate,
+    this.signalDbm,
+    this.noiseDbm,
+    this.throughput,
+    this.rxSpeed,
+    this.txSpeed,
+    this.connectedTime,
   });
 
   // Helper function to determine connection type from interface parameters
@@ -218,6 +244,18 @@ class Client {
     String? wirelessIface,
     bool isDumbApClient = false,
     String? apName,
+    int? rxBytes,
+    int? txBytes,
+    int? rxPackets,
+    int? txPackets,
+    num? rxRate,
+    num? txRate,
+    int? signalDbm,
+    int? noiseDbm,
+    int? throughput,
+    double? rxSpeed,
+    double? txSpeed,
+    int? connectedTime,
   }) {
     return Client(
       ipAddress: 'N/A',
@@ -230,6 +268,18 @@ class Client {
       wirelessIface: wirelessIface,
       isDumbApClient: isDumbApClient,
       apName: apName,
+      rxBytes: rxBytes,
+      txBytes: txBytes,
+      rxPackets: rxPackets,
+      txPackets: txPackets,
+      rxRate: rxRate,
+      txRate: txRate,
+      signalDbm: signalDbm,
+      noiseDbm: noiseDbm,
+      throughput: throughput,
+      rxSpeed: rxSpeed,
+      txSpeed: txSpeed,
+      connectedTime: connectedTime,
     );
   }
 
@@ -283,9 +333,10 @@ class Client {
   }
 
   /// Cached normalized MAC address (uppercase with colons)
-  late final String normalizedMac = macAddress
-      .toUpperCase()
-      .replaceAll('-', ':');
+  late final String normalizedMac = macAddress.toUpperCase().replaceAll(
+    '-',
+    ':',
+  );
 
   /// Returns display name following OpenWrt client naming rules:
   /// 1. Client's Static Lease Name configured on router (highest priority).
@@ -355,6 +406,18 @@ class Client {
     String? staticLeaseTime,
     bool? isDumbApClient,
     String? apName,
+    int? rxBytes,
+    int? txBytes,
+    int? rxPackets,
+    int? txPackets,
+    num? rxRate,
+    num? txRate,
+    int? signalDbm,
+    int? noiseDbm,
+    int? throughput,
+    double? rxSpeed,
+    double? txSpeed,
+    int? connectedTime,
   }) {
     return Client(
       ipAddress: ipAddress ?? this.ipAddress,
@@ -378,7 +441,132 @@ class Client {
       staticLeaseTime: staticLeaseTime ?? this.staticLeaseTime,
       isDumbApClient: isDumbApClient ?? this.isDumbApClient,
       apName: apName ?? this.apName,
+      rxBytes: rxBytes ?? this.rxBytes,
+      txBytes: txBytes ?? this.txBytes,
+      rxPackets: rxPackets ?? this.rxPackets,
+      txPackets: txPackets ?? this.txPackets,
+      rxRate: rxRate ?? this.rxRate,
+      txRate: txRate ?? this.txRate,
+      signalDbm: signalDbm ?? this.signalDbm,
+      noiseDbm: noiseDbm ?? this.noiseDbm,
+      throughput: throughput ?? this.throughput,
+      rxSpeed: rxSpeed ?? this.rxSpeed,
+      txSpeed: txSpeed ?? this.txSpeed,
+      connectedTime: connectedTime ?? this.connectedTime,
     );
+  }
+
+  /// Whether this client has active or recorded traffic/PHY vitals
+  bool get hasTrafficData =>
+      rxBytes != null ||
+      txBytes != null ||
+      rxSpeed != null ||
+      txSpeed != null ||
+      rxRate != null ||
+      txRate != null;
+
+  /// Formatted live download speed (transmitted by router to client)
+  String? get formattedDownloadSpeed =>
+      txSpeed != null ? formatSpeed(txSpeed!, speedUnit: 'bytes') : null;
+
+  /// Formatted live upload speed (received by router from client)
+  String? get formattedUploadSpeed =>
+      rxSpeed != null ? formatSpeed(rxSpeed!, speedUnit: 'bytes') : null;
+
+  /// Formatted live download speed respecting [speedUnit] ('bits' or 'bytes')
+  String? formattedDownloadSpeedWithUnit([String speedUnit = 'bits']) =>
+      txSpeed != null ? formatSpeed(txSpeed!, speedUnit: speedUnit) : null;
+
+  /// Formatted live upload speed respecting [speedUnit] ('bits' or 'bytes')
+  String? formattedUploadSpeedWithUnit([String speedUnit = 'bits']) =>
+      rxSpeed != null ? formatSpeed(rxSpeed!, speedUnit: speedUnit) : null;
+
+  /// Formatted total cumulative download in bytes
+  String? get formattedTotalDownloaded =>
+      txBytes != null ? formatBytes(txBytes!) : null;
+
+  /// Formatted total cumulative upload in bytes
+  String? get formattedTotalUploaded =>
+      rxBytes != null ? formatBytes(rxBytes!) : null;
+
+  /// Formatted PHY negotiated link rate (e.g. '↓ 866.7 Mbps • ↑ 866.7 Mbps')
+  String? get formattedPhyRate {
+    if (txRate == null && rxRate == null) return null;
+    String formatMbit(num? val) {
+      if (val == null) return '?';
+      // iwinfo rate is in kbit/s (e.g. 866700 -> 866.7 Mbit/s, 72200 -> 72.2 Mbit/s)
+      final mbit = val > 1000 ? val / 1000.0 : val.toDouble();
+      return mbit >= 100 ? mbit.toStringAsFixed(0) : mbit.toStringAsFixed(1);
+    }
+
+    if (txRate != null && rxRate != null) {
+      return '↓ ${formatMbit(txRate)} Mbps • ↑ ${formatMbit(rxRate)} Mbps';
+    } else if (txRate != null) {
+      return '↓ ${formatMbit(txRate)} Mbps';
+    } else {
+      return '↑ ${formatMbit(rxRate)} Mbps';
+    }
+  }
+
+  /// Signal quality description (e.g., 'Excellent', 'Good', 'Fair', 'Weak')
+  String? get signalQualityLabel {
+    if (signalDbm == null) return null;
+    if (signalDbm! >= -50) return 'Excellent';
+    if (signalDbm! >= -65) return 'Good';
+    if (signalDbm! >= -75) return 'Fair';
+    return 'Weak';
+  }
+
+  /// Formatted signal with quality rating (e.g. '-42 dBm (Good)')
+  String? get formattedSignalWithQuality {
+    if (signalDbm == null) return null;
+    final q = signalQualityLabel;
+    return q != null ? '$signalDbm dBm ($q)' : '$signalDbm dBm';
+  }
+
+  /// Formatted connection duration (e.g., '22h 7m')
+  String? get formattedConnectedTime =>
+      connectedTime != null ? formatDuration(connectedTime!) : null;
+
+  /// General byte formatter (B, KB, MB, GB, TB)
+  static String formatBytes(num bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = (log(bytes) / log(1024)).floor();
+    if (i < 0) i = 0;
+    if (i >= suffixes.length) i = suffixes.length - 1;
+    if (i == 0) return '${bytes.toInt()} B';
+    final numVal = bytes / pow(1024, i);
+    return '${numVal.toStringAsFixed(numVal >= 100 ? 0 : 1)} ${suffixes[i]}';
+  }
+
+  /// General speed formatter supporting 'bytes' (B/s, KB/s, MB/s) or 'bits' (bps, Kbps, Mbps).
+  static String formatSpeed(double bytesPerSec, {String speedUnit = 'bytes'}) {
+    if (bytesPerSec.isNaN || bytesPerSec.isInfinite || bytesPerSec <= 0) {
+      return speedUnit == 'bits' ? '0 bps' : '0 B/s';
+    }
+    if (speedUnit == 'bits') {
+      final bitsPerSecond = bytesPerSec * 8;
+      if (bitsPerSecond < 1000) {
+        return '${bitsPerSecond.toStringAsFixed(0)} bps';
+      }
+      if (bitsPerSecond < 1000000) {
+        final val = bitsPerSecond / 1000;
+        final str = val >= 100 ? val.toStringAsFixed(0) : val.toStringAsFixed(1);
+        return '$str Kbps';
+      }
+      final val = bitsPerSecond / 1000000;
+      final str = val >= 100 ? val.toStringAsFixed(0) : val.toStringAsFixed(1);
+      return '$str Mbps';
+    } else {
+      if (bytesPerSec < 1024) {
+        return '${bytesPerSec.toStringAsFixed(0)} B/s';
+      }
+      if (bytesPerSec < 1024 * 1024) {
+        return '${(bytesPerSec / 1024).toStringAsFixed(1)} KB/s';
+      }
+      return '${(bytesPerSec / (1024 * 1024)).toStringAsFixed(1)} MB/s';
+    }
   }
 
   /// Merges DHCP leases and active wireless station MACs into a sorted list of Clients.

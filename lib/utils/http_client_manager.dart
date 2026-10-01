@@ -10,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'logger.dart';
 
 /// HTTP client manager that provides secure client instances with proper
@@ -344,64 +345,69 @@ class HttpClientManager {
         // Extract certificate details from the exception if possible
         // For now, show a simplified dialog
         if (context.mounted) {
+          final l10n = AppLocalizations.of(context);
           final result = await showDialog<bool>(
             context: context,
             barrierDismissible: false,
             builder: (BuildContext dialogContext) => AlertDialog(
+              actionsOverflowButtonSpacing: 8,
+              actionsOverflowDirection: VerticalDirection.down,
               icon: Icon(
                 Icons.warning_amber_rounded,
                 color: Theme.of(context).colorScheme.error,
                 size: 32,
               ),
-              title: const Text('Certificate Warning'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'The certificate for $host is not trusted by your device. This could indicate a security risk.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.errorContainer.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
+              title: Text(l10n?.httpCertWarningTitle ?? 'Certificate Warning'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'The certificate for $host is not trusted by your device. This could indicate a security risk.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
                         color: Theme.of(
                           context,
-                        ).colorScheme.error.withValues(alpha: 0.3),
+                        ).colorScheme.errorContainer.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.error.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Theme.of(context).colorScheme.error,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Only proceed if you trust this router and understand the security implications.',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: Theme.of(context).colorScheme.error,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Only proceed if you trust this router and understand the security implications.',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: const Text('Cancel'),
+                  child: Text(l10n?.actionCancel ?? 'Cancel'),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -409,7 +415,7 @@ class HttpClientManager {
                     backgroundColor: Theme.of(context).colorScheme.error,
                     foregroundColor: Theme.of(context).colorScheme.onError,
                   ),
-                  child: const Text('Accept Risk'),
+                  child: Text(l10n?.httpCertAcceptRisk ?? 'Accept Risk'),
                 ),
               ],
             ),
@@ -447,15 +453,18 @@ class CertificateWarningDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final colorScheme = theme.colorScheme;
 
     return AlertDialog(
+      actionsOverflowButtonSpacing: 8,
+      actionsOverflowDirection: VerticalDirection.down,
       icon: Icon(
         Icons.warning_amber_rounded,
         color: colorScheme.error,
         size: 32,
       ),
-      title: const Text('Certificate Warning'),
+      title: Text(l10n?.httpCertWarningTitle ?? 'Certificate Warning'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -531,7 +540,7 @@ class CertificateWarningDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: Text(l10n?.actionCancel ?? 'Cancel'),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
@@ -539,7 +548,7 @@ class CertificateWarningDialog extends StatelessWidget {
             backgroundColor: colorScheme.error,
             foregroundColor: colorScheme.onError,
           ),
-          child: const Text('Accept Risk'),
+          child: Text(l10n?.httpCertAcceptRisk ?? 'Accept Risk'),
         ),
       ],
     );

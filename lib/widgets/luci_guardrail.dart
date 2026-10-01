@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:yet_another_luci_app/state/app_state.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 /// Universal Guardrails & Confirmation Dialog Manager.
 /// Provides highly customizable, situational-aware guardrail dialogs with
@@ -43,7 +44,9 @@ class LuciGuardrail {
           size: 36,
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(message),
+        content: SingleChildScrollView(child: Text(message)),
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.pop(ctx, 'revert'),
@@ -114,6 +117,8 @@ class LuciGuardrail {
                       ),
                     )
                   : null),
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         actions: [
           OutlinedButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -226,6 +231,7 @@ class LuciGuardrail {
     if (!context.mounted) return null;
 
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final message =
         subtitle ??
         'You have $count unsaved $itemLabel. Would you like to save them before leaving?';
@@ -242,22 +248,26 @@ class LuciGuardrail {
           title,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        content: Text(message, style: const TextStyle(fontSize: 13.5)),
+        content: SingleChildScrollView(
+          child: Text(message, style: const TextStyle(fontSize: 13.5)),
+        ),
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, null),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           OutlinedButton(
             style: OutlinedButton.styleFrom(
               foregroundColor: theme.colorScheme.error,
             ),
             onPressed: () => Navigator.pop(ctx, 'discard'),
-            child: const Text('Discard & Leave'),
+            child: Text(l10n?.guardrailDiscardLeave ?? 'Discard & Leave'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, 'save'),
-            child: const Text('Save & Exit'),
+            child: Text(l10n?.guardrailSaveExit ?? 'Save & Exit'),
           ),
         ],
       ),

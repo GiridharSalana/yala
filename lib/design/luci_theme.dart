@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Available curated color palettes for Yet Another LuCI App (YALA).
@@ -27,9 +29,8 @@ enum AppThemePalette {
   };
 
   Color swatchColor(bool isDark) => switch (this) {
-    AppThemePalette.amber => isDark
-        ? LuciTheme.amberPrimaryDark
-        : LuciTheme.amberPrimaryLight,
+    AppThemePalette.amber =>
+      isDark ? LuciTheme.amberPrimaryDark : LuciTheme.amberPrimaryLight,
     AppThemePalette.dynamicTheme => const Color(0xFF3B82F6),
   };
 }
@@ -208,6 +209,14 @@ class LuciTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.dark,
+          systemNavigationBarContrastEnforced: false,
+        ),
         titleTextStyle: GoogleFonts.geist(
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -267,6 +276,8 @@ class LuciTheme {
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
         },
       ),
       focusColor: Colors.transparent,
@@ -283,6 +294,19 @@ class LuciTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 6,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titleTextStyle: GoogleFonts.geist(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: colorScheme.onSurface,
+        ),
+        contentTextStyle: GoogleFonts.geist(
+          fontSize: 14,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: isDynamic
@@ -290,6 +314,7 @@ class LuciTheme {
             : classicLightSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 8,
+        constraints: const BoxConstraints(maxWidth: 640),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -334,6 +359,14 @@ class LuciTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Colors.transparent,
+          systemNavigationBarIconBrightness: Brightness.light,
+          systemNavigationBarContrastEnforced: false,
+        ),
         titleTextStyle: GoogleFonts.geist(
           fontSize: 20,
           fontWeight: FontWeight.bold,
@@ -393,6 +426,8 @@ class LuciTheme {
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
         },
       ),
       dialogTheme: DialogThemeData(
@@ -402,6 +437,19 @@ class LuciTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 8,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titleTextStyle: GoogleFonts.geist(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: colorScheme.onSurface,
+        ),
+        contentTextStyle: GoogleFonts.geist(
+          fontSize: 14,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        actionsPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: isDynamic
@@ -409,6 +457,7 @@ class LuciTheme {
             : classicDarkSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 8,
+        constraints: const BoxConstraints(maxWidth: 640),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),

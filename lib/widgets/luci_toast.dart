@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:yet_another_luci_app/design/luci_design_system.dart';
@@ -256,7 +258,12 @@ class LuciToastManager {
 
     if (isDebugString(rawSubtitle)) {
       final t = (rawSubtitle ?? '').toLowerCase();
-      if (t.contains('socketexception') ||
+      if (!kIsWeb &&
+          Platform.isIOS &&
+          (t.contains('operation not permitted') || t.contains('errno = 1'))) {
+        subtitle =
+            'Local network permission required. Please allow access in iOS Settings > Yet Another LuCI App.';
+      } else if (t.contains('socketexception') ||
           t.contains('handshakeexception') ||
           t.contains('clientexception') ||
           t.contains('httpexception') ||

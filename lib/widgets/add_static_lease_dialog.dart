@@ -11,6 +11,7 @@ import 'package:yet_another_luci_app/modules/dhcp_dns/models/dhcp_dns_info.dart'
 import 'package:yet_another_luci_app/state/app_state.dart';
 import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 /// Reusable dialog to create or edit a DHCP static IP reservation (host mapping).
 class AddStaticLeaseDialog extends StatefulWidget {
@@ -687,9 +688,12 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
     final targetIp = _ipController.text.trim();
     final duid = _duidController.text.trim();
 
+    final l10n = AppLocalizations.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
@@ -706,21 +710,27 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Remove Static Lease',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                l10n?.dialogRemoveStaticLeaseTitle ?? 'Remove Static Lease',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
         ),
-        content: Text(
-          'Are you sure you want to remove the static IP reservation for "$hostname" ($targetMac)?',
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.dialogRemoveStaticLeaseMessage(hostname, targetMac) ??
+                'Are you sure you want to remove the static IP reservation for "$hostname" ($targetMac)?',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -731,7 +741,7 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Remove Reservation'),
+            child: Text(l10n?.btnRemoveReservation ?? 'Remove Reservation'),
           ),
         ],
       ),
@@ -757,8 +767,9 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
       final success = await appState.deleteStaticLease(
         macAddress: targetMac,
         targetIp: targetIp.isNotEmpty && targetIp != 'N/A' ? targetIp : null,
-        hostname:
-            hostname.isNotEmpty && hostname != 'Unknown' ? hostname : null,
+        hostname: hostname.isNotEmpty && hostname != 'Unknown'
+            ? hostname
+            : null,
         duid: duid.isNotEmpty && duid != 'N/A' ? duid : null,
         context: parentContext.mounted ? parentContext : null,
       );
@@ -799,28 +810,35 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
     String reservedIp,
   ) async {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         icon: Icon(
           Icons.sync_problem_rounded,
           color: theme.colorScheme.primary,
           size: 36,
         ),
-        title: const Text('Refresh Client IP Connection?'),
+        title: Text(
+          l10n?.dialogRefreshClientIpTitle ?? 'Refresh Client IP Connection?',
+        ),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'The reserved static IP ($reservedIp) differs from the client\'s current active IP ($liveIp).',
+                l10n?.dialogRefreshClientIpMessage(reservedIp, liveIp) ??
+                    'The reserved static IP ($reservedIp) differs from the client\'s current active IP ($liveIp).',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Text(
-                'Would you like to force refresh $hostname ($macAddress) now so it acquires its new static IP immediately?',
+                l10n?.dialogRefreshClientIpPrompt(hostname, macAddress) ??
+                    'Would you like to force refresh $hostname ($macAddress) now so it acquires its new static IP immediately?',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -845,8 +863,11 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Targeted Action: Only $hostname will briefly reconnect. Zero disruption to other devices.',
-                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                        l10n?.dialogRefreshClientIpTargeted(hostname) ??
+                            'Targeted Action: Only $hostname will briefly reconnect. Zero disruption to other devices.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
@@ -858,11 +879,13 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Keep Current IP (Later)'),
+            child: Text(
+              l10n?.btnKeepCurrentIpLater ?? 'Keep Current IP (Later)',
+            ),
           ),
           FilledButton.icon(
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Refresh IP Now'),
+            label: Text(l10n?.btnRefreshIpNow ?? 'Refresh IP Now'),
             onPressed: () => Navigator.of(ctx).pop(true),
           ),
         ],
@@ -1051,6 +1074,7 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final hasFixedMac =
@@ -1098,18 +1122,25 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
         final confirm = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Discard Unsaved Lease?'),
-            content: const Text(
-              'You have unsaved changes to this static lease reservation. Are you sure you want to discard them?',
+            actionsOverflowButtonSpacing: 8,
+            actionsOverflowDirection: VerticalDirection.down,
+            title: Text(
+              l10n?.discardUnsavedLeaseTitle ?? 'Discard Unsaved Lease?',
+            ),
+            content: SingleChildScrollView(
+              child: Text(
+                l10n?.discardUnsavedLeaseMessage ??
+                    'You have unsaved changes to this static lease reservation. Are you sure you want to discard them?',
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Keep Editing'),
+                child: Text(l10n?.btnKeepEditing ?? 'Keep Editing'),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Discard'),
+                child: Text(l10n?.btnDiscard ?? 'Discard'),
               ),
             ],
           ),
@@ -1142,7 +1173,9 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                _isEditing ? 'Edit Static Lease' : 'Add Static Lease',
+                _isEditing
+                    ? (l10n?.editStaticLeaseTitle ?? 'Edit Static Lease')
+                    : (l10n?.addStaticLeaseTitle ?? 'Add Static Lease'),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -1153,7 +1186,7 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
             IconButton(
               icon: const Icon(Icons.close, size: 20),
               onPressed: () => Navigator.of(context).pop(),
-              tooltip: 'Cancel',
+              tooltip: l10n?.actionCancel ?? 'Cancel',
             ),
           ],
         ),
@@ -1183,7 +1216,7 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'MAC Address',
+                          l10n?.labelMacAddress ?? 'MAC Address',
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: colorScheme.onSurfaceVariant,
                           ),
@@ -1207,7 +1240,7 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                     runSpacing: 4,
                     children: [
                       Text(
-                        'MAC Address',
+                        l10n?.labelMacAddress ?? 'MAC Address',
                         style: theme.textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -1240,12 +1273,17 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                                   color: theme.colorScheme.secondary,
                                 ),
                                 const SizedBox(width: 4),
-                                Text(
-                                  'Paste MAC: $_clipboardMac',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.secondary,
+                                Flexible(
+                                  child: Text(
+                                    l10n?.pasteMac(_clipboardMac!) ??
+                                        'Paste MAC: $_clipboardMac',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.secondary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
@@ -1275,7 +1313,8 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                       ),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.paste_rounded, size: 18),
-                        tooltip: 'Paste MAC from Clipboard',
+                        tooltip:
+                            l10n?.tooltipPasteMac ?? 'Paste MAC from Clipboard',
                         onPressed: _pasteMacFromClipboard,
                       ),
                       errorText: _macError,
@@ -1294,7 +1333,7 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
 
                 // Hostname Field
                 Text(
-                  'Hostname / Client Name',
+                  l10n?.labelHostnameClientName ?? 'Hostname / Client Name',
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -1331,7 +1370,7 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                   runSpacing: 4,
                   children: [
                     Text(
-                      'Reserved IPv4 Address',
+                      l10n?.labelReservedIpv4 ?? 'Reserved IPv4 Address',
                       style: theme.textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -1371,12 +1410,17 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                                 color: theme.colorScheme.primary,
                               ),
                               const SizedBox(width: 4),
-                              Text(
-                                'Suggest Free IP: $suggestedIp',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.primary,
+                              Flexible(
+                                child: Text(
+                                  l10n?.suggestFreeIp(suggestedIp) ??
+                                      'Suggest Free IP: $suggestedIp',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -1507,7 +1551,8 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Configure IPv6 Reservation & DUID',
+                                l10n?.labelConfigureIpv6Duid ??
+                                    'Configure IPv6 Reservation & DUID',
                                 style: theme.textTheme.labelMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: _showIp6Section
@@ -1517,8 +1562,10 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                               ),
                               Text(
                                 _showIp6Section
-                                    ? 'Optional — tap to collapse and clear'
-                                    : 'Optional — tap to add an IPv6 address or DUID',
+                                    ? (l10n?.hintConfigureIpv6DuidExpanded ??
+                                          'Optional — tap to collapse and clear')
+                                    : (l10n?.hintConfigureIpv6DuidCollapsed ??
+                                          'Optional — tap to add an IPv6 address or DUID'),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontSize: 10,
                                   color: colorScheme.onSurfaceVariant,
@@ -1553,7 +1600,8 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                   const SizedBox(height: 12),
                   // IPv6 Address / Host ID Field
                   Text(
-                    'Reserved IPv6 Address / Host ID',
+                    l10n?.labelReservedIpv6HostId ??
+                        'Reserved IPv6 Address / Host ID',
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -1581,7 +1629,7 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                   const SizedBox(height: 12),
                   // DUID Field
                   Text(
-                    'DUID (DHCPv6 Unique Identifier)',
+                    l10n?.labelDuid ?? 'DUID (DHCPv6 Unique Identifier)',
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -1615,7 +1663,7 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
 
                 // Lease Time Preset Dropdown
                 Text(
-                  'Lease Time Duration',
+                  l10n?.labelLeaseDuration ?? 'Lease Time Duration',
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -1636,10 +1684,23 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                     ),
                   ),
                   items: _leasePresets.map((preset) {
+                    final val = preset['value'];
+                    String localizedLabel = preset['label']!;
+                    if (val == '12h') {
+                      localizedLabel = l10n?.preset12Hours ?? localizedLabel;
+                    } else if (val == '24h') {
+                      localizedLabel = l10n?.preset24Hours ?? localizedLabel;
+                    } else if (val == '7d') {
+                      localizedLabel = l10n?.preset7Days ?? localizedLabel;
+                    } else if (val == 'infinite') {
+                      localizedLabel = l10n?.presetInfinite ?? localizedLabel;
+                    } else if (val == 'custom') {
+                      localizedLabel = l10n?.presetCustom ?? localizedLabel;
+                    }
                     return DropdownMenuItem<String>(
-                      value: preset['value'],
+                      value: val,
                       child: Text(
-                        preset['label']!,
+                        localizedLabel,
                         style: const TextStyle(fontSize: 13),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
@@ -1670,7 +1731,9 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
                           enableSuggestions: false,
                           textInputAction: TextInputAction.done,
                           decoration: InputDecoration(
-                            labelText: 'Custom Lease Duration',
+                            labelText:
+                                l10n?.labelCustomLeaseDuration ??
+                                'Custom Lease Duration',
                             hintText: 'e.g., 2h, 30m, 3d, 12h, infinite',
                             prefixIcon: const Icon(
                               Icons.edit_calendar_outlined,
@@ -1703,30 +1766,46 @@ class _AddStaticLeaseDialogState extends State<AddStaticLeaseDialog> {
           ),
         ),
         actions: [
-          if (_isEditing)
-            TextButton.icon(
-              onPressed: _deleteLease,
-              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-              label: const Text(
-                'Remove Lease',
-                style: TextStyle(color: Colors.redAccent),
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (_isEditing)
+                TextButton.icon(
+                  onPressed: _deleteLease,
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: Colors.redAccent,
+                  ),
+                  label: Text(
+                    l10n?.btnRemoveLease ?? 'Remove Lease',
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n?.actionCancel ?? 'Cancel'),
               ),
-            ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            onPressed: canSave ? _submit : null,
-            icon: const Icon(Icons.check, size: 18),
-            label: Text(_isEditing ? 'Update Reservation' : 'Save Reservation'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+              ElevatedButton.icon(
+                onPressed: canSave ? _submit : null,
+                icon: const Icon(Icons.check, size: 18),
+                label: Text(
+                  _isEditing
+                      ? (l10n?.btnUpdateReservation ?? 'Update Reservation')
+                      : (l10n?.btnSaveReservation ?? 'Save Reservation'),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),

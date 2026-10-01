@@ -18,6 +18,7 @@ import 'package:yet_another_luci_app/widgets/luci_toast.dart';
 import '../../../utils/logger.dart';
 import '../../../widgets/luci_contextual_hint_banner.dart';
 import '../../../widgets/luci_collapsible_card.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import '../widgets/preserved_backup_files_sheet.dart';
 
 class SystemBackupUpgradeScreen extends ConsumerStatefulWidget {
@@ -47,6 +48,16 @@ class _SystemBackupUpgradeScreenState
   // Mtdblock state
   List<Map<String, String>> _mtdList = [];
   String? _selectedMtdDevice;
+
+  String _resolveTmpSpace(AppLocalizations? l10n) {
+    if (_tmpAvailableSpace == 'Checking space...') {
+      return l10n?.statusCheckingSpace ?? 'Checking space...';
+    }
+    if (_tmpAvailableSpace == 'Available') {
+      return l10n?.statusAvailableFallback ?? 'Available';
+    }
+    return _tmpAvailableSpace;
+  }
 
   @override
   void initState() {
@@ -206,9 +217,12 @@ class _SystemBackupUpgradeScreenState
   }
 
   Future<void> _showCurrentBackupFileList() async {
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _isProcessing = true;
-      _statusMessage = 'Fetching preserved backup files list...';
+      _statusMessage =
+          l10n?.backupStatusFetchingPreserved ??
+          'Fetching preserved backup files list...';
     });
 
     final appState = ref.read(appStateProvider);
@@ -495,10 +509,13 @@ class _SystemBackupUpgradeScreenState
   }
 
   Future<void> _handleGenerateBackup() async {
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _isProcessing = true;
       _uploadProgress = null;
-      _statusMessage = 'Generating configuration backup on router...';
+      _statusMessage =
+          l10n?.backupStatusGenerating ??
+          'Generating configuration backup on router...';
     });
 
     final appState = ref.read(appStateProvider);
@@ -658,13 +675,18 @@ class _SystemBackupUpgradeScreenState
       if (!mounted) return;
 
       if (saveResult != null) {
-        context.showToastSuccess('Backup archive downloaded successfully.');
+        context.showToastSuccess(
+          l10n?.backupDownloadedSuccess ??
+              'Backup archive downloaded successfully.',
+        );
         await OsPlatformIntegration.showBackupDownloadedPrompt(
           context,
           saveResult,
         );
       } else {
-        context.showToastError('Failed to write backup file to storage.');
+        context.showToastError(
+          l10n?.backupWriteFailed ?? 'Failed to write backup file to storage.',
+        );
       }
     } catch (e, stack) {
       Logger.error('Backup Generation Error: $e', stack);
@@ -734,6 +756,7 @@ class _SystemBackupUpgradeScreenState
   }
 
   Future<void> _handleUploadArchive() async {
+    final l10n = AppLocalizations.of(context);
     try {
       PlatformFile? pickedFile;
       bool pickerAttempted = false;
@@ -765,8 +788,9 @@ class _SystemBackupUpgradeScreenState
       if (!isValidExtension) {
         if (mounted) {
           context.showToastError(
-            'Invalid Archive Extension',
+            l10n?.backupInvalidArchiveExt ?? 'Invalid Archive Extension',
             subtitle:
+                l10n?.backupInvalidArchiveExtSubtitle ??
                 'Please select a valid OpenWrt backup archive (.tar.gz, .tgz, .tar, or .gz).',
           );
         }
@@ -782,8 +806,10 @@ class _SystemBackupUpgradeScreenState
           } catch (e) {
             if (mounted) {
               context.showToastError(
-                'File Read Error',
-                subtitle: 'Could not read selected file from storage.',
+                l10n?.backupFileReadError ?? 'File Read Error',
+                subtitle:
+                    l10n?.backupFileReadErrorSubtitle ??
+                    'Could not read selected file from storage.',
               );
             }
             return;
@@ -800,8 +826,9 @@ class _SystemBackupUpgradeScreenState
       if (!isValidPayload) {
         if (mounted) {
           context.showToastError(
-            'Corrupt or Invalid Archive Payload',
+            l10n?.backupCorruptArchive ?? 'Corrupt or Invalid Archive Payload',
             subtitle:
+                l10n?.backupCorruptArchiveSubtitle ??
                 'The selected file is corrupt or not a valid gzipped tarball. Pre-restore validation aborted to prevent router configuration corruption.',
           );
         }
@@ -811,7 +838,9 @@ class _SystemBackupUpgradeScreenState
       setState(() {
         _isProcessing = true;
         _uploadProgress = 0.0;
-        _statusMessage = 'Uploading archive to router...';
+        _statusMessage =
+            l10n?.backupStatusUploadingArchive ??
+            'Uploading archive to router...';
       });
 
       final appState = ref.read(appStateProvider);
@@ -844,7 +873,8 @@ class _SystemBackupUpgradeScreenState
       ]);
 
       setState(() {
-        _statusMessage = 'Restoring backup configuration...';
+        _statusMessage =
+            l10n?.backupStatusRestoring ?? 'Restoring backup configuration...';
         _uploadProgress = null;
       });
 
@@ -871,11 +901,15 @@ class _SystemBackupUpgradeScreenState
       if (restoreSuccess || fallbackSuccess) {
         unawaited(OsPlatformIntegration.triggerHaptic(OsHapticType.medium));
         context.showToastSuccess(
-          'Configuration restored successfully from archive.',
+          l10n?.backupRestoredSuccess ??
+              'Configuration restored successfully from archive.',
         );
         _showPostRestoreRebootDialog();
       } else {
-        context.showToastError('Failed to restore backup configuration.');
+        context.showToastError(
+          l10n?.backupRestoreFailed ??
+              'Failed to restore backup configuration.',
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -892,36 +926,45 @@ class _SystemBackupUpgradeScreenState
   void _showPostRestoreRebootDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Restore Complete'),
-        content: const Text(
-          'Configuration files have been restored to the router.\n\n'
-          'Would you like to reboot the router now to ensure all restored daemons and network interfaces initialize cleanly?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Later'),
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
+          title: Text(l10n?.backupRestoreComplete ?? 'Restore Complete'),
+          content: SingleChildScrollView(
+            child: Text(
+              l10n?.backupRestoreCompleteContent ??
+                  'Configuration files have been restored to the router.\n\n'
+                      'Would you like to reboot the router now to ensure all restored daemons and network interfaces initialize cleanly?',
+            ),
           ),
-          FilledButton.icon(
-            icon: const Icon(Icons.restart_alt_rounded),
-            label: const Text('Reboot Router'),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final appState = ref.read(appStateProvider);
-              await appState.executeRouterCommand('reboot', []);
-              if (mounted) {
-                context.showToastWarning('Rebooting router...');
-                _showRebootCountdownDialog();
-              }
-            },
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n?.backupLaterBtn ?? 'Later'),
+            ),
+            FilledButton.icon(
+              icon: const Icon(Icons.restart_alt_rounded),
+              label: Text(l10n?.backupRebootRouter ?? 'Reboot Router'),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final appState = ref.read(appStateProvider);
+                await appState.executeRouterCommand('reboot', []);
+                if (mounted) {
+                  context.showToastWarning('Rebooting router...');
+                  _showRebootCountdownDialog();
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
   Future<void> _handleFactoryReset() async {
+    final l10n = AppLocalizations.of(context);
     unawaited(OsPlatformIntegration.triggerHaptic(OsHapticType.heavy));
     final confirm = await showDialog<bool>(
       context: context,
@@ -942,21 +985,26 @@ class _SystemBackupUpgradeScreenState
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
-              child: Text('Perform Factory Reset?'),
+            Expanded(
+              child: Text(
+                l10n?.sysUpgradeResetConfirmTitle ?? 'Perform Factory Reset?',
+              ),
             ),
           ],
         ),
-        content: const Text(
-          'This operation will permanently erase all custom settings, passwords, installed packages, and restore firmware to factory default state.\n\nThe router will automatically reboot upon completion. Continue?',
-          style: TextStyle(fontSize: 14),
+        content: SingleChildScrollView(
+          child: Text(
+            l10n?.sysUpgradeResetConfirmDesc ??
+                'This operation will permanently erase all custom settings, passwords, installed packages, and restore firmware to factory default state.\n\nThe router will automatically reboot upon completion. Continue?',
+            style: const TextStyle(fontSize: 14),
+          ),
         ),
         actionsOverflowButtonSpacing: 8,
         actionsOverflowDirection: VerticalDirection.down,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n?.actionCancel ?? 'Cancel'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -967,7 +1015,9 @@ class _SystemBackupUpgradeScreenState
               ),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Perform Factory Reset'),
+            child: Text(
+              l10n?.sysUpgradeBtnResetConfirm ?? 'Perform Factory Reset',
+            ),
           ),
         ],
       ),
@@ -978,7 +1028,9 @@ class _SystemBackupUpgradeScreenState
     setState(() {
       _isProcessing = true;
       _uploadProgress = null;
-      _statusMessage = 'Performing factory reset on router...';
+      _statusMessage =
+          l10n?.backupStatusFactoryReset ??
+          'Performing factory reset on router...';
     });
 
     final appState = ref.read(appStateProvider);
@@ -992,11 +1044,15 @@ class _SystemBackupUpgradeScreenState
     if (!mounted) return;
     if (success) {
       context.showToastWarning(
-        'Factory reset initiated. Router is now rebooting...',
+        l10n?.sysUpgradeFactoryResetInitiated ??
+            'Factory reset initiated. Router is now rebooting...',
       );
       _showRebootCountdownDialog();
     } else {
-      context.showToastError('Failed to execute factory reset on router.');
+      context.showToastError(
+        l10n?.sysUpgradeFactoryResetFailed ??
+            'Failed to execute factory reset on router.',
+      );
     }
   }
 
@@ -1187,13 +1243,16 @@ class _SystemBackupUpgradeScreenState
 
   Future<void> _handleSaveMtdblock() async {
     if (_selectedMtdDevice == null) return;
+    final l10n = AppLocalizations.of(context);
     final dev = _selectedMtdDevice!;
     final filename = dev.split('/').last;
 
     setState(() {
       _isProcessing = true;
       _uploadProgress = 0.0;
-      _statusMessage = 'Dumping partition image ($dev)...';
+      _statusMessage =
+          l10n?.backupStatusDumpingPartition(dev) ??
+          'Dumping partition image ($dev)...';
     });
 
     final appState = ref.read(appStateProvider);
@@ -1238,14 +1297,18 @@ class _SystemBackupUpgradeScreenState
 
       if (saveResult != null) {
         unawaited(OsPlatformIntegration.triggerHaptic(OsHapticType.medium));
-        context.showToastSuccess('Partition image saved successfully.');
+        context.showToastSuccess(
+          l10n?.sysUpgradePartitionSaved ??
+              'Partition image saved successfully.',
+        );
         await OsPlatformIntegration.showBackupDownloadedPrompt(
           context,
           saveResult,
         );
       } else {
         context.showToastError(
-          'Failed to write partition image file to storage.',
+          l10n?.sysUpgradePartitionSaveFailed ??
+              'Failed to write partition image file to storage.',
         );
       }
     } catch (e, stack) {
@@ -1264,6 +1327,7 @@ class _SystemBackupUpgradeScreenState
   }
 
   Future<void> _handlePerformSysupgrade() async {
+    final l10n = AppLocalizations.of(context);
     try {
       PlatformFile? pickedFile;
       bool pickerAttempted = false;
@@ -1296,8 +1360,9 @@ class _SystemBackupUpgradeScreenState
       if (!isValidFirmware) {
         if (mounted) {
           context.showToastError(
-            'Invalid Firmware Format',
+            l10n?.sysUpgradeInvalidFirmwareFormat ?? 'Invalid Firmware Format',
             subtitle:
+                l10n?.sysUpgradeInvalidFirmwareFormatSubtitle ??
                 'Please select a valid OpenWrt firmware image (.bin, .img, .img.gz, .gz, or .trx).',
           );
         }
@@ -1337,7 +1402,9 @@ class _SystemBackupUpgradeScreenState
       setState(() {
         _isProcessing = true;
         _uploadProgress = 0.0;
-        _statusMessage = 'Uploading firmware image ($fileSizeMbStr MB)...';
+        _statusMessage =
+            l10n?.backupStatusUploadingFirmware(fileSizeMbStr) ??
+            'Uploading firmware image ($fileSizeMbStr MB)...';
       });
 
       final appState = ref.read(appStateProvider);
@@ -1371,7 +1438,9 @@ class _SystemBackupUpgradeScreenState
 
       // Pre-Flash Image Validation Check (`sysupgrade -t`)
       setState(() {
-        _statusMessage = 'Verifying image compatibility (sysupgrade -t)...';
+        _statusMessage =
+            l10n?.backupStatusVerifyingFirmware ??
+            'Verifying image compatibility (sysupgrade -t)...';
         _uploadProgress = null;
       });
 
@@ -1413,10 +1482,13 @@ class _SystemBackupUpgradeScreenState
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Firmware Pre-Flash Check',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    l10n?.sysUpgradePreFlashTitle ?? 'Firmware Pre-Flash Check',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -1452,8 +1524,10 @@ class _SystemBackupUpgradeScreenState
                             children: [
                               Text(
                                 isVerified
-                                    ? 'Image Verification Passed'
-                                    : 'Pre-Flash Test Unverified',
+                                    ? (l10n?.sysUpgradeImgVerified ??
+                                          'Image Verification Passed')
+                                    : (l10n?.sysUpgradeImgUnverified ??
+                                          'Pre-Flash Test Unverified'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: isVerified
@@ -1463,8 +1537,12 @@ class _SystemBackupUpgradeScreenState
                               ),
                               Text(
                                 isVerified
-                                    ? 'Firmware image matches target architecture for $_romFlavor.'
-                                    : 'sysupgrade -t test warning. Verify board compatibility before flashing.',
+                                    ? (l10n?.sysUpgradeImgVerifiedDesc(
+                                            _romFlavor,
+                                          ) ??
+                                          'Firmware image matches target architecture for $_romFlavor.')
+                                    : (l10n?.sysUpgradeImgUnverifiedDesc ??
+                                          'sysupgrade -t test warning. Verify board compatibility before flashing.'),
                                 style: const TextStyle(fontSize: 12),
                               ),
                             ],
@@ -1491,16 +1569,18 @@ class _SystemBackupUpgradeScreenState
                   ),
                   const Divider(height: 24),
                   CheckboxListTile(
-                    title: const Text(
-                      'Keep settings and current configuration (-k)',
-                      style: TextStyle(
+                    title: Text(
+                      l10n?.sysUpgradeKeepSettings ??
+                          'Keep settings and current configuration (-k)',
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: const Text(
-                      'Retain active network, Wi-Fi, and user credentials.',
-                      style: TextStyle(fontSize: 11),
+                    subtitle: Text(
+                      l10n?.sysUpgradeKeepSettingsDialogSubtitle ??
+                          'Retain active network, Wi-Fi, and user credentials.',
+                      style: const TextStyle(fontSize: 11),
                     ),
                     value: _keepSettings,
                     contentPadding: EdgeInsets.zero,
@@ -1512,17 +1592,18 @@ class _SystemBackupUpgradeScreenState
                     },
                   ),
                   CheckboxListTile(
-                    title: const Text(
-                      'Force upgrade (-F)',
-                      style: TextStyle(
+                    title: Text(
+                      l10n?.sysUpgradeForceSysupgrade ?? 'Force upgrade (-F)',
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Colors.redAccent,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: const Text(
-                      'Bypass board architecture validation (CAUTION!)',
-                      style: TextStyle(fontSize: 11),
+                    subtitle: Text(
+                      l10n?.sysUpgradeForceSysupgradeDesc ??
+                          'Bypass board architecture validation (CAUTION!)',
+                      style: const TextStyle(fontSize: 11),
                     ),
                     value: _forceSysupgrade,
                     contentPadding: EdgeInsets.zero,
@@ -1540,14 +1621,15 @@ class _SystemBackupUpgradeScreenState
                       color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.bolt, color: Colors.red, size: 20),
-                        SizedBox(width: 8),
+                        const Icon(Icons.bolt, color: Colors.red, size: 20),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'WARNING: Do NOT disconnect power or ethernet during the flashing process!',
-                            style: TextStyle(
+                            l10n?.sysUpgradeFlashWarning ??
+                                'WARNING: Do NOT disconnect power or ethernet during the flashing process!',
+                            style: const TextStyle(
                               fontSize: 11,
                               color: Colors.red,
                               fontWeight: FontWeight.bold,
@@ -1565,7 +1647,9 @@ class _SystemBackupUpgradeScreenState
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancel'),
+                child: Text(
+                  AppLocalizations.of(context)?.actionCancel ?? 'Cancel',
+                ),
               ),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
@@ -1577,7 +1661,10 @@ class _SystemBackupUpgradeScreenState
                 ),
                 onPressed: () => Navigator.of(ctx).pop(true),
                 icon: const Icon(Icons.flash_on),
-                label: const Text('Flash Firmware Now'),
+                label: Text(
+                  AppLocalizations.of(context)?.backupFlashFirmwareNow ??
+                      'Flash Firmware Now',
+                ),
               ),
             ],
           ),
@@ -1598,7 +1685,9 @@ class _SystemBackupUpgradeScreenState
       setState(() {
         _isProcessing = true;
         _uploadProgress = null;
-        _statusMessage = 'Executing sysupgrade flash on router...';
+        _statusMessage =
+            l10n?.backupStatusFlashing ??
+            'Executing sysupgrade flash on router...';
       });
 
       // Execute background sysupgrade so connection drop on router reboot doesn't throw false negative
@@ -1615,7 +1704,8 @@ class _SystemBackupUpgradeScreenState
       if (!mounted) return;
       if (flashInitiated) {
         context.showToastSuccess(
-          'Firmware flash initiated successfully. Router is rebooting.',
+          l10n?.sysUpgradeFlashInitiated ??
+              'Firmware flash initiated successfully. Router is rebooting.',
         );
         _showRebootCountdownDialog();
       } else {
@@ -1627,7 +1717,8 @@ class _SystemBackupUpgradeScreenState
         ]);
         if (mounted) {
           context.showToastSuccess(
-            'Firmware flash initiated successfully. Router is rebooting.',
+            l10n?.sysUpgradeFlashInitiated ??
+                'Firmware flash initiated successfully. Router is rebooting.',
           );
           _showRebootCountdownDialog();
         }
@@ -1638,12 +1729,13 @@ class _SystemBackupUpgradeScreenState
       if (e.toString().toLowerCase().contains('socket') ||
           e.toString().toLowerCase().contains('connection')) {
         context.showToastSuccess(
-          'Firmware flash initiated successfully. Router is rebooting.',
+          l10n?.sysUpgradeFlashInitiated ??
+              'Firmware flash initiated successfully. Router is rebooting.',
         );
         _showRebootCountdownDialog();
       } else {
         context.showToastError(
-          'Firmware Flash Failed: ${e.toString().replaceAll('Exception: ', '')}',
+          '${l10n?.sysUpgradeFlashFailed ?? "Firmware Flash Failed"}: ${e.toString().replaceAll('Exception: ', '')}',
         );
       }
     } finally {
@@ -1654,6 +1746,7 @@ class _SystemBackupUpgradeScreenState
   }
 
   void _showRebootCountdownDialog() {
+    final l10n = AppLocalizations.of(context);
     int remainingSeconds = 120;
     Timer? countdownTimer;
 
@@ -1661,6 +1754,7 @@ class _SystemBackupUpgradeScreenState
       context: context,
       isDismissible: false,
       enableDrag: false,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1676,35 +1770,47 @@ class _SystemBackupUpgradeScreenState
             }
           });
 
-          return Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 20),
-                const Text(
-                  'Router Rebooting & Flashing...',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          return SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 20),
+                    Text(
+                      l10n?.sysUpgradeRebooting ??
+                          'Router Rebooting & Flashing...',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      l10n?.sysUpgradeRebootWait(remainingSeconds) ??
+                          'Please wait while OpenWrt applies changes and restarts network services.\nEstimated time: ${remainingSeconds}s',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          countdownTimer?.cancel();
+                          Navigator.of(ctx).pop();
+                        },
+                        child: Text(
+                          l10n?.backupDismissReturnDashboard ??
+                              'Dismiss & Return to Dashboard',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  'Please wait while OpenWrt applies changes and restarts network services.\nEstimated time: ${remainingSeconds}s',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey, fontSize: 13),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      countdownTimer?.cancel();
-                      Navigator.of(ctx).pop();
-                    },
-                    child: const Text('Dismiss & Return to Dashboard'),
-                  ),
-                ),
-              ],
+              ),
             ),
           );
         },
@@ -1714,8 +1820,11 @@ class _SystemBackupUpgradeScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: const LuciAppBar(title: 'Backup / Flash Firmware'),
+      appBar: LuciAppBar(
+        title: l10n?.sysUpgradeTitle ?? 'Backup / Flash Firmware',
+      ),
       body: Stack(
         children: [
           _buildActionsView(context),
@@ -1744,7 +1853,10 @@ class _SystemBackupUpgradeScreenState
                             CircularProgressIndicator(value: _uploadProgress),
                             const SizedBox(height: 12),
                             Text(
-                              '${(_uploadProgress! * 100).toInt()}% uploaded',
+                              l10n?.sysUpgradeUploading(
+                                    (_uploadProgress! * 100).toInt(),
+                                  ) ??
+                                  '${(_uploadProgress! * 100).toInt()}% uploaded',
                               style: Theme.of(context).textTheme.titleSmall
                                   ?.copyWith(fontWeight: FontWeight.bold),
                             ),
@@ -1753,7 +1865,8 @@ class _SystemBackupUpgradeScreenState
                           ],
                           const SizedBox(height: 16),
                           Text(
-                            _statusMessage ?? 'Processing...',
+                            _statusMessage ??
+                                (l10n?.sysUpgradeProcessing ?? 'Processing...'),
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center,
@@ -1765,11 +1878,15 @@ class _SystemBackupUpgradeScreenState
                                 _isProcessing = false;
                               });
                               context.showToastInfo(
-                                'Operation overlay dismissed.',
+                                l10n?.sysUpgradeOverlayDismissed ??
+                                    'Operation overlay dismissed.',
                               );
                             },
                             icon: const Icon(Icons.close_rounded, size: 18),
-                            label: const Text('Cancel / Dismiss'),
+                            label: Text(
+                              l10n?.sysUpgradeBtnCancelDismiss ??
+                                  'Cancel / Dismiss',
+                            ),
                           ),
                         ],
                       ),
@@ -1784,13 +1901,15 @@ class _SystemBackupUpgradeScreenState
   }
 
   Widget _buildActionsView(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        const LuciContextualHintBanner(
+        LuciContextualHintBanner(
           hintId: 'backup_safety_advisory_hint',
-          title: 'Backup & Sysupgrade Guidance',
+          title: l10n?.sysUpgradeHintTitle ?? 'Backup & Sysupgrade Guidance',
           message:
+              l10n?.sysUpgradeHintDesc ??
               'Downloading a backup archive preserves your custom settings across firmware updates. Always double-check target architecture before flashing new images.',
           icon: Icons.shield_outlined,
           accentColor: Colors.teal,
@@ -1827,36 +1946,22 @@ class _SystemBackupUpgradeScreenState
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _routerModel,
+                        _routerModel == 'Detecting hardware...'
+                            ? (l10n?.detectingHardware ?? 'Detecting hardware…')
+                            : _routerModel,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.teal.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '/tmp Space: $_tmpAvailableSpace',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Row(
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -1879,22 +1984,33 @@ class _SystemBackupUpgradeScreenState
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Target Arch: $_targetArch',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
                       ),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${l10n?.sysUpgradeRamSpace ?? "/tmp Space"}: ${_resolveTmpSpace(l10n)}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${l10n?.sysUpgradeTargetArch ?? "Target Arch"}: $_targetArch',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Firmware Version: $_firmwareVersion',
+                  '${l10n?.sysUpgradeFirmwareVersion ?? "Firmware Version"}: $_firmwareVersion',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
@@ -1906,10 +2022,12 @@ class _SystemBackupUpgradeScreenState
 
         // 1. Backup Section
         _buildSectionCard(
-          title: 'Backup Configuration Archive',
+          title:
+              l10n?.sysUpgradeSectionBackup ?? 'Backup Configuration Archive',
           icon: Icons.archive_outlined,
           iconColor: Colors.teal,
           description:
+              l10n?.sysUpgradeGenerateBackupDesc ??
               'Generate and download a tar.gz archive of your router\'s system configurations, passwords, and custom scripts.',
           actionWidget: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1925,7 +2043,10 @@ class _SystemBackupUpgradeScreenState
                 ),
                 onPressed: _isProcessing ? null : _handleGenerateBackup,
                 icon: const Icon(Icons.download),
-                label: const Text('Generate & Download Backup Archive'),
+                label: Text(
+                  l10n?.sysUpgradeBtnDownloadBackup ??
+                      'Generate & Download Backup Archive',
+                ),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
@@ -1938,7 +2059,10 @@ class _SystemBackupUpgradeScreenState
                 ),
                 onPressed: _isProcessing ? null : _showCurrentBackupFileList,
                 icon: const Icon(Icons.list_alt),
-                label: const Text('View Preserved Backup File List'),
+                label: Text(
+                  l10n?.sysUpgradeBtnCustomize ??
+                      'View Preserved Backup File List',
+                ),
               ),
             ],
           ),
@@ -1948,10 +2072,11 @@ class _SystemBackupUpgradeScreenState
 
         // 2. Restore Section
         _buildSectionCard(
-          title: 'Restore & Reset Settings',
+          title: l10n?.sysUpgradeRestoreBackup ?? 'Restore & Reset Settings',
           icon: Icons.restore_outlined,
           iconColor: Colors.redAccent,
           description:
+              l10n?.sysUpgradeRestoreBackupDesc ??
               'Upload a backup archive to restore settings, or perform a complete factory reset to return firmware to default state.',
           actionWidget: Row(
             children: [
@@ -1965,7 +2090,9 @@ class _SystemBackupUpgradeScreenState
                     ),
                   ),
                   onPressed: _isProcessing ? null : _handleFactoryReset,
-                  child: const Text('Perform Reset'),
+                  child: Text(
+                    l10n?.sysUpgradeBtnPerformReset ?? 'Perform Reset',
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1980,7 +2107,9 @@ class _SystemBackupUpgradeScreenState
                   ),
                   onPressed: _isProcessing ? null : _handleUploadArchive,
                   icon: const Icon(Icons.upload_file),
-                  label: const Text('Upload Archive...'),
+                  label: Text(
+                    l10n?.sysUpgradeBtnUploadArchive ?? 'Upload Archive...',
+                  ),
                 ),
               ),
             ],
@@ -1989,63 +2118,94 @@ class _SystemBackupUpgradeScreenState
 
         const SizedBox(height: 16),
 
-        const SizedBox(height: 16),
-
         // 3. Save mtdblock contents (Collapsible by default)
         LuciCollapsibleCard(
-          title: 'Save Partition (mtdblock) Image',
-          subtitle: 'Low-level partition dumps (bootloader, art, firmware)',
+          title:
+              l10n?.sysUpgradeMtdBlockSection ??
+              'Save Partition (mtdblock) Image',
+          subtitle:
+              l10n?.sysUpgradeMtdBlockDesc ??
+              'Low-level partition dumps (bootloader, art, firmware)',
           icon: Icons.sd_storage_outlined,
           iconColor: Colors.amber.shade800,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Download raw partition dumps for low-level system recovery. (ADVANCED USERS ONLY)',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+              Text(
+                l10n?.sysUpgradeMtdBlockDesc ??
+                    'Download raw partition dumps for low-level system recovery. (ADVANCED USERS ONLY)',
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
               ),
               const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _selectedMtdDevice,
-                      decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 480;
+                  final dropdown = DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    isDense: true,
+                    initialValue: _selectedMtdDevice,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
                       ),
-                      items: _mtdList.map((m) {
-                        return DropdownMenuItem<String>(
-                          value: m['device'],
-                          child: Text(
-                            m['name']!,
-                            style: const TextStyle(fontSize: 13),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (val) =>
-                          setState(() => _selectedMtdDevice = val),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
+                    items: _mtdList.map((m) {
+                      return DropdownMenuItem<String>(
+                        value: m['device'],
+                        child: Text(
+                          m['name']!,
+                          style: const TextStyle(fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) =>
+                        setState(() => _selectedMtdDevice = val),
+                  );
+
+                  final actionButton = ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber.shade800,
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
+                    icon: const Icon(Icons.download_rounded, size: 18),
                     onPressed: _isProcessing ? null : _handleSaveMtdblock,
-                    child: const Text('Save mtdblock'),
-                  ),
-                ],
+                    label: Text(
+                      l10n?.sysUpgradeBtnBackupPartition ?? 'Save mtdblock',
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        dropdown,
+                        const SizedBox(height: 10),
+                        actionButton,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: dropdown),
+                      const SizedBox(width: 12),
+                      actionButton,
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -2055,22 +2215,29 @@ class _SystemBackupUpgradeScreenState
 
         // 4. Flash new firmware image (Collapsible by default)
         LuciCollapsibleCard(
-          title: 'Flash New Firmware Image',
-          subtitle: 'Sysupgrade firmware upgrade (.bin, .img.gz, .tar.gz)',
+          title: l10n?.sysUpgradeSectionFlash ?? 'Flash New Firmware Image',
+          subtitle:
+              l10n?.sysUpgradeFlashSubtitle ??
+              'Sysupgrade firmware upgrade (.bin, .img.gz, .tar.gz)',
           icon: Icons.system_update_alt,
           iconColor: Colors.blue,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Upload a sysupgrade-compatible firmware image to upgrade or replace running OpenWrt firmware.',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+              Text(
+                l10n?.sysUpgradeKeepSettingsDesc ??
+                    'Upload a sysupgrade-compatible firmware image to upgrade or replace running OpenWrt firmware.',
+                style: const TextStyle(fontSize: 13, color: Colors.grey),
               ),
               const SizedBox(height: 14),
               CheckboxListTile(
-                title: const Text(
-                  'Keep settings and current configuration (-k)',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                title: Text(
+                  l10n?.sysUpgradeKeepSettings ??
+                      'Keep settings and current configuration (-k)',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 value: _keepSettings,
                 onChanged: _isProcessing
@@ -2093,7 +2260,10 @@ class _SystemBackupUpgradeScreenState
                   ),
                   onPressed: _isProcessing ? null : _handlePerformSysupgrade,
                   icon: const Icon(Icons.flash_on),
-                  label: const Text('Flash Firmware Image...'),
+                  label: Text(
+                    l10n?.sysUpgradeBtnSelectFirmware ??
+                        'Flash Firmware Image...',
+                  ),
                 ),
               ),
             ],
