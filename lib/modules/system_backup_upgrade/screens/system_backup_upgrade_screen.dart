@@ -282,49 +282,25 @@ class _SystemBackupUpgradeScreenState
     AppState appState,
     String filePath,
   ) async {
-    // Strategy 0: Native LuCI RPC chunked file.read with base64 (0 shell processes, 100% ubus ACL compliant)
+    // Strategy 0: Native LuCI RPC file.read with base64 & maxsize (100% ubus ACL compliant, 0 shell processes)
     try {
-      final List<int> accumulatedBytes = [];
-      const chunkSize = 32768; // 32 KB per chunk
-      int offset = 0;
-      int emptyCount = 0;
+      final res = await appState.callRpc('file', 'read', {
+        'path': filePath,
+        'base64': true,
+        'maxsize':
+            10 * 1024 * 1024, // Read up to 10 MB in a single RPC roundtrip
+      });
 
-      while (offset < 50 * 1024 * 1024) {
-        // Cap at 50 MB
-        final res = await appState.callRpc('file', 'read', {
-          'path': filePath,
-          'offset': offset,
-          'length': chunkSize,
-          'base64': true,
-        });
-
-        final dataStr = _extractDataStringFromRpcResult(res);
-        final chunkBytes = _parseRawOutputToBytes(dataStr);
-        if (chunkBytes != null && chunkBytes.isNotEmpty) {
-          accumulatedBytes.addAll(chunkBytes);
-          offset += chunkBytes.length;
-          emptyCount = 0;
-          if (chunkBytes.length < chunkSize) {
-            break; // Reached EOF
-          }
-          continue;
-        }
-
-        emptyCount++;
-        if (emptyCount >= 2) break;
-        offset += chunkSize;
-      }
-
-      if (accumulatedBytes.isNotEmpty) {
+      final dataStr = _extractDataStringFromRpcResult(res);
+      final chunkBytes = _parseRawOutputToBytes(dataStr);
+      if (chunkBytes != null && chunkBytes.isNotEmpty) {
         Logger.info(
-          'Read $filePath via chunked file.read RPC: ${accumulatedBytes.length} bytes',
+          'Read $filePath via file.read RPC: ${chunkBytes.length} bytes',
         );
-        return Uint8List.fromList(accumulatedBytes);
+        return chunkBytes;
       }
     } catch (e) {
-      Logger.warning(
-        'Strategy 0 chunked file.read RPC failed for $filePath: $e',
-      );
+      Logger.warning('Strategy 0 file.read RPC failed for $filePath: $e');
     }
 
     // Method 1: Single base64 shell command
@@ -450,60 +426,105 @@ class _SystemBackupUpgradeScreenState
     final useHttps = appState.selectedRouter?.useHttps ?? false;
     final scheme = useHttps ? 'https' : 'http';
 
+    // The official OpenWrt/LuCI standard backup endpoint is /cgi-bin/cgi-backup.
+    // It accepts a POST with application/x-www-form-urlencoded sessionid=<sysauth>
+    // and streams the complete configuration tar.gz archive directly.
     final candidateUrls = [
-      '$scheme://$ip/cgi-bin/luci/admin/system/backup',
+      '$scheme://$ip/cgi-bin/cgi-backup',
+      '$scheme://$ip/cgi-backup',
+      '$scheme://$ip/luci/cgi-bin/cgi-backup',
       '$scheme://$ip/cgi-bin/luci/admin/system/flashops/backup',
-      '$scheme://$ip/cgi-bin/luci/admin/system/backup/backup',
       '$scheme://$ip/cgi-bin/luci/;stok=$sysauth/admin/system/backup',
       '$scheme://$ip/cgi-bin/luci/;stok=$sysauth/admin/system/flashops/backup',
-      '$scheme://$ip/cgi-bin/luci/admin/system/flashops?backup=1',
     ];
 
-    for (final urlStr in candidateUrls) {
-      // Try GET request first
-      try {
-        final client = HttpClient();
-        client.badCertificateCallback = (cert, host, port) => true;
-        client.connectionTimeout = const Duration(seconds: 10);
-        final request = await client.getUrl(Uri.parse(urlStr));
-        request.headers.add('Cookie', 'sysauth=$sysauth');
-        request.headers.add('User-Agent', 'Mozilla/5.0');
-        final response = await request.close();
-        if (response.statusCode == 200) {
-          final bytes = await response.fold<List<int>>(
-            [],
-            (previous, element) => previous..addAll(element),
-          );
-          if (bytes.isNotEmpty) {
-            return Uint8List.fromList(bytes);
-          }
-        }
-      } catch (_) {}
+    final bodyStr = 'sessionid=${Uri.encodeQueryComponent(sysauth)}';
+    final bodyBytes = utf8.encode(bodyStr);
 
-      // Try POST request fallback
+    for (final urlStr in candidateUrls) {
+      // 1. Try POST with application/x-www-form-urlencoded and explicit Content-Length (Native LuCI cgi-backup protocol)
       try {
         final client = HttpClient();
         client.badCertificateCallback = (cert, host, port) => true;
-        client.connectionTimeout = const Duration(seconds: 10);
-        final request = await client.postUrl(Uri.parse(urlStr));
-        request.headers.add('Cookie', 'sysauth=$sysauth');
-        request.headers.add('User-Agent', 'Mozilla/5.0');
-        request.headers.contentType = ContentType(
-          'application',
-          'x-www-form-urlencoded',
-        );
-        request.write('backup=1');
-        final response = await request.close();
-        if (response.statusCode == 200) {
-          final bytes = await response.fold<List<int>>(
-            [],
-            (previous, element) => previous..addAll(element),
+        client.connectionTimeout = const Duration(seconds: 5);
+        try {
+          final request = await client.postUrl(Uri.parse(urlStr));
+          request.headers.contentType = ContentType(
+            'application',
+            'x-www-form-urlencoded',
           );
-          if (bytes.isNotEmpty) {
-            return Uint8List.fromList(bytes);
+          request.headers.add(
+            'Cookie',
+            'sysauth=$sysauth; sysauth_http=$sysauth; sysauth_https=$sysauth',
+          );
+          request.headers.add(
+            'User-Agent',
+            'Mozilla/5.0 (YALA OpenWrt Manager)',
+          );
+          // Explicit Content-Length is required by cgi-io postdecode to avoid 400 Invalid form data
+          request.contentLength = bodyBytes.length;
+          request.add(bodyBytes);
+
+          final response = await request.close().timeout(
+            const Duration(seconds: 15),
+          );
+          if (response.statusCode == 200) {
+            final chunks = <int>[];
+            await for (final chunk in response) {
+              chunks.addAll(chunk);
+            }
+            final resBytes = Uint8List.fromList(chunks);
+            if (resBytes.isNotEmpty && _validateBackupArchiveBytes(resBytes)) {
+              Logger.info(
+                'Successfully downloaded backup archive via HTTP POST to $urlStr (${resBytes.length} bytes)',
+              );
+              return resBytes;
+            }
           }
+        } finally {
+          client.close(force: true);
         }
-      } catch (_) {}
+      } catch (e) {
+        Logger.debug('POST backup request to $urlStr failed: $e');
+      }
+
+      // 2. Try GET request fallback for older LuCI versions
+      try {
+        final client = HttpClient();
+        client.badCertificateCallback = (cert, host, port) => true;
+        client.connectionTimeout = const Duration(seconds: 4);
+        try {
+          final request = await client.getUrl(Uri.parse(urlStr));
+          request.headers.add(
+            'Cookie',
+            'sysauth=$sysauth; sysauth_http=$sysauth; sysauth_https=$sysauth',
+          );
+          request.headers.add(
+            'User-Agent',
+            'Mozilla/5.0 (YALA OpenWrt Manager)',
+          );
+          final response = await request.close().timeout(
+            const Duration(seconds: 10),
+          );
+          if (response.statusCode == 200) {
+            final chunks = <int>[];
+            await for (final chunk in response) {
+              chunks.addAll(chunk);
+            }
+            final resBytes = Uint8List.fromList(chunks);
+            if (resBytes.isNotEmpty && _validateBackupArchiveBytes(resBytes)) {
+              Logger.info(
+                'Successfully downloaded backup archive via HTTP GET to $urlStr (${resBytes.length} bytes)',
+              );
+              return resBytes;
+            }
+          }
+        } finally {
+          client.close(force: true);
+        }
+      } catch (e) {
+        Logger.debug('GET backup request to $urlStr failed: $e');
+      }
     }
     return null;
   }
@@ -522,35 +543,65 @@ class _SystemBackupUpgradeScreenState
     try {
       Uint8List? bytes;
 
-      // Strategy 1: Create backup archive on router & read via chunked RPC file.read
+      // Strategy 1: Native OpenWrt / LuCI cgi-backup HTTP Endpoint (Instant, 0 shell execution, official standard)
       Logger.info(
-        'Backup Strategy 1: Creating /tmp/app_backup.tar.gz and reading via chunked RPC...',
+        'Backup Strategy 1: Downloading via LuCI cgi-backup HTTP endpoint...',
       );
-      await appState.executeRouterCommand('sh', [
-        '-c',
-        'sysupgrade -b /tmp/app_backup.tar.gz 2>/dev/null || tar -czf /tmp/app_backup.tar.gz -C / etc/config etc/passwd etc/shadow etc/dropbear etc/uhttpd etc/dnsmasq.conf etc/sysupgrade.conf etc/uci-defaults 2>/dev/null',
-      ]);
-      bytes = await _readRouterFileAsBytes(appState, '/tmp/app_backup.tar.gz');
-      unawaited(
-        appState.executeRouterCommand('rm', ['-f', '/tmp/app_backup.tar.gz']),
-      );
-
+      bytes = await _downloadBackupViaHttp(appState);
       if (bytes != null && bytes.isNotEmpty) {
         if (_validateBackupArchiveBytes(bytes)) {
           Logger.info(
-            'Backup Strategy 1 succeeded: ${bytes.length} bytes downloaded',
+            'Backup Strategy 1 (LuCI cgi-backup) succeeded: ${bytes.length} bytes downloaded',
           );
         } else {
           Logger.warning(
-            'Backup Strategy 1 generated invalid/corrupt payload. Retrying with next strategy...',
+            'Backup Strategy 1 returned invalid archive bytes, falling back...',
           );
           bytes = null;
         }
       }
 
-      // Strategy 2: Direct single-command generation + Base64 piping to stdout
+      // Strategy 2: Create backup archive on router & read via RPC/file
       if (bytes == null || bytes.isEmpty) {
-        Logger.info('Backup Strategy 2: Single-command stream to base64...');
+        Logger.info(
+          'Backup Strategy 2: Creating /tmp/app_backup.tar.gz and reading via RPC/file...',
+        );
+        setState(() {
+          _statusMessage =
+              l10n?.backupStatusGenerating ??
+              'Generating configuration backup on router...';
+        });
+
+        await appState.executeRouterCommand('sh', [
+          '-c',
+          'sysupgrade -b /tmp/app_backup.tar.gz 2>/dev/null || tar -czf /tmp/app_backup.tar.gz -C / etc/config etc/passwd etc/shadow etc/dropbear etc/uhttpd etc/dnsmasq.conf etc/sysupgrade.conf etc/uci-defaults 2>/dev/null',
+        ]);
+
+        bytes = await _readRouterFileAsBytes(
+          appState,
+          '/tmp/app_backup.tar.gz',
+        );
+        unawaited(
+          appState.executeRouterCommand('rm', ['-f', '/tmp/app_backup.tar.gz']),
+        );
+
+        if (bytes != null && bytes.isNotEmpty) {
+          if (_validateBackupArchiveBytes(bytes)) {
+            Logger.info(
+              'Backup Strategy 2 succeeded: ${bytes.length} bytes downloaded',
+            );
+          } else {
+            Logger.warning(
+              'Backup Strategy 2 generated invalid payload, falling back...',
+            );
+            bytes = null;
+          }
+        }
+      }
+
+      // Strategy 3: Direct single-command stream to Base64 (sysupgrade -b - | base64)
+      if (bytes == null || bytes.isEmpty) {
+        Logger.info('Backup Strategy 3: Single-command stream to base64...');
         final directB64 = await appState.executeRouterCommandOutput('sh', [
           '-c',
           'sysupgrade -b - 2>/dev/null | base64 || (sysupgrade -b /tmp/b.tgz 2>/dev/null && base64 /tmp/b.tgz && rm -f /tmp/b.tgz) || tar -czf - -C / etc/config etc/passwd etc/shadow etc/dropbear etc/uhttpd etc/dnsmasq.conf etc/sysupgrade.conf etc/uci-defaults 2>/dev/null | base64',
@@ -567,28 +618,12 @@ class _SystemBackupUpgradeScreenState
             if (decoded.isNotEmpty && _validateBackupArchiveBytes(decoded)) {
               bytes = decoded;
               Logger.info(
-                'Backup Strategy 2 succeeded: ${bytes.length} bytes downloaded',
+                'Backup Strategy 3 succeeded: ${bytes.length} bytes downloaded',
               );
             }
           } catch (e) {
-            Logger.warning('Backup Strategy 2 decode error: $e');
+            Logger.warning('Backup Strategy 3 decode error: $e');
           }
-        }
-      }
-
-      // Strategy 3: Direct HTTP/HTTPS download from LuCI backup endpoints
-      if (bytes == null || bytes.isEmpty) {
-        Logger.info(
-          'Backup Strategy 3: Downloading via LuCI HTTP endpoints...',
-        );
-        final httpBytes = await _downloadBackupViaHttp(appState);
-        if (httpBytes != null &&
-            httpBytes.isNotEmpty &&
-            _validateBackupArchiveBytes(httpBytes)) {
-          bytes = httpBytes;
-          Logger.info(
-            'Backup Strategy 3 succeeded: ${bytes.length} bytes downloaded',
-          );
         }
       }
 
@@ -657,8 +692,19 @@ class _SystemBackupUpgradeScreenState
         }
       }
 
-      final fileName =
-          'backup-${DateTime.now().millisecondsSinceEpoch ~/ 1000}.tar.gz';
+      final now = DateTime.now();
+      final dateStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final routerName =
+          (appState.selectedRouter?.name ??
+                  appState.selectedRouter?.ipAddress ??
+                  'openwrt')
+              .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_');
+      final isArchive = _validateBackupArchiveBytes(bytes);
+      final extension = isArchive
+          ? 'tar.gz'
+          : (bytes.isNotEmpty && bytes[0] == 0x7B ? 'json' : 'uci');
+      final fileName = 'backup-$routerName-$dateStr.$extension';
 
       // Save directly to /storage/emulated/0/Download/ (Public Downloads)
       final saveResult =
@@ -849,7 +895,7 @@ class _SystemBackupUpgradeScreenState
       const chunkSize = 8000;
       await appState.executeRouterCommand('sh', [
         '-c',
-        'rm -f /tmp/uploaded_backup.tar.gz.b64 /tmp/uploaded_backup.tar.gz',
+        'rm -f /tmp/backup.tar.gz.b64 /tmp/backup.tar.gz',
       ]);
       for (var i = 0; i < b64Str.length; i += chunkSize) {
         final end = (i + chunkSize < b64Str.length)
@@ -858,7 +904,7 @@ class _SystemBackupUpgradeScreenState
         final chunk = b64Str.substring(i, end);
         await appState.executeRouterCommand('sh', [
           '-c',
-          'echo -n "$chunk" >> /tmp/uploaded_backup.tar.gz.b64',
+          'echo -n "$chunk" >> /tmp/backup.tar.gz.b64',
         ]);
         if (mounted) {
           setState(() {
@@ -869,7 +915,7 @@ class _SystemBackupUpgradeScreenState
 
       await appState.executeRouterCommand('sh', [
         '-c',
-        'base64 -d /tmp/uploaded_backup.tar.gz.b64 > /tmp/uploaded_backup.tar.gz 2>/dev/null || openssl base64 -d -in /tmp/uploaded_backup.tar.gz.b64 -out /tmp/uploaded_backup.tar.gz 2>/dev/null || uudecode -o /tmp/uploaded_backup.tar.gz /tmp/uploaded_backup.tar.gz.b64 2>/dev/null && rm -f /tmp/uploaded_backup.tar.gz.b64',
+        'base64 -d /tmp/backup.tar.gz.b64 > /tmp/backup.tar.gz 2>/dev/null || openssl base64 -d -in /tmp/backup.tar.gz.b64 -out /tmp/backup.tar.gz 2>/dev/null || uudecode -o /tmp/backup.tar.gz /tmp/backup.tar.gz.b64 2>/dev/null && rm -f /tmp/backup.tar.gz.b64',
       ]);
 
       setState(() {
@@ -878,14 +924,21 @@ class _SystemBackupUpgradeScreenState
         _uploadProgress = null;
       });
 
-      final restoreSuccess = await appState.executeRouterCommand('sysupgrade', [
-        '-r',
-        '/tmp/uploaded_backup.tar.gz',
+      // Try official OpenWrt rpcd ACL-permitted command first: /sbin/sysupgrade --restore-backup /tmp/backup.tar.gz
+      var restoreSuccess = await appState.executeRouterCommand('sysupgrade', [
+        '--restore-backup',
+        '/tmp/backup.tar.gz',
       ]);
+      if (!restoreSuccess) {
+        restoreSuccess = await appState.executeRouterCommand('sysupgrade', [
+          '-r',
+          '/tmp/backup.tar.gz',
+        ]);
+      }
       final fallbackSuccess = !restoreSuccess
           ? await appState.executeRouterCommand('tar', [
               '-xzf',
-              '/tmp/uploaded_backup.tar.gz',
+              '/tmp/backup.tar.gz',
               '-C',
               '/',
             ])
@@ -1115,62 +1168,75 @@ class _SystemBackupUpgradeScreenState
 
       final candidates = [blockDev, dev];
 
-      // Strategy 0: Native LuCI file.read RPC with base64 encoding (100% ubus ACL compliant, 0 shell commands)
-      for (final targetDev in candidates) {
-        try {
-          Logger.info(
-            'MTD Dump Strategy 0 (Native file.read RPC with base64): $targetDev...',
-          );
-          final accumulated = <int>[];
-          const chunkSize = 65536; // 64 KB per chunk
-          int offset = 0;
-          int emptyCount = 0;
+      // Strategy 0: Native LuCI cgi-download HTTP endpoint (Instant streaming, 0 shell commands, 100% ACL compliant)
+      final ip = appState.selectedRouter?.ipAddress;
+      final sysauth = appState.sysauth;
+      final useHttps = appState.selectedRouter?.useHttps ?? false;
+      final scheme = useHttps ? 'https' : 'http';
 
-          while (offset < (expectedSize ?? 128 * 1024 * 1024)) {
-            final fetchSize =
-                (expectedSize != null && (expectedSize - offset) < chunkSize)
-                ? (expectedSize - offset)
-                : chunkSize;
-
-            final res = await appState.callRpc('file', 'read', {
-              'path': targetDev,
-              'offset': offset,
-              'length': fetchSize,
-              'base64': true,
-            });
-
-            final dataStr = _extractDataStringFromRpcResult(res);
-
-            final chunkBytes = _parseRawOutputToBytes(dataStr);
-            if (chunkBytes != null && chunkBytes.isNotEmpty) {
-              accumulated.addAll(chunkBytes);
-              offset += chunkBytes.length;
-              emptyCount = 0;
-              if (onProgress != null) {
-                onProgress(accumulated.length, expectedSize);
-              }
-              if (expectedSize != null && accumulated.length >= expectedSize) {
-                break;
-              }
-              if (chunkBytes.length < fetchSize) {
-                break; // Partial chunk indicates EOF
-              }
-              continue;
-            }
-
-            emptyCount++;
-            if (emptyCount >= 2) break;
-            offset += chunkSize;
-          }
-
-          if (accumulated.isNotEmpty) {
+      if (ip != null && sysauth != null) {
+        for (final targetDev in candidates) {
+          try {
             Logger.info(
-              'MTD Dump Strategy 0 succeeded: ${accumulated.length} bytes read from $targetDev',
+              'MTD Dump Strategy 0 (Native LuCI cgi-download): $targetDev...',
             );
-            return Uint8List.fromList(accumulated);
-          }
-        } catch (e) {
-          Logger.info('MTD Dump Strategy 0 failed on $targetDev: $e');
+            final candidateUrls = [
+              '$scheme://$ip/cgi-bin/cgi-download',
+              '$scheme://$ip/cgi-download',
+              '$scheme://$ip/luci/cgi-bin/cgi-download',
+            ];
+            final devBasename = targetDev.split('/').last;
+            final postBody =
+                'sessionid=${Uri.encodeQueryComponent(sysauth)}&path=${Uri.encodeQueryComponent(targetDev)}&filename=${Uri.encodeQueryComponent("$devBasename.bin")}&mimetype=application/octet-stream';
+            final postBytes = utf8.encode(postBody);
+
+            for (final urlStr in candidateUrls) {
+              try {
+                final client = HttpClient();
+                client.badCertificateCallback = (cert, host, port) => true;
+                client.connectionTimeout = const Duration(seconds: 5);
+                try {
+                  final request = await client.postUrl(Uri.parse(urlStr));
+                  request.headers.contentType = ContentType(
+                    'application',
+                    'x-www-form-urlencoded',
+                  );
+                  request.headers.add(
+                    'Cookie',
+                    'sysauth=$sysauth; sysauth_http=$sysauth; sysauth_https=$sysauth',
+                  );
+                  request.headers.add(
+                    'User-Agent',
+                    'Mozilla/5.0 (YALA OpenWrt Manager)',
+                  );
+                  request.contentLength = postBytes.length;
+                  request.add(postBytes);
+
+                  final response = await request.close().timeout(
+                    const Duration(seconds: 30),
+                  );
+                  if (response.statusCode == 200) {
+                    final chunks = <int>[];
+                    await for (final chunk in response) {
+                      chunks.addAll(chunk);
+                      if (onProgress != null) {
+                        onProgress(chunks.length, expectedSize);
+                      }
+                    }
+                    final mtdBytes = Uint8List.fromList(chunks);
+                    if (mtdBytes.isNotEmpty) {
+                      Logger.info(
+                        'MTD Dump Strategy 0 succeeded: ${mtdBytes.length} bytes downloaded from $targetDev',
+                      );
+                      return mtdBytes;
+                    }
+                  }
+                } finally {
+                  client.close(force: true);
+                }
+              } catch (_) {}
+            }
+          } catch (_) {}
         }
       }
 

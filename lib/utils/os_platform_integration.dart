@@ -187,6 +187,36 @@ class OsPlatformIntegration {
   }) async {
     if (kIsWeb) return null;
 
+    // iOS Fast-Path: Save directly to Application Documents Directory.
+    // When UIFileSharingEnabled and LSSupportsOpeningDocumentsInPlace are enabled in Info.plist,
+    // this directory is native-Files-app accessible under "On My iPhone" -> "Yet Another LuCI App".
+    if (Platform.isIOS) {
+      try {
+        final docsDir = await getApplicationDocumentsDirectory();
+        if (!docsDir.existsSync()) docsDir.createSync(recursive: true);
+        final file = File('${docsDir.path}/$fileName');
+        await file.writeAsBytes(bytes, flush: true);
+        return FileSaveResult(
+          filePath: file.path,
+          isPublicDownloads: true,
+          storageMethodLabel: 'Files App (On My iPhone / iPad)',
+        );
+      } catch (_) {
+        try {
+          final tempDir = await getTemporaryDirectory();
+          if (!tempDir.existsSync()) tempDir.createSync(recursive: true);
+          final file = File('${tempDir.path}/$fileName');
+          await file.writeAsBytes(bytes, flush: true);
+          return FileSaveResult(
+            filePath: file.path,
+            isPublicDownloads: false,
+            storageMethodLabel: 'Temporary Storage',
+          );
+        } catch (_) {}
+        return null;
+      }
+    }
+
     // Tier 1: Public Downloads Directory (/storage/emulated/0/Download)
     try {
       Directory? targetDir = Directory('/storage/emulated/0/Download');
@@ -405,11 +435,14 @@ class OsPlatformIntegration {
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  saveResult.isPublicDownloads
-                                      ? (l10n?.backupPublicDownloadsFolder ??
-                                            saveResult.storageMethodLabel)
-                                      : (l10n?.backupPrivateAppStorage ??
-                                            saveResult.storageMethodLabel),
+                                  Platform.isIOS
+                                      ? saveResult.storageMethodLabel
+                                      : (saveResult.isPublicDownloads
+                                            ? (l10n?.backupPublicDownloadsFolder ??
+                                                  saveResult.storageMethodLabel)
+                                            : (l10n?.backupPrivateAppStorage ??
+                                                  saveResult
+                                                      .storageMethodLabel)),
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
@@ -453,6 +486,37 @@ class OsPlatformIntegration {
                   ),
                 ),
               ),
+              if (Platform.isIOS) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: accentColor.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: accentColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Accessible in the Files app under: On My iPhone/iPad > Yet Another LuCI App',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
