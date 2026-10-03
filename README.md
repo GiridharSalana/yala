@@ -4,7 +4,7 @@
   <img src="assets/images/app_logo_transparent.png" width="120" alt="App Logo" />
   <h2>Modern OpenWrt & LuCI Router Manager</h2>
 
-  [![Version](https://img.shields.io/badge/Version-v2.1.1-blue.svg?style=for-the-badge&logo=github)](https://github.com/GiridharSalana/yala/releases)
+  [![Version](https://img.shields.io/badge/Version-v2.1.2-blue.svg?style=for-the-badge&logo=github)](https://github.com/GiridharSalana/yala/releases)
   [![Downloads](https://img.shields.io/github/downloads/GiridharSalana/yala/total.svg?style=for-the-badge&logo=github&color=blue)](https://github.com/GiridharSalana/yala/releases)
   [![Page Views](https://komarev.com/ghpvc/?username=GiridharSalana-yala&label=Page%20Views&color=0175C2&style=for-the-badge)](https://github.com/GiridharSalana/yala)
   [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20(Beta)-3DDC84?style=for-the-badge&logo=android&logoColor=white)]()
@@ -457,8 +457,8 @@ This is a **personal fork**: builds are for my own devices only. I install APKs 
 **To create a release:**
 1. Bump `version` in `pubspec.yaml`, commit, and push to `main` (CI runs automatically).
 2. Either:
-   - **Tag push (recommended):** `git tag v2.1.1 && git push origin v2.1.1` — the **Release** workflow runs and publishes APKs/AAB to GitHub Releases.
-   - **Manual:** Actions → **Release** → **Run workflow** on `main` and set **version** to the tag (e.g. `v2.1.1`).
+   - **Tag push (recommended):** `git tag v2.1.2 && git push origin v2.1.2` — **Release** runs for that tag only (pushing `main` alone does not release). Use a **new** tag each time; re-pushing an existing tag does nothing unless you move it with `git push --force origin v2.1.2`.
+   - **Manual:** Actions → **Release** → **Run workflow** on `main` and set **version** to the tag (e.g. `v2.1.2`) to rebuild and attach APKs to an existing release.
 
 **GitHub Actions secrets** (repo → Settings → Secrets and variables → Actions):
 
