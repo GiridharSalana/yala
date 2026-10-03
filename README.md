@@ -1,34 +1,34 @@
-# YALA (Yala)
+# Yala
 
 <div align="center">
   <img src="assets/images/app_logo_transparent.png" width="120" alt="App Logo" />
   <h2>Modern OpenWrt & LuCI Router Manager</h2>
 
-  [![Version](https://img.shields.io/badge/Version-v2.1.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/nightcodex7/yala/releases)
-  [![Downloads](https://img.shields.io/github/downloads/nightcodex7/yala/total.svg?style=for-the-badge&logo=github&color=blue)](https://github.com/nightcodex7/yala/releases)
-  [![Page Views](https://komarev.com/ghpvc/?username=nightcodex7-yala&label=Page%20Views&color=0175C2&style=for-the-badge)](https://github.com/nightcodex7/yala)
+  [![Version](https://img.shields.io/badge/Version-v2.1.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/GiridharSalana/yala/releases)
+  [![Downloads](https://img.shields.io/github/downloads/GiridharSalana/yala/total.svg?style=for-the-badge&logo=github&color=blue)](https://github.com/GiridharSalana/yala/releases)
+  [![Page Views](https://komarev.com/ghpvc/?username=GiridharSalana-yala&label=Page%20Views&color=0175C2&style=for-the-badge)](https://github.com/GiridharSalana/yala)
   [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20(Beta)-3DDC84?style=for-the-badge&logo=android&logoColor=white)]()
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](LICENSE)
-  [![Build Status](https://img.shields.io/badge/Build-Passing-teal.svg?style=for-the-badge)]()
+  [![Build Status](https://img.shields.io/badge/Build-Passing-teal.svg?style=for-the-badge)](https://github.com/GiridharSalana/yala/actions)
   [![OpenWrt](https://img.shields.io/badge/OpenWrt-19.07--25.x-1589F0?style=for-the-badge&logo=openwrt&logoColor=white)](https://openwrt.org)
 
   <br>
 
-  <a href="https://play.google.com/store/apps/details?id=com.nightcode.luci&referrer=utm_source%3Dgithub%26utm_medium%3Dreadme%26utm_campaign%3Dplay_badge">
-    <img src="store-badges/google.webp" alt="Get it on Google Play" height="60" />
+  <a href="https://github.com/GiridharSalana/yala/releases/latest">
+    <img src="store-badges/github.webp" alt="Get it on GitHub" height="60" />
   </a>
   &nbsp;&nbsp;
-  <a href="https://github.com/nightcodex7/yala/releases/latest">
-    <img src="store-badges/github.webp" alt="Get it on GitHub" height="60" />
+  <a href="https://github.com/GiridharSalana/yala/releases/tag/v2.1.0-beta-ipa">
+    <img src="store-badges/github.webp" alt="iOS Beta on GitHub" height="60" />
   </a>
 
   <p>
-    <a href="https://github.com/nightcodex7/yala/releases/tag/v2.1.0-beta-ipa">
+    <a href="https://github.com/GiridharSalana/yala/releases/tag/v2.1.0-beta-ipa">
       <b>iOS Beta IPA Available on GitHub Releases</b>
     </a>
   </p>
   <!-- &nbsp;&nbsp;
-  <a href="https://f-droid.org/packages/com.nightcode.luci/">
+  <a href="https://f-droid.org/packages/com.giridharsalana.yala/">
     <img src="store-badges/fdroid.webp" alt="Get it on F-Droid" height="60" />
   </a> -->
 
@@ -44,13 +44,13 @@
 
 <br>
 
-**YALA (Yala)** is an open-source mobile client for managing OpenWrt routers. It connects directly to your router using LuCI JSON-RPC, ubus, and standard OpenWrt system services, allowing you to monitor real-time bandwidth, manage connected devices, run network diagnostics, configure wireless radios, inspect storage, and update packages directly from your phone or tablet.
+**Yala** is an open-source mobile client for managing OpenWrt routers. It connects directly to your router using LuCI JSON-RPC, ubus, and standard OpenWrt system services, allowing you to monitor real-time bandwidth, manage connected devices, run network diagnostics, configure wireless radios, inspect storage, and update packages directly from your phone or tablet.
 
 ---
 
 ## Supported Devices & Scope
 
-YALA is purpose-built for mobile, tablet, and touch-first form factors:
+Yala is purpose-built for mobile, tablet, and touch-first form factors:
 
 - **Smartphones:** Android (Android 8.0 Oreo up to Android 15/16) and Apple iPhone (iOS 14.0+).
 - **Tablets & iPads:** Android Tablets and Apple iPads with dedicated wide-screen multi-column layouts and adaptive split views.
@@ -60,10 +60,10 @@ YALA is purpose-built for mobile, tablet, and touch-first form factors:
 
 > [!TIP]
 > **iOS Beta Availability:**  
-> An experimental iOS Beta `.ipa` build is available for sideloading on [GitHub Releases](https://github.com/nightcodex7/yala/releases/tag/v2.1.0-beta-ipa).
+> An experimental iOS Beta `.ipa` build is available for sideloading on [GitHub Releases](https://github.com/GiridharSalana/yala/releases/tag/v2.1.0-beta-ipa).
 
 > [!NOTE]
-> **Platform Scope:** YALA is tailored specifically for phone, tablet, and handheld interfaces. Desktop and laptop operating systems (native Windows, macOS, or desktop Linux) are outside the scope of this project, except for Chromebooks running Android apps.
+> **Platform Scope:** Yala is tailored specifically for phone, tablet, and handheld interfaces. Desktop and laptop operating systems (native Windows, macOS, or desktop Linux) are outside the scope of this project, except for Chromebooks running Android apps.
 
 ---
 
@@ -140,7 +140,7 @@ YALA is purpose-built for mobile, tablet, and touch-first form factors:
 
 ### Adaptive Design, Theming & Localization
 
-- **Material 3 & Material You:** Dynamic wallpaper-extracted color palettes on supported Android devices, along with the signature YALA Amber theme.
+- **Material 3 & Material You:** Dynamic wallpaper-extracted color palettes on supported Android devices, along with the signature Yala Amber theme.
 - **Theme Modes:** Full Light and Dark mode support.
 - **Localization:** Available in English, German, Spanish, French, Indonesian, Portuguese, Brazilian Portuguese, Russian, and Chinese.
 - **Tablet & Foldable Optimization:** Responsive two-column and three-column layouts designed for tablets, foldables, and Chromebooks.
@@ -271,7 +271,7 @@ YALA is purpose-built for mobile, tablet, and touch-first form factors:
 <details>
   <summary><b>Show More Tablet & Large Screen Screenshots (8 Views)</b></summary>
   <br>
-  <p>YALA automatically adapts its layout on tablets, iPads, foldables, and Chromebooks to take full advantage of wider screens:</p>
+  <p>Yala automatically adapts its layout on tablets, iPads, foldables, and Chromebooks to take full advantage of wider screens:</p>
   <table>
     <tr>
       <td width="50%" align="center" valign="top">
@@ -336,6 +336,7 @@ yala/
 │   ├── mock/                  # Mock diagnostic data for review modes
 │   └── screenshots/           # Full app screenshots (including Tab/ tablet gallery)
 ├── fastlane/                  # Google Play Store release metadata & changelogs
+├── fdroid-metadata/           # F-Droid build metadata
 ├── ios/                       # iOS/iPadOS platform runner & build configurations
 ├── lib/                       # Main Flutter codebase
 │   ├── config/                # Design tokens, themes, app routes, and constants
@@ -363,7 +364,7 @@ yala/
 
 ## Router Requirements & Setup
 
-YALA connects directly to your OpenWrt router over HTTP or HTTPS. To ensure full compatibility with all dashboard and monitoring features, install the standard LuCI and RPC modules on your router.
+Yala connects directly to your OpenWrt router over HTTP or HTTPS. To ensure full compatibility with all dashboard and monitoring features, install the standard LuCI and RPC modules on your router.
 
 ### For OpenWrt 19.07 to 23.05 (OPKG)
 
@@ -386,7 +387,7 @@ apk add rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status
 ```
 
 > [!TIP]
-> If your router already has standard LuCI web interface installed, most of these modules (`rpcd-mod-luci`, `luci-mod-status`) are usually already present. YALA automatically detects the available endpoints on your router.
+> If your router already has standard LuCI web interface installed, most of these modules (`rpcd-mod-luci`, `luci-mod-status`) are usually already present. Yala automatically detects the available endpoints on your router.
 
 ---
 
@@ -414,7 +415,7 @@ apk add rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/nightcodex7/yala.git
+git clone https://github.com/GiridharSalana/yala.git
 cd yala
 
 # 2. Install dependencies
@@ -442,7 +443,25 @@ flutter run
   ```bash
   flutter build ios --no-codesign --release
   ```
-  *(Or trigger the manual GitHub Actions workflow `.github/workflows/build-ipa.yml` to produce an unsigned `.ipa` artifact for testing. Pre-built packages are also available on [GitHub Releases](https://github.com/nightcodex7/yala/releases/tag/v2.1.0-beta-ipa))*
+  *(Or trigger the manual GitHub Actions workflow `.github/workflows/build-ipa.yml` to produce an unsigned `.ipa` artifact for testing. Pre-built packages are also available on [GitHub Releases](https://github.com/GiridharSalana/yala/releases/tag/v2.1.0-beta-ipa))*
+
+---
+
+## Continuous Integration & Releases
+
+This fork uses **GitHub Actions** for automated CI/CD:
+
+| Workflow | Trigger | Artifacts |
+|----------|---------|-----------|
+| **CI** | Push to `main`, PRs | Runs `flutter analyze`, `flutter test`, format check |
+| **Build iOS IPA** | Manual (`workflow_dispatch`) | Unsigned `.ipa` for sideloading (14-day artifact) |
+| **Release** | Manual (`workflow_dispatch`) | Android APKs (per ABI + universal), AAB, GitHub Release |
+| **Release Play Store** | Manual (`workflow_dispatch`) | Play Store flavor AAB (requires keystore secrets) |
+
+**To create a release:**
+1. Go to **Actions** → **Release** → **Run workflow**
+2. Enter version tag (e.g., `v2.1.1`)
+3. Workflow builds all artifacts and creates a GitHub Release
 
 ---
 
@@ -450,7 +469,7 @@ flutter run
 
 Contributions, bug reports, and suggestions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting pull requests.
 
-1. Fork this repository on GitHub (`nightcodex7/yala`).
+1. Fork this repository on GitHub (`GiridharSalana/yala`).
 2. Create your feature branch (`git checkout -b feature/your-feature-name`).
 3. Commit your changes (`git commit -m 'feat: description of change'`).
 4. Push to the branch (`git push origin feature/your-feature-name`).
@@ -461,13 +480,17 @@ Contributions, bug reports, and suggestions are welcome! Please read [CONTRIBUTI
 ## Origin, Attribution & Licensing
 
 > [!IMPORTANT]
-> **YALA** is an independent, standalone project originally based on [`cogwheel0/luci-mobile`](https://github.com/cogwheel0/luci-mobile), created and authored by **cogwheel0**.
+> **Yala** is an independent, standalone project originally based on [`cogwheel0/luci-mobile`](https://github.com/cogwheel0/luci-mobile), created and authored by **cogwheel0**.
 >
-> Since diverging from the original codebase, YALA has been extensively refactored, modernized, and expanded by **@nightcodex7** with new capabilities including dual package managers (`apk` / `opkg`), a complete network diagnostics suite, tablet & foldable responsive layouts, hardware thermal monitoring, atomic rollbacks, and multi-language support.
+> Since diverging from the original codebase, Yala has been extensively refactored, modernized, and expanded by **@nightcodex7** with new capabilities including dual package managers (`apk` / `opkg`), a complete network diagnostics suite, tablet & foldable responsive layouts, hardware thermal monitoring, atomic rollbacks, and multi-language support.
+>
+> This fork (`GiridharSalana/yala`) maintains the upstream project structure while customizing the package name to `com.giridharsalana.yala` for independent distribution on Play Store / F-Droid, and adds minor UX improvements (auto-login on launch, wireless interface badge).
 >
 > The complete codebase — including original upstream code and all subsequent modifications — is licensed under the [GNU General Public License v3.0 (GPL-3.0-or-later)](LICENSE).
 >
-> I express my sincere thanks to **cogwheel0** for creating the original foundation for mobile LuCI management.
+> Sincere thanks to:
+> - **cogwheel0** — for creating the original foundation for mobile LuCI management
+> - **@nightcodex7** — for extensive refactoring, modernization, and feature expansion
 
 > [!NOTE]
 > **Licensing Historical Correction:**  
@@ -477,4 +500,18 @@ Contributions, bug reports, and suggestions are welcome! Please read [CONTRIBUTI
 
 - Original work Copyright (C) 2025–2026 cogwheel0.
 - Modifications and enhancements Copyright (C) 2026 @nightcodex7.
+- Fork customizations Copyright (C) 2026 GiridharSalana.
 
+---
+
+## Upstream Sync
+
+This fork tracks the upstream repository at `nightcodex7/yala`. To pull upstream changes:
+
+```bash
+git remote add upstream https://github.com/nightcodex7/yala.git
+git fetch upstream
+git merge upstream/main
+```
+
+Resolve any conflicts (especially in package name / app identity files), then push to your fork.
