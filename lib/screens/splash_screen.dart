@@ -28,6 +28,8 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _controller;
   late Animation<double> _logoScale;
   late Animation<double> _logoFade;
+  bool _isConnecting = true;
+  String? _connectionError;
 
   @override
   void initState() {
@@ -52,7 +54,12 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeAppSession() async {
-    AppState.instance.setSessionBootstrapActive(true);
+    if (mounted) {
+      setState(() {
+        _isConnecting = true;
+        _connectionError = null;
+      });
+    }
 
     // Concurrently read minimum signals (reviewer mode preference & saved credentials & local fingerprints)
     final reviewerStorageFuture = SecureStorageService().readValue(
@@ -79,7 +86,6 @@ class _SplashScreenState extends State<SplashScreen>
     if (reviewerModeEnabled == 'true') {
       await appState.setReviewerMode(true);
       if (!mounted) return;
-      appState.setSessionBootstrapActive(false);
       _navigateToMainScreen();
       return;
     }
@@ -97,45 +103,49 @@ class _SplashScreenState extends State<SplashScreen>
         creds['password'] != null &&
         creds['password']!.isNotEmpty;
 
-    if (hasSavedRouter || hasLegacyCreds) {
-      await LocalNetworkPermissionService.ensurePermissionGranted();
+    // First launch after install (no saved router profile): login screen only.
+    if (!hasSavedRouter && !hasLegacyCreds) {
       if (!mounted) return;
-
-      // Same session path as tapping CONNECT on the login screen (not tryAutoLogin).
-      final bool success;
-      if (savedRouter != null) {
-        success = await appState.login(
-          savedRouter.ipAddress,
-          savedRouter.username,
-          savedRouter.password,
-          savedRouter.useHttps,
-          context: context,
-        );
-      } else {
-        success = await appState.login(
-          creds['ipAddress']!,
-          creds['username']!,
-          creds['password']!,
-          creds['useHttps'] == 'true',
-          context: context,
-        );
-      }
-
-      if (!mounted) return;
-
-      if (success) {
-        AppState.instance.setSessionBootstrapActive(false);
-        _navigateToMainScreen();
-        return;
-      }
+      _navigateToLoginScreen();
+      return;
     }
 
-    AppState.instance.setSessionBootstrapActive(false);
-    _navigateToLoginScreen(
-      initialIp: savedRouter?.ipAddress ?? creds['ipAddress'],
-      initialUsername: savedRouter?.username ?? creds['username'],
-      initialPassword: savedRouter?.password ?? creds['password'],
-    );
+    await LocalNetworkPermissionService.ensurePermissionGranted();
+    if (!mounted) return;
+
+    final bool success;
+    if (savedRouter != null) {
+      success = await appState.login(
+        savedRouter.ipAddress,
+        savedRouter.username,
+        savedRouter.password,
+        savedRouter.useHttps,
+        context: context,
+      );
+    } else {
+      success = await appState.login(
+        creds['ipAddress']!,
+        creds['username']!,
+        creds['password']!,
+        creds['useHttps'] == 'true',
+        context: context,
+      );
+    }
+
+    if (!mounted) return;
+
+    if (success) {
+      _navigateToMainScreen();
+      return;
+    }
+
+    // Saved profile but router unreachable: stay on splash (no login flash).
+    setState(() {
+      _isConnecting = false;
+      _connectionError =
+          appState.errorMessage ??
+          'Could not connect to your router. Check Wi‑Fi and try again.';
+    });
   }
 
   void _navigateToMainScreen() {
@@ -323,52 +333,82 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                             const SizedBox(height: 32),
 
-                            // Compact Status / Loading Indicator
-                            FadeTransition(
-                              opacity: _logoFade,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: colorScheme.surfaceContainer
-                                      .withValues(alpha: 0.8),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: colorScheme.outlineVariant
-                                        .withValues(alpha: 0.5),
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              primaryColor,
-                                            ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      l10n?.splashInitializingConsole ??
-                                          'INITIALIZING CONSOLE',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.8,
-                                        color: colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
+                            if (_connectionError != null) ...[
+                              Text(
+                                _connectionError!,
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.error,
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 16),
+                              FilledButton(
+                                onPressed: _initializeAppSession,
+                                child: const Text('Retry'),
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: () {
+                                  final router =
+                                      AppState.instance.selectedRouter;
+                                  _navigateToLoginScreen(
+                                    initialIp: router?.ipAddress,
+                                    initialUsername: router?.username,
+                                    initialPassword: router?.password,
+                                  );
+                                },
+                                child: const Text('Edit connection'),
+                              ),
+                            ] else
+                              FadeTransition(
+                                opacity: _logoFade,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surfaceContainer
+                                        .withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: colorScheme.outlineVariant
+                                          .withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (_isConnecting)
+                                        SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  primaryColor,
+                                                ),
+                                          ),
+                                        ),
+                                      if (_isConnecting)
+                                        const SizedBox(width: 10),
+                                      Text(
+                                        _isConnecting
+                                            ? (l10n?.splashInitializingConsole ??
+                                                'INITIALIZING CONSOLE')
+                                            : 'CONNECTING…',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.8,
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),

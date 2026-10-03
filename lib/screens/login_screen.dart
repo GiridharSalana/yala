@@ -914,18 +914,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final appState = ref.watch(appStateProvider);
-
-    if (appState.hasActiveSession) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _navigateToMainScreen(context);
-      });
-      return Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     final isDark = theme.brightness == Brightness.dark;
 
     final meshColor = isDark

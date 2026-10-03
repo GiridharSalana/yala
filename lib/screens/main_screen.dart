@@ -13,9 +13,6 @@ import 'package:yala/state/app_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yala/widgets/scroll_jitter_guard.dart';
 import 'package:yala/design/luci_design_system.dart';
-import 'package:yala/utils/gateway_utils.dart';
-import 'package:yala/services/secure_storage_service.dart';
-import 'package:yala/screens/login_screen.dart';
 import 'package:yala/utils/os_platform_integration.dart';
 import 'package:yala/l10n/app_localizations.dart';
 
@@ -48,8 +45,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
   String? _currentInterfaceToScroll;
   final Set<int> _activatedTabs = {0};
   final List<int> _tabHistory = [0];
-  bool _isRedirectingToLogin = false;
-
   @override
   void initState() {
     super.initState();
@@ -210,56 +205,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
   @override
   Widget build(BuildContext context) {
     final appState = ref.watch(appStateProvider);
-
-    // Guardrail: If session is completely unauthenticated and not in reviewer mode,
-    // redirect smoothly to LoginScreen instead of leaving the app on a blank main screen.
-    if (appState.hasActiveSession || appState.sessionBootstrapActive) {
-      _isRedirectingToLogin = false;
-    } else if (!appState.isLoading && !_isRedirectingToLogin) {
-      _isRedirectingToLogin = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
-        final state = ref.read(appStateProvider);
-        if (state.hasActiveSession ||
-            state.sessionBootstrapActive ||
-            state.isLoading) {
-          _isRedirectingToLogin = false;
-          return;
-        }
-        if (mounted &&
-            !ref.read(appStateProvider).hasActiveSession &&
-            !ref.read(appStateProvider).isLoading) {
-          final creds = await SecureStorageService().getCredentials();
-          final detectedGateway = await GatewayUtils.detectGatewayIp();
-
-          if (!mounted) return;
-          final currentState = ref.read(appStateProvider);
-          if (currentState.hasActiveSession || currentState.isLoading) {
-            _isRedirectingToLogin = false;
-            return;
-          }
-
-          final effectiveIp =
-              (creds['ipAddress'] != null && creds['ipAddress']!.isNotEmpty)
-              ? creds['ipAddress']
-              : detectedGateway;
-
-          if (!mounted || !context.mounted) return;
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => LoginScreen(
-                initialIp: effectiveIp,
-                initialUsername: creds['username'],
-                initialPassword: creds['password'],
-              ),
-            ),
-            (route) => false,
-          );
-        } else {
-          _isRedirectingToLogin = false;
-        }
-      });
-    }
 
     if (appState.requestedTab != null &&
         appState.requestedTab != _selectedIndex) {
