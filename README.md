@@ -27,11 +27,6 @@
       <b>iOS Beta IPA Available on GitHub Releases</b>
     </a>
   </p>
-  <!-- &nbsp;&nbsp;
-  <a href="https://f-droid.org/packages/com.giridharsalana.yala/">
-    <img src="store-badges/fdroid.webp" alt="Get it on F-Droid" height="60" />
-  </a> -->
-
   <br><br>
 
   <h3>Dashboard Preview (Light & Dark Theme)</h3>
@@ -449,14 +444,15 @@ flutter run
 
 ## Continuous Integration & Releases
 
-This fork uses **GitHub Actions** for automated CI/CD:
+This is a **personal fork**: builds are for my own devices only. I install APKs from **[GitHub Releases](https://github.com/GiridharSalana/yala/releases)** — not published to Play Store, F-Droid, or any other store.
+
+**GitHub Actions** on this repo:
 
 | Workflow | Trigger | Artifacts |
 |----------|---------|-----------|
 | **CI** | Push to `main`, PRs | Runs `flutter analyze`, `flutter test`, format check |
 | **Build iOS IPA** | Manual (`workflow_dispatch`) | Unsigned `.ipa` for sideloading (14-day artifact) |
-| **Release** | Manual (`workflow_dispatch`) | Android APKs (per ABI + universal), AAB, GitHub Release |
-| **Release Play Store** | Manual (`workflow_dispatch`) | Play Store flavor AAB (requires keystore secrets) |
+| **Release** | Tag `v*` push or manual | Signed Android APKs (per ABI + universal), AAB → GitHub Release |
 
 **To create a release:**
 1. Bump `version` in `pubspec.yaml`, commit, and push to `main` (CI runs automatically).
@@ -479,7 +475,7 @@ gh secret set ANDROID_KEYSTORE_BASE64 -R GiridharSalana/yala < <(base64 -i uploa
 gh secret set ANDROID_KEY_PROPERTIES_BASE64 -R GiridharSalana/yala < <(base64 -i android/key.properties)
 ```
 
-Play Store builds: run **Release Play Store** manually; download the AAB artifact and upload to Google Play Console.
+After a release finishes, download **`app-arm64-v8a-release.apk`** (most phones) or **`app-universal-release.apk`** from the release page.
 
 ---
 
@@ -502,7 +498,7 @@ Contributions, bug reports, and suggestions are welcome! Please read [CONTRIBUTI
 >
 > Since diverging from the original codebase, Yala has been extensively refactored, modernized, and expanded by **@nightcodex7** with new capabilities including dual package managers (`apk` / `opkg`), a complete network diagnostics suite, tablet & foldable responsive layouts, hardware thermal monitoring, atomic rollbacks, and multi-language support.
 >
-> This fork (`GiridharSalana/yala`) maintains the upstream project structure while customizing the package name to `com.giridharsalana.yala` for independent distribution on Play Store / F-Droid, and adds minor UX improvements (auto-login on launch, wireless interface badge).
+> This fork (`GiridharSalana/yala`) is for **personal use only**: package ID `com.giridharsalana.yala`, builds via GitHub Actions, APKs installed from GitHub Releases. It adds minor UX improvements (auto-login on launch, wireless interface badge).
 >
 > The complete codebase — including original upstream code and all subsequent modifications — is licensed under the [GNU General Public License v3.0 (GPL-3.0-or-later)](LICENSE).
 >

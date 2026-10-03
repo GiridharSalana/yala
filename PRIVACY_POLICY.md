@@ -1,9 +1,9 @@
 # Privacy Policy
 
-**Yala**
-Last updated: September 07, 2026
+**Yala** (personal fork: [GiridharSalana/yala](https://github.com/GiridharSalana/yala))  
+Last updated: October 03, 2026
 
-I am committed to protecting your privacy. This Privacy Policy explains how Yala ("App") handles your information when you use the App to manage your OpenWrt/LuCI routers.
+I am committed to protecting your privacy. This Privacy Policy explains how Yala ("App") handles your information when you use the App to manage your OpenWrt/LuCI routers. This repository builds the app for **personal installation from GitHub Releases only** (not distributed on app stores).
 
 ---
 
@@ -23,21 +23,12 @@ I am committed to protecting your privacy. This Privacy Policy explains how Yala
 
 ---
 
-## 2. Edition Breakdown & Third-Party Services
-
-### a. Community Edition (GitHub Releases / FOSS)
+## 2. Personal GitHub Builds & Third-Party Services
 
 - **100% Free & Ad-Free**: Contains zero advertisements, does not collect Advertising IDs (`AD_ID`), and does not integrate third-party ad networks.
 - **No In-App Purchases**: Fully open-source under the GNU General Public License v3.0 (GPLv3) with unlimited router profiles.
 - **Zero Telemetry or Analytics**: Contains no background tracking, crash telemetry, or third-party analytics SDKs.
-
-### b. Play Store / Official Edition (Google Play)
-
-- **100% Free & Ad-Free**:
-  - The App is completely **Free** and **Ad-Free** across all builds and channels.
-  - **No In-App Purchases**: Contains zero paywalls, locked features, or billing SDKs.
-  - **Zero Ad Identifiers**: The App does not collect, process, or transmit Advertising IDs (`AD_ID`), device identifiers for advertising, or user tracking metrics.
-- **Zero Telemetry or Analytics**: Contains no background tracking, crash telemetry, or third-party analytics SDKs.
+- **No store distribution**: This fork is not published on Google Play, F-Droid, or similar channels.
 
 ---
 
