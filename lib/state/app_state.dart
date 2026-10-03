@@ -198,13 +198,18 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  late final Future<void> _initFuture;
+
   AppState._() {
-    _initialize();
+    _initFuture = _initialize();
   }
 
   static AppState get instance {
     return _instance ??= AppState._();
   }
+
+  /// Completes when routers, session controller, and secure storage are ready.
+  Future<void> ensureInitialized() => _initFuture;
 
   Future<void> _initialize() async {
     // Configure default storage service first

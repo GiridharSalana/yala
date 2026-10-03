@@ -71,6 +71,8 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final appState = AppState.instance;
+    await appState.ensureInitialized();
+    if (!mounted) return;
 
     if (reviewerModeEnabled == 'true') {
       await appState.setReviewerMode(true);
@@ -79,22 +81,42 @@ class _SplashScreenState extends State<SplashScreen>
       return;
     }
 
-    final hasSavedCreds =
+    final savedRouter =
+        appState.selectedRouter ??
+        (appState.routers.isNotEmpty ? appState.routers.first : null);
+
+    final hasSavedRouter = savedRouter != null;
+    final hasLegacyCreds =
         creds['ipAddress'] != null &&
         creds['ipAddress']!.isNotEmpty &&
-        creds['password'] != null;
+        creds['username'] != null &&
+        creds['username']!.isNotEmpty &&
+        creds['password'] != null &&
+        creds['password']!.isNotEmpty;
 
-    if (hasSavedCreds) {
+    if (hasSavedRouter || hasLegacyCreds) {
       await LocalNetworkPermissionService.ensurePermissionGranted();
       if (!mounted) return;
 
-      // Attempt auto-login with saved credentials
-      final success =
-          await appState.sessionController?.tryAutoLogin(
-            fetchDashboard: true,
-            context: context,
-          ) ??
-          false;
+      // Same session path as tapping CONNECT on the login screen (not tryAutoLogin).
+      final bool success;
+      if (savedRouter != null) {
+        success = await appState.login(
+          savedRouter.ipAddress,
+          savedRouter.username,
+          savedRouter.password,
+          savedRouter.useHttps,
+          context: context,
+        );
+      } else {
+        success = await appState.login(
+          creds['ipAddress']!,
+          creds['username']!,
+          creds['password']!,
+          creds['useHttps'] == 'true',
+          context: context,
+        );
+      }
 
       if (!mounted) return;
 
@@ -102,13 +124,12 @@ class _SplashScreenState extends State<SplashScreen>
         _navigateToMainScreen();
         return;
       }
-      // Auto-login failed, fall through to login screen with pre-filled credentials
     }
 
     _navigateToLoginScreen(
-      initialIp: creds['ipAddress'],
-      initialUsername: creds['username'],
-      initialPassword: creds['password'],
+      initialIp: savedRouter?.ipAddress ?? creds['ipAddress'],
+      initialUsername: savedRouter?.username ?? creds['username'],
+      initialPassword: savedRouter?.password ?? creds['password'],
     );
   }
 

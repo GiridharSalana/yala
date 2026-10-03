@@ -4,7 +4,7 @@
   <img src="assets/images/app_logo_transparent.png" width="120" alt="App Logo" />
   <h2>Modern OpenWrt & LuCI Router Manager</h2>
 
-  [![Version](https://img.shields.io/badge/Version-v2.1.3-blue.svg?style=for-the-badge&logo=github)](https://github.com/GiridharSalana/yala/releases)
+  [![Version](https://img.shields.io/badge/Version-2.1.0%2B225-blue.svg?style=for-the-badge&logo=github)](https://github.com/GiridharSalana/yala/releases)
   [![Downloads](https://img.shields.io/github/downloads/GiridharSalana/yala/total.svg?style=for-the-badge&logo=github&color=blue)](https://github.com/GiridharSalana/yala/releases)
   [![Page Views](https://komarev.com/ghpvc/?username=GiridharSalana-yala&label=Page%20Views&color=0175C2&style=for-the-badge)](https://github.com/GiridharSalana/yala)
   [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20(Beta)-3DDC84?style=for-the-badge&logo=android&logoColor=white)]()
@@ -454,11 +454,19 @@ This is a **personal fork**: builds are for my own devices only. I install APKs 
 | **Build iOS IPA** | Manual (`workflow_dispatch`) | Unsigned `.ipa` for sideloading (14-day artifact) |
 | **Release** | Tag `v*` push or manual | Signed Android APKs (per ABI + universal), AAB → GitHub Release |
 
+**Versioning (always follow upstream):**
+
+| Source | `pubspec.yaml` example | Meaning |
+|--------|------------------------|---------|
+| Upstream `nightcodex7/yala` | `2.1.0+224` | App `2.1.0`, Android `versionCode` **224** |
+| This fork | `2.1.0+225` | Same **2.1.0** as upstream; **225+** = personal fork build (`upstream build + 1`, then increment each release) |
+
+After merging upstream, set `version` to upstream’s `X.Y.Z+N`, then use **`N + 1`** for the next fork APK (e.g. upstream `2.1.0+230` → fork `2.1.0+231`).
+
 **To create a release:**
-1. Bump `version` in `pubspec.yaml`, commit, and push to `main` (CI runs automatically).
-2. Either:
-   - **Tag push (recommended):** `git tag v2.1.2 && git push origin v2.1.2` — **Release** runs for that tag only (pushing `main` alone does not release). Use a **new** tag each time; re-pushing an existing tag does nothing unless you move it with `git push --force origin v2.1.2`.
-   - **Manual:** Actions → **Release** → **Run workflow** on `main` and set **version** to the tag (e.g. `v2.1.2`) to rebuild and attach APKs to an existing release.
+1. Bump only the **`+` build number** in `pubspec.yaml` (keep `X.Y.Z` aligned with upstream), commit, push `main`.
+2. **Tag push (recommended):** `git tag 'v2.1.0+225' && git push origin 'v2.1.0+225'` — tag must match the `+` build (Release workflow listens for `v*`).
+3. **Manual:** Actions → **Release** → set **version** to the same tag (e.g. `v2.1.0+225`).
 
 **GitHub Actions secrets** (repo → Settings → Secrets and variables → Actions):
 
