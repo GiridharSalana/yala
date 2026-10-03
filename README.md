@@ -477,3 +477,4 @@ Contributions, bug reports, and suggestions are welcome! Please read [CONTRIBUTI
 
 - Original work Copyright (C) 2025–2026 cogwheel0.
 - Modifications and enhancements Copyright (C) 2026 @nightcodex7.
+
