@@ -35,7 +35,7 @@ All contributions to this repository must be licensed under the **GNU General Pu
 
 ### Fork and Clone
 
-1. Fork this repository on GitHub (`nightcodex7/yala`).
+1. Fork this repository on GitHub (`GiridharSalana/yala`).
 2. Clone your fork locally:
    ```bash
    git clone https://github.com/YOUR_USERNAME/yala.git
