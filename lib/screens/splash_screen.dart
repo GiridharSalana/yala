@@ -52,6 +52,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeAppSession() async {
+    AppState.instance.setSessionBootstrapActive(true);
+
     // Concurrently read minimum signals (reviewer mode preference & saved credentials & local fingerprints)
     final reviewerStorageFuture = SecureStorageService().readValue(
       AppConfig.reviewerModeKey,
@@ -77,6 +79,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (reviewerModeEnabled == 'true') {
       await appState.setReviewerMode(true);
       if (!mounted) return;
+      appState.setSessionBootstrapActive(false);
       _navigateToMainScreen();
       return;
     }
@@ -121,11 +124,13 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       if (success) {
+        AppState.instance.setSessionBootstrapActive(false);
         _navigateToMainScreen();
         return;
       }
     }
 
+    AppState.instance.setSessionBootstrapActive(false);
     _navigateToLoginScreen(
       initialIp: savedRouter?.ipAddress ?? creds['ipAddress'],
       initialUsername: savedRouter?.username ?? creds['username'],

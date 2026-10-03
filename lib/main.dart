@@ -138,7 +138,6 @@ class LuCIApp extends ConsumerWidget {
         return MaterialApp(
           navigatorKey: LuciToastManager.navigatorKey,
           title: 'Yala',
-          restorationScopeId: 'root_luci_app',
           debugShowCheckedModeBanner: false,
           scrollBehavior: const LuciScrollBehavior(),
           theme: lightTheme,

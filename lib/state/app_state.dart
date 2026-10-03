@@ -384,6 +384,17 @@ class AppState extends ChangeNotifier {
   String? get sysauth => _sessionController?.sysauth;
   bool get isAuthenticated => sysauth != null && sysauth!.isNotEmpty;
   bool get hasActiveSession => isAuthenticated || reviewerModeEnabled;
+  bool _sessionBootstrapActive = false;
+
+  /// True while splash is resolving stored credentials / auto-login (suppresses login flash).
+  bool get sessionBootstrapActive => _sessionBootstrapActive;
+
+  void setSessionBootstrapActive(bool active) {
+    if (_sessionBootstrapActive == active) return;
+    _sessionBootstrapActive = active;
+    notifyListeners();
+  }
+
   IApiService? get apiService => _apiService;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;

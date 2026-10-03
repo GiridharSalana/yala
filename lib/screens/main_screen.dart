@@ -213,11 +213,19 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
     // Guardrail: If session is completely unauthenticated and not in reviewer mode,
     // redirect smoothly to LoginScreen instead of leaving the app on a blank main screen.
-    if (appState.hasActiveSession) {
+    if (appState.hasActiveSession || appState.sessionBootstrapActive) {
       _isRedirectingToLogin = false;
     } else if (!appState.isLoading && !_isRedirectingToLogin) {
       _isRedirectingToLogin = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final state = ref.read(appStateProvider);
+        if (state.hasActiveSession ||
+            state.sessionBootstrapActive ||
+            state.isLoading) {
+          _isRedirectingToLogin = false;
+          return;
+        }
         if (mounted &&
             !ref.read(appStateProvider).hasActiveSession &&
             !ref.read(appStateProvider).isLoading) {
