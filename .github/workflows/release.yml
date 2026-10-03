@@ -80,7 +80,6 @@ jobs:
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > upload-keystore.jks
           echo "${{ secrets.ANDROID_KEY_PROPERTIES_BASE64 }}" | base64 --decode > android/key.properties
-          # Gradle resolves storeFile relative to android/; keep keystore at repo root.
           sed -i 's|^storeFile=.*|storeFile=../upload-keystore.jks|' android/key.properties
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

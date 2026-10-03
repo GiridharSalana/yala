@@ -51,7 +51,8 @@ android {
 
         if (!storeFilePath.isNullOrEmpty() && !storePass.isNullOrEmpty() && !alias.isNullOrEmpty() && !keyPass.isNullOrEmpty()) {
             create("release") {
-                storeFile = file(storeFilePath)
+                // Paths in key.properties are relative to the android/ project dir (Flutter convention).
+                storeFile = rootProject.file(storeFilePath)
                 storePassword = storePass
                 keyAlias = alias
                 keyPassword = keyPass

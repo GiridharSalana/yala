@@ -5,4 +5,5 @@
 storePassword=YOUR_KEYSTORE_PASSWORD
 keyPassword=YOUR_KEY_PASSWORD
 keyAlias=YOUR_KEY_ALIAS
+# Relative to android/ (see app/build.gradle.kts). Keystore at repo root:
 storeFile=../upload-keystore.jks
