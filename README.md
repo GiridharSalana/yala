@@ -4,7 +4,7 @@
   <img src="assets/images/app_logo_transparent.png" width="120" alt="App Logo" />
   <h2>Modern OpenWrt & LuCI Router Manager</h2>
 
-  [![Version](https://img.shields.io/badge/Version-2.1.0%2B227-blue.svg?style=for-the-badge&logo=github)](https://github.com/GiridharSalana/yala/releases)
+  [![Version](https://img.shields.io/badge/Version-2.1.0%2B228-blue.svg?style=for-the-badge&logo=github)](https://github.com/GiridharSalana/yala/releases)
   [![Downloads](https://img.shields.io/github/downloads/GiridharSalana/yala/total.svg?style=for-the-badge&logo=github&color=blue)](https://github.com/GiridharSalana/yala/releases)
   [![Page Views](https://komarev.com/ghpvc/?username=GiridharSalana-yala&label=Page%20Views&color=0175C2&style=for-the-badge)](https://github.com/GiridharSalana/yala)
   [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20(Beta)-3DDC84?style=for-the-badge&logo=android&logoColor=white)]()
@@ -450,9 +450,8 @@ This is a **personal fork**: builds are for my own devices only. I install APKs 
 
 | Workflow | Trigger | Artifacts |
 |----------|---------|-----------|
-| **CI** | Push to `main`, PRs | Runs `flutter analyze`, `flutter test`, format check |
+| **CI & Release** | Push `main` / PRs / tag `v*` / manual | **1)** format, analyze, test → **2)** release APKs/AAB only on tag or manual dispatch |
 | **Build iOS IPA** | Manual (`workflow_dispatch`) | Unsigned `.ipa` for sideloading (14-day artifact) |
-| **Release** | Tag `v*` push or manual | Signed Android APKs (per ABI + universal), AAB → GitHub Release |
 
 **Versioning (always follow upstream):**
 

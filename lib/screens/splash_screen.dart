@@ -30,6 +30,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _logoFade;
   bool _isConnecting = true;
   String? _connectionError;
+  bool _sessionInitInFlight = false;
 
   @override
   void initState() {
@@ -54,6 +55,8 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _initializeAppSession() async {
+    if (_sessionInitInFlight) return;
+    _sessionInitInFlight = true;
     if (mounted) {
       setState(() {
         _isConnecting = true;
@@ -77,15 +80,25 @@ class _SplashScreenState extends State<SplashScreen>
     final reviewerModeEnabled = results[0] as String?;
     final creds = results[1] as Map<String, String?>;
 
-    if (!mounted) return;
+    if (!mounted) {
+      _sessionInitInFlight = false;
+      return;
+    }
 
     final appState = AppState.instance;
     await appState.ensureInitialized();
-    if (!mounted) return;
+    if (!mounted) {
+      _sessionInitInFlight = false;
+      return;
+    }
 
     if (reviewerModeEnabled == 'true') {
       await appState.setReviewerMode(true);
-      if (!mounted) return;
+      if (!mounted) {
+        _sessionInitInFlight = false;
+        return;
+      }
+      _sessionInitInFlight = false;
       _navigateToMainScreen();
       return;
     }
@@ -105,13 +118,20 @@ class _SplashScreenState extends State<SplashScreen>
 
     // First launch after install (no saved router profile): login screen only.
     if (!hasSavedRouter && !hasLegacyCreds) {
-      if (!mounted) return;
+      if (!mounted) {
+        _sessionInitInFlight = false;
+        return;
+      }
+      _sessionInitInFlight = false;
       _navigateToLoginScreen();
       return;
     }
 
     await LocalNetworkPermissionService.ensurePermissionGranted();
-    if (!mounted) return;
+    if (!mounted) {
+      _sessionInitInFlight = false;
+      return;
+    }
 
     final bool success;
     if (savedRouter != null) {
@@ -132,14 +152,19 @@ class _SplashScreenState extends State<SplashScreen>
       );
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      _sessionInitInFlight = false;
+      return;
+    }
 
     if (success) {
+      _sessionInitInFlight = false;
       _navigateToMainScreen();
       return;
     }
 
     // Saved profile but router unreachable: stay on splash (no login flash).
+    _sessionInitInFlight = false;
     setState(() {
       _isConnecting = false;
       _connectionError =
@@ -396,7 +421,7 @@ class _SplashScreenState extends State<SplashScreen>
                                       Text(
                                         _isConnecting
                                             ? (l10n?.splashInitializingConsole ??
-                                                'INITIALIZING CONSOLE')
+                                                  'INITIALIZING CONSOLE')
                                             : 'CONNECTING…',
                                         style: TextStyle(
                                           fontSize: 11,

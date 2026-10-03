@@ -184,7 +184,8 @@ class LuCIApp extends ConsumerWidget {
             '/splash': (context) => const SplashScreen(),
             '/onboarding': (context) => const OnboardingScreen(),
             '/login': (context) => const LoginScreen(),
-            '/': (context) => const MainScreen(),
+            // Never open Main without a session; restart bootstrap instead.
+            '/': (context) => const SplashScreen(),
             '/settings': (context) => const SettingsScreen(),
           },
         );

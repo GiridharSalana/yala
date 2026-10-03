@@ -2425,7 +2425,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               if (context.mounted) {
                 await Navigator.of(
                   context,
-                ).pushNamedAndRemoveUntil('/login', (route) => false);
+                ).pushNamedAndRemoveUntil('/splash', (route) => false);
               }
             },
             icon: const Icon(Icons.logout_rounded, size: 16),

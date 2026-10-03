@@ -58,7 +58,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               if (context.mounted) {
                 await Navigator.of(
                   context,
-                ).pushNamedAndRemoveUntil('/login', (route) => false);
+                ).pushNamedAndRemoveUntil('/splash', (route) => false);
               }
             },
             child: Text(l10n?.settingsExitReviewerBtn ?? 'Exit'),
