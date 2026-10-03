@@ -407,7 +407,9 @@ class AppState extends ChangeNotifier {
           for (final iface in interfaces) {
             if (iface is Map<String, dynamic>) {
               final config = iface['config'] as Map<String, dynamic>?;
-              if (config != null && config['disabled'] != true && config['mode'] == 'ap') {
+              if (config != null &&
+                  config['disabled'] != true &&
+                  config['mode'] == 'ap') {
                 count++;
               }
             }

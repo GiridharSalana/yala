@@ -428,7 +428,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
                               NavigationRailDestination(
                                 icon: Builder(
                                   builder: (context) {
-                                    final wirelessCount = appState.activeWirelessInterfacesCount;
+                                    final wirelessCount =
+                                        appState.activeWirelessInterfacesCount;
                                     return Badge(
                                       isLabelVisible: wirelessCount > 0,
                                       label: Text(
@@ -572,7 +573,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
                                             isRebooting: isRebooting,
                                             isMultiLine: isMultiLine,
                                             iconSize: sideIconSize,
-                                            badgeCount: appState.activeWirelessInterfacesCount,
+                                            badgeCount: appState
+                                                .activeWirelessInterfacesCount,
                                           ),
                                         ),
                                         Expanded(

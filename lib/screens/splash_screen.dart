@@ -89,10 +89,12 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
 
       // Attempt auto-login with saved credentials
-      final success = await appState.sessionController?.tryAutoLogin(
-        fetchDashboard: true,
-        context: context,
-      ) ?? false;
+      final success =
+          await appState.sessionController?.tryAutoLogin(
+            fetchDashboard: true,
+            context: context,
+          ) ??
+          false;
 
       if (!mounted) return;
 
