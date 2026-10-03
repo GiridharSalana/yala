@@ -5,10 +5,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/main.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/l10n/app_localizations.dart';
 import '../models/router_temperature.dart';
 
 /// Dialog that guides users in enabling the native OpenWrt temperature RPC handler.

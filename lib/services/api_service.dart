@@ -8,16 +8,16 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
-import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
-import 'package:yet_another_luci_app/modules/services_system/models/ddns_info.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/internet_reachability.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/ping_result.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/traceroute_result.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/dns_lookup_result.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/routing_neighbor_info.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/diagnostic_report.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/flush_dns_result.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
+import 'package:yala/modules/parental_controls/models/parental_profile.dart';
+import 'package:yala/modules/services_system/models/ddns_info.dart';
+import 'package:yala/modules/diagnostics/models/internet_reachability.dart';
+import 'package:yala/modules/diagnostics/models/ping_result.dart';
+import 'package:yala/modules/diagnostics/models/traceroute_result.dart';
+import 'package:yala/modules/diagnostics/models/dns_lookup_result.dart';
+import 'package:yala/modules/diagnostics/models/routing_neighbor_info.dart';
+import 'package:yala/modules/diagnostics/models/diagnostic_report.dart';
+import 'package:yala/modules/diagnostics/models/flush_dns_result.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
 import '../utils/http_client_manager.dart';
 import '../utils/logger.dart';
 
@@ -3211,7 +3211,7 @@ uci commit parental
           'cat << \'EOF\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json\n'
           '{\n'
           '  "yet-another-luci-app": {\n'
-          '    "description": "Yet Another LuCI App Silent RPC Permissions",\n'
+          '    "description": "Yala Silent RPC Permissions",\n'
           '    "read": {\n'
           '      "file": {\n'
           '        "/usr/sbin/tailscale": [ "exec" ],\n'
@@ -3301,7 +3301,7 @@ uci commit parental
           'cat << \'EOF\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json\n'
           '{\n'
           '  "yet-another-luci-app": {\n'
-          '    "description": "Yet Another LuCI App Silent RPC Permissions",\n'
+          '    "description": "Yala Silent RPC Permissions",\n'
           '    "read": {\n'
           '      "file": {\n'
           '        "/usr/sbin/tailscale": [ "exec" ],\n'

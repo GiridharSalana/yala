@@ -3,21 +3,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/screens/dashboard_screen.dart';
-import 'package:yet_another_luci_app/screens/clients_screen.dart';
-import 'package:yet_another_luci_app/screens/interfaces_screen.dart';
-import 'package:yet_another_luci_app/screens/more_screen.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/screens/wireless_management_screen.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/screens/dashboard_screen.dart';
+import 'package:yala/screens/clients_screen.dart';
+import 'package:yala/screens/interfaces_screen.dart';
+import 'package:yala/screens/more_screen.dart';
+import 'package:yala/modules/wireless_management/screens/wireless_management_screen.dart';
+import 'package:yala/main.dart';
+import 'package:yala/state/app_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/widgets/scroll_jitter_guard.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/utils/gateway_utils.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/screens/login_screen.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/widgets/scroll_jitter_guard.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/utils/gateway_utils.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/screens/login_screen.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   final int? initialTab;
@@ -426,7 +426,20 @@ class _MainScreenState extends ConsumerState<MainScreen>
                                 label: Text(l10n?.navClients ?? 'Clients'),
                               ),
                               NavigationRailDestination(
-                                icon: const Icon(Icons.wifi_outlined),
+                                icon: Builder(
+                                  builder: (context) {
+                                    final wirelessCount = appState.activeWirelessInterfacesCount;
+                                    return Badge(
+                                      isLabelVisible: wirelessCount > 0,
+                                      label: Text(
+                                        wirelessCount > 99
+                                            ? '99+'
+                                            : '$wirelessCount',
+                                      ),
+                                      child: const Icon(Icons.wifi_outlined),
+                                    );
+                                  },
+                                ),
                                 selectedIcon: const Icon(Icons.wifi),
                                 label: Text(l10n?.navWireless ?? 'Wireless'),
                               ),
@@ -559,6 +572,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
                                             isRebooting: isRebooting,
                                             isMultiLine: isMultiLine,
                                             iconSize: sideIconSize,
+                                            badgeCount: appState.activeWirelessInterfacesCount,
                                           ),
                                         ),
                                         Expanded(
@@ -867,7 +881,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'You are exploring Yet Another LuCI App in Reviewer Mode.',
+                'You are exploring Yala in Reviewer Mode.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: colorScheme.onSurface,

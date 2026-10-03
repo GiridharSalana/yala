@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/state/app_state.dart';
 
 /// Tests for connection type classification (GitHub issue #5).
 ///

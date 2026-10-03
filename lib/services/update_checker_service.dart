@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 /// Manages manual update checks against GitHub Releases for the Community build flavor.
 class UpdateCheckerService {
@@ -303,7 +303,7 @@ class UpdateCheckerService {
         content: SingleChildScrollView(
           child: Text(
             l10n?.updateUpToDateDesc(currentVersion) ??
-                'You are running the latest version of Yet Another LuCI App (v$currentVersion).',
+                'You are running the latest version of Yala (v$currentVersion).',
           ),
         ),
         actions: [

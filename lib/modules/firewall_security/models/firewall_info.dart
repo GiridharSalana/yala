@@ -2,7 +2,7 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
+import 'package:yala/models/router_capabilities.dart';
 
 /// Default global firewall policy.
 class FirewallDefaultPolicy {

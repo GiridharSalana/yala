@@ -7,10 +7,10 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/widgets/luci_smooth_spinner.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/widgets/luci_smooth_spinner.dart';
 
 /// Semantic toast notification types.
 enum LuciToastType {
@@ -262,7 +262,7 @@ class LuciToastManager {
           Platform.isIOS &&
           (t.contains('operation not permitted') || t.contains('errno = 1'))) {
         subtitle =
-            'Local network permission required. Please allow access in iOS Settings > Yet Another LuCI App.';
+            'Local network permission required. Please allow access in iOS Settings > Yala.';
       } else if (t.contains('socketexception') ||
           t.contains('handshakeexception') ||
           t.contains('clientexception') ||

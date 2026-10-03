@@ -10,9 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/modules/storage_monitoring/models/storage_info.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/modules/storage_monitoring/models/storage_info.dart';
+import 'package:yala/widgets/luci_toast.dart';
 
 /// Semantic haptic feedback intensity types.
 enum OsHapticType { light, medium, heavy, selection }
@@ -93,7 +93,7 @@ class OsPlatformIntegration {
 
     try {
       if (Platform.isAndroid) {
-        final intentUri = Uri.parse('package:yet_another_luci_app');
+        final intentUri = Uri.parse('package:yala');
         if (await canLaunchUrl(intentUri)) {
           launched = await launchUrl(intentUri);
         }
@@ -110,8 +110,8 @@ class OsPlatformIntegration {
     if (!launched && context.mounted) {
       context.showToastInfo(
         Platform.isIOS
-            ? 'Please open device Settings > Yet Another LuCI App to manage permissions.'
-            : 'Please open device Settings > Apps > Yet Another LuCI App to manage permissions.',
+            ? 'Please open device Settings > Yala to manage permissions.'
+            : 'Please open device Settings > Apps > Yala to manage permissions.',
       );
     }
 
@@ -129,7 +129,7 @@ class OsPlatformIntegration {
     final lower = path.toLowerCase();
     if (lower.contains('/android/data/') ||
         lower.contains('/data/user/') ||
-        lower.contains('com.nightcode.luci')) {
+        lower.contains('com.giridharsalana.yala')) {
       return false;
     }
     return true;
@@ -189,7 +189,7 @@ class OsPlatformIntegration {
 
     // iOS Fast-Path: Save directly to Application Documents Directory.
     // When UIFileSharingEnabled and LSSupportsOpeningDocumentsInPlace are enabled in Info.plist,
-    // this directory is native-Files-app accessible under "On My iPhone" -> "Yet Another LuCI App".
+    // this directory is native-Files-app accessible under "On My iPhone" -> "Yala".
     if (Platform.isIOS) {
       try {
         final docsDir = await getApplicationDocumentsDirectory();
@@ -506,7 +506,7 @@ class OsPlatformIntegration {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Accessible in the Files app under: On My iPhone/iPad > Yet Another LuCI App',
+                          'Accessible in the Files app under: On My iPhone/iPad > Yala',
                           style: TextStyle(
                             fontSize: 11,
                             color: colorScheme.onSurfaceVariant,
@@ -720,7 +720,7 @@ class OsPlatformIntegration {
     if (kIsWeb) return;
     try {
       if (Platform.isAndroid) {
-        const platform = MethodChannel('com.nightcode.luci/app_lifecycle');
+        const platform = MethodChannel('com.giridharsalana.yala/app_lifecycle');
         try {
           await platform.invokeMethod('exitApp');
           return;
@@ -740,7 +740,7 @@ class OsPlatformIntegration {
     if (kIsWeb) return false;
     try {
       if (Platform.isAndroid) {
-        const platform = MethodChannel('com.nightcode.luci/app_lifecycle');
+        const platform = MethodChannel('com.giridharsalana.yala/app_lifecycle');
         final res = await platform.invokeMethod<bool>('moveTaskToBack');
         return res ?? false;
       }

@@ -6,12 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/modules/parental_controls/controllers/parental_controls_controller.dart';
-import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
-import 'package:yet_another_luci_app/modules/parental_controls/models/parental_controls_store.dart';
-import 'package:yet_another_luci_app/modules/parental_controls/widgets/parental_profile_card.dart';
-import 'package:yet_another_luci_app/modules/parental_controls/widgets/add_edit_profile_dialog.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/modules/parental_controls/controllers/parental_controls_controller.dart';
+import 'package:yala/modules/parental_controls/models/parental_profile.dart';
+import 'package:yala/modules/parental_controls/models/parental_controls_store.dart';
+import 'package:yala/modules/parental_controls/widgets/parental_profile_card.dart';
+import 'package:yala/modules/parental_controls/widgets/add_edit_profile_dialog.dart';
+import 'package:yala/state/app_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

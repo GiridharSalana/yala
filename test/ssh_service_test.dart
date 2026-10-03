@@ -5,8 +5,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/services/ssh_service.dart';
-import 'package:yet_another_luci_app/services/mock_ssh_service.dart';
+import 'package:yala/services/ssh_service.dart';
+import 'package:yala/services/mock_ssh_service.dart';
 
 void main() {
   group('MockSshService Tests', () {

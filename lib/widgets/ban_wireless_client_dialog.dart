@@ -4,8 +4,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:yet_another_luci_app/utils/self_device_guard.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/utils/self_device_guard.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 /// Context-aware dialog for Banning a wireless client with flexible time customization,
 /// dynamic Date & Time pickers, preset durations, and self-device safety guardrails.

@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/utils/logger.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/utils/logger.dart';
 
 class RealAuthService implements IAuthService {
   final SecureStorageService _secureStorageService = SecureStorageService();

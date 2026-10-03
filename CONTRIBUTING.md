@@ -1,4 +1,4 @@
-# Contributing to YALA (Yet Another LuCI App)
+# Contributing to YALA (Yala)
 
 Thank you for your interest in contributing to YALA! This project is an independent, open-source, GPLv3-licensed mobile client for OpenWrt, originally derived from [`cogwheel0/luci-mobile`](https://github.com/cogwheel0/luci-mobile). I welcome contributions, bug fixes, and feature enhancements that respect open-source licensing and original authorship.
 

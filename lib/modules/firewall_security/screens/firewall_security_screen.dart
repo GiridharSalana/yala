@@ -4,14 +4,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
-import 'package:yet_another_luci_app/widgets/luci_collapsible_card.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/widgets/luci_guardrail.dart';
+import 'package:yala/main.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/widgets/luci_collapsible_card.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/widgets/luci_guardrail.dart';
 import '../models/firewall_info.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class FirewallSecurityScreen extends ConsumerStatefulWidget {
   const FirewallSecurityScreen({super.key});

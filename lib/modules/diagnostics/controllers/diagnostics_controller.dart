@@ -4,9 +4,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/main.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/state/app_state.dart';
 import '../models/internet_reachability.dart';
 import '../models/ping_result.dart';
 import '../models/traceroute_result.dart';

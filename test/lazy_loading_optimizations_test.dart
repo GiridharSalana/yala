@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/services/throughput_service.dart';
-import 'package:yet_another_luci_app/state/controllers/throughput_controller.dart';
+import 'package:yala/services/throughput_service.dart';
+import 'package:yala/state/controllers/throughput_controller.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

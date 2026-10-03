@@ -1,6 +1,6 @@
 Manage OpenWrt routers directly from Android with a modern, high-performance native interface built for administration, wireless monitoring, and network control.
 
-Yet Another LuCI App (YALA) is a privacy-first mobile client connecting directly to your router via standard LuCI HTTP/HTTPS and ubus JSON-RPC APIs. Designed for speed, it provides a touch-friendly alternative to mobile browsers without depending on cloud servers, external accounts, or remote telemetry.
+Yala (YALA) is a privacy-first mobile client connecting directly to your router via standard LuCI HTTP/HTTPS and ubus JSON-RPC APIs. Designed for speed, it provides a touch-friendly alternative to mobile browsers without depending on cloud servers, external accounts, or remote telemetry.
 
 COMPATIBLE FIRMWARES & ROUTERS
 Works with OpenWrt (19.07–24.10+), ImmortalWrt, Turris OS, GL.iNet, Gargoyle, and FriendlyWrt across TP-Link, Netgear, Linksys, Asus, and x86/ARM devices with LuCI or ubus RPC.

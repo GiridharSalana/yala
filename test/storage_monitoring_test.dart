@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/modules/storage_monitoring/models/storage_info.dart';
+import 'package:yala/modules/storage_monitoring/models/storage_info.dart';
 
 void main() {
   group('Storage Monitoring Tests', () {

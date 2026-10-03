@@ -5,17 +5,17 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/controllers/diagnostics_controller.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/diagnostic_report.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/dns_lookup_result.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/flush_dns_result.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/internet_reachability.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/ping_result.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/routing_neighbor_info.dart';
-import 'package:yet_another_luci_app/modules/diagnostics/models/traceroute_result.dart';
-import 'package:yet_another_luci_app/services/api_service.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/main.dart';
+import 'package:yala/modules/diagnostics/controllers/diagnostics_controller.dart';
+import 'package:yala/modules/diagnostics/models/diagnostic_report.dart';
+import 'package:yala/modules/diagnostics/models/dns_lookup_result.dart';
+import 'package:yala/modules/diagnostics/models/flush_dns_result.dart';
+import 'package:yala/modules/diagnostics/models/internet_reachability.dart';
+import 'package:yala/modules/diagnostics/models/ping_result.dart';
+import 'package:yala/modules/diagnostics/models/routing_neighbor_info.dart';
+import 'package:yala/modules/diagnostics/models/traceroute_result.dart';
+import 'package:yala/services/api_service.dart';
+import 'package:yala/state/app_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

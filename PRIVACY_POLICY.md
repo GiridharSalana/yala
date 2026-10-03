@@ -1,9 +1,9 @@
 # Privacy Policy
 
-**Yet Another LuCI App**
+**Yala**
 Last updated: September 07, 2026
 
-I am committed to protecting your privacy. This Privacy Policy explains how Yet Another LuCI App ("App") handles your information when you use the App to manage your OpenWrt/LuCI routers.
+I am committed to protecting your privacy. This Privacy Policy explains how Yala ("App") handles your information when you use the App to manage your OpenWrt/LuCI routers.
 
 ---
 
@@ -57,7 +57,7 @@ I am committed to protecting your privacy. This Privacy Policy explains how Yet 
 
 ## 5. Children's Privacy (Age 3+ Compliance)
 
-- **Rated Age 3+ (Suitable for All Ages)**: Yet Another LuCI App is listed and rated **Age 3+** on the Google Play Store, making it suitable for users of all ages, including children under 13.
+- **Rated Age 3+ (Suitable for All Ages)**: Yala is listed and rated **Age 3+** on the Google Play Store, making it suitable for users of all ages, including children under 13.
 - **Zero Personal Data Collection**: The App operates with a local-first architecture and does not collect, store, or transmit any personal information, personal identifiers, device IDs, location data, or network details from children or any other users.
 - **Ad-Free & Family Safe**: The App displays zero advertisements and includes no analytics or user tracking, providing a safe, privacy-focused experience for all family members.
 

@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Available curated color palettes for Yet Another LuCI App (YALA).
+/// Available curated color palettes for Yala (YALA).
 enum AppThemePalette {
   amber,
   dynamicTheme;
@@ -35,7 +35,7 @@ enum AppThemePalette {
   };
 }
 
-/// Centralized theme provider for Yet Another LuCI App (YALA).
+/// Centralized theme provider for Yala (YALA).
 ///
 /// Supports YALA Amber (signature theme) and Dynamic (Material You) for Light and Dark modes.
 class LuciTheme {

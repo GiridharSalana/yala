@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/services/mock_api_service.dart';
+import 'package:yala/services/mock_api_service.dart';
 
 void main() {
   group('Client Access Control & Live Router Query Tests', () {

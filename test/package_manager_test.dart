@@ -5,11 +5,11 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
-import 'package:yet_another_luci_app/models/rpc_result.dart';
-import 'package:yet_another_luci_app/modules/package_manager/models/package_info.dart';
-import 'package:yet_another_luci_app/services/api_service.dart';
-import 'package:yet_another_luci_app/state/controllers/package_controller.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/models/rpc_result.dart';
+import 'package:yala/modules/package_manager/models/package_info.dart';
+import 'package:yala/services/api_service.dart';
+import 'package:yala/state/controllers/package_controller.dart';
 
 void main() {
   group('Package Manager Engine Wiring Tests', () {

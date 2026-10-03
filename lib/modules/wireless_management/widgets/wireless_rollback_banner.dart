@@ -4,9 +4,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yala/main.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/widgets/luci_toast.dart';
 import '../models/wireless_info.dart';
 import 'edit_radio_dialog.dart';
 import 'edit_ssid_dialog.dart';

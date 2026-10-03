@@ -5,12 +5,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/utils/logger.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/modules/parental_controls/models/parental_profile.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/router_service.dart';
+import 'package:yala/utils/logger.dart';
 
 /// Lifecycle observer stub — auto-revert timer removed per developer requirement.
 class AccessControlTimerLifecycleManager {

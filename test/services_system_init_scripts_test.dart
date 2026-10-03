@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/modules/services_system/models/services_system_info.dart';
+import 'package:yala/modules/services_system/models/services_system_info.dart';
 
 void main() {
   group('Services & System Startup Init Scripts Tests', () {

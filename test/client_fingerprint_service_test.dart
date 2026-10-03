@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/services/client_fingerprint_service.dart';
+import 'package:yala/services/client_fingerprint_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

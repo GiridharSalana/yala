@@ -5,7 +5,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
+import 'package:yala/models/router_capabilities.dart';
 
 /// Unify package manager enum across application
 typedef PackageManagerType = PackageManagerEngine;

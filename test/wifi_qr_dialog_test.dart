@@ -5,8 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/models/wireless_info.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/widgets/wifi_qr_dialog.dart';
+import 'package:yala/modules/wireless_management/models/wireless_info.dart';
+import 'package:yala/modules/wireless_management/widgets/wifi_qr_dialog.dart';
 
 void main() {
   testWidgets(

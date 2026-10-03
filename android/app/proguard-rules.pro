@@ -1,5 +1,5 @@
 # Flutter & Android entry points
--keep class com.nightcode.luci.MainActivity { *; }
+-keep class com.giridharsalana.yala.MainActivity { *; }
 -keep class io.flutter.plugins.GeneratedPluginRegistrant { *; }
 
 # Flutter plugin lifecycle & instantiation (targeted rather than broad { *; })

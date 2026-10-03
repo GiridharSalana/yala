@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/models/interface.dart';
-import 'package:yet_another_luci_app/modules/system_monitoring/models/system_metrics.dart';
+import 'package:yala/models/interface.dart';
+import 'package:yala/modules/system_monitoring/models/system_metrics.dart';
 
 /// Tests for wired-only router support (GitHub issues #46, #24, #6).
 ///

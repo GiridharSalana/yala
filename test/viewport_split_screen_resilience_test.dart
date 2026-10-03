@@ -6,14 +6,14 @@ import 'dart:ui' show DisplayFeature, DisplayFeatureType, DisplayFeatureState;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/services/update_checker_service.dart';
-import 'package:yet_another_luci_app/widgets/add_static_lease_dialog.dart';
-import 'package:yet_another_luci_app/widgets/ban_wireless_client_dialog.dart';
-import 'package:yet_another_luci_app/widgets/luci_guardrail.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/widgets/wifi_qr_dialog.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/models/wireless_info.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/services/update_checker_service.dart';
+import 'package:yala/widgets/add_static_lease_dialog.dart';
+import 'package:yala/widgets/ban_wireless_client_dialog.dart';
+import 'package:yala/widgets/luci_guardrail.dart';
+import 'package:yala/modules/wireless_management/widgets/wifi_qr_dialog.dart';
+import 'package:yala/modules/wireless_management/models/wireless_info.dart';
+import 'package:yala/utils/os_platform_integration.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() {

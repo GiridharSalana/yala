@@ -38,7 +38,7 @@
         android:localeConfig="@xml/locales_config">
 
         <activity
-            android:name="com.nightcode.luci.MainActivity"
+            android:name="com.giridharsalana.yala.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:autoRemoveFromRecents="false"

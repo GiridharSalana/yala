@@ -5,9 +5,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/main.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/state/app_state.dart';
 
 /// Represents a supported language option within the application.
 class AppLanguageOption {

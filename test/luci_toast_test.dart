@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yala/widgets/luci_toast.dart';
 
 void main() {
   group('LuciToast Dynamic Material Theming Tests', () {

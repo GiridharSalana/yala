@@ -4,7 +4,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -614,7 +614,7 @@ void main() {
 
     test('Portuguese (pt) resolves to European Portuguese', () async {
       final pt = await AppLocalizations.delegate.load(const Locale('pt'));
-      expect(pt.appTitle, 'Yet Another LuCI App');
+      expect(pt.appTitle, 'Yala');
       expect(pt.navDashboard, 'Dashboard');
       expect(pt.navClients, 'Clientes');
       expect(pt.navWireless, 'Sem fios');
@@ -626,7 +626,7 @@ void main() {
       'Chinese (zh) resolves to Simplified Chinese with accurate LuCI terminology',
       () async {
         final zh = await AppLocalizations.delegate.load(const Locale('zh'));
-        expect(zh.appTitle, 'Yet Another LuCI App');
+        expect(zh.appTitle, 'Yala');
         expect(zh.appDescription, 'OpenWrt 路由器管理应用');
         expect(zh.navDashboard, '概览');
         expect(zh.navInterfaces, '接口');

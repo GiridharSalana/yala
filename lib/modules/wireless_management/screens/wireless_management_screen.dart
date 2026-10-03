@@ -5,23 +5,23 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/modules/dhcp_dns/models/dhcp_dns_info.dart';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/widgets/luci_collapsible_card.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
+import 'package:yala/main.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/modules/dhcp_dns/models/dhcp_dns_info.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
+import 'package:yala/widgets/luci_collapsible_card.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/design/luci_design_system.dart';
 import '../models/wireless_info.dart';
 import '../widgets/wireless_interface_card.dart';
 import '../widgets/edit_radio_dialog.dart';
 import '../widgets/add_ssid_dialog.dart';
-import 'package:yet_another_luci_app/widgets/luci_guardrail.dart';
+import 'package:yala/widgets/luci_guardrail.dart';
 import '../widgets/wireless_rollback_banner.dart';
 import 'wifi_access_control_screen.dart';
 import 'guest_wifi_management_screen.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class WirelessManagementScreen extends ConsumerStatefulWidget {
   final bool showBack;

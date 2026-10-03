@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/modules/charting/services/metrics_chart_engine.dart';
+import 'package:yala/modules/charting/services/metrics_chart_engine.dart';
 
 void main() {
   group('MetricsChartEngine Tests', () {

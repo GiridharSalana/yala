@@ -14,11 +14,11 @@ import '../../../main.dart';
 import '../../../state/app_state.dart';
 import '../../../utils/os_platform_integration.dart';
 import '../../../widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yala/widgets/luci_toast.dart';
 import '../../../utils/logger.dart';
 import '../../../widgets/luci_contextual_hint_banner.dart';
 import '../../../widgets/luci_collapsible_card.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 import '../widgets/preserved_backup_files_sheet.dart';
 
 class SystemBackupUpgradeScreen extends ConsumerStatefulWidget {

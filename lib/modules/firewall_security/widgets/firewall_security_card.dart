@@ -4,9 +4,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/main.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/l10n/app_localizations.dart';
 import '../models/firewall_info.dart';
 
 class FirewallSecurityCard extends ConsumerWidget {

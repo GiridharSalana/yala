@@ -6,19 +6,19 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:yet_another_luci_app/modules/vpn_connectivity/models/vpn_info.dart';
-import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
-import 'package:yet_another_luci_app/modules/storage_monitoring/models/storage_info.dart';
-import 'package:yet_another_luci_app/modules/system_monitoring/models/router_temperature.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/ssh_service_interface.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/state/controllers/throughput_controller.dart';
-import 'package:yet_another_luci_app/utils/http_client_manager.dart';
-import 'package:yet_another_luci_app/utils/logger.dart';
+import 'package:yala/modules/vpn_connectivity/models/vpn_info.dart';
+import 'package:yala/models/dashboard_preferences.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/modules/storage_monitoring/models/storage_info.dart';
+import 'package:yala/modules/system_monitoring/models/router_temperature.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/interfaces/ssh_service_interface.dart';
+import 'package:yala/services/router_service.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/state/controllers/throughput_controller.dart';
+import 'package:yala/utils/http_client_manager.dart';
+import 'package:yala/utils/logger.dart';
 
 /// Enum matching AppState connection status for reporting connection failures.
 enum DashboardConnectionStatus { connected, reconnecting, disconnected }

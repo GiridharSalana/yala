@@ -6,9 +6,9 @@ SourceCode: https://github.com/nightcodex7/yala
 IssueTracker: https://github.com/nightcodex7/yala/issues
 Changelog: https://github.com/nightcodex7/yala/releases
 
-AutoName: Yet Another LuCI App
+AutoName: Yala
 Description: |-
-  Yet Another LuCI App is a free and open-source Android application designed to manage OpenWrt routers running the standard LuCI web interface.
+  Yala is a free and open-source Android application designed to manage OpenWrt routers running the standard LuCI web interface.
 
   Features:
   * Comprehensive router dashboard (CPU, RAM, Bandwidth, Uptime)

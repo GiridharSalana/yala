@@ -6,23 +6,23 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/screens/login_screen.dart';
-import 'package:yet_another_luci_app/screens/manage_routers_screen.dart';
-import 'package:yet_another_luci_app/screens/settings_screen.dart';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
+import 'package:yala/main.dart';
+import 'package:yala/screens/login_screen.dart';
+import 'package:yala/screens/manage_routers_screen.dart';
+import 'package:yala/screens/settings_screen.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/design/luci_design_system.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-import 'package:yet_another_luci_app/config/app_config.dart';
-import 'package:yet_another_luci_app/utils/http_client_manager.dart';
-import 'package:yet_another_luci_app/utils/gateway_utils.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/modules/core/luci_module_registry.dart';
-import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/config/app_config.dart';
+import 'package:yala/utils/http_client_manager.dart';
+import 'package:yala/utils/gateway_utils.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/modules/core/luci_module_registry.dart';
+import 'package:yala/widgets/theme_router_logo.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class _MoreScreenSection extends StatelessWidget {
   final List<Widget> tiles;
@@ -230,7 +230,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
-                    'Yet Another LuCI App',
+                    'Yala',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                 ),
@@ -392,7 +392,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                             scheme: 'mailto',
                             path: AppConfig.supportEmail,
                             queryParameters: {
-                              'subject': 'Yet Another LuCI App Support Request',
+                              'subject': 'Yala Support Request',
                             },
                           );
                           await launchUrlString(

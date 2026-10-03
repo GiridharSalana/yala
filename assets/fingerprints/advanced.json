@@ -1,7 +1,7 @@
 {
   "edition": "advanced",
   "version": "1.0.0",
-  "description": "Advanced Fingerprints & Enhanced Device Classification Heuristics for Yet Another LuCI App",
+  "description": "Advanced Fingerprints & Enhanced Device Classification Heuristics for Yala",
   "oui_rules": [
     {
       "prefix": "00:05:CD",

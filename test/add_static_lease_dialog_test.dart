@@ -4,8 +4,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/modules/dhcp_dns/models/dhcp_dns_info.dart';
-import 'package:yet_another_luci_app/widgets/add_static_lease_dialog.dart';
+import 'package:yala/modules/dhcp_dns/models/dhcp_dns_info.dart';
+import 'package:yala/widgets/add_static_lease_dialog.dart';
 
 void main() {
   testWidgets(

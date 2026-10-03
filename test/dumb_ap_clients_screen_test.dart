@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/screens/clients_screen.dart';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/screens/clients_screen.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
+import 'package:yala/state/app_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

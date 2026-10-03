@@ -9,7 +9,7 @@ import 'package:flutter/services.dart';
 /// Service for checking and requesting Android 15+ (API 35+ / Target API 37) Local Network Permission.
 class LocalNetworkPermissionService {
   static const MethodChannel _channel = MethodChannel(
-    'com.nightcode.luci/local_network_permission',
+    'com.giridharsalana.yala/local_network_permission',
   );
 
   /// Checks whether local network permission (`ACCESS_LOCAL_NETWORK`) is granted.

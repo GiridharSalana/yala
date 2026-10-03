@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
 
 class MockAuthService implements IAuthService {
   String? _sysauth = 'mock_sysauth_token_12345';

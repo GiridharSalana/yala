@@ -4,18 +4,18 @@
 
 import 'dart:async';
 
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/state/app_state.dart'
+import 'package:yala/models/client.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/router_service.dart';
+import 'package:yala/state/app_state.dart'
     show
         kNeighborProbeInterval,
         kNeighborProbeMaxBatch,
         normalizeMac,
         selectNeighborProbeTargets;
-import 'package:yet_another_luci_app/utils/logger.dart';
+import 'package:yala/utils/logger.dart';
 
 /// Encapsulates client list aggregation, neighbor table NUD active probing,
 /// Layer-2 bridge FDB mapping, DHCP lease processing, and device classification.

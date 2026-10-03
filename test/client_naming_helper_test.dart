@@ -4,8 +4,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/utils/client_naming_helper.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/utils/client_naming_helper.dart';
 
 void main() {
   group('ClientNamingHelper Unit Tests', () {

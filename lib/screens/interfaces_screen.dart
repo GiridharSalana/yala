@@ -4,20 +4,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
+import 'package:yala/main.dart';
 import 'package:flutter/services.dart';
-import 'package:yet_another_luci_app/models/interface.dart';
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
-import 'package:yet_another_luci_app/models/network_topology.dart';
-import 'package:yet_another_luci_app/widgets/network_topology_card.dart';
+import 'package:yala/models/interface.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/models/network_topology.dart';
+import 'package:yala/widgets/network_topology_card.dart';
 import 'dart:math';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/widgets/luci_loading_states.dart';
-import 'package:yet_another_luci_app/widgets/luci_refresh_components.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/widgets/luci_loading_states.dart';
+import 'package:yala/widgets/luci_refresh_components.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class InterfacesScreen extends ConsumerStatefulWidget {
   final String? scrollToInterface;

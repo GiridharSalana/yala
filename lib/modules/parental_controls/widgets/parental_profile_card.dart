@@ -4,7 +4,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 import '../models/parental_profile.dart';
 
 /// Profile summary card shown in the main parental controls list.

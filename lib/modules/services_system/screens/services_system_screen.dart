@@ -6,11 +6,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/widgets/luci_collapsible_card.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/main.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/widgets/luci_collapsible_card.dart';
 import '../models/services_system_info.dart';
 import '../models/ddns_info.dart';
 

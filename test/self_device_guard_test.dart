@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/utils/self_device_guard.dart';
+import 'package:yala/utils/self_device_guard.dart';
 
 void main() {
   group('SelfDeviceGuard Tests', () {

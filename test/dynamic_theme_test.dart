@@ -7,14 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:yet_another_luci_app/design/luci_theme.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/screens/settings_screen.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/state/controllers/session_controller.dart';
-import 'package:yet_another_luci_app/utils/http_client_manager.dart';
-import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
+import 'package:yala/design/luci_theme.dart';
+import 'package:yala/main.dart';
+import 'package:yala/screens/settings_screen.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/state/controllers/session_controller.dart';
+import 'package:yala/utils/http_client_manager.dart';
+import 'package:yala/widgets/theme_router_logo.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

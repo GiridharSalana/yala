@@ -4,9 +4,9 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/utils/client_naming_helper.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/widgets/luci_guardrail.dart';
+import 'package:yala/utils/client_naming_helper.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/widgets/luci_guardrail.dart';
 
 class SelfDeviceGuard {
   static Set<String>? _cachedLocalIpsAndMacs;

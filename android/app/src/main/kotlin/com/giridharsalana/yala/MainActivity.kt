@@ -1,7 +1,7 @@
 // Copyright (C) 2026 @nightcodex7
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package com.nightcode.luci
+package com.giridharsalana.yala
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -16,8 +16,8 @@ import android.view.View
 import android.view.ViewGroup
 
 class MainActivity : FlutterFragmentActivity() {
-    private val PERMISSION_CHANNEL = "com.nightcode.luci/local_network_permission"
-    private val LIFECYCLE_CHANNEL = "com.nightcode.luci/app_lifecycle"
+    private val PERMISSION_CHANNEL = "com.giridharsalana.yala/local_network_permission"
+    private val LIFECYCLE_CHANNEL = "com.giridharsalana.yala/app_lifecycle"
     private val LOCAL_NETWORK_PERMISSION_CODE = 1001
     private var pendingPermissionResult: MethodChannel.Result? = null
 

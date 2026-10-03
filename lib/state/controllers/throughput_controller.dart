@@ -5,8 +5,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
-import 'package:yet_another_luci_app/services/throughput_service.dart';
+import 'package:yala/models/dashboard_preferences.dart';
+import 'package:yala/services/throughput_service.dart';
 
 /// Encapsulates throughput polling, timer lifecycle, and interface-specific
 /// rate history. Extracted from AppState to enforce single-responsibility

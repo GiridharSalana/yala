@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
-import 'package:yet_another_luci_app/models/rpc_result.dart';
-import 'package:yet_another_luci_app/modules/firewall_security/models/firewall_info.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/models/rpc_result.dart';
+import 'package:yala/modules/firewall_security/models/firewall_info.dart';
 
 void main() {
   group('Firewall Module Capability & Topology Unit Tests', () {

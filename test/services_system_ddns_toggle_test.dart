@@ -5,9 +5,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/modules/services_system/models/ddns_info.dart';
-import 'package:yet_another_luci_app/modules/services_system/screens/services_system_screen.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/modules/services_system/models/ddns_info.dart';
+import 'package:yala/modules/services_system/screens/services_system_screen.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 void main() {
   group('DDNS and Async Toggle Hardening Tests', () {

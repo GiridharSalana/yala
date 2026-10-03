@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/modules/vpn_connectivity/models/vpn_info.dart';
-import 'package:yet_another_luci_app/state/controllers/dashboard_controller.dart';
+import 'package:yala/modules/vpn_connectivity/models/vpn_info.dart';
+import 'package:yala/state/controllers/dashboard_controller.dart';
 
 void main() {
   group('VPN & Connectivity Unit Tests', () {

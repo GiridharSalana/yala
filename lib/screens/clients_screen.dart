@@ -6,25 +6,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/main.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
 
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/widgets/luci_loading_states.dart';
-import 'package:yet_another_luci_app/widgets/luci_refresh_components.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/widgets/luci_loading_states.dart';
+import 'package:yala/widgets/luci_refresh_components.dart';
 
-import 'package:yet_another_luci_app/utils/client_naming_helper.dart';
-import 'package:yet_another_luci_app/utils/self_device_guard.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/widgets/add_static_lease_dialog.dart';
-import 'package:yet_another_luci_app/widgets/ban_wireless_client_dialog.dart';
+import 'package:yala/utils/client_naming_helper.dart';
+import 'package:yala/utils/self_device_guard.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/widgets/add_static_lease_dialog.dart';
+import 'package:yala/widgets/ban_wireless_client_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:yet_another_luci_app/modules/dhcp_dns/models/dhcp_dns_info.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/models/wireless_info.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/modules/dhcp_dns/models/dhcp_dns_info.dart';
+import 'package:yala/modules/wireless_management/models/wireless_info.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class ClientsScreen extends ConsumerStatefulWidget {
   final bool isTabActive;

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/widgets/theme_router_logo.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -21,7 +21,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final l10n = AppLocalizations.of(context);
     return [
       OnboardingPageData(
-        title: l10n?.onboardingSlide1Title ?? 'Welcome to Yet Another LuCI App',
+        title: l10n?.onboardingSlide1Title ?? 'Welcome to Yala',
         subtitle:
             l10n?.onboardingSlide1Subtitle ??
             'Modern OpenWrt Router Management',

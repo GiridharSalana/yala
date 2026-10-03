@@ -4,17 +4,17 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/services/local_network_permission_service.dart';
-import 'package:yet_another_luci_app/config/app_config.dart';
-import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
-import 'package:yet_another_luci_app/screens/main_screen.dart';
-import 'package:yet_another_luci_app/screens/login_screen.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/services/local_network_permission_service.dart';
+import 'package:yala/config/app_config.dart';
+import 'package:yala/widgets/theme_router_logo.dart';
+import 'package:yala/screens/main_screen.dart';
+import 'package:yala/screens/login_screen.dart';
+import 'package:yala/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import 'package:yet_another_luci_app/services/client_fingerprint_service.dart';
+import 'package:yala/services/client_fingerprint_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -87,6 +87,20 @@ class _SplashScreenState extends State<SplashScreen>
     if (hasSavedCreds) {
       await LocalNetworkPermissionService.ensurePermissionGranted();
       if (!mounted) return;
+
+      // Attempt auto-login with saved credentials
+      final success = await appState.sessionController?.tryAutoLogin(
+        fetchDashboard: true,
+        context: context,
+      ) ?? false;
+
+      if (!mounted) return;
+
+      if (success) {
+        _navigateToMainScreen();
+        return;
+      }
+      // Auto-login failed, fall through to login screen with pre-filled credentials
     }
 
     _navigateToLoginScreen(
@@ -223,7 +237,7 @@ class _SplashScreenState extends State<SplashScreen>
                               child: Column(
                                 children: [
                                   Text(
-                                    'Yet Another LuCI App',
+                                    'Yala',
                                     style: theme.textTheme.headlineMedium
                                         ?.copyWith(
                                           color: colorScheme.onSurface,

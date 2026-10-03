@@ -2,18 +2,18 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/ssh_service_interface.dart';
-import 'package:yet_another_luci_app/services/auth_service.dart';
-import 'package:yet_another_luci_app/services/api_service.dart';
-import 'package:yet_another_luci_app/services/ssh_service.dart';
-import 'package:yet_another_luci_app/services/mock_auth_service.dart';
-import 'package:yet_another_luci_app/services/mock_api_service.dart';
-import 'package:yet_another_luci_app/services/mock_ssh_service.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/services/throughput_service.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/interfaces/ssh_service_interface.dart';
+import 'package:yala/services/auth_service.dart';
+import 'package:yala/services/api_service.dart';
+import 'package:yala/services/ssh_service.dart';
+import 'package:yala/services/mock_auth_service.dart';
+import 'package:yala/services/mock_api_service.dart';
+import 'package:yala/services/mock_ssh_service.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/services/router_service.dart';
+import 'package:yala/services/throughput_service.dart';
 
 abstract class ServiceFactory {
   IAuthService createAuthService();

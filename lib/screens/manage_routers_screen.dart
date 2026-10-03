@@ -4,17 +4,17 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/utils/url_parser.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/utils/logger.dart';
-import 'package:yet_another_luci_app/screens/main_screen.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/main.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/services/router_service.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/utils/url_parser.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/utils/logger.dart';
+import 'package:yala/screens/main_screen.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class ManageRoutersScreen extends ConsumerStatefulWidget {
   final bool isFromLogin;

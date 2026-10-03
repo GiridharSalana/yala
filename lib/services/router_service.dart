@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'dart:convert';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/services/secure_storage_service.dart';
 
 class RouterService {
   RouterService({this.isReviewerMode = false});
@@ -182,7 +182,7 @@ class RouterService {
     final data = {
       'version': 1,
       'exportedAt': DateTime.now().toUtc().toIso8601String(),
-      'app': 'Yet Another LuCI App',
+      'app': 'Yala',
       'profiles': _routers.map((r) => r.toJson()).toList(),
     };
     return const JsonEncoder.withIndent('  ').convert(data);

@@ -9,19 +9,19 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/config/app_config.dart';
-import 'package:yet_another_luci_app/design/luci_theme.dart';
-import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/services/service_factory.dart';
-import 'package:yet_another_luci_app/state/controllers/dashboard_controller.dart';
-import 'package:yet_another_luci_app/utils/http_client_manager.dart';
-import 'package:yet_another_luci_app/utils/logger.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
+import 'package:yala/config/app_config.dart';
+import 'package:yala/design/luci_theme.dart';
+import 'package:yala/models/dashboard_preferences.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/router_service.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/services/service_factory.dart';
+import 'package:yala/state/controllers/dashboard_controller.dart';
+import 'package:yala/utils/http_client_manager.dart';
+import 'package:yala/utils/logger.dart';
+import 'package:yala/utils/os_platform_integration.dart';
 
 /// Encapsulates authentication session lifecycle, router profile selection,
 /// preference storage, theme persistence, and reviewer mode configuration.
@@ -691,7 +691,7 @@ class SessionController {
           (errStr.contains('operation not permitted') ||
               errStr.contains('errno = 1'))) {
         _setErrorState(
-          'Local network permission required. Please allow access in iOS Settings > Yet Another LuCI App.',
+          'Local network permission required. Please allow access in iOS Settings > Yala.',
         );
       } else {
         _setErrorState('An error occurred: $e');

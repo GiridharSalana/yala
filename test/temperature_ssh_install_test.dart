@@ -5,9 +5,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/models/router.dart';
-import 'package:yet_another_luci_app/services/mock_ssh_service.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/models/router.dart';
+import 'package:yala/services/mock_ssh_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

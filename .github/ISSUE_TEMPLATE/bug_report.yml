@@ -1,12 +1,12 @@
 name: 🐛 Bug Report
-description: Create a report to help improve Yet Another LuCI App.
+description: Create a report to help improve Yala.
 title: '[BUG] '
 labels: ['bug', 'triage']
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug! This helps make Yet Another LuCI App better.
+        Thanks for taking the time to report a bug! This helps make Yala better.
         
         **Note:** Bugs are tricky to understand. The more details you can provide, the faster it can be fixed.
 
@@ -33,7 +33,7 @@ body:
     id: installation-method
     attributes:
       label: How you installed it
-      description: "How did you install Yet Another LuCI App?"
+      description: "How did you install Yala?"
       options:
         - Google Play
         - F-Droid / IzzyOnDroid

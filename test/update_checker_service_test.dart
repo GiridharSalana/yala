@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/services/update_checker_service.dart';
+import 'package:yala/services/update_checker_service.dart';
 
 void main() {
   group('UpdateCheckerService', () {

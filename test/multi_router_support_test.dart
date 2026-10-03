@@ -7,10 +7,10 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/modules/parental_controls/models/parental_controls_store.dart';
-import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/modules/parental_controls/models/parental_controls_store.dart';
+import 'package:yala/modules/parental_controls/models/parental_profile.dart';
+import 'package:yala/services/router_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -272,7 +272,7 @@ void main() {
 
         final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
         expect(decoded['version'], 1);
-        expect(decoded['app'], 'Yet Another LuCI App');
+        expect(decoded['app'], 'Yala');
         expect(decoded['exportedAt'], isNotNull);
 
         final profiles = decoded['profiles'] as List<dynamic>;
@@ -322,7 +322,7 @@ void main() {
         const jsonPayload = '''
       {
         "version": 1,
-        "app": "Yet Another LuCI App",
+        "app": "Yala",
         "exportedAt": "2026-09-08T18:00:00.000Z",
         "profiles": [
           {

@@ -4,11 +4,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
+import 'package:yala/main.dart';
 import '../models/router_temperature.dart';
 import '../models/system_metrics.dart';
 import '../widgets/add_rpc_handler_dialog.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class SystemMonitoringScreen extends ConsumerWidget {
   const SystemMonitoringScreen({super.key});

@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:yet_another_luci_app/screens/login_screen.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/mock_api_service.dart';
-import 'package:yet_another_luci_app/services/auth_service.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/screens/login_screen.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/mock_api_service.dart';
+import 'package:yala/services/auth_service.dart';
+import 'package:yala/state/app_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

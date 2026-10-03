@@ -4,12 +4,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yala/main.dart';
+import 'package:yala/widgets/luci_toast.dart';
 import '../models/wireless_info.dart';
 import 'edit_ssid_dialog.dart';
 import 'wifi_qr_dialog.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 /// Context-aware responsive card component for managing a individual virtual Wi-Fi SSID interface.
 /// Features non-truncating title header, responsive badge toolbar, full security overview,

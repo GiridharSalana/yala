@@ -6,23 +6,23 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/design/luci_theme.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/screens/login_screen.dart';
-import 'package:yet_another_luci_app/screens/main_screen.dart';
-import 'package:yet_another_luci_app/screens/settings_screen.dart';
-import 'package:yet_another_luci_app/screens/splash_screen.dart';
-import 'package:yet_another_luci_app/screens/onboarding_screen.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/design/luci_theme.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/screens/login_screen.dart';
+import 'package:yala/screens/main_screen.dart';
+import 'package:yala/screens/settings_screen.dart';
+import 'package:yala/screens/splash_screen.dart';
+import 'package:yala/screens/onboarding_screen.dart';
 
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
+import 'package:yala/models/router_capabilities.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yala/widgets/luci_toast.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +34,7 @@ void main() {
   LicenseRegistry.addLicense(() async* {
     yield const LicenseEntryWithLineBreaks(
       ['yet_another_luci_app (yala)'],
-      '''Yet Another LuCI App (yala)
+      '''Yala (yala)
 Original work Copyright (C) 2025-2026 cogwheel0
 Modifications Copyright (C) 2026 @nightcodex7
 
@@ -137,7 +137,7 @@ class LuCIApp extends ConsumerWidget {
 
         return MaterialApp(
           navigatorKey: LuciToastManager.navigatorKey,
-          title: 'Yet Another LuCI App',
+          title: 'Yala',
           restorationScopeId: 'root_luci_app',
           debugShowCheckedModeBanner: false,
           scrollBehavior: const LuciScrollBehavior(),

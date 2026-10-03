@@ -7,11 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:yet_another_luci_app/config/app_config.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/screens/more_screen.dart';
-import 'package:yet_another_luci_app/screens/settings_screen.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/config/app_config.dart';
+import 'package:yala/main.dart';
+import 'package:yala/screens/more_screen.dart';
+import 'package:yala/screens/settings_screen.dart';
+import 'package:yala/state/app_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -49,7 +49,7 @@ void main() {
         LicenseRegistry.addLicense(() async* {
           yield const LicenseEntryWithLineBreaks(
             ['yet_another_luci_app (yala)'],
-            '''Yet Another LuCI App (yala)
+            '''Yala (yala)
 Original work Copyright (C) 2025-2026 cogwheel0
 Modifications Copyright (C) 2026 @nightcodex7
 

@@ -4,19 +4,19 @@
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/services/throughput_service.dart';
-import 'package:yet_another_luci_app/state/controllers/client_controller.dart';
-import 'package:yet_another_luci_app/state/controllers/dashboard_controller.dart';
-import 'package:yet_another_luci_app/state/controllers/session_controller.dart';
-import 'package:yet_another_luci_app/state/controllers/throughput_controller.dart';
-import 'package:yet_another_luci_app/utils/http_client_manager.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/models/dashboard_preferences.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/router_service.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/services/throughput_service.dart';
+import 'package:yala/state/controllers/client_controller.dart';
+import 'package:yala/state/controllers/dashboard_controller.dart';
+import 'package:yala/state/controllers/session_controller.dart';
+import 'package:yala/state/controllers/throughput_controller.dart';
+import 'package:yala/utils/http_client_manager.dart';
 
 class MockAuthService implements IAuthService {
   String? _sysauth = 'initial_sysauth';

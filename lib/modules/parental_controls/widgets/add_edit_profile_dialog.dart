@@ -5,9 +5,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/models/client.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/main.dart';
+import 'package:yala/models/client.dart';
 import '../models/parental_profile.dart';
 import '../models/parental_controls_store.dart';
 

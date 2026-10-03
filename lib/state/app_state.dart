@@ -9,37 +9,37 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
-import 'package:yet_another_luci_app/config/app_config.dart';
-import 'package:yet_another_luci_app/design/luci_theme.dart';
-import 'package:yet_another_luci_app/services/secure_storage_service.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/services/throughput_service.dart';
-import 'package:yet_another_luci_app/state/controllers/throughput_controller.dart';
-import 'package:yet_another_luci_app/state/controllers/dashboard_controller.dart';
-import 'package:yet_another_luci_app/state/controllers/package_controller.dart';
-import 'package:yet_another_luci_app/state/controllers/network_actions_controller.dart';
-import 'package:yet_another_luci_app/state/controllers/client_controller.dart';
-import 'package:yet_another_luci_app/state/controllers/session_controller.dart';
-import 'package:yet_another_luci_app/models/rpc_result.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
-import 'package:yet_another_luci_app/modules/parental_controls/controllers/parental_controls_controller.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/ssh_service_interface.dart';
-import 'package:yet_another_luci_app/services/service_factory.dart';
-import 'package:yet_another_luci_app/utils/http_client_manager.dart';
-import 'package:yet_another_luci_app/utils/logger.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/modules/package_manager/models/package_info.dart';
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
-import 'package:yet_another_luci_app/models/network_topology.dart';
-import 'package:yet_another_luci_app/modules/firewall_security/models/firewall_info.dart';
-import 'package:yet_another_luci_app/modules/services_system/models/ddns_info.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/models/wireless_info.dart';
-import 'package:yet_another_luci_app/modules/dhcp_dns/models/dhcp_dns_info.dart';
+import 'package:yala/config/app_config.dart';
+import 'package:yala/design/luci_theme.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/services/router_service.dart';
+import 'package:yala/services/throughput_service.dart';
+import 'package:yala/state/controllers/throughput_controller.dart';
+import 'package:yala/state/controllers/dashboard_controller.dart';
+import 'package:yala/state/controllers/package_controller.dart';
+import 'package:yala/state/controllers/network_actions_controller.dart';
+import 'package:yala/state/controllers/client_controller.dart';
+import 'package:yala/state/controllers/session_controller.dart';
+import 'package:yala/models/rpc_result.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/modules/parental_controls/models/parental_profile.dart';
+import 'package:yala/modules/parental_controls/controllers/parental_controls_controller.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/models/dashboard_preferences.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/interfaces/ssh_service_interface.dart';
+import 'package:yala/services/service_factory.dart';
+import 'package:yala/utils/http_client_manager.dart';
+import 'package:yala/utils/logger.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/modules/package_manager/models/package_info.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/models/network_topology.dart';
+import 'package:yala/modules/firewall_security/models/firewall_info.dart';
+import 'package:yala/modules/services_system/models/ddns_info.dart';
+import 'package:yala/modules/wireless_management/models/wireless_info.dart';
+import 'package:yala/modules/dhcp_dns/models/dhcp_dns_info.dart';
 
 enum RouterConnectionStatus { connected, reconnecting, disconnected }
 
@@ -98,6 +98,8 @@ class AppState extends ChangeNotifier {
   // Reviewer mode state
   bool get reviewerModeEnabled =>
       _sessionController?.reviewerModeEnabled ?? false;
+
+  SessionController? get sessionController => _sessionController;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -392,6 +394,45 @@ class AppState extends ChangeNotifier {
 
   Map<String, dynamic>? get dashboardData =>
       _dashboardController?.dashboardData;
+
+  /// Count of active wireless interfaces (SSIDs) across all radios
+  int get activeWirelessInterfacesCount {
+    final wireless = dashboardData?['wireless'] as Map<String, dynamic>?;
+    if (wireless == null) return 0;
+    int count = 0;
+    wireless.forEach((_, radio) {
+      if (radio is Map<String, dynamic>) {
+        final interfaces = radio['interfaces'] as List<dynamic>?;
+        if (interfaces != null) {
+          for (final iface in interfaces) {
+            if (iface is Map<String, dynamic>) {
+              final config = iface['config'] as Map<String, dynamic>?;
+              if (config != null && config['disabled'] != true && config['mode'] == 'ap') {
+                count++;
+              }
+            }
+          }
+        }
+      }
+    });
+    return count;
+  }
+
+  /// Count of active wireless radios
+  int get activeWirelessRadiosCount {
+    final wireless = dashboardData?['wireless'] as Map<String, dynamic>?;
+    if (wireless == null) return 0;
+    int count = 0;
+    wireless.forEach((_, radio) {
+      if (radio is Map<String, dynamic>) {
+        if (radio['up'] == true && radio['disabled'] != true) {
+          count++;
+        }
+      }
+    });
+    return count;
+  }
+
   List<double> get rxHistory => _throughputController?.rxHistory ?? [];
   List<double> get txHistory => _throughputController?.txHistory ?? [];
   double get currentRxRate => _throughputController?.currentRxRate ?? 0.0;
@@ -1912,7 +1953,7 @@ class AppState extends ChangeNotifier {
           'cat << \'EOF\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json\n'
           '{\n'
           '  "yet-another-luci-app": {\n'
-          '    "description": "Yet Another LuCI App Silent RPC Permissions",\n'
+          '    "description": "Yala Silent RPC Permissions",\n'
           '    "read": {\n'
           '      "file": {\n'
           '        "/usr/sbin/tailscale": [ "exec" ],\n'

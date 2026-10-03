@@ -10,19 +10,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-import 'package:yet_another_luci_app/config/app_config.dart';
-import 'package:yet_another_luci_app/services/local_network_permission_service.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/utils/url_parser.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
-import 'package:yet_another_luci_app/widgets/luci_smooth_spinner.dart';
-import 'package:yet_another_luci_app/screens/main_screen.dart';
-import 'package:yet_another_luci_app/screens/manage_routers_screen.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/widgets/language_picker_dialog.dart';
+import 'package:yala/config/app_config.dart';
+import 'package:yala/services/local_network_permission_service.dart';
+import 'package:yala/main.dart';
+import 'package:yala/utils/url_parser.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/widgets/theme_router_logo.dart';
+import 'package:yala/widgets/luci_smooth_spinner.dart';
+import 'package:yala/screens/main_screen.dart';
+import 'package:yala/screens/manage_routers_screen.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/widgets/language_picker_dialog.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final String? initialIp;
@@ -1086,7 +1086,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
           const SizedBox(height: 14),
           Text(
-            l10n?.appTitle ?? 'Yet Another LuCI App',
+            l10n?.appTitle ?? 'Yala',
             style:
                 (isWide
                         ? theme.textTheme.headlineLarge

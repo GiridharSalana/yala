@@ -5,10 +5,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/widgets/luci_toast.dart';
 
 /// Interactive modal sheet to view, search, copy, and edit preserved backup files (sysupgrade -l & /etc/sysupgrade.conf)
 /// with full Android, Tablet, Chromebook, and edge-case compatibility.

@@ -4,8 +4,8 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/utils/self_device_guard.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/utils/self_device_guard.dart';
 import '../models/parental_profile.dart';
 import '../models/parental_controls_store.dart';
 

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/services/mock_api_service.dart';
-import 'package:yet_another_luci_app/state/controllers/network_actions_controller.dart';
+import 'package:yala/services/mock_api_service.dart';
+import 'package:yala/state/controllers/network_actions_controller.dart';
 
 void main() {
   group('Static Lease Deletion & Robustness Tests', () {

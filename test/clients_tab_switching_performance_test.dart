@@ -6,16 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/screens/clients_screen.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/state/controllers/client_controller.dart';
-import 'package:yet_another_luci_app/utils/client_naming_helper.dart';
-import 'package:yet_another_luci_app/widgets/luci_loading_states.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/screens/clients_screen.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/router_service.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/state/controllers/client_controller.dart';
+import 'package:yala/utils/client_naming_helper.dart';
+import 'package:yala/widgets/luci_loading_states.dart';
 
 class MockApiService implements IApiService {
   @override

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/services/mock_api_service.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/services/mock_api_service.dart';
 
 void main() {
   group('Wireless Client Disconnection & Interface Mapping Tests', () {

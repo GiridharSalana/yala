@@ -4,12 +4,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
+import 'package:yala/main.dart';
 import '../../system_monitoring/models/system_metrics.dart';
 import '../services/metrics_chart_engine.dart';
 import '../widgets/realtime_line_chart.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class ChartingScreen extends ConsumerWidget {
   const ChartingScreen({super.key});

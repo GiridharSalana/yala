@@ -5,13 +5,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/widgets/luci_animation_system.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/main.dart';
+import 'package:yala/models/dashboard_preferences.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/widgets/luci_animation_system.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class RouterDashboardSettingsScreen extends ConsumerStatefulWidget {
   final String routerId;

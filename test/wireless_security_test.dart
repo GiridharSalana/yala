@@ -4,10 +4,10 @@
 
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/models/rpc_result.dart';
-import 'package:yet_another_luci_app/models/router_capabilities.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/models/wireless_info.dart';
-import 'package:yet_another_luci_app/services/mock_api_service.dart';
+import 'package:yala/models/rpc_result.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/modules/wireless_management/models/wireless_info.dart';
+import 'package:yala/services/mock_api_service.dart';
 
 void main() {
   group('Wireless Security Mode & Frequency Display Unit Tests', () {

@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
+import 'package:yala/main.dart';
 
 /// Reusable widget wrapper that catches scroll notifications to pause
 /// background periodic data rebuilds during active gesture scrolling.

@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "Yet Another LuCI App",
+  "appTitle": "Yala",
   "@appTitle": {
     "description": "The title of the application"
   },
@@ -844,7 +844,7 @@
   "@onboardingGetStarted": {
     "description": "Finish onboarding and get started button"
   },
-  "onboardingSlide1Title": "Welcome to Yet Another LuCI App",
+  "onboardingSlide1Title": "Welcome to Yala",
   "@onboardingSlide1Title": {
     "description": "Title for slide 1 of onboarding"
   },
@@ -4095,7 +4095,7 @@
       }
     }
   },
-  "updateUpToDateDesc": "You are running the latest version of Yet Another LuCI App (v{currentVersion}).",
+  "updateUpToDateDesc": "You are running the latest version of Yala (v{currentVersion}).",
   "@updateUpToDateDesc": {
     "description": "Notice indicating app is running latest version",
     "placeholders": {

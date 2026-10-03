@@ -6,12 +6,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/screens/splash_screen.dart';
-import 'package:yet_another_luci_app/screens/login_screen.dart';
-import 'package:yet_another_luci_app/screens/main_screen.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
+import 'package:yala/screens/splash_screen.dart';
+import 'package:yala/screens/login_screen.dart';
+import 'package:yala/screens/main_screen.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -98,7 +98,7 @@ void main() {
 
         expect(tester.takeException(), isNull);
 
-        final appTitleFinder = find.text('Yet Another LuCI App');
+        final appTitleFinder = find.text('Yala');
         expect(appTitleFinder, findsOneWidget);
 
         final appTitleTop = tester.getTopLeft(appTitleFinder).dy;

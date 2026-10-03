@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/config/app_config.dart';
+import 'package:yala/config/app_config.dart';
 
 void main() {
   group('Compile-Time Flavor Gating Unit Tests', () {

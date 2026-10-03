@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 /// Universal Guardrails & Confirmation Dialog Manager.
 /// Provides highly customizable, situational-aware guardrail dialogs with

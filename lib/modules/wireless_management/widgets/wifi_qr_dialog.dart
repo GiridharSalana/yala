@@ -7,11 +7,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yala/main.dart';
+import 'package:yala/widgets/luci_toast.dart';
 import '../models/wireless_info.dart';
 
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 /// Modal dialog displaying a standardized WIFI: URI QR code for rapid mobile quick-connect
 /// with automatic passphrase prefetching and quick copy controls.

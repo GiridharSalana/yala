@@ -1,4 +1,4 @@
-# YALA (Yet Another LuCI App)
+# YALA (Yala)
 
 <div align="center">
   <img src="assets/images/app_logo_transparent.png" width="120" alt="App Logo" />
@@ -44,7 +44,7 @@
 
 <br>
 
-**YALA (Yet Another LuCI App)** is an open-source mobile client for managing OpenWrt routers. It connects directly to your router using LuCI JSON-RPC, ubus, and standard OpenWrt system services, allowing you to monitor real-time bandwidth, manage connected devices, run network diagnostics, configure wireless radios, inspect storage, and update packages directly from your phone or tablet.
+**YALA (Yala)** is an open-source mobile client for managing OpenWrt routers. It connects directly to your router using LuCI JSON-RPC, ubus, and standard OpenWrt system services, allowing you to monitor real-time bandwidth, manage connected devices, run network diagnostics, configure wireless radios, inspect storage, and update packages directly from your phone or tablet.
 
 ---
 
@@ -150,7 +150,7 @@ YALA is purpose-built for mobile, tablet, and touch-first form factors:
 ## Screenshots
 
 <div align="center">
-  <p><b>Explore full resolution screenshots of Yet Another LuCI App features:</b></p>
+  <p><b>Explore full resolution screenshots of Yala features:</b></p>
 </div>
 
 <table>

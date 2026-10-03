@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'package:flutter/material.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/state/app_state.dart';
 
-/// A modular, adaptive vector & asset router logo for Yet Another LuCI App.
+/// A modular, adaptive vector & asset router logo for Yala.
 /// Renders cleanly in both Light and Dark themes with orange accent details,
 /// avoiding black-box artifacting and ensuring Play Store compliance.
 class ThemeRouterLogo extends StatelessWidget {

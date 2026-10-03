@@ -7,17 +7,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
+import 'package:yala/widgets/luci_toast.dart';
 import '../controllers/diagnostics_controller.dart';
 import '../models/dns_lookup_result.dart';
 import '../models/internet_reachability.dart';
 import '../models/ping_result.dart';
 import '../models/routing_neighbor_info.dart';
 import '../models/traceroute_result.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class DiagnosticsScreen extends ConsumerStatefulWidget {
   const DiagnosticsScreen({super.key});

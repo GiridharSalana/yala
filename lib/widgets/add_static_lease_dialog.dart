@@ -6,12 +6,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/modules/dhcp_dns/models/dhcp_dns_info.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/utils/os_platform_integration.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/modules/dhcp_dns/models/dhcp_dns_info.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/utils/os_platform_integration.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 /// Reusable dialog to create or edit a DHCP static IP reservation (host mapping).
 class AddStaticLeaseDialog extends StatefulWidget {

@@ -5,20 +5,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher_string.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/main.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
-import 'package:yet_another_luci_app/config/app_config.dart';
-import 'package:yet_another_luci_app/design/luci_design_system.dart';
-import 'package:yet_another_luci_app/design/luci_theme.dart';
-import 'package:yet_another_luci_app/widgets/luci_app_bar.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/screens/dashboard_settings_list_screen.dart';
-import 'package:yet_another_luci_app/screens/manage_routers_screen.dart';
-import 'package:yet_another_luci_app/services/update_checker_service.dart';
-import 'package:yet_another_luci_app/widgets/theme_router_logo.dart';
-import 'package:yet_another_luci_app/widgets/language_picker_dialog.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/config/app_config.dart';
+import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/design/luci_theme.dart';
+import 'package:yala/widgets/luci_app_bar.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/screens/dashboard_settings_list_screen.dart';
+import 'package:yala/screens/manage_routers_screen.dart';
+import 'package:yala/services/update_checker_service.dart';
+import 'package:yala/widgets/theme_router_logo.dart';
+import 'package:yala/widgets/language_picker_dialog.dart';
+import 'package:yala/state/app_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -1173,7 +1173,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                 onTap: () => showLicensePage(
                   context: context,
-                  applicationName: 'Yet Another LuCI App',
+                  applicationName: 'Yala',
                   applicationVersion: '1.0.3',
                   applicationLegalese:
                       'Original work Copyright (C) 2025–2026 cogwheel0\n'

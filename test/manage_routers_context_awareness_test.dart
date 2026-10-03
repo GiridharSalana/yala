@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/screens/manage_routers_screen.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/screens/manage_routers_screen.dart';
+import 'package:yala/state/app_state.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

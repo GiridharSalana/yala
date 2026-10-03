@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/models/wireless_info.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/widgets/edit_ssid_dialog.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/widgets/add_ssid_dialog.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/modules/wireless_management/models/wireless_info.dart';
+import 'package:yala/modules/wireless_management/widgets/edit_ssid_dialog.dart';
+import 'package:yala/modules/wireless_management/widgets/add_ssid_dialog.dart';
 
 Future<void> pumpFrames(
   WidgetTester tester, {

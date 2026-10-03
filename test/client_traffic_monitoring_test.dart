@@ -7,15 +7,15 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/models/client.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/screens/clients_screen.dart';
-import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
-import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
-import 'package:yet_another_luci_app/services/router_service.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/state/controllers/client_controller.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/screens/clients_screen.dart';
+import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/interfaces/auth_service_interface.dart';
+import 'package:yala/services/router_service.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/state/controllers/client_controller.dart';
 
 class TestMockApiService implements IApiService {
   Map<String, List<Map<String, dynamic>>> mockStationDetails = {};

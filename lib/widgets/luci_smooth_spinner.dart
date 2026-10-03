@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 
-/// A smooth, constant-speed 360° circular progress spinner for Yet Another LuCI App.
+/// A smooth, constant-speed 360° circular progress spinner for Yala.
 /// Uses wall-clock phase matching to ensure continuous, seamless rotation without resetting or restarting
 /// when rebuilt or recreated across dynamic toast and dialog state updates.
 class LuciSmoothSpinner extends StatefulWidget {

@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/modules/wireless_management/screens/guest_wifi_management_screen.dart';
+import 'package:yala/modules/wireless_management/screens/guest_wifi_management_screen.dart';
 
 void main() {
   testWidgets(

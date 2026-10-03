@@ -2,7 +2,7 @@
 # Copyright (C) 2025-2026 cogwheel0
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-name: yet_another_luci_app
+name: yala
 description: "OpenWrt Router Management App"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.

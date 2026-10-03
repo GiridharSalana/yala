@@ -1,1 +1,1 @@
-Initial release of Yet Another LuCI App. 
+Initial release of Yala. 

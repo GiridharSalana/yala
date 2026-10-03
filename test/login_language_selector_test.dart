@@ -7,12 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/models/router.dart' as model;
-import 'package:yet_another_luci_app/screens/login_screen.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/widgets/language_picker_dialog.dart';
+import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/main.dart';
+import 'package:yala/models/router.dart' as model;
+import 'package:yala/screens/login_screen.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/widgets/language_picker_dialog.dart';
 
 void main() {
   setUp(() async {

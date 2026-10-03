@@ -18,7 +18,7 @@ plugins {
 }
 
 android {
-    namespace = "com.nightcode.luci"
+    namespace = "com.giridharsalana.yala"
     compileSdk = 37
     ndkVersion = "28.2.13676358"
 
@@ -33,7 +33,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.nightcode.luci"
+        applicationId = "com.giridharsalana.yala"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -64,11 +64,11 @@ android {
     productFlavors {
         create("community") {
             dimension = "version"
-            applicationId = "com.nightcode.luci"
+            applicationId = "com.giridharsalana.yala"
         }
         create("playstore") {
             dimension = "version"
-            applicationId = "com.nightcode.luci"
+            applicationId = "com.giridharsalana.yala"
         }
     }
 

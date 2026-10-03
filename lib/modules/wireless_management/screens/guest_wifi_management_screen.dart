@@ -4,19 +4,19 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yet_another_luci_app/main.dart';
-import 'package:yet_another_luci_app/state/app_state.dart';
-import 'package:yet_another_luci_app/utils/client_naming_helper.dart';
-import 'package:yet_another_luci_app/widgets/add_static_lease_dialog.dart';
-import 'package:yet_another_luci_app/widgets/luci_toast.dart';
-import 'package:yet_another_luci_app/widgets/luci_guardrail.dart';
-import 'package:yet_another_luci_app/widgets/ban_wireless_client_dialog.dart';
+import 'package:yala/main.dart';
+import 'package:yala/state/app_state.dart';
+import 'package:yala/utils/client_naming_helper.dart';
+import 'package:yala/widgets/add_static_lease_dialog.dart';
+import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/widgets/luci_guardrail.dart';
+import 'package:yala/widgets/ban_wireless_client_dialog.dart';
 import '../models/wireless_info.dart';
 import '../widgets/wireless_interface_card.dart';
 import '../widgets/provision_guest_network_dialog.dart';
 import '../widgets/wifi_qr_dialog.dart';
 import '../widgets/wireless_rollback_banner.dart';
-import 'package:yet_another_luci_app/l10n/app_localizations.dart';
+import 'package:yala/l10n/app_localizations.dart';
 
 class _GuestStationPair {
   final WirelessStation station;
