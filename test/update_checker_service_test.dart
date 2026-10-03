@@ -9,7 +9,7 @@ void main() {
     test('target releases endpoint matches the official repository', () {
       expect(
         UpdateCheckerService.githubReleasesUrl,
-        equals('https://api.github.com/repos/nightcodex7/yala/releases'),
+        equals('https://api.github.com/repos/GiridharSalana/yala/releases'),
       );
     });
 

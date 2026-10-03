@@ -318,7 +318,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                         Text(
                           '• ${l10n?.aboutForkNotice ?? "Originally based on cogwheel0/luci-mobile"}\n'
                           '• ${l10n?.aboutOriginalWorkNotice ?? "Original work Copyright (C) 2025–2026 cogwheel0"}\n'
-                          '• ${l10n?.aboutModificationsNotice ?? "Modifications Copyright (C) 2026 @nightcodex7"}',
+                          '• ${l10n?.aboutModificationsNotice ?? AppConfig.modificationsCopyrightLine}',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                             height: 1.3,
@@ -496,8 +496,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '• Original Work: Copyright (C) 2025–2026 cogwheel0 (luci-mobile)\n'
-                '• Modifications: Copyright (C) 2026 @nightcodex7',
+                AppConfig.gplCreditsBullets,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

@@ -8,13 +8,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:yala/config/app_config.dart';
 import 'package:yala/l10n/app_localizations.dart';
 
 /// Manages manual update checks against GitHub Releases for the Community build flavor.
 class UpdateCheckerService {
   @visibleForTesting
-  static const String githubReleasesUrl =
-      'https://api.github.com/repos/nightcodex7/yala/releases';
+  static String get githubReleasesUrl => AppConfig.githubReleasesApiUrl;
 
   /// Performs a manual check for updates on GitHub Releases and displays an interactive dialog.
   static Future<void> checkForUpdates(BuildContext context) async {
@@ -84,7 +84,7 @@ class UpdateCheckerService {
               : rawTagName;
           final htmlUrl =
               latestRelease['html_url'] as String? ??
-              'https://github.com/nightcodex7/yala/releases';
+              AppConfig.githubReleasesWebUrl;
           final releaseNotes =
               latestRelease['body'] as String? ?? 'No release notes available.';
 

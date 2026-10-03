@@ -31,6 +31,7 @@ void main() {
           contains('cogwheel0/luci-mobile'),
         );
         expect(AppConfig.copyrightNotice, contains('cogwheel0'));
+        expect(AppConfig.copyrightNotice, contains('GiridharSalana'));
         expect(AppConfig.copyrightNotice, contains('@nightcodex7'));
         expect(
           AppConfig.gplWarrantyDisclaimer,
@@ -51,7 +52,7 @@ void main() {
             ['yet_another_luci_app (yala)'],
             '''Yala (yala)
 Original work Copyright (C) 2025-2026 cogwheel0
-Modifications Copyright (C) 2026 @nightcodex7
+Modifications Copyright (C) 2026 GiridharSalana
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -76,7 +77,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.''',
         expect(yalaEntry, isNotNull);
         final paragraphs = yalaEntry.paragraphs.map((p) => p.text).join('\n');
         expect(paragraphs, contains('cogwheel0'));
-        expect(paragraphs, contains('@nightcodex7'));
+        expect(paragraphs, contains('GiridharSalana'));
         expect(paragraphs, contains('GNU General Public License'));
         expect(paragraphs, contains('WITHOUT ANY WARRANTY'));
       },
@@ -137,7 +138,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.''',
 
         expect(find.text('License & Copyleft (GPLv3)'), findsOneWidget);
         expect(find.textContaining('cogwheel0 (luci-mobile)'), findsOneWidget);
-        expect(find.textContaining('@nightcodex7'), findsOneWidget);
+        expect(find.textContaining('GiridharSalana'), findsOneWidget);
         expect(find.textContaining('WITHOUT ANY WARRANTY'), findsOneWidget);
 
         await tester.tap(find.text('Close'));

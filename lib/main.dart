@@ -21,6 +21,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
+import 'package:yala/config/app_config.dart';
 import 'package:yala/widgets/luci_toast.dart';
 
 void main() {
@@ -31,11 +32,10 @@ void main() {
 
   // Register YALA's GPLv3 copyleft license and copyright attributions in Flutter LicenseRegistry
   LicenseRegistry.addLicense(() async* {
-    yield const LicenseEntryWithLineBreaks(
+    yield LicenseEntryWithLineBreaks(
       ['yet_another_luci_app (yala)'],
       '''Yala (yala)
-Original work Copyright (C) 2025-2026 cogwheel0
-Modifications Copyright (C) 2026 @nightcodex7
+${AppConfig.copyrightNotice.replaceAll('–', '-')}
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

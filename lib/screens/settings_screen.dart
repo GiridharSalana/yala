@@ -1176,8 +1176,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   applicationName: 'Yala',
                   applicationVersion: '1.0.3',
                   applicationLegalese:
-                      'Original work Copyright (C) 2025–2026 cogwheel0\n'
-                      'Modifications Copyright (C) 2026 @nightcodex7\n'
+                      '${AppConfig.copyrightNotice}\n'
                       'Licensed under GNU General Public License v3.0 or later.',
                 ),
               ),
@@ -1256,8 +1255,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '• Original Work: Copyright (C) 2025–2026 cogwheel0 (luci-mobile)\n'
-                '• Modifications: Copyright (C) 2026 @nightcodex7',
+                AppConfig.gplCreditsBullets,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

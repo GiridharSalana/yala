@@ -1422,7 +1422,7 @@
   "aboutAttributionCredits": "开源致谢与版权声明：",
   "aboutForkNotice": "最初基于 cogwheel0/luci-mobile",
   "aboutOriginalWorkNotice": "原始项目著作权 Copyright (C) 2025–2026 cogwheel0",
-  "aboutModificationsNotice": "修改与扩展功能著作权 Copyright (C) 2026 @nightcodex7",
+  "aboutModificationsNotice": "修改与扩展功能著作权 Copyright (C) 2026 GiridharSalana",
   "cronSchedulePrefix": "计划: {expression} • {description}",
   "statusCheckingSpace": "正在检测可用空间...",
   "statusAvailableFallback": "可用",

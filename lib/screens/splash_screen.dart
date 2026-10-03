@@ -444,10 +444,10 @@ class _SplashScreenState extends State<SplashScreen>
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Tooltip(
-                      message: 'GitHub: @nightcodex7',
+                      message: 'GitHub: ${AppConfig.appAuthorGithub}',
                       child: InkWell(
                         onTap: () => launchUrlString(
-                          'https://github.com/nightcodex7',
+                          AppConfig.appAuthorProfileUrl,
                           mode: LaunchMode.externalApplication,
                         ),
                         borderRadius: BorderRadius.circular(12),
@@ -480,7 +480,7 @@ class _SplashScreenState extends State<SplashScreen>
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Text(
-                                  '@nightcodex7',
+                                  AppConfig.appAuthorGithub,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: colorScheme.onSurfaceVariant
                                         .withValues(alpha: 0.9),

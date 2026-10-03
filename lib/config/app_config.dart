@@ -7,23 +7,35 @@ enum AppFlavor { community, playstore }
 
 /// Central configuration for build flavor detection and compile-time feature toggling.
 class AppConfig {
-  // GitHub repository URL - update this with your actual repository
+  // This fork's GitHub repository (releases, issues, source)
   static const String githubRepositoryUrl =
-      'https://github.com/nightcodex7/yala';
+      'https://github.com/GiridharSalana/yala';
+
+  static const String githubReleasesApiUrl =
+      'https://api.github.com/repos/GiridharSalana/yala/releases';
+
+  static const String githubReleasesWebUrl = '$githubRepositoryUrl/releases';
 
   // GitHub issues URL
   static const String githubIssuesUrl = '$githubRepositoryUrl/issues';
 
+  /// Upstream Yala project (prior to this personal fork).
+  static const String upstreamYalaRepositoryUrl =
+      'https://github.com/nightcodex7/yala';
+
   // Legal & Privacy Policy URLs
   static const String privacyPolicyUrl =
-      'https://nightcode.co.in/privacy-policy.html';
+      '$githubRepositoryUrl/blob/main/PRIVACY_POLICY.md';
   static const String termsAndConditionsUrl =
       'https://nightcode.co.in/terms.html';
   static const String contactUrl = 'https://nightcode.co.in/contact.html';
 
   // Maintainer & Contact Configuration
-  static const String appAuthor = '@nightcodex7';
-  static const String appAuthorGithub = '@nightcodex7';
+  static const String appAuthorGithubHandle = 'GiridharSalana';
+  static const String appAuthor = '@GiridharSalana';
+  static const String appAuthorGithub = '@GiridharSalana';
+  static const String appAuthorProfileUrl =
+      'https://github.com/GiridharSalana';
   static const String supportEmail = 'yala+support@nightcode.co.in';
   static const String feedbackEmail = 'yala+feedback@nightcode.co.in';
   static const String privacyEmail = 'yala+privacy@nightcode.co.in';
@@ -35,8 +47,18 @@ class AppConfig {
       'https://github.com/cogwheel0/luci-mobile';
   static const String licenseName = 'GNU General Public License v3.0';
   static const String licenseSpdx = 'GPL-3.0-or-later';
+  static const String modificationsCopyrightLine =
+      'Modifications Copyright (C) 2026 GiridharSalana';
+
+  static const String gplCreditsBullets =
+      '• Original Work: Copyright (C) 2025–2026 cogwheel0 (luci-mobile)\n'
+      '• Upstream Yala: Copyright (C) 2026 @nightcodex7\n'
+      '• This fork: Copyright (C) 2026 GiridharSalana';
+
   static const String copyrightNotice =
-      'Original work Copyright (C) 2025–2026 cogwheel0\nModifications Copyright (C) 2026 @nightcodex7';
+      'Original work Copyright (C) 2025–2026 cogwheel0\n'
+      'Upstream Yala Copyright (C) 2026 @nightcodex7\n'
+      '$modificationsCopyrightLine';
   static const String gplWarrantyDisclaimer =
       'This program is free software: you can redistribute it and/or modify '
       'it under the terms of the GNU General Public License as published by '
