@@ -434,11 +434,7 @@ flutter run
   ```
   *(Outputs architecture-specific APKs: `arm64-v8a`, `armeabi-v7a`, and `x86_64`)*
 
-- **iOS Unsigned IPA (Local / CI):**
-  ```bash
-  flutter build ios --no-codesign --release
-  ```
-  *(Or trigger the manual GitHub Actions workflow `.github/workflows/build-ipa.yml` to produce an unsigned `.ipa` artifact for testing. Pre-built packages are also available on [GitHub Releases](https://github.com/GiridharSalana/yala/releases/tag/v2.1.0-beta-ipa))*
+- **iOS (local only):** `flutter build ios --no-codesign --release`
 
 ---
 
@@ -451,7 +447,6 @@ This is a **personal fork**: builds are for my own devices only. I install APKs 
 | Workflow | Trigger | Artifacts |
 |----------|---------|-----------|
 | **CI & Release** | Push `main` / PRs / tag `v*` / manual | **1)** format, analyze, test → **2)** release APKs/AAB only on tag or manual dispatch |
-| **Build iOS IPA** | Manual (`workflow_dispatch`) | Unsigned `.ipa` for sideloading (14-day artifact) |
 
 **Versioning (always follow upstream):**
 
