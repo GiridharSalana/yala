@@ -4,11 +4,14 @@
 name: Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g. v2.0.1)'
-        required: false
+        description: 'Version tag (e.g. v2.1.1) — required when running from a branch'
+        required: true
 
 concurrency:
   group: release-${{ github.ref }}
@@ -30,7 +33,7 @@ jobs:
       - name: Create Release with Notes
         uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
-          tag: ${{ github.ref_name }}
+          tag: ${{ github.event.inputs.version || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           generateReleaseNotes: true
           makeLatest: true
@@ -75,11 +78,10 @@ jobs:
       - name: Setup Keystore from Secrets
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > upload-keystore.jks
-          echo "${{ secrets.ANDROID_KEY_PROPERTIES_BASE64 }}" | base64 --decode > key.properties
+          echo "${{ secrets.ANDROID_KEY_PROPERTIES_BASE64 }}" | base64 --decode > android/key.properties
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEY_PROPERTIES_BASE64: ${{ secrets.ANDROID_KEY_PROPERTIES_BASE64 }}
-        working-directory: android
 
       - name: Build APKs (split per ABI)
         run: |
@@ -119,7 +121,7 @@ jobs:
         uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           artifacts: "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk,build/app/outputs/flutter-apk/app-arm64-v8a-release.apk,build/app/outputs/flutter-apk/app-x86_64-release.apk,build/app/outputs/flutter-apk/app-universal-release.apk,build/app/outputs/bundle/communityRelease/app-community-release.aab"
-          tag: ${{ github.ref_name }}
+          tag: ${{ github.event.inputs.version || github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           makeLatest: true

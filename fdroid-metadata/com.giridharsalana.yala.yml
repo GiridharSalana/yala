@@ -2,9 +2,9 @@ Categories:
   - Connectivity
   - System
 License: GPLv3
-SourceCode: https://github.com/nightcodex7/yala
-IssueTracker: https://github.com/nightcodex7/yala/issues
-Changelog: https://github.com/nightcodex7/yala/releases
+SourceCode: https://github.com/GiridharSalana/yala
+IssueTracker: https://github.com/GiridharSalana/yala/issues
+Changelog: https://github.com/GiridharSalana/yala/releases
 
 AutoName: Yala
 Description: |-
@@ -19,7 +19,7 @@ Description: |-
   * 100% Ad-Free with zero telemetry or background tracking
 
 RepoType: git
-Repo: https://github.com/nightcodex7/yala.git
+Repo: https://github.com/GiridharSalana/yala.git
 
 Builds:
   - versionName: 1.0.1

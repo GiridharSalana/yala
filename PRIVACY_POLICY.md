@@ -81,4 +81,4 @@ If you have questions, concerns, or requests regarding this Privacy Policy, plea
 - **General Support**: <yala+support@nightcode.co.in>
 - **Website Privacy Policy**: [https://nightcode.co.in/privacy-policy.html](https://nightcode.co.in/privacy-policy.html)
 - **Terms & Conditions**: [https://nightcode.co.in/terms.html](https://nightcode.co.in/terms.html)
-- **GitHub Repository**: [https://github.com/nightcodex7/yala](https://github.com/nightcodex7/yala)
+- **GitHub Repository**: [https://github.com/GiridharSalana/yala](https://github.com/GiridharSalana/yala)

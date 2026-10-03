@@ -459,9 +459,27 @@ This fork uses **GitHub Actions** for automated CI/CD:
 | **Release Play Store** | Manual (`workflow_dispatch`) | Play Store flavor AAB (requires keystore secrets) |
 
 **To create a release:**
-1. Go to **Actions** → **Release** → **Run workflow**
-2. Enter version tag (e.g., `v2.1.1`)
-3. Workflow builds all artifacts and creates a GitHub Release
+1. Bump `version` in `pubspec.yaml`, commit, and push to `main` (CI runs automatically).
+2. Either:
+   - **Tag push (recommended):** `git tag v2.1.1 && git push origin v2.1.1` — the **Release** workflow runs and publishes APKs/AAB to GitHub Releases.
+   - **Manual:** Actions → **Release** → **Run workflow** on `main` and set **version** to the tag (e.g. `v2.1.1`).
+
+**GitHub Actions secrets** (repo → Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|--------|--------|
+| `ANDROID_KEYSTORE_BASE64` | Base64 of `upload-keystore.jks` (repo root) |
+| `ANDROID_KEY_PROPERTIES_BASE64` | Base64 of `android/key.properties` |
+
+Use the same layout as [android/key.properties.example](android/key.properties.example): `storeFile=../upload-keystore.jks` so local builds and CI match.
+
+```bash
+# macOS — create or refresh secrets on your fork
+gh secret set ANDROID_KEYSTORE_BASE64 -R GiridharSalana/yala < <(base64 -i upload-keystore.jks)
+gh secret set ANDROID_KEY_PROPERTIES_BASE64 -R GiridharSalana/yala < <(base64 -i android/key.properties)
+```
+
+Play Store builds: run **Release Play Store** manually; download the AAB artifact and upload to Google Play Console.
 
 ---
 
