@@ -10,7 +10,6 @@ import 'package:yala/l10n/app_localizations.dart';
 import 'package:yala/design/luci_theme.dart';
 import 'package:yala/state/app_state.dart';
 import 'package:yala/screens/login_screen.dart';
-import 'package:yala/screens/main_screen.dart';
 import 'package:yala/screens/settings_screen.dart';
 import 'package:yala/screens/splash_screen.dart';
 import 'package:yala/screens/onboarding_screen.dart';
