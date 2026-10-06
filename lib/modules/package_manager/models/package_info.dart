@@ -340,7 +340,16 @@ class PackageManagerOverview {
     bool isInstalled = true,
     PackageManagerType managerType = PackageManagerType.apk,
   }) {
-    final list = rawJson is String ? jsonDecode(rawJson) : rawJson;
+    dynamic list;
+    if (rawJson is String) {
+      try {
+        list = jsonDecode(rawJson);
+      } catch (_) {
+        return <OpenWrtPackage>[];
+      }
+    } else {
+      list = rawJson;
+    }
     if (list is! List) return <OpenWrtPackage>[];
     final packages = <OpenWrtPackage>[];
     for (final item in list) {

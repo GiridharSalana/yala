@@ -17,6 +17,8 @@ import 'package_manager/package_module.dart';
 import 'system_backup_upgrade/system_backup_upgrade_module.dart';
 import 'parental_controls/parental_controls_module.dart';
 import 'diagnostics/diagnostics_module.dart';
+import 'sqm/sqm_module.dart';
+import 'bandwidth_monitor/bandwidth_monitor_module.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/clients_screen.dart';
 import '../screens/interfaces_screen.dart';
@@ -172,6 +174,8 @@ void registerBuiltInModules() {
     SystemBackupUpgradeModule(),
     ParentalControlsModule(),
     DiagnosticsModule(),
+    SqmModule(),
+    BandwidthMonitorModule(),
     ClientsModule(),
     InterfacesModule(),
     MoreModule(),

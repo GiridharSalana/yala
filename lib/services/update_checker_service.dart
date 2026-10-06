@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:yet_another_luci_app/config/app_config.dart';
 import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 
 /// Manages manual update checks against GitHub Releases for the Community build flavor.
@@ -18,6 +19,9 @@ class UpdateCheckerService {
 
   /// Performs a manual check for updates on GitHub Releases and displays an interactive dialog.
   static Future<void> checkForUpdates(BuildContext context) async {
+    if (AppConfig.isFdroidBuild) {
+      return;
+    }
     final l10n = AppLocalizations.of(context);
     // Display progress dialog
     unawaited(

@@ -157,6 +157,24 @@ class NetworkActionsController {
   bool get _isReviewerMode => _reviewerModeRef();
   IApiService? get _apiService => _apiServiceRef();
 
+  /// Reset transient access control and client restriction states
+  void resetState() {
+    _accessControlRevertTimer?.cancel();
+    _accessControlCountdownTimer?.cancel();
+    _accessControlRevertRetryTimer?.cancel();
+    _isAccessControlPendingConfirmation = false;
+    _accessControlCountdownSeconds = 25;
+    _priorMaclistSnapshot.clear();
+    _priorMacfilterSnapshot.clear();
+    _priorValuesSnapshot = {};
+    _pendingSectionName = null;
+    _pendingTargetType = null;
+    _pendingTargetRadio = null;
+    _pendingTargetInterface = null;
+    _pausedInternetMacs.clear();
+    _bannedWirelessMacs.clear();
+  }
+
   /// Dispose timers on controller teardown
   void dispose() {
     _accessControlRevertTimer?.cancel();
@@ -200,7 +218,7 @@ class NetworkActionsController {
         serviceName: 'openvpn',
         action: enable ? 'start' : 'stop',
       );
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       return true;
     } catch (e, stack) {
       Logger.exception('Failed to toggle OpenVPN instance $name', e, stack);
@@ -255,7 +273,7 @@ class NetworkActionsController {
         );
       } catch (_) {}
 
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       return true;
     } catch (e, stack) {
       Logger.exception('Failed to toggle Tailscale', e, stack);
@@ -333,7 +351,7 @@ heal_dns() {
         );
 
         // 3. Activate NextDNS, ensure process is running on port 5342 & restart active DNS daemon
-        final activateCmd =
+        const activateCmd =
             '$restartDnsHelper\n'
             '(nextdns activate || /etc/init.d/nextdns activate 2>/dev/null || true) && '
             '(pgrep nextdns >/dev/null || nextdns run -config-file /etc/config/nextdns -listen 127.0.0.1:5342 &) && '
@@ -398,7 +416,7 @@ heal_dns() {
         await _apiService!.uciCommit(ip, sysauth, _useHttps, config: 'nextdns');
 
         // 4. Purge orphaned drop-in configs and restore active DNS daemon
-        final purgeCmd =
+        const purgeCmd =
             '$restartDnsHelper\n'
             'rm -f /tmp/dnsmasq.d/nextdns.conf /var/etc/dnsmasq.d/nextdns.conf 2>/dev/null && '
             'uci del dhcp.@dnsmasq[0].noresolv 2>/dev/null || true && '
@@ -417,7 +435,7 @@ heal_dns() {
       }
 
       // 5. DHCP & DNS Self-Healing Guardrail: ensure active DNS daemon is running
-      final healCmd =
+      const healCmd =
           '$healDnsHelper\n'
           'sleep 1 && heal_dns';
       await _apiService!.call(
@@ -432,12 +450,12 @@ heal_dns() {
         },
       );
 
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       return true;
     } catch (e, stack) {
       Logger.exception('Failed to toggle NextDNS', e, stack);
       try {
-        final emergencyCmd =
+        const emergencyCmd =
             '$restartDnsHelper\n'
             'rm -f /tmp/dnsmasq.d/nextdns.conf 2>/dev/null && '
             'uci del dhcp.@dnsmasq[0].noresolv 2>/dev/null || true && '
@@ -508,7 +526,7 @@ heal_dns() {
         serviceName: 'cloudflared',
         action: enable ? 'start' : 'stop',
       );
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       return true;
     } catch (e, stack) {
       Logger.exception('Failed to toggle Cloudflared', e, stack);
@@ -531,7 +549,7 @@ heal_dns() {
         _useHttps,
         command: '$cmd $ifaceName',
       );
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       return true;
     } catch (e, stack) {
       Logger.exception(
@@ -558,7 +576,7 @@ heal_dns() {
         serviceName: serviceName,
         action: 'restart',
       );
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       return true;
     } catch (e, stack) {
       Logger.exception('Failed to restart VPN service $serviceName', e, stack);
@@ -587,7 +605,7 @@ heal_dns() {
       context: context,
     );
     if (success) {
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
     }
     return success;
   }
@@ -640,6 +658,68 @@ heal_dns() {
     } catch (e, stack) {
       Logger.exception(
         'updateFirewallCustomRuleStatus failed for $sectionKey',
+        e,
+        stack,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> updateFirewallFlowOffloading({
+    required bool software,
+    required bool hardware,
+    String sectionKey = '@defaults[0]',
+    BuildContext? context,
+  }) async {
+    if (_isReviewerMode) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      return true;
+    }
+    final ip = _ip;
+    final sysauth = _sysauth;
+    if (ip == null || sysauth == null || _apiService == null) return false;
+
+    try {
+      final values = <String, String>{
+        'flow_offloading': software ? '1' : '0',
+        'flow_offloading_hw': (software && hardware) ? '1' : '0',
+      };
+
+      final setRes = await _apiService!.uciSet(
+        ip,
+        sysauth,
+        _useHttps,
+        config: 'firewall',
+        section: sectionKey,
+        values: values,
+        context: context,
+      );
+      if (setRes is List && setRes.isNotEmpty && setRes[0] != 0) return false;
+
+      final commitRes = await _apiService!.uciCommit(
+        ip,
+        sysauth,
+        _useHttps,
+        config: 'firewall',
+        context: (context != null && context.mounted) ? context : null,
+      );
+      if (commitRes is List && commitRes.isNotEmpty && commitRes[0] != 0) {
+        return false;
+      }
+
+      await _apiService!.manageServiceAction(
+        ip,
+        sysauth,
+        _useHttps,
+        serviceName: 'firewall',
+        action: 'reload',
+        context: (context != null && context.mounted) ? context : null,
+      );
+      unawaited(_refreshDashboard());
+      return true;
+    } catch (e, stack) {
+      Logger.exception(
+        'updateFirewallFlowOffloading failed for $sectionKey',
         e,
         stack,
       );
@@ -793,7 +873,7 @@ heal_dns() {
     if (success) {
       startAccessControlAutoRevertTimer(initialSeconds: 25);
     }
-    await _refreshDashboard();
+    unawaited(_refreshDashboard());
     return success;
   }
 
@@ -829,7 +909,7 @@ heal_dns() {
     if (success) {
       startAccessControlAutoRevertTimer(initialSeconds: 25);
     }
-    await _refreshDashboard();
+    unawaited(_refreshDashboard());
     return success;
   }
 
@@ -863,7 +943,7 @@ heal_dns() {
     if (success) {
       startAccessControlAutoRevertTimer(initialSeconds: 25);
     }
-    await _refreshDashboard();
+    unawaited(_refreshDashboard());
     return success;
   }
 
@@ -889,7 +969,7 @@ heal_dns() {
     if (success) {
       startAccessControlAutoRevertTimer(initialSeconds: 25);
     }
-    await _refreshDashboard();
+    unawaited(_refreshDashboard());
     return success;
   }
 
@@ -969,7 +1049,7 @@ heal_dns() {
     if (success) {
       startAccessControlAutoRevertTimer(initialSeconds: 25);
     }
-    await _refreshDashboard();
+    unawaited(_refreshDashboard());
     return success;
   }
 
@@ -1020,7 +1100,7 @@ heal_dns() {
     if (success) {
       startAccessControlAutoRevertTimer(initialSeconds: 25);
     }
-    await _refreshDashboard();
+    unawaited(_refreshDashboard());
     return success;
   }
 
@@ -1130,7 +1210,7 @@ heal_dns() {
               if (retried) {
                 retryTimer.cancel();
                 _accessControlRevertRetryTimer = null;
-                await _refreshDashboard();
+                unawaited(_refreshDashboard());
               }
             },
           );
@@ -1142,7 +1222,7 @@ heal_dns() {
     _priorMacfilterSnapshot = {};
     _pendingSectionName = null;
     _priorValuesSnapshot = {};
-    await _refreshDashboard();
+    unawaited(_refreshDashboard());
     _notifyListeners();
     return success;
   }
@@ -1399,7 +1479,7 @@ heal_dns() {
         }
       }
       _notifyListeners();
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       return true;
     }
     final ip = _ip;
@@ -1495,7 +1575,7 @@ heal_dns() {
           }
         }
       }
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       _notifyListeners();
     }
     return res;
@@ -1584,7 +1664,7 @@ heal_dns() {
         }
       }
       _notifyListeners();
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       return true;
     }
     final ip = _ip;
@@ -1688,7 +1768,7 @@ heal_dns() {
   }) async {
     final macUpper = macAddress.toUpperCase().replaceAll('-', ':');
     if (_isReviewerMode) {
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       _notifyListeners();
       return true;
     }
@@ -1704,7 +1784,7 @@ heal_dns() {
       context: context,
     );
     if (res) {
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       _notifyListeners();
     }
     return res;
@@ -1774,7 +1854,7 @@ heal_dns() {
           }
         }
       }
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       _notifyListeners();
       return targetMacs.length;
     }
@@ -1791,7 +1871,7 @@ heal_dns() {
       context: context,
     );
     if (count > 0) {
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       _notifyListeners();
     }
     return count;
@@ -1870,7 +1950,7 @@ heal_dns() {
   Future<bool> forceRefreshDhcpLeases({BuildContext? context}) async {
     if (_isReviewerMode) {
       await Future.delayed(const Duration(milliseconds: 300));
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       _notifyListeners();
       return true;
     }
@@ -1885,9 +1965,112 @@ heal_dns() {
       context: context,
     );
     if (res) {
-      await _refreshDashboard();
+      unawaited(_refreshDashboard());
       _notifyListeners();
     }
     return res;
+  }
+
+  /// RFC 1123 Hostname Regex:
+  /// Standard single-label hostname for OpenWrt system config:
+  /// - 1 to 63 characters
+  /// - Allowed characters: [a-zA-Z0-9-]
+  /// - Cannot start or end with a hyphen
+  static final RegExp hostnameRegex = RegExp(
+    r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$',
+  );
+
+  /// Validates a hostname candidate against RFC 1123 rules.
+  /// Returns null if valid, or an error reason code if invalid.
+  static String? validateHostname(String? hostname) {
+    if (hostname == null || hostname.trim().isEmpty) {
+      return 'empty';
+    }
+    final trimmed = hostname.trim();
+    if (trimmed.length > 63) {
+      return 'too_long';
+    }
+    if (trimmed.startsWith('-') || trimmed.endsWith('-')) {
+      return 'hyphen_edge';
+    }
+    if (!hostnameRegex.hasMatch(trimmed)) {
+      return 'invalid_characters';
+    }
+    return null;
+  }
+
+  /// Updates the router hostname in OpenWrt UCI (/etc/config/system).
+  /// Handles Reviewer Mode, edge cases, in-memory boardInfo updates, and profile synchronization.
+  Future<bool> updateRouterHostname(
+    String newHostname, {
+    BuildContext? context,
+  }) async {
+    final validationError = validateHostname(newHostname);
+    if (validationError != null) {
+      Logger.warning(
+        'Router hostname validation failed: $validationError ($newHostname)',
+      );
+      return false;
+    }
+
+    final trimmed = newHostname.trim();
+    final boardInfo =
+        _dashboardDataRef()?['boardInfo'] as Map<String, dynamic>?;
+    final currentHostname =
+        boardInfo?['hostname']?.toString() ??
+        _routerServiceRef()?.selectedRouter?.lastKnownHostname;
+
+    if (currentHostname != null && currentHostname == trimmed) {
+      Logger.info('Router hostname unchanged ($trimmed), skipping write.');
+      return true;
+    }
+
+    if (_isReviewerMode) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (boardInfo != null) {
+        boardInfo['hostname'] = trimmed;
+      }
+      final systemInfo =
+          _dashboardDataRef()?['system'] as Map<String, dynamic>?;
+      if (systemInfo != null) {
+        systemInfo['hostname'] = trimmed;
+      }
+      await _routerServiceRef()?.updateSelectedRouterHostname(trimmed);
+      _notifyListeners();
+      return true;
+    }
+
+    final ip = _ip;
+    final sysauth = _sysauth;
+    final apiService = _apiService;
+    if (ip == null || sysauth == null || apiService == null) {
+      Logger.warning(
+        'Cannot update router hostname: router disconnected or not authenticated',
+      );
+      return false;
+    }
+
+    final success = await apiService.setRouterHostname(
+      ip,
+      sysauth,
+      _useHttps,
+      trimmed,
+      context: context,
+    );
+
+    if (success) {
+      if (boardInfo != null) {
+        boardInfo['hostname'] = trimmed;
+      }
+      final systemInfo =
+          _dashboardDataRef()?['system'] as Map<String, dynamic>?;
+      if (systemInfo != null) {
+        systemInfo['hostname'] = trimmed;
+      }
+      await _routerServiceRef()?.updateSelectedRouterHostname(trimmed);
+      _notifyListeners();
+    }
+
+    return success;
   }
 }

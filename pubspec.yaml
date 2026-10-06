@@ -15,7 +15,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # build by specifying --build-name and --build-number, respectively.
 # In Android, build-name is used as versionName while build-number used as versionCode.
 # Read more about Android versioning at https://developer.android.com/studio/publish/versioning
-version: 2.1.0+224
+version: 2.2.5+225
 
 environment:
   sdk: ^3.8.1
@@ -71,6 +71,7 @@ flutter:
   assets:
     - assets/mock/
     - assets/fingerprints/
+    - assets/fonts/
     - assets/images/app_logo_router_clean.png
     - assets/images/app_logo_transparent.png
     - assets/images/app_logo.png

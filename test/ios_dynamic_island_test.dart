@@ -117,12 +117,12 @@ void main() {
         addTearDown(tester.view.resetPadding);
 
         await tester.pumpWidget(
-          MaterialApp(
+          const MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
               appBar: LuciAppBar(title: 'Landscape Title', showBack: true),
-              body: const Center(child: Text('Landscape Body')),
+              body: Center(child: Text('Landscape Body')),
             ),
           ),
         );
@@ -175,13 +175,13 @@ void main() {
         addTearDown(tester.view.resetPadding);
 
         await tester.pumpWidget(
-          MediaQuery(
-            data: const MediaQueryData(
+          const MediaQuery(
+            data: MediaQueryData(
               textScaler: TextScaler.linear(1.4),
               size: Size(375, 667),
               padding: EdgeInsets.only(top: 20.0),
             ),
-            child: const ProviderScope(
+            child: ProviderScope(
               child: MaterialApp(
                 localizationsDelegates: AppLocalizations.localizationsDelegates,
                 supportedLocales: AppLocalizations.supportedLocales,

@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:yet_another_luci_app/services/router_service.dart';
 import 'package:yet_another_luci_app/state/app_state.dart';
 import 'package:yet_another_luci_app/utils/self_device_guard.dart';
 import '../models/parental_profile.dart';
@@ -72,21 +73,30 @@ class ParentalControlsController {
     if (_isInitializing) return ParentalActionResult.ok;
     _isInitializing = true;
 
+    final isMock = appState.reviewerModeEnabled ||
+        RouterService.isMockRouter(appState.selectedRouter);
+
     try {
-      final key = _storageKeyFor(appState);
-      var raw = await appState.secureRead(key);
-      if ((raw == null || raw.isEmpty) && appState.selectedRouter?.id != null) {
-        final legacy = await appState.secureRead('parental_controls_store_v1');
-        if (legacy != null && legacy.isNotEmpty) {
-          raw = legacy;
+      if (!isMock) {
+        final key = _storageKeyFor(appState);
+        var raw = await appState.secureRead(key);
+        if ((raw == null || raw.isEmpty) && appState.selectedRouter?.id != null) {
+          final legacy = await appState.secureRead('parental_controls_store_v1');
+          if (legacy != null && legacy.isNotEmpty) {
+            raw = legacy;
+          }
         }
+        _store.loadFromString(raw);
+      } else {
+        _store.loadFromString(null);
       }
-      _store.loadFromString(raw);
 
       final routerProfiles = await appState.fetchParentalProfiles();
       if (routerProfiles != null && routerProfiles.isNotEmpty) {
         _store.setProfiles(routerProfiles);
-        await persistStore(appState);
+        if (!isMock) {
+          await persistStore(appState);
+        }
       }
       return const ParentalActionResult(
         success: true,
@@ -106,6 +116,10 @@ class ParentalControlsController {
 
   /// Single write path to persist store to secure storage.
   Future<ParentalActionResult> persistStore(AppState appState) async {
+    if (appState.reviewerModeEnabled ||
+        RouterService.isMockRouter(appState.selectedRouter)) {
+      return ParentalActionResult.ok;
+    }
     if (!_store.isLoaded) {
       return const ParentalActionResult(
         success: false,
@@ -213,7 +227,7 @@ class ParentalControlsController {
     final hasFirewall = caps == null || caps.hasUciWriteAccess;
 
     if (!hasFirewall) {
-      return ParentalActionResult(
+      return const ParentalActionResult(
         success: false,
         failureType: ParentalFailureType.firewallDenied,
         message: 'Firewall write access unavailable. Cannot pause internet.',
@@ -229,7 +243,7 @@ class ParentalControlsController {
           targetMac: mac,
         );
         if (!safe) {
-          return ParentalActionResult(
+          return const ParentalActionResult(
             success: false,
             failureType: ParentalFailureType.selfGuardBlocked,
             message: 'Action cancelled to protect self device.',

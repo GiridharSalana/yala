@@ -278,10 +278,8 @@ class _PreservedBackupFilesSheetState extends State<PreservedBackupFilesSheet>
         _parseData(updateInitial: true);
 
         // Refresh sysupgrade -l list to show newly preserved files
-        String? freshList = await widget.appState.executeRouterCommandOutput(
-          'sh',
-          ['-c', 'sysupgrade -l'],
-        );
+        final String? freshList = await widget.appState
+            .executeRouterCommandOutput('sh', ['-c', 'sysupgrade -l']);
         if (freshList != null && freshList.trim().isNotEmpty) {
           _fileListRaw = freshList;
           _parseData(updateInitial: true);

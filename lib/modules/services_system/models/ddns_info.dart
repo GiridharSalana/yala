@@ -336,7 +336,7 @@ class DdnsOverview {
             .toList() ??
         [];
 
-    bool installed =
+    final bool installed =
         installedPkgs.any(
           (p) => p.contains('ddns-scripts') || p.contains('ddns'),
         ) ||

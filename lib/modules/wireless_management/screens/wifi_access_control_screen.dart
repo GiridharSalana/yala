@@ -536,7 +536,11 @@ class _WifiAccessControlScreenState
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
-              Icon(Icons.push_pin, color: LuciStatusColors.connected, size: 20),
+              const Icon(
+                Icons.push_pin,
+                color: LuciStatusColors.connected,
+                size: 20,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -544,7 +548,7 @@ class _WifiAccessControlScreenState
                   children: [
                     Row(
                       children: [
-                        Text(
+                        const Text(
                           'Static Lease Active',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -600,7 +604,7 @@ class _WifiAccessControlScreenState
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: LuciStatusColors.connected,
-                  side: BorderSide(color: LuciStatusColors.connected),
+                  side: const BorderSide(color: LuciStatusColors.connected),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 6,
@@ -808,7 +812,7 @@ class _WifiAccessControlScreenState
                           ),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(
+                        child: const Text(
                           'Current: Allowed',
                           style: TextStyle(
                             color: LuciStatusColors.connected,

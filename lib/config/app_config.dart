@@ -2,6 +2,8 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'package:flutter/foundation.dart';
+
 /// Flavor types supported by the build pipeline
 enum AppFlavor { community, playstore }
 
@@ -80,6 +82,18 @@ class AppConfig {
 
   /// Whether the current build is the FOSS community flavor.
   static bool get isCommunityFlavor => flavor == AppFlavor.community;
+
+  @visibleForTesting
+  static bool? debugIsFdroidBuild;
+
+  /// Whether this build is targeting F-Droid distribution.
+  /// Controlled via compile-time flag `--dart-define=FDROID_BUILD=true` or `--dart-define=FLAVOR=fdroid`.
+  /// Defaults to `false`. When true, third-party update checkers and external
+  /// binary prompts are disabled to comply with F-Droid inclusion policies.
+  static bool get isFdroidBuild =>
+      debugIsFdroidBuild ??
+      (const bool.fromEnvironment('FDROID_BUILD', defaultValue: false) ||
+          _flavorStr.toLowerCase() == 'fdroid');
 
   /// Human-readable build channel description.
   static String get flavorName =>

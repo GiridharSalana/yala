@@ -127,7 +127,10 @@ class _ProvisionGuestNetworkDialogState
   /// Guest-optimised smart defaults: prefer sae-mixed for compatibility, always isolate.
   void _applySmartDefaults() {
     if (_dynamicEncryptions.isEmpty) return;
-    final supported = _dynamicEncryptions.map((e) => e['value']!).toList();
+    final supported = _dynamicEncryptions
+        .map((e) => e['value']?.toString())
+        .whereType<String>()
+        .toSet();
     for (final preferred in ['sae-mixed', 'psk2', 'psk', 'owe', 'none']) {
       if (supported.contains(preferred)) {
         _selectedEncryption = preferred;

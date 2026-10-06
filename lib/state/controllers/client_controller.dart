@@ -32,13 +32,15 @@ class ClientController {
     executeRouterCommandOutput,
     required Map<String, dynamic> Function(Map<String, dynamic> rawDhcpData)
     processDhcpLeases,
+    void Function()? onClientsUpdated,
   }) : _apiServiceRef = apiServiceRef,
        _authServiceRef = authServiceRef,
        _routerServiceRef = routerServiceRef,
        _reviewerModeRef = reviewerModeRef,
        _dashboardDataRef = dashboardDataRef,
        _executeRouterCommandOutput = executeRouterCommandOutput,
-       _processDhcpLeases = processDhcpLeases;
+       _processDhcpLeases = processDhcpLeases,
+       _onClientsUpdated = onClientsUpdated;
 
   final IApiService? Function() _apiServiceRef;
   final IAuthService? Function() _authServiceRef;
@@ -49,14 +51,18 @@ class ClientController {
   _executeRouterCommandOutput;
   final Map<String, dynamic> Function(Map<String, dynamic> rawDhcpData)
   _processDhcpLeases;
+  final void Function()? _onClientsUpdated;
 
   final Set<String> _knownWirelessMacs = {};
   final Map<String, DateTime> _recentWiredActiveTime = {};
   final Map<String, ({int rxBytes, int txBytes, DateTime timestamp})>
   _previousStationTraffic = {};
+  final Map<String, ({String token, bool useHttps})> _secondaryRouterTokens =
+      {};
   DateTime? _lastNeighborProbeTime;
   List<Client>? lastFetchedClients;
   bool _isFetchingClients = false;
+  int _fetchEpoch = 0;
 
   Set<String> get knownWirelessMacs => _knownWirelessMacs;
   bool get isFetchingClients => _isFetchingClients;
@@ -64,9 +70,11 @@ class ClientController {
 
   /// Resets client state and caches (e.g. on router profile switch or logout).
   void resetState() {
+    _fetchEpoch++;
     _knownWirelessMacs.clear();
     _recentWiredActiveTime.clear();
     _previousStationTraffic.clear();
+    _secondaryRouterTokens.clear();
     _lastNeighborProbeTime = null;
     lastFetchedClients = null;
     _isFetchingClients = false;
@@ -87,31 +95,26 @@ class ClientController {
 
   /// Returns whether a Dumb AP router is present in configuration or detected
   bool get hasDumbAp {
-    // 1. If multiple routers are configured in the app, secondary AP management is active
-    final routers = _routerService?.routers ?? [];
-    if (routers.length > 1) {
-      return true;
-    }
-
-    // 2. Any currently fetched client is tagged as connected via a Dumb AP
+    // 1. Any currently fetched client is tagged as connected via a Dumb AP
     if (lastFetchedClients != null &&
         lastFetchedClients!.any((c) => c.isDumbApClient)) {
       return true;
     }
 
-    // 3. Check if the currently selected router is identified as an AP
     final selected = _routerService?.selectedRouter;
-    if (selected != null &&
-        (isDumbApName(selected.name) ||
-            isDumbApName(selected.lastKnownHostname))) {
-      return true;
-    }
+    final routers = _routerService?.routers ?? [];
 
-    // 4. Check if any router in the configured routers list is identified as an AP
+    // 2. Check if any secondary router in the configured routers list is identified as an AP
     for (final r in routers) {
-      if (isDumbApName(r.name) || isDumbApName(r.lastKnownHostname)) {
+      if (r.id != selected?.id &&
+          (isDumbApName(r.name) || isDumbApName(r.lastKnownHostname))) {
         return true;
       }
+    }
+
+    // 3. If multiple routers are configured in the app, secondary AP management is active
+    if (routers.length > 1) {
+      return true;
     }
 
     return false;
@@ -149,13 +152,30 @@ class ClientController {
   _computeStationVitals(String mac, Map<String, dynamic> station) {
     final rxMap = station['rx'] is Map ? (station['rx'] as Map) : null;
     final txMap = station['tx'] is Map ? (station['tx'] as Map) : null;
+    final bytesMap =
+        station['bytes'] is Map ? (station['bytes'] as Map) : null;
+    final packetsMap =
+        station['packets'] is Map ? (station['packets'] as Map) : null;
+    final rateMap = station['rate'] is Map ? (station['rate'] as Map) : null;
 
-    final rxBytes = _extractInt(rxMap?['bytes'] ?? station['rx_bytes']);
-    final txBytes = _extractInt(txMap?['bytes'] ?? station['tx_bytes']);
-    final rxPackets = _extractInt(rxMap?['packets'] ?? station['rx_packets']);
-    final txPackets = _extractInt(txMap?['packets'] ?? station['tx_packets']);
-    final rxRate = _extractNum(rxMap?['rate'] ?? station['rx_rate']);
-    final txRate = _extractNum(txMap?['rate'] ?? station['tx_rate']);
+    final rxBytes = _extractInt(
+      rxMap?['bytes'] ?? bytesMap?['rx'] ?? station['rx_bytes'],
+    );
+    final txBytes = _extractInt(
+      txMap?['bytes'] ?? bytesMap?['tx'] ?? station['tx_bytes'],
+    );
+    final rxPackets = _extractInt(
+      rxMap?['packets'] ?? packetsMap?['rx'] ?? station['rx_packets'],
+    );
+    final txPackets = _extractInt(
+      txMap?['packets'] ?? packetsMap?['tx'] ?? station['tx_packets'],
+    );
+    final rxRate = _extractNum(
+      rxMap?['rate'] ?? rateMap?['rx'] ?? station['rx_rate'],
+    );
+    final txRate = _extractNum(
+      txMap?['rate'] ?? rateMap?['tx'] ?? station['tx_rate'],
+    );
     final signalDbm = _extractInt(station['signal']);
     final noiseDbm = _extractInt(station['noise']);
     final throughput = _extractInt(station['thr'] ?? station['throughput']);
@@ -220,121 +240,269 @@ class ClientController {
   /// Aggregates DHCP leases across all configured routers and classifies clients
   /// as wireless if their MAC appears in any router's associated stations list.
   /// Also tags clients associated with secondary Dumb APs.
-  Future<List<Client>> fetchAggregatedClients() async {
+  ///
+  /// Implements lazy loading: the selected Main Router is queried and published
+  /// immediately, while secondary Dumb AP routers are fetched concurrently in the
+  /// background and merged into the client list as each completes.
+  Future<List<Client>> fetchAggregatedClients({
+    void Function(List<Client> clients)? onIncrementalUpdate,
+  }) async {
     _isFetchingClients = true;
+    final fetchEpoch = ++_fetchEpoch;
     try {
       final clientsMap = <String, Client>{};
       final routers = _routerService?.routers ?? [];
       if (routers.isEmpty) {
         return lastFetchedClients ?? [];
       }
-      final routerClientsList = await Future.wait(
-        routers.map(
-          (router) => _fetchClientsForRouter(router).catchError((e, stack) {
-            Logger.exception(
-              'Failed to fetch clients for router ${router.ipAddress}',
-              e,
-              stack,
-            );
-            return <Client>[];
-          }),
-        ),
-      );
-      for (final routerClients in routerClientsList) {
-        for (final c in routerClients) {
-          final macNorm = c.macAddress.toUpperCase().replaceAll('-', ':');
-          if (!clientsMap.containsKey(macNorm)) {
-            clientsMap[macNorm] = c;
-          } else {
-            final existing = clientsMap[macNorm]!;
-            final isDumb = existing.isDumbApClient || c.isDumbApClient;
-            final apName = c.isDumbApClient
-                ? (c.apName ?? existing.apName)
-                : (existing.apName ?? c.apName);
-            final preferredHostname =
-                (existing.hostname != 'Unknown' &&
-                    existing.hostname != existing.macAddress)
-                ? existing.hostname
-                : c.hostname;
-            final preferredIp =
-                (existing.ipAddress != 'N/A' && existing.ipAddress.isNotEmpty)
-                ? existing.ipAddress
-                : c.ipAddress;
-            final preferredConnType =
-                (existing.connectionType == ConnectionType.wireless ||
-                    c.connectionType == ConnectionType.wireless)
-                ? ConnectionType.wireless
-                : existing.connectionType;
-            final preferredSsid = existing.ssid ?? c.ssid;
-            final preferredIface = existing.wirelessIface ?? c.wirelessIface;
-            final staticName = existing.staticLeaseName ?? c.staticLeaseName;
-            final isStatic = existing.isStaticLease || c.isStaticLease;
-            final ipv6Addrs = existing.ipv6Addresses ?? c.ipv6Addresses;
-            final vendor = existing.vendor ?? c.vendor;
 
-            final rxBytes = c.rxBytes ?? existing.rxBytes;
-            final txBytes = c.txBytes ?? existing.txBytes;
-            final rxPackets = c.rxPackets ?? existing.rxPackets;
-            final txPackets = c.txPackets ?? existing.txPackets;
-            final rxRate = c.rxRate ?? existing.rxRate;
-            final txRate = c.txRate ?? existing.txRate;
-            final signalDbm = c.signalDbm ?? existing.signalDbm;
-            final noiseDbm = c.noiseDbm ?? existing.noiseDbm;
-            final throughput = c.throughput ?? existing.throughput;
-            final rxSpeed = c.rxSpeed ?? existing.rxSpeed;
-            final txSpeed = c.txSpeed ?? existing.txSpeed;
-            final connectedTime = c.connectedTime ?? existing.connectedTime;
-
-            clientsMap[macNorm] = existing.copyWith(
-              hostname: preferredHostname,
-              ipAddress: preferredIp,
-              connectionType: preferredConnType,
-              ssid: preferredSsid,
-              wirelessIface: preferredIface,
-              isConnected: existing.isConnected || c.isConnected,
-              isDumbApClient: isDumb,
-              apName: apName,
-              staticLeaseName: staticName,
-              isStaticLease: isStatic,
-              ipv6Addresses: ipv6Addrs,
-              vendor: vendor,
-              rxBytes: rxBytes,
-              txBytes: txBytes,
-              rxPackets: rxPackets,
-              txPackets: txPackets,
-              rxRate: rxRate,
-              txRate: txRate,
-              signalDbm: signalDbm,
-              noiseDbm: noiseDbm,
-              throughput: throughput,
-              rxSpeed: rxSpeed,
-              txSpeed: txSpeed,
-              connectedTime: connectedTime,
-            );
-          }
-        }
+      // Sort routers so the currently selected Main Router is processed first,
+      // establishing authoritative DHCP leases, hostnames, and connection states.
+      final selectedId = _routerService?.selectedRouter?.id;
+      final sortedRouters = List<model.Router>.from(routers);
+      if (selectedId != null) {
+        sortedRouters.sort((a, b) {
+          if (a.id == selectedId) return -1;
+          if (b.id == selectedId) return 1;
+          return 0;
+        });
       }
-      final list = clientsMap.values.toList();
-      list.sort((a, b) {
-        if (a.isConnected != b.isConnected) {
-          return a.isConnected ? -1 : 1;
-        }
-        return a.displayName.toLowerCase().compareTo(
-          b.displayName.toLowerCase(),
+
+      // 1. Fetch Main Router first and immediately publish its clients
+      final mainRouter = sortedRouters.first;
+      final isMain = mainRouter.id == selectedId;
+      List<Client> mainClients = [];
+      try {
+        mainClients = await _fetchClientsForRouter(mainRouter);
+      } catch (e, stack) {
+        Logger.exception(
+          'Failed to fetch clients for main router ${mainRouter.ipAddress}',
+          e,
+          stack,
         );
-      });
-      lastFetchedClients = list;
-      return list;
+      }
+
+      if (_fetchEpoch != fetchEpoch) {
+        return lastFetchedClients ?? [];
+      }
+
+      _mergeClientsIntoMap(clientsMap, mainClients, isMain);
+      lastFetchedClients = _sortedClients(clientsMap);
+
+      // Lazy Loading: Immediately emit Main Router clients so the Clients tab renders them right away!
+      onIncrementalUpdate?.call(List<Client>.unmodifiable(lastFetchedClients!));
+      _onClientsUpdated?.call();
+
+      // 2. Fetch secondary routers (Dumb APs) concurrently in the background
+      final secondaryRouters = sortedRouters.sublist(1);
+      if (secondaryRouters.isNotEmpty) {
+        await Future.wait(
+          secondaryRouters.map((secRouter) async {
+            try {
+              final secClients = await _fetchClientsForRouter(secRouter);
+              if (_fetchEpoch != fetchEpoch) return;
+
+              _mergeClientsIntoMap(clientsMap, secClients, false);
+              lastFetchedClients = _sortedClients(clientsMap);
+
+              // Incrementally update UI and AppState with the newly fetched Dumb AP clients
+              onIncrementalUpdate?.call(
+                List<Client>.unmodifiable(lastFetchedClients!),
+              );
+              _onClientsUpdated?.call();
+            } catch (e, stack) {
+              Logger.exception(
+                'Failed to fetch clients for secondary router ${secRouter.ipAddress}',
+                e,
+                stack,
+              );
+            }
+          }),
+        );
+      }
+
+      if (_fetchEpoch != fetchEpoch) {
+        return lastFetchedClients ?? [];
+      }
+
+      return lastFetchedClients ?? [];
     } catch (e, stack) {
       Logger.exception('Failed to aggregate clients', e, stack);
       return lastFetchedClients ?? [];
     } finally {
-      _isFetchingClients = false;
+      if (_fetchEpoch == fetchEpoch) {
+        _isFetchingClients = false;
+      }
+    }
+  }
+
+  List<Client> _sortedClients(Map<String, Client> clientsMap) {
+    final list = clientsMap.values.toList();
+    list.sort((a, b) {
+      if (a.isConnected != b.isConnected) {
+        return a.isConnected ? -1 : 1;
+      }
+      return a.displayName.toLowerCase().compareTo(
+        b.displayName.toLowerCase(),
+      );
+    });
+    return list;
+  }
+
+  void _mergeClientsIntoMap(
+    Map<String, Client> clientsMap,
+    List<Client> routerClients,
+    bool isMainRouter,
+  ) {
+    for (final c in routerClients) {
+      final macNorm = c.macAddress.toUpperCase().replaceAll('-', ':');
+      if (!clientsMap.containsKey(macNorm)) {
+        // New client discovered: Main router clients are never Dumb AP clients.
+        clientsMap[macNorm] = isMainRouter
+            ? c.copyWith(isDumbApClient: false, apName: null)
+            : c;
+      } else {
+        final existing = clientsMap[macNorm]!;
+
+        // Resolution rules:
+        // 1. If client is active on Main Router (wired or wireless), Main Router takes precedence.
+        // 2. Only if actively connected wirelessly to a secondary Dumb AP is it a Dumb AP client.
+        final existingActiveOnMain =
+            (existing.isConnected && !existing.isDumbApClient);
+        final clientActiveOnSecondaryAp =
+            !isMainRouter && c.isDumbApClient && c.isConnected;
+
+        final bool isDumb;
+        final String? apName;
+        final ConnectionType preferredConnType;
+        final String? preferredSsid;
+        final String? preferredIface;
+        int? signalDbm;
+        int? noiseDbm;
+        int? throughput;
+        int? rxBytes;
+        int? txBytes;
+        int? rxPackets;
+        int? txPackets;
+        num? rxRate;
+        num? txRate;
+        double? rxSpeed;
+        double? txSpeed;
+        int? connectedTime;
+
+        if (clientActiveOnSecondaryAp &&
+            existing.connectionType != ConnectionType.wireless) {
+          // Client is actively connected wirelessly to the secondary Dumb AP
+          isDumb = true;
+          apName = c.apName;
+          preferredConnType = ConnectionType.wireless;
+          preferredSsid = c.ssid ?? existing.ssid;
+          preferredIface = c.wirelessIface ?? existing.wirelessIface;
+          signalDbm = c.signalDbm ?? existing.signalDbm;
+          noiseDbm = c.noiseDbm ?? existing.noiseDbm;
+          throughput = c.throughput ?? existing.throughput;
+          rxBytes = c.rxBytes ?? existing.rxBytes;
+          txBytes = c.txBytes ?? existing.txBytes;
+          rxPackets = c.rxPackets ?? existing.rxPackets;
+          txPackets = c.txPackets ?? existing.txPackets;
+          rxRate = c.rxRate ?? existing.rxRate;
+          txRate = c.txRate ?? existing.txRate;
+          rxSpeed = c.rxSpeed ?? existing.rxSpeed;
+          txSpeed = c.txSpeed ?? existing.txSpeed;
+          connectedTime = c.connectedTime ?? existing.connectedTime;
+        } else if (existingActiveOnMain || isMainRouter) {
+          // Client is associated with the Main Router:
+          // Main Router connection is authoritative; NEVER a Dumb AP client.
+          isDumb = false;
+          apName = null;
+          preferredConnType = existing.connectionType;
+          preferredSsid = existing.ssid ?? c.ssid;
+          preferredIface = existing.wirelessIface ?? c.wirelessIface;
+          signalDbm = existing.signalDbm ?? c.signalDbm;
+          noiseDbm = existing.noiseDbm ?? c.noiseDbm;
+          throughput = existing.throughput ?? c.throughput;
+          rxBytes = existing.rxBytes ?? c.rxBytes;
+          txBytes = existing.txBytes ?? c.txBytes;
+          rxPackets = existing.rxPackets ?? c.rxPackets;
+          txPackets = existing.txPackets ?? c.txPackets;
+          rxRate = existing.rxRate ?? c.rxRate;
+          txRate = existing.txRate ?? c.txRate;
+          rxSpeed = existing.rxSpeed ?? c.rxSpeed;
+          txSpeed = existing.txSpeed ?? c.txSpeed;
+          connectedTime = existing.connectedTime ?? c.connectedTime;
+        } else {
+          isDumb = existing.isDumbApClient || c.isDumbApClient;
+          apName = c.isDumbApClient
+              ? (c.apName ?? existing.apName)
+              : (existing.apName ?? c.apName);
+          preferredConnType =
+              (existing.connectionType == ConnectionType.wireless ||
+                      c.connectionType == ConnectionType.wireless)
+                  ? ConnectionType.wireless
+                  : existing.connectionType;
+          preferredSsid = existing.ssid ?? c.ssid;
+          preferredIface = existing.wirelessIface ?? c.wirelessIface;
+          signalDbm = c.signalDbm ?? existing.signalDbm;
+          noiseDbm = c.noiseDbm ?? existing.noiseDbm;
+          throughput = c.throughput ?? existing.throughput;
+          rxBytes = c.rxBytes ?? existing.rxBytes;
+          txBytes = c.txBytes ?? existing.txBytes;
+          rxPackets = c.rxPackets ?? existing.rxPackets;
+          txPackets = c.txPackets ?? existing.txPackets;
+          rxRate = c.rxRate ?? existing.rxRate;
+          txRate = c.txRate ?? existing.txRate;
+          rxSpeed = c.rxSpeed ?? existing.rxSpeed;
+          txSpeed = c.txSpeed ?? existing.txSpeed;
+          connectedTime = c.connectedTime ?? existing.connectedTime;
+        }
+
+        final preferredHostname =
+            (existing.hostname != 'Unknown' &&
+                existing.hostname != existing.macAddress)
+            ? existing.hostname
+            : c.hostname;
+        final preferredIp =
+            (existing.ipAddress != 'N/A' && existing.ipAddress.isNotEmpty)
+            ? existing.ipAddress
+            : c.ipAddress;
+        final staticName = existing.staticLeaseName ?? c.staticLeaseName;
+        final isStatic = existing.isStaticLease || c.isStaticLease;
+        final ipv6Addrs = existing.ipv6Addresses ?? c.ipv6Addresses;
+        final vendor = existing.vendor ?? c.vendor;
+
+        clientsMap[macNorm] = existing.copyWith(
+          hostname: preferredHostname,
+          ipAddress: preferredIp,
+          connectionType: preferredConnType,
+          ssid: preferredSsid,
+          wirelessIface: preferredIface,
+          isConnected: existing.isConnected || c.isConnected,
+          isDumbApClient: isDumb,
+          apName: apName,
+          staticLeaseName: staticName,
+          isStaticLease: isStatic,
+          ipv6Addresses: ipv6Addrs,
+          vendor: vendor,
+          rxBytes: rxBytes,
+          txBytes: txBytes,
+          rxPackets: rxPackets,
+          txPackets: txPackets,
+          rxRate: rxRate,
+          txRate: txRate,
+          signalDbm: signalDbm,
+          noiseDbm: noiseDbm,
+          throughput: throughput,
+          rxSpeed: rxSpeed,
+          txSpeed: txSpeed,
+          connectedTime: connectedTime,
+        );
+      }
     }
   }
 
   /// Returns clients for the currently selected router only
   Future<List<Client>> fetchClientsForSelectedRouter() async {
+    final fetchEpoch = ++_fetchEpoch;
     _isFetchingClients = true;
     try {
       if (_isReviewerMode) {
@@ -572,13 +740,19 @@ class ClientController {
       final result = await _fetchClientsForRouter(
         _routerService!.selectedRouter!,
       );
+      if (_fetchEpoch != fetchEpoch) {
+        return lastFetchedClients ?? [];
+      }
       lastFetchedClients = result;
+      _onClientsUpdated?.call();
       return result;
     } catch (e, stack) {
       Logger.exception('Failed to fetch clients for selected router', e, stack);
       return lastFetchedClients ?? [];
     } finally {
-      _isFetchingClients = false;
+      if (_fetchEpoch == fetchEpoch) {
+        _isFetchingClients = false;
+      }
     }
   }
 
@@ -591,7 +765,11 @@ class ClientController {
       routerSysauth = _authService?.sysauth;
       actualUseHttps = _authService?.useHttps ?? router.useHttps;
     } else {
-      if (_apiService != null) {
+      final cached = _secondaryRouterTokens[router.id];
+      if (cached != null) {
+        routerSysauth = cached.token;
+        actualUseHttps = cached.useHttps;
+      } else if (_apiService != null) {
         try {
           final authRes = await _apiService!.authenticate(
             router.ipAddress,
@@ -600,8 +778,13 @@ class ClientController {
             router.useHttps,
           );
           if (authRes.isSuccess && authRes.token != null) {
-            routerSysauth = authRes.token;
+            final token = authRes.token!;
+            routerSysauth = token;
             actualUseHttps = authRes.actualUseHttps;
+            _secondaryRouterTokens[router.id] = (
+              token: token,
+              useHttps: actualUseHttps,
+            );
           }
         } catch (_) {}
       }
@@ -614,6 +797,85 @@ class ClientController {
 
     try {
       String normMac(String mac) => normalizeMac(mac);
+
+      // Router-scoped command execution helper:
+      // Commands for the active selected router use the AppState helper;
+      // commands for secondary routers execute strictly against that router's session
+      // to prevent cross-router command leakage.
+      Future<String?> execRouterCmd(String command, List<String> args) async {
+        if (router.id == _routerService?.selectedRouter?.id) {
+          return await _executeRouterCommandOutput(command, args);
+        }
+        if (_apiService == null ||
+            activeSysauth.isEmpty ||
+            activeSysauth == 'mock') {
+          return null;
+        }
+        try {
+          if (command == 'cat' && args.isNotEmpty) {
+            final readRes = await _apiService!.call(
+              router.ipAddress,
+              activeSysauth,
+              actualUseHttps,
+              object: 'file',
+              method: 'read',
+              params: {'path': args.first},
+            );
+            if (readRes is List &&
+                readRes.length > 1 &&
+                readRes[0] == 0 &&
+                readRes[1] is Map) {
+              final data = readRes[1] as Map;
+              if (data['data'] != null) return data['data'].toString();
+            }
+          }
+          final res = await _apiService!.call(
+            router.ipAddress,
+            activeSysauth,
+            actualUseHttps,
+            object: 'file',
+            method: 'exec',
+            params: {'command': command, 'params': args, 'args': args},
+          );
+          if (res is List &&
+              res.length > 1 &&
+              res[0] == 0 &&
+              res[1] is Map) {
+            final data = res[1] as Map;
+            final stdout = data['stdout']?.toString() ?? '';
+            if (stdout.isNotEmpty) return stdout;
+          }
+          final isShell =
+              command == 'sh' ||
+              command == '/bin/sh' ||
+              command == 'ash' ||
+              command == '/bin/ash';
+          final cmdStr = isShell && args.length >= 2 && args[0] == '-c'
+              ? args[1]
+              : ([command, ...args]).join(' ');
+          final shellRes = await _apiService!.call(
+            router.ipAddress,
+            activeSysauth,
+            actualUseHttps,
+            object: 'file',
+            method: 'exec',
+            params: {
+              'command': '/bin/sh',
+              'params': ['-c', cmdStr],
+              'args': ['-c', cmdStr],
+            },
+          );
+          if (shellRes is List &&
+              shellRes.length > 1 &&
+              shellRes[0] == 0 &&
+              shellRes[1] is Map) {
+            final data = shellRes[1] as Map;
+            final stdout = data['stdout']?.toString() ?? '';
+            if (stdout.isNotEmpty) return stdout;
+          }
+        } catch (_) {}
+        return null;
+      }
 
       // 1. Fetch live associated wireless stations with full traffic & PHY stats
       final stationsMap = await _apiService!
@@ -671,7 +933,7 @@ class ClientController {
 
       // Fallback: Shell station dump if station map is empty
       if (wireless.isEmpty) {
-        final iwDevOut = await _executeRouterCommandOutput('iw', ['dev']);
+        final iwDevOut = await execRouterCmd('iw', ['dev']);
         final ifaces = <String>[];
         if (iwDevOut != null && iwDevOut.isNotEmpty) {
           for (final line in iwDevOut.split('\n')) {
@@ -693,13 +955,13 @@ class ClientController {
         }
         for (final iface in ifaces) {
           final iwDump =
-              await _executeRouterCommandOutput('iw', [
+              await execRouterCmd('iw', [
                 'dev',
                 iface,
                 'station',
                 'dump',
               ]) ??
-              await _executeRouterCommandOutput('iwinfo', [iface, 'assoclist']);
+              await execRouterCmd('iwinfo', [iface, 'assoclist']);
           if (iwDump != null && iwDump.isNotEmpty) {
             final macRegex = RegExp(r'([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})');
             for (final match in macRegex.allMatches(iwDump)) {
@@ -741,9 +1003,9 @@ class ClientController {
 
       if (dhcp4Leases.isEmpty) {
         final rawLeaseStr =
-            await _executeRouterCommandOutput('cat', ['/tmp/dhcp.leases']) ??
-            await _executeRouterCommandOutput('cat', ['/var/dhcp.leases']) ??
-            await _executeRouterCommandOutput('cat', ['/tmp/dnsmasq.leases']);
+            await execRouterCmd('cat', ['/tmp/dhcp.leases']) ??
+            await execRouterCmd('cat', ['/var/dhcp.leases']) ??
+            await execRouterCmd('cat', ['/tmp/dnsmasq.leases']);
         if (rawLeaseStr != null && rawLeaseStr.isNotEmpty) {
           final processed = _processDhcpLeases({'data': rawLeaseStr});
           if (processed['dhcp_leases'] is List) {
@@ -762,13 +1024,17 @@ class ClientController {
       final hasApName =
           isDumbApName(router.name) || isDumbApName(router.lastKnownHostname);
 
-      final isRouterDumbAp =
-          (hasNoDhcp && otherRouters.isNotEmpty) ||
-          (hasNoDhcp && normalizedWireless.isNotEmpty) ||
-          (hasNoDhcp && hasApName) ||
-          (hasApName && otherRouters.isNotEmpty) ||
-          (otherRouters.isNotEmpty &&
-              router.id != _routerService?.selectedRouter?.id);
+      // The router to which the Yala app is currently logged into is strictly the Main Router.
+      // Under no circumstance can the active logged-in router ever be considered a Dumb AP.
+      final isSelectedMainRouter =
+          router.id == _routerService?.selectedRouter?.id;
+
+      final isRouterDumbAp = !isSelectedMainRouter &&
+          ((hasNoDhcp && otherRouters.isNotEmpty) ||
+           (hasNoDhcp && normalizedWireless.isNotEmpty) ||
+           (hasNoDhcp && hasApName) ||
+           (hasApName && otherRouters.isNotEmpty) ||
+           otherRouters.isNotEmpty);
 
       final wanDevices = <String>{};
       final wanIps = <String>{};
@@ -846,7 +1112,7 @@ class ClientController {
           final ip = parts[0];
           final dev = parts.length > 2 ? parts[2] : '';
           String? mac;
-          String nudState = parts.last.toUpperCase();
+          final nudState = parts.last.toUpperCase();
           final llIdx = parts.indexOf('lladdr');
           if (llIdx >= 0 && llIdx + 1 < parts.length) {
             mac = parts[llIdx + 1];
@@ -880,20 +1146,20 @@ class ClientController {
       bool usedIpNeigh = false;
       try {
         final neighV4Str =
-            await _executeRouterCommandOutput('/sbin/ip', [
+            await execRouterCmd('/sbin/ip', [
               '-4',
               'neigh',
               'show',
             ]) ??
-            await _executeRouterCommandOutput('ip', ['-4', 'neigh', 'show']) ??
-            await _executeRouterCommandOutput('ip', ['neigh', 'show']);
+            await execRouterCmd('ip', ['-4', 'neigh', 'show']) ??
+            await execRouterCmd('ip', ['neigh', 'show']);
         final neighV6Str =
-            await _executeRouterCommandOutput('/sbin/ip', [
+            await execRouterCmd('/sbin/ip', [
               '-6',
               'neigh',
               'show',
             ]) ??
-            await _executeRouterCommandOutput('ip', ['-6', 'neigh', 'show']);
+            await execRouterCmd('ip', ['-6', 'neigh', 'show']);
 
         final combined = [
           if (neighV4Str != null && neighV4Str.trim().isNotEmpty) neighV4Str,
@@ -910,11 +1176,11 @@ class ClientController {
       final fdbMacs = <String>{};
       try {
         final fdbStr =
-            await _executeRouterCommandOutput('/sbin/bridge', [
+            await execRouterCmd('/sbin/bridge', [
               'fdb',
               'show',
             ]) ??
-            await _executeRouterCommandOutput('bridge', ['fdb', 'show']);
+            await execRouterCmd('bridge', ['fdb', 'show']);
         if (fdbStr != null && fdbStr.trim().isNotEmpty) {
           final macRegex = RegExp(r'([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})');
           for (final line in fdbStr.split('\n')) {
@@ -948,7 +1214,7 @@ class ClientController {
           if (shouldProbe && probeIps.isNotEmpty) {
             final cmd =
                 'for ip in ${probeIps.join(' ')}; do ping -c 1 -W 1 \$ip >/dev/null 2>&1 & done; wait; ip neigh show';
-            final probedNeighStr = await _executeRouterCommandOutput('sh', [
+            final probedNeighStr = await execRouterCmd('sh', [
               '-c',
               cmd,
             ]);
@@ -966,7 +1232,7 @@ class ClientController {
       // Fallback: /proc/net/arp
       if (!usedIpNeigh || neighClients.isEmpty) {
         try {
-          final arpStr = await _executeRouterCommandOutput('cat', [
+          final arpStr = await execRouterCmd('cat', [
             '/proc/net/arp',
           ]);
           if (arpStr != null && arpStr.isNotEmpty) {
@@ -1543,11 +1809,16 @@ class ClientController {
           continue;
         }
 
+        if (isRouterDumbAp && !isWirelessActive) {
+          // A secondary Dumb AP only serves clients via its wireless interfaces.
+          // Non-wireless entries on a secondary Dumb AP are uplink network neighbors.
+          continue;
+        }
+
         if (isConnected || hasActiveLease || isStaticLease) {
-          final isClientDumbAp =
-              c.isDumbApClient || (isWirelessActive && isRouterDumbAp);
+          final isClientDumbAp = isWirelessActive && isRouterDumbAp;
           final clientApName =
-              c.apName ?? (isClientDumbAp ? router.displayName : null);
+              isClientDumbAp ? router.displayName : null;
           final vitals = vitalsMap[macN];
           processedClients.add(
             c.copyWith(

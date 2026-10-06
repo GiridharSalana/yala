@@ -241,13 +241,13 @@ class _SystemBackupUpgradeScreenState
       ]);
     }
 
-    String? confContent = await appState.executeRouterCommandOutput('cat', [
-      '/etc/sysupgrade.conf',
-    ]);
-
-    setState(() => _isProcessing = false);
+    final String? confContent = await appState.executeRouterCommandOutput(
+      'cat',
+      ['/etc/sysupgrade.conf'],
+    );
 
     if (!mounted) return;
+    setState(() => _isProcessing = false);
 
     await PreservedBackupFilesSheet.show(
       context,
@@ -1004,7 +1004,7 @@ class _SystemBackupUpgradeScreenState
                 Navigator.pop(ctx);
                 final appState = ref.read(appStateProvider);
                 await appState.executeRouterCommand('reboot', []);
-                if (mounted) {
+                if (mounted && context.mounted) {
                   context.showToastWarning('Rebooting router...');
                   _showRebootCountdownDialog();
                 }
@@ -1092,9 +1092,9 @@ class _SystemBackupUpgradeScreenState
       await appState.executeRouterCommand('reboot', []);
     }
 
+    if (!mounted) return;
     setState(() => _isProcessing = false);
 
-    if (!mounted) return;
     if (success) {
       context.showToastWarning(
         l10n?.sysUpgradeFactoryResetInitiated ??
@@ -1519,9 +1519,8 @@ class _SystemBackupUpgradeScreenState
           !testResult.toLowerCase().contains('invalid') &&
           !testResult.toLowerCase().contains('error');
 
-      setState(() => _isProcessing = false);
-
       if (!mounted) return;
+      setState(() => _isProcessing = false);
       unawaited(OsPlatformIntegration.triggerHaptic(OsHapticType.heavy));
 
       // Pre-Flash Confirmation & Settings Sheet

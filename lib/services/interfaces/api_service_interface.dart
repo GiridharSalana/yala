@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
 import 'package:yet_another_luci_app/modules/services_system/models/ddns_info.dart';
+import 'package:yet_another_luci_app/modules/sqm/models/sqm_queue.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/internet_reachability.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/ping_result.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/traceroute_result.dart';
@@ -12,6 +13,7 @@ import 'package:yet_another_luci_app/modules/diagnostics/models/dns_lookup_resul
 import 'package:yet_another_luci_app/modules/diagnostics/models/routing_neighbor_info.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/diagnostic_report.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/flush_dns_result.dart';
+import 'package:yet_another_luci_app/modules/bandwidth_monitor/models/bandwidth_data.dart';
 
 enum AuthStatus { success, invalidCredentials, unreachable, unknownError }
 
@@ -299,11 +301,6 @@ abstract class IApiService {
     bool useHttps, {
     BuildContext? context,
   });
-  Future<bool> ensureSilentPermissions(
-    String ipAddress,
-    String sysauth,
-    bool useHttps,
-  );
   Future<bool> manageServiceAction(
     String ipAddress,
     String sysauth,
@@ -420,6 +417,27 @@ abstract class IApiService {
     BuildContext? context,
   });
   Future<bool> toggleGlobalDdns(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required bool enable,
+    BuildContext? context,
+  });
+  Future<bool> saveSqmQueue(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required SqmQueue queue,
+    BuildContext? context,
+  });
+  Future<bool> deleteSqmQueue(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String sectionName,
+    BuildContext? context,
+  });
+  Future<bool> toggleSqmService(
     String ipAddress,
     String sysauth,
     bool useHttps, {
@@ -586,6 +604,52 @@ abstract class IApiService {
     required String command,
     List<String>? params,
     int stderr = 0,
+    BuildContext? context,
+  });
+
+  /// Fetches native time-series traffic stats from LuCI's luci-bwc daemon
+  /// mode: 'interface' (with device e.g. 'eth0', 'br-lan') or 'wireless' (with device e.g. 'phy0-ap0')
+  Future<List<RealtimeTrafficPoint>> fetchRealtimeStats(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String mode,
+    String? device,
+    BuildContext? context,
+  });
+
+  /// Checks if nlbwmon (Netlink Bandwidth Monitor) is installed and available
+  Future<bool> checkNlbwmonInstalled(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Fetches persistent per-client traffic accounting from nlbwmon
+  Future<NlbwmonReport?> fetchNlbwmonData(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    String groupBy = 'mac',
+    String? period,
+    BuildContext? context,
+  });
+
+  /// Fetches list of available historical database periods from nlbwmon
+  Future<List<String>> fetchNlbwmonPeriods(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Sets the router system hostname in UCI (/etc/config/system) and applies changes.
+  Future<bool> setRouterHostname(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String newHostname, {
     BuildContext? context,
   });
 }

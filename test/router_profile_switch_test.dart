@@ -129,13 +129,6 @@ class MockApiService implements IApiService {
   }
 
   @override
-  Future<bool> ensureSilentPermissions(
-    String ip,
-    String sysauth,
-    bool useHttps,
-  ) async => true;
-
-  @override
   Future<Map<String, Set<String>>> fetchAssociatedStations() async => {};
 
   @override
@@ -172,9 +165,11 @@ void main() {
     late DashboardController dashboardController;
     late SessionController sessionController;
     late ClientController clientController;
+    int sessionResetCount = 0;
 
     setUp(() {
       FlutterSecureStorage.setMockInitialValues({});
+      sessionResetCount = 0;
       routerService = RouterService();
       authService = MockAuthService();
       apiService = MockApiService();
@@ -201,7 +196,6 @@ void main() {
         setPublicIps: (v4, v6) {},
         setConnectionStatus: (status) {},
         startThroughputTimer: () {},
-        updateThroughputOnly: () {},
         processDhcpLeases: (raw) => raw,
         notifyListeners: () {},
       );
@@ -222,6 +216,10 @@ void main() {
         setLoadingState: (_) {},
         setErrorState: (_) {},
         notifyListeners: () {},
+        onSessionReset: () {
+          sessionResetCount++;
+          clientController.resetState();
+        },
       );
 
       clientController = ClientController(
@@ -339,6 +337,20 @@ void main() {
 
       clientController.resetState();
       expect(clientController.lastFetchedClients, isNull);
+    });
+
+    test('selectRouter invokes onSessionReset callback', () async {
+      final router = model.Router(
+        id: 'test_router_reset',
+        ipAddress: '192.168.1.1',
+        username: 'root',
+        password: 'password',
+        useHttps: false,
+      );
+      await routerService.addRouter(router);
+      final initialResets = sessionResetCount;
+      await sessionController.selectRouter(router.id);
+      expect(sessionResetCount, greaterThan(initialResets));
     });
   });
 }

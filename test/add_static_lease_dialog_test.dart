@@ -51,7 +51,7 @@ void main() {
   testWidgets(
     'AddStaticLeaseDialog renders Remove Lease button and confirmation dialog in edit mode',
     (WidgetTester tester) async {
-      final mapping = DhcpStaticMapping(
+      const mapping = DhcpStaticMapping(
         macAddress: '11:22:33:44:55:66',
         ipAddress: '192.168.1.150',
         hostname: 'Printer-Device',
@@ -67,7 +67,7 @@ void main() {
                   showDialog(
                     context: context,
                     builder: (ctx) =>
-                        AddStaticLeaseDialog(existingMapping: mapping),
+                        const AddStaticLeaseDialog(existingMapping: mapping),
                   );
                 },
                 child: const Text('Open Edit Dialog'),

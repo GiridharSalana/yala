@@ -29,6 +29,7 @@ import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
 import 'package:yet_another_luci_app/services/interfaces/auth_service_interface.dart';
 import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
 import 'package:yet_another_luci_app/services/interfaces/ssh_service_interface.dart';
+import 'package:yet_another_luci_app/services/api_service.dart';
 import 'package:yet_another_luci_app/services/service_factory.dart';
 import 'package:yet_another_luci_app/utils/http_client_manager.dart';
 import 'package:yet_another_luci_app/utils/logger.dart';
@@ -38,8 +39,10 @@ import 'package:yet_another_luci_app/models/router_capabilities.dart';
 import 'package:yet_another_luci_app/models/network_topology.dart';
 import 'package:yet_another_luci_app/modules/firewall_security/models/firewall_info.dart';
 import 'package:yet_another_luci_app/modules/services_system/models/ddns_info.dart';
+import 'package:yet_another_luci_app/modules/sqm/models/sqm_queue.dart';
 import 'package:yet_another_luci_app/modules/wireless_management/models/wireless_info.dart';
 import 'package:yet_another_luci_app/modules/dhcp_dns/models/dhcp_dns_info.dart';
+import 'package:yet_another_luci_app/modules/diagnostics/models/flush_dns_result.dart';
 
 enum RouterConnectionStatus { connected, reconnecting, disconnected }
 
@@ -71,9 +74,32 @@ class AppState extends ChangeNotifier {
   }
 
   @visibleForTesting
+  void setIsDashboardLoadingForTesting(bool loading) {
+    _dashboardController?.setIsDashboardLoadingForTesting(loading);
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void setCapabilitiesForTesting(RouterCapabilities? capabilities) {
+    _dashboardController?.setCapabilitiesForTesting(capabilities);
+    notifyListeners();
+  }
+
+  @visibleForTesting
   void setDashboardPreferencesForTesting(DashboardPreferences prefs) {
     _sessionController?.setDashboardPreferencesForTesting(prefs);
     notifyListeners();
+  }
+
+  @visibleForTesting
+  void setConnectionStatusForTesting(RouterConnectionStatus status) {
+    _connectionStatus = status;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void notifyRouterBackOnlineForTesting({required bool success}) {
+    _notifyRouterBackOnline(success: success);
   }
 
   ThroughputService? _throughputService;
@@ -88,12 +114,14 @@ class AppState extends ChangeNotifier {
 
   // Router Capabilities State
   RouterCapabilities? get capabilities => _dashboardController?.capabilities;
-  bool get isMissingRpcPackages =>
-      capabilities != null &&
-      !capabilities!.probeFailed &&
-      capabilities!.ubusObjects.isNotEmpty &&
-      (!capabilities!.hasLuciRpc && !capabilities!.hasFileExec) &&
-      !reviewerModeEnabled;
+  bool get isMissingRpcPackages {
+    final caps = capabilities;
+    return caps != null &&
+        !caps.probeFailed &&
+        caps.ubusObjects.isNotEmpty &&
+        (!caps.isRpcComplete) &&
+        !reviewerModeEnabled;
+  }
 
   // Reviewer mode state
   bool get reviewerModeEnabled =>
@@ -148,6 +176,30 @@ class AppState extends ChangeNotifier {
   RouterService? get routerService => _routerService;
 
   VoidCallback? onRouterBackOnline;
+  final List<void Function(bool success)> _routerBackOnlineListeners = [];
+
+  void addRouterBackOnlineListener(void Function(bool success) listener) {
+    if (!_routerBackOnlineListeners.contains(listener)) {
+      _routerBackOnlineListeners.add(listener);
+    }
+  }
+
+  void removeRouterBackOnlineListener(void Function(bool success) listener) {
+    _routerBackOnlineListeners.remove(listener);
+  }
+
+  void _notifyRouterBackOnline({required bool success}) {
+    onRouterBackOnline?.call();
+    for (final listener in List<void Function(bool success)>.from(
+      _routerBackOnlineListeners,
+    )) {
+      try {
+        listener(success);
+      } catch (e) {
+        // Safe dispatch against unhandled errors in listener
+      }
+    }
+  }
 
   // Add requestedTab for programmatic tab switching
   int? requestedTab;
@@ -272,11 +324,10 @@ class AppState extends ChangeNotifier {
         }
       },
       startThroughputTimer: _startThroughputTimer,
-      updateThroughputOnly: _updateThroughputOnly,
       processDhcpLeases: _processDhcpLeases,
       notifyListeners: notifyListeners,
     );
-    _sessionController = SessionController(
+    _sessionController ??= SessionController(
       initialReviewerMode: reviewerMode,
       apiServiceRef: () => _apiService,
       authServiceRef: () => _authService,
@@ -291,6 +342,15 @@ class AppState extends ChangeNotifier {
       setLoadingState: (loading) => _isLoading = loading,
       setErrorState: setError,
       notifyListeners: notifyListeners,
+      onSessionReset: () {
+        _customGuestSections.clear();
+        _excludedGuestSections.clear();
+        ParentalControlsController.instance.reset();
+        _clientController?.resetState();
+        _networkActionsController?.resetState();
+        _throughputController?.cancelAndClear();
+        invalidateStaticLeasesCache();
+      },
     );
     _packageController = PackageController(
       apiServiceRef: () => _apiService,
@@ -322,6 +382,7 @@ class AppState extends ChangeNotifier {
       dashboardDataRef: () => dashboardData,
       executeRouterCommandOutput: executeRouterCommandOutput,
       processDhcpLeases: _processDhcpLeases,
+      onClientsUpdated: notifyListeners,
     );
   }
 
@@ -340,6 +401,13 @@ class AppState extends ChangeNotifier {
     if (enabled) {
       _hasShownReviewerNotice = false;
     }
+    _customGuestSections.clear();
+    _excludedGuestSections.clear();
+    ParentalControlsController.instance.reset();
+    _clientController?.resetState();
+    _networkActionsController?.resetState();
+    _throughputController?.cancelAndClear();
+    invalidateStaticLeasesCache();
     await _sessionController?.setReviewerMode(enabled, context: context);
   }
 
@@ -453,7 +521,9 @@ class AppState extends ChangeNotifier {
     _excludedGuestSections.clear();
     ParentalControlsController.instance.reset();
     _clientController?.resetState();
+    _networkActionsController?.resetState();
     _throughputController?.cancelAndClear();
+    invalidateStaticLeasesCache();
     await _sessionController!.selectRouter(id, context: context);
   }
 
@@ -490,7 +560,16 @@ class AppState extends ChangeNotifier {
     context: context,
   );
 
-  Future<void> logout() => _sessionController!.logout();
+  Future<void> logout() async {
+    _customGuestSections.clear();
+    _excludedGuestSections.clear();
+    ParentalControlsController.instance.reset();
+    _clientController?.resetState();
+    _networkActionsController?.resetState();
+    _throughputController?.cancelAndClear();
+    invalidateStaticLeasesCache();
+    await _sessionController!.logout();
+  }
 
   /// Action to re-detect capabilities for the active router
   Future<void> redetectCapabilities() async {
@@ -703,6 +782,10 @@ class AppState extends ChangeNotifier {
     packageName: packageName,
     action: action,
   );
+
+  /// Query free disk space in bytes for package operations (/overlay or /)
+  Future<int?> getFreeDiskSpace() =>
+      _packageController?.getFreeDiskSpace() ?? Future.value(null);
 
   /// Update package lists from feeds (/usr/libexec/package-manager-call update)
   Future<RpcResult<String>> updatePackageLists() =>
@@ -1071,12 +1154,15 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void _startThroughputTimer() {
+  void _startThroughputTimer({bool immediateTick = true}) {
     if (!_isDashboardTabActive || !hasActiveSession) return;
     _throughputController?.startTimer(
       isRebooting: _isRebooting,
       onTick: _updateThroughputOnly,
     );
+    if (immediateTick && !_isRebooting) {
+      Future.microtask(_updateThroughputOnly);
+    }
   }
 
   bool _isUserScrolling = false;
@@ -1104,7 +1190,7 @@ class AppState extends ChangeNotifier {
   void notifyListenersDeferrable() {
     if (_isUserScrolling) {
       _pendingNotificationWhileScrolling = true;
-    } else if ((requestedTab ?? 0) == 0) {
+    } else if (_isDashboardTabActive) {
       _pendingNotificationWhileScrolling = false;
       notifyListeners();
     }
@@ -1133,8 +1219,12 @@ class AppState extends ChangeNotifier {
             _apiService!.callSimple('network', 'device', {}),
             _apiService!.callSimple('system', 'info', {}),
           ]);
-          final networkData = results[0][1] as Map<String, dynamic>?;
-          final sysInfoData = results[1][1] as Map<String, dynamic>?;
+          final rawNet = results[0][1];
+          final networkData =
+              rawNet is Map ? Map<String, dynamic>.from(rawNet) : null;
+          final rawSys = results[1][1];
+          final sysInfoData =
+              rawSys is Map ? Map<String, dynamic>.from(rawSys) : null;
           if (sysInfoData != null) {
             _dashboardController?.updateSysInfo(sysInfoData);
           }
@@ -1193,7 +1283,9 @@ class AppState extends ChangeNotifier {
         final sysResult = results[1];
 
         if (sysResult is List && sysResult.length > 1 && sysResult[0] == 0) {
-          final sysInfoData = sysResult[1] as Map<String, dynamic>?;
+          final rawSys = sysResult[1];
+          final sysInfoData =
+              rawSys is Map ? Map<String, dynamic>.from(rawSys) : null;
           if (sysInfoData != null) {
             _dashboardController?.updateSysInfo(sysInfoData);
           }
@@ -1218,28 +1310,15 @@ class AppState extends ChangeNotifier {
         if (netDataResult is List &&
             netDataResult.length > 1 &&
             netDataResult[0] == 0) {
-          final networkData = netDataResult[1] as Map<String, dynamic>?;
+          final rawNet = netDataResult[1];
+          final networkData =
+              rawNet is Map ? Map<String, dynamic>.from(rawNet) : null;
 
-          // Get ALL device names from cached dashboard data (except loopback)
-          final wanDeviceNames = <String>{};
+          final rawDump = dashboardData?['interfaceDump'];
           final interfaceDump =
-              dashboardData?['interfaceDump'] as Map<String, dynamic>?;
-          if (interfaceDump != null && interfaceDump['interface'] is List) {
-            for (final interface in interfaceDump['interface']) {
-              if (interface is Map<String, dynamic>) {
-                final ifname = interface['interface'] as String?;
-                final device = interface['device'] as String?;
-                final l3Device = interface['l3_device'] as String?;
-                // Include all interfaces except loopback
-                if (ifname != null && ifname != 'loopback' && ifname != 'lo') {
-                  if (device != null) wanDeviceNames.add(device);
-                  if (l3Device != null && l3Device != device) {
-                    wanDeviceNames.add(l3Device);
-                  }
-                }
-              }
-            }
-          }
+              rawDump is Map ? Map<String, dynamic>.from(rawDump) : null;
+          final wanDeviceNames =
+              ThroughputController.resolveThroughputDeviceNames(interfaceDump);
 
           // Resolve specific interface from preferences
           final specificInterface =
@@ -1338,11 +1417,8 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       // print('[Reboot] Timeout: Router did not come back online after $_maxPollAttempts attempts');
 
-      // Show a user-friendly message
-      if (onRouterBackOnline != null) {
-        // Reuse the callback to show timeout message
-        onRouterBackOnline!();
-      }
+      // Notify UI that router reboot timed out
+      _notifyRouterBackOnline(success: false);
       return;
     }
 
@@ -1375,9 +1451,7 @@ class AppState extends ChangeNotifier {
         notifyListeners();
 
         // Notify UI that router is back online
-        if (onRouterBackOnline != null) {
-          onRouterBackOnline!();
-        }
+        _notifyRouterBackOnline(success: true);
 
         // Force relogin
         if (_routerService?.selectedRouter != null) {
@@ -1647,6 +1721,14 @@ class AppState extends ChangeNotifier {
     context: context,
   );
 
+  Future<bool> updateRouterHostname(
+    String newHostname, {
+    BuildContext? context,
+  }) => _networkActionsController!.updateRouterHostname(
+    newHostname,
+    context: context,
+  );
+
   Future<int> flushUnusedDhcpLeases({
     List<Client>? clients,
     List<String>? macsToFlush,
@@ -1799,7 +1881,7 @@ class AppState extends ChangeNotifier {
       context: context,
     );
     if (res) {
-      await fetchDashboardData();
+      unawaited(fetchDashboardData());
     }
     return res;
   }
@@ -1887,10 +1969,25 @@ class AppState extends ChangeNotifier {
   }
 
   Future<bool> autoFixPermissions({BuildContext? context}) async {
-    final rpcSuccess = await _networkActionsController!.autoFixPermissions(
-      context: context,
-    );
-    if (rpcSuccess) return true;
+    // Verify if permissions and packages are already verified and complete before modifying the router
+    final freshCaps = await probeRouterCapabilities(forceRefresh: true);
+    if (freshCaps.isRpcComplete) {
+      Logger.info(
+        'autoFixPermissions: Router permissions and RPC packages are already verified and complete. Skipping redundant fix script.',
+      );
+      notifyListeners();
+      return true;
+    }
+
+    if (context != null && context.mounted) {
+      final rpcSuccess = await _networkActionsController!.autoFixPermissions(
+        context: context,
+      );
+      if (rpcSuccess) return true;
+    } else {
+      final rpcSuccess = await _networkActionsController!.autoFixPermissions();
+      if (rpcSuccess) return true;
+    }
 
     final ip = selectedRouter?.ipAddress;
     final username = selectedRouter?.username ?? 'root';
@@ -1907,52 +2004,7 @@ class AppState extends ChangeNotifier {
       Logger.info(
         'HTTP RPC autoFixPermissions restricted. Falling back to SSH for $username@$ip...',
       );
-      const fixScript =
-          'mkdir -p /usr/share/rpcd/acl.d/ && '
-          'cat << \'EOF\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json\n'
-          '{\n'
-          '  "yet-another-luci-app": {\n'
-          '    "description": "Yet Another LuCI App Silent RPC Permissions",\n'
-          '    "read": {\n'
-          '      "file": {\n'
-          '        "/usr/sbin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/nextdns": [ "exec" ],\n'
-          '        "/usr/bin/cloudflared": [ "exec" ],\n'
-          '        "/etc/config/cloudflared": [ "read" ],\n'
-          '        "/etc/config/nextdns": [ "read" ]\n'
-          '      },\n'
-          '      "uci": [ "cloudflared", "nextdns" ],\n'
-          '      "ubus": {\n'
-          '        "iwinfo": [ "*" ],\n'
-          '        "rc": [ "*" ],\n'
-          '        "file": [ "*" ],\n'
-          '        "luci-rpc": [ "*" ]\n'
-          '      }\n'
-          '    },\n'
-          '    "write": {\n'
-          '      "file": {\n'
-          '        "/usr/sbin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/nextdns": [ "exec" ],\n'
-          '        "/usr/bin/cloudflared": [ "exec" ]\n'
-          '      },\n'
-          '      "uci": [ "cloudflared", "nextdns" ],\n'
-          '      "ubus": {\n'
-          '        "iwinfo": [ "*" ],\n'
-          '        "rc": [ "*" ],\n'
-          '        "file": [ "*" ],\n'
-          '        "luci-rpc": [ "*" ]\n'
-          '      }\n'
-          '    }\n'
-          '  }\n'
-          '}\n'
-          'EOF\n'
-          'if command -v apk >/dev/null 2>&1; then '
-          'apk update && apk add luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
-          'else '
-          'opkg update && opkg install luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
-          'fi && /etc/init.d/rpcd restart';
+      final fixScript = ApiService.getPermissionsFixScript();
 
       final res = await _sshService!.executeCommand(
         host: ip,
@@ -1963,7 +2015,9 @@ class AppState extends ChangeNotifier {
 
       if (res.success) {
         Logger.info('Automated SSH autoFixPermissions succeeded on $ip');
+        await redetectCapabilities();
         await fetchDashboardData();
+        notifyListeners();
         return true;
       }
     }
@@ -2130,7 +2184,7 @@ class AppState extends ChangeNotifier {
     );
 
     if (success) {
-      await fetchDashboardData();
+      unawaited(fetchDashboardData());
     }
 
     return success;
@@ -2161,7 +2215,7 @@ class AppState extends ChangeNotifier {
     );
 
     if (success) {
-      await fetchDashboardData();
+      unawaited(fetchDashboardData());
     }
 
     return success;
@@ -2222,10 +2276,119 @@ class AppState extends ChangeNotifier {
     );
 
     if (success) {
-      await fetchDashboardData();
+      unawaited(fetchDashboardData());
     }
 
     return success;
+  }
+
+  Future<bool> saveSqmQueue(SqmQueue queue, {BuildContext? context}) async {
+    if (reviewerModeEnabled) {
+      if (dashboardData != null) {
+        dashboardData!['sqm'] ??= {};
+        dashboardData!['sqm'][queue.name] = queue.toUciParams();
+      }
+      notifyListeners();
+      return true;
+    }
+
+    final ip = selectedRouter?.ipAddress;
+    if (ip == null || sysauth == null) return false;
+    final useHttps = selectedRouter?.useHttps ?? false;
+
+    final success = await _apiService!.saveSqmQueue(
+      ip,
+      sysauth!,
+      useHttps,
+      queue: queue,
+      context: context,
+    );
+
+    if (success) {
+      unawaited(fetchDashboardData());
+    }
+
+    return success;
+  }
+
+  Future<bool> deleteSqmQueue(
+    String sectionName, {
+    BuildContext? context,
+  }) async {
+    if (reviewerModeEnabled) {
+      if (dashboardData != null && dashboardData!['sqm'] is Map) {
+        (dashboardData!['sqm'] as Map).remove(sectionName);
+      }
+      notifyListeners();
+      return true;
+    }
+
+    final ip = selectedRouter?.ipAddress;
+    if (ip == null || sysauth == null) return false;
+    final useHttps = selectedRouter?.useHttps ?? false;
+
+    final success = await _apiService!.deleteSqmQueue(
+      ip,
+      sysauth!,
+      useHttps,
+      sectionName: sectionName,
+      context: context,
+    );
+
+    if (success) {
+      unawaited(fetchDashboardData());
+    }
+
+    return success;
+  }
+
+  Future<bool> toggleSqmService(bool enable, {BuildContext? context}) async {
+    if (reviewerModeEnabled) {
+      if (dashboardData != null) {
+        dashboardData!['initScripts'] ??= {};
+        dashboardData!['initScripts']['sqm'] = {
+          'enabled': enable,
+          'running': enable,
+        };
+      }
+      notifyListeners();
+      return true;
+    }
+
+    final ip = selectedRouter?.ipAddress;
+    if (ip == null || sysauth == null) return false;
+    final useHttps = selectedRouter?.useHttps ?? false;
+
+    final success = await _apiService!.toggleSqmService(
+      ip,
+      sysauth!,
+      useHttps,
+      enable: enable,
+      context: context,
+    );
+
+    if (success) {
+      unawaited(fetchDashboardData());
+    }
+
+    return success;
+  }
+
+  Future<FlushDnsResult> flushDns({BuildContext? context}) async {
+    if (reviewerModeEnabled) {
+      return FlushDnsResult.success(
+        flushedResolvers: const ['dnsmasq'],
+        message: 'DNS cache flushed successfully (simulated).',
+      );
+    }
+
+    final ip = selectedRouter?.ipAddress;
+    if (ip == null || sysauth == null || _apiService == null) {
+      return FlushDnsResult.failure('No active router session');
+    }
+    final useHttps = selectedRouter?.useHttps ?? false;
+
+    return _apiService!.flushDns(ip, sysauth!, useHttps, context: context);
   }
 
   Future<bool> updateFirewallCustomRuleStatus(
@@ -2235,6 +2398,18 @@ class AppState extends ChangeNotifier {
   }) => _networkActionsController!.updateFirewallCustomRuleStatus(
     sectionKey,
     enabled,
+    context: context,
+  );
+
+  Future<bool> updateFirewallFlowOffloading({
+    required bool software,
+    required bool hardware,
+    String sectionKey = '@defaults[0]',
+    BuildContext? context,
+  }) => _networkActionsController!.updateFirewallFlowOffloading(
+    software: software,
+    hardware: hardware,
+    sectionKey: sectionKey,
     context: context,
   );
 
@@ -2404,7 +2579,16 @@ class AppState extends ChangeNotifier {
         if (_apiService!.execSucceeded(reloadRes)) {
           success = true;
         }
-      } catch (_) {}
+      } catch (e) {
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('socket') ||
+            errStr.contains('connection reset') ||
+            errStr.contains('broken pipe') ||
+            errStr.contains('connection closed') ||
+            errStr.contains('clientexception')) {
+          success = true;
+        }
+      }
 
       // 2. Direct binary exec via rpcd: /sbin/wifi down [radioName] && /sbin/wifi up [radioName]
       if (!success) {
@@ -2763,8 +2947,12 @@ class AppState extends ChangeNotifier {
 
   /// Aggregates DHCP leases across all configured routers and classifies clients
   /// as wireless if their MAC appears in any router's associated stations list.
-  Future<List<Client>> fetchAggregatedClients() =>
-      _clientController!.fetchAggregatedClients();
+  Future<List<Client>> fetchAggregatedClients({
+    void Function(List<Client> clients)? onIncrementalUpdate,
+  }) =>
+      _clientController!.fetchAggregatedClients(
+        onIncrementalUpdate: onIncrementalUpdate,
+      );
 
   bool get isClientsLoading => _clientController?.isFetchingClients ?? false;
   bool get hasFetchedClients => _clientController?.hasFetchedClients ?? false;
@@ -2790,6 +2978,9 @@ class AppState extends ChangeNotifier {
     _clientController = controller;
   }
 
+  @visibleForTesting
+  ClientController? get clientControllerForTesting => _clientController;
+
   set clients(List<Client> clientList) {
     _clientController?.lastFetchedClients = clientList;
   }
@@ -2802,7 +2993,10 @@ class AppState extends ChangeNotifier {
 
     final clientList = <Client>[];
     final data = dashboardData;
-    final hostHints = data?['hostHints'] as Map<String, dynamic>? ?? {};
+    final rawHostHints = data?['hostHints'];
+    final hostHints = rawHostHints is Map
+        ? Map<String, dynamic>.from(rawHostHints)
+        : const <String, dynamic>{};
 
     // Extract raw leases supporting dhcpLeases (camelCase), dhcp_leases (snake_case), and leases
     dynamic rawLeases =
@@ -2812,8 +3006,10 @@ class AppState extends ChangeNotifier {
     }
 
     // Extract wireless MACs from wirelessStations map or knownWirelessMacs
-    final wirelessStations =
-        data?['wirelessStations'] as Map<String, dynamic>? ?? {};
+    final rawStations = data?['wirelessStations'];
+    final wirelessStations = rawStations is Map
+        ? Map<String, dynamic>.from(rawStations)
+        : const <String, dynamic>{};
     final wirelessMacs = <String>{
       ...(_clientController?.knownWirelessMacs ?? {}),
     };
@@ -3155,8 +3351,9 @@ class AppState extends ChangeNotifier {
 
   /// Returns true if logged in user has administrative privileges
   bool get isAdministrativeUser {
-    if (capabilities != null) {
-      return capabilities!.hasUciWriteAccess;
+    final caps = capabilities;
+    if (caps != null) {
+      return caps.hasUciWriteAccess;
     }
     final user = sessionUsername.trim().toLowerCase();
     return user == 'root' || user == 'admin' || user.isNotEmpty;

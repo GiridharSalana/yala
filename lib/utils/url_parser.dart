@@ -32,7 +32,7 @@ class UrlParser {
       final useHttps = scheme == 'https';
 
       // Extract host and port
-      String host = uri.host;
+      final String host = uri.host;
       int? port = uri.hasPort ? uri.port : null;
 
       // If no explicit port, use defaults

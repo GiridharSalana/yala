@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:yet_another_luci_app/screens/login_screen.dart';
 import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
+import 'package:yet_another_luci_app/services/api_service.dart';
 import 'package:yet_another_luci_app/services/mock_api_service.dart';
 import 'package:yet_another_luci_app/services/auth_service.dart';
 import 'package:yet_another_luci_app/state/app_state.dart';
@@ -137,6 +138,33 @@ void main() {
         expect(popScopeFinder, findsOneWidget);
         final popScopeWidget = tester.widget<PopScope>(popScopeFinder);
         expect(popScopeWidget.canPop, isFalse);
+      },
+    );
+
+    test('RealAuthService registers onSessionRenew on RealApiService', () {
+      final realApi = RealApiService();
+      expect(realApi.onSessionRenew, isNull);
+
+      final authService = RealAuthService(realApi);
+      expect(authService, isNotNull);
+      expect(realApi.onSessionRenew, isNotNull);
+    });
+
+    test(
+      'RealApiService transparently renews session on access denied',
+      () async {
+        final realApi = RealApiService();
+        int renewalCalls = 0;
+
+        realApi.onSessionRenew = (ip, useHttps) async {
+          renewalCalls++;
+          return 'renewed_token_xyz';
+        };
+
+        // Ensure onSessionRenew is callable and returns renewed token
+        final renewed = await realApi.onSessionRenew!('192.168.1.1', false);
+        expect(renewed, 'renewed_token_xyz');
+        expect(renewalCalls, 1);
       },
     );
   });

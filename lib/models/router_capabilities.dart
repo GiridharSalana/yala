@@ -23,6 +23,7 @@ class RouterCapabilities {
   final String routerId;
   final Set<String> ubusObjects;
   final Map<String, List<String>> ubusMethods;
+  final Map<String, List<String>> uciPermissions;
   final PackageManagerEngine packageEngine;
   final FirewallBackend firewallBackend;
   final NetworkModel networkModel;
@@ -36,6 +37,7 @@ class RouterCapabilities {
     required this.routerId,
     this.ubusObjects = const {},
     this.ubusMethods = const {},
+    this.uciPermissions = const {},
     this.packageEngine = PackageManagerEngine.opkg,
     this.firewallBackend = FirewallBackend.fw4,
     this.networkModel = NetworkModel.dsa,
@@ -52,6 +54,7 @@ class RouterCapabilities {
       routerId: routerId,
       ubusObjects: const {},
       ubusMethods: const {},
+      uciPermissions: const {},
       packageEngine: PackageManagerEngine.opkg,
       firewallBackend: FirewallBackend.fw3,
       networkModel: NetworkModel.swconfig,
@@ -85,6 +88,9 @@ class RouterCapabilities {
         'luci-rpc': ['getInitList', 'getWirelessDevices'],
         'file': ['read', 'stat', 'exec'],
       },
+      uciPermissions: const {
+        '*': ['read', 'write'],
+      },
       packageEngine: PackageManagerEngine.opkg,
       firewallBackend: FirewallBackend.fw4,
       networkModel: NetworkModel.dsa,
@@ -95,33 +101,48 @@ class RouterCapabilities {
     );
   }
 
-  /// Helper to check if a specific ubus object is available
+  /// Helper to check if a specific ubus object is available (or covered by wildcard '*')
   bool hasObject(String objectName) {
     if (probeFailed || ubusObjects.isEmpty) return true; // conservative attempt
-    return ubusObjects.contains(objectName);
+    return ubusObjects.contains(objectName) || ubusObjects.contains('*');
   }
 
   /// Helper to check if a specific ubus method is available
   bool hasMethod(String objectName, String methodName) {
     if (probeFailed || ubusObjects.isEmpty) return true;
+    if (ubusObjects.contains('*')) return true;
     final methods = ubusMethods[objectName];
     if (methods == null) return ubusObjects.contains(objectName);
-    return methods.contains(methodName);
+    return methods.contains(methodName) || methods.contains('*');
   }
 
   /// Helper to check if luci-rpc or equivalent wireless/RPC ubus objects are available
-  bool get hasLuciRpc =>
-      ubusObjects.isEmpty ||
-      hasObject('luci-rpc') ||
-      hasObject('iwinfo') ||
-      hasObject('luci');
+  bool get hasLuciRpc {
+    if (probeFailed || ubusObjects.isEmpty) return true;
+    if (hasObject('*')) return true;
+    return hasObject('luci-rpc') || hasObject('iwinfo');
+  }
+
+  /// Helper to check if wireless capabilities or objects are supported on this router
+  bool get hasWireless {
+    if (probeFailed || ubusObjects.isEmpty) return true;
+    if (hasObject('*')) return true;
+    return hasObject('iwinfo') ||
+        hasMethod('luci-rpc', 'getWirelessDevices') ||
+        uciPermissions.containsKey('wireless');
+  }
 
   /// Helper to check if file.exec or backend execution capability is allowed
-  bool get hasFileExec =>
-      ubusObjects.isEmpty ||
-      hasMethod('file', 'exec') ||
-      hasObject('file') ||
-      hasObject('rc');
+  bool get hasFileExec {
+    if (probeFailed || ubusObjects.isEmpty) return true;
+    if (ubusObjects.contains('*')) return true;
+    if (ubusMethods.containsKey('file')) {
+      final fileMethods = ubusMethods['file'];
+      return fileMethods?.contains('exec') == true ||
+          fileMethods?.contains('*') == true;
+    }
+    return hasObject('file');
+  }
 
   /// Helper to check if both RPC modules and execution permissions are available
   bool get isRpcComplete => hasLuciRpc && hasFileExec;
@@ -131,11 +152,24 @@ class RouterCapabilities {
     if (probeFailed || ubusObjects.isEmpty) {
       return true; // conservative optimistic default
     }
+    if (ubusObjects.contains('*')) return true;
+    if (uciPermissions.containsKey('*') &&
+        (uciPermissions['*']?.contains('write') == true ||
+            uciPermissions['*']?.contains('*') == true)) {
+      return true;
+    }
+    if (uciPermissions.values.any(
+      (perms) => perms.contains('write') || perms.contains('*'),
+    )) {
+      return true;
+    }
     if (!ubusObjects.contains('uci')) return false;
     final methods = ubusMethods['uci'];
     if (methods == null) return ubusObjects.contains('uci');
-    return methods.contains('set') &&
-        (methods.contains('apply') || methods.contains('commit'));
+    return (methods.contains('set') || methods.contains('*')) &&
+        (methods.contains('apply') ||
+            methods.contains('commit') ||
+            methods.contains('*'));
   }
 
   /// Helper to check if active package manager engine is Alpine Package Keeper (apk)
@@ -150,6 +184,9 @@ class RouterCapabilities {
       'routerId': routerId,
       'ubusObjects': ubusObjects.toList(),
       'ubusMethods': ubusMethods.map((key, value) => MapEntry(key, value)),
+      'uciPermissions': uciPermissions.map(
+        (key, value) => MapEntry(key, value),
+      ),
       'packageEngine': packageEngine.name,
       'firewallBackend': firewallBackend.name,
       'networkModel': networkModel.name,
@@ -169,11 +206,17 @@ class RouterCapabilities {
       final ubusMethodsMap = rawMethods.map(
         (key, value) => MapEntry(key, (value as List).cast<String>()),
       );
+      final rawUciPermissions =
+          json['uciPermissions'] as Map<String, dynamic>? ?? {};
+      final uciPermissionsMap = rawUciPermissions.map(
+        (key, value) => MapEntry(key, (value as List).cast<String>()),
+      );
 
       return RouterCapabilities(
         routerId: json['routerId'] as String? ?? 'default',
         ubusObjects: ubusObjsList.toSet(),
         ubusMethods: ubusMethodsMap,
+        uciPermissions: uciPermissionsMap,
         packageEngine: PackageManagerEngine.values.firstWhere(
           (e) => e.name == json['packageEngine'],
           orElse: () => PackageManagerEngine.opkg,
@@ -205,6 +248,7 @@ class RouterCapabilities {
     String? routerId,
     Set<String>? ubusObjects,
     Map<String, List<String>>? ubusMethods,
+    Map<String, List<String>>? uciPermissions,
     PackageManagerEngine? packageEngine,
     FirewallBackend? firewallBackend,
     NetworkModel? networkModel,
@@ -218,6 +262,7 @@ class RouterCapabilities {
       routerId: routerId ?? this.routerId,
       ubusObjects: ubusObjects ?? this.ubusObjects,
       ubusMethods: ubusMethods ?? this.ubusMethods,
+      uciPermissions: uciPermissions ?? this.uciPermissions,
       packageEngine: packageEngine ?? this.packageEngine,
       firewallBackend: firewallBackend ?? this.firewallBackend,
       networkModel: networkModel ?? this.networkModel,

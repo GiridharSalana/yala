@@ -494,8 +494,11 @@ class Client {
     if (txRate == null && rxRate == null) return null;
     String formatMbit(num? val) {
       if (val == null) return '?';
+      var numRate = val;
+      // Hostapd rate scale normalization (100 bps -> kbit/s)
+      if (numRate > 1000000) numRate = numRate / 100.0;
       // iwinfo rate is in kbit/s (e.g. 866700 -> 866.7 Mbit/s, 72200 -> 72.2 Mbit/s)
-      final mbit = val > 1000 ? val / 1000.0 : val.toDouble();
+      final mbit = numRate > 1000 ? numRate / 1000.0 : numRate.toDouble();
       return mbit >= 100 ? mbit.toStringAsFixed(0) : mbit.toStringAsFixed(1);
     }
 
@@ -525,8 +528,15 @@ class Client {
   }
 
   /// Formatted connection duration (e.g., '22h 7m')
-  String? get formattedConnectedTime =>
-      connectedTime != null ? formatDuration(connectedTime!) : null;
+  String? get formattedConnectedTime {
+    if (connectedTime != null && connectedTime! > 0) {
+      return formatDuration(connectedTime!);
+    }
+    if (activeTime != null && activeTime! > 0) {
+      return formatDuration(activeTime!);
+    }
+    return null;
+  }
 
   /// General byte formatter (B, KB, MB, GB, TB)
   static String formatBytes(num bytes) {

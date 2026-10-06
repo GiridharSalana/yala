@@ -364,5 +364,89 @@ tmpfs                   124808       988    123820   1% /tmp
         expect(StorageOverview.formatBytes(rom.availableBytes), equals('0 MB'));
       },
     );
+
+    test(
+      'Preserves small flash overlay partition size when dataset has byte scale',
+      () {
+        final mountsData = [
+          {
+            'mount': '/rom',
+            'device': '/dev/root',
+            'fs': 'squashfs',
+            'size': 6684672, // ~6.38 MB in bytes
+            'used': 6684672,
+            'avail': 0,
+          },
+          {
+            'mount': '/overlay',
+            'device': '/dev/mtdblock6',
+            'fs': 'jffs2',
+            'size': 393216, // Exactly 384 KB in bytes
+            'used': 335872, // 328 KB
+            'avail': 57344, // 56 KB
+          },
+        ];
+
+        final overview = StorageOverview.fromRpcData(mountsData);
+        expect(overview.overlayFs, isNotNull);
+        expect(overview.overlayFs!.sizeBytes, equals(393216));
+        expect(overview.overlayFs!.availableBytes, equals(57344));
+        expect(
+          StorageOverview.formatBytes(overview.overlayFs!.sizeBytes),
+          equals('384.0 KB'),
+        );
+        expect(
+          StorageOverview.formatBytes(overview.overlayFs!.availableBytes),
+          equals('56.0 KB'),
+        );
+      },
+    );
+
+    test(
+      'Parses isReadOnly flag correctly from options or filesystem type',
+      () {
+        final mountsData = [
+          {
+            'mount': '/rom',
+            'device': '/dev/root',
+            'fs': 'squashfs',
+            'size': 6684672,
+            'used': 6684672,
+            'avail': 0,
+          },
+          {
+            'mount': '/',
+            'device': '/dev/root',
+            'fs': 'overlayfs',
+            'options': 'ro,noatime',
+            'size': 393216,
+            'used': 335872,
+            'avail': 57344,
+          },
+          {
+            'mount': '/overlay',
+            'device': '/dev/mtdblock6',
+            'fs': 'jffs2',
+            'options': 'rw,noatime',
+            'size': 393216,
+            'used': 335872,
+            'avail': 57344,
+          },
+        ];
+
+        final overview = StorageOverview.fromRpcData(mountsData);
+        final rom = overview.mountPoints.firstWhere(
+          (m) => m.mountPath == '/rom',
+        );
+        final root = overview.mountPoints.firstWhere((m) => m.mountPath == '/');
+        final overlay = overview.mountPoints.firstWhere(
+          (m) => m.mountPath == '/overlay',
+        );
+
+        expect(rom.isReadOnly, isTrue); // squashfs is read-only
+        expect(root.isReadOnly, isTrue); // 'ro' option
+        expect(overlay.isReadOnly, isFalse); // 'rw' option
+      },
+    );
   });
 }

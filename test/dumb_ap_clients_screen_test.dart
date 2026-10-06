@@ -16,7 +16,7 @@ void main() {
   FlutterSecureStorage.setMockInitialValues({});
 
   testWidgets(
-    'ClientsScreen hides Dumb AP options when no Dumb AP is configured',
+    'ClientsScreen preserves Show Dumb AP Clients option permanently',
     (WidgetTester tester) async {
       final appState = AppState.instance;
       appState.clients = [
@@ -35,13 +35,25 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // "Show Dumb AP Clients" should NOT be present
-      expect(find.text('Show Dumb AP Clients'), findsNothing);
+      // "Show Dumb AP Clients" is always visible so it never disappears on any device
+      expect(find.text('Show Dumb AP Clients'), findsOneWidget);
       // "Dumb AP" summary item should NOT be present
       expect(find.text('Dumb AP: '), findsNothing);
       // AppBar antenna icon should NOT be present
-      expect(find.byIcon(Icons.settings_input_antenna_outlined), findsNothing);
-      expect(find.byIcon(Icons.settings_input_antenna_rounded), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(LuciAppBar),
+          matching: find.byIcon(Icons.settings_input_antenna_outlined),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(LuciAppBar),
+          matching: find.byIcon(Icons.settings_input_antenna_rounded),
+        ),
+        findsNothing,
+      );
     },
   );
 

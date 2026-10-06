@@ -23,13 +23,13 @@ class Router {
 
   factory Router.fromJson(Map<String, dynamic> json) {
     return Router(
-      id: json['id'] as String,
-      ipAddress: json['ipAddress'] as String,
-      username: json['username'] as String,
-      password: json['password'] as String,
+      id: json['id']?.toString() ?? '',
+      ipAddress: json['ipAddress']?.toString() ?? '',
+      username: json['username']?.toString() ?? 'root',
+      password: json['password']?.toString() ?? '',
       useHttps: json['useHttps'] == true || json['useHttps'] == 'true',
-      lastKnownHostname: json['lastKnownHostname'] as String?,
-      name: json['name'] as String?,
+      lastKnownHostname: json['lastKnownHostname']?.toString(),
+      name: json['name']?.toString(),
     );
   }
 

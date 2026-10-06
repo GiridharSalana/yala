@@ -95,6 +95,11 @@ class ThroughputService {
   }) {
     final now = DateTime.now();
 
+    // Monotonicity guard: discard any payload whose arrival time is not strictly after the last baseline
+    if (_lastTimestamp != null && !now.isAfter(_lastTimestamp!)) {
+      return;
+    }
+
     // Always update per-interface throughput for all interfaces
     if (networkData != null) {
       networkData.forEach((devName, devData) {
@@ -165,47 +170,79 @@ class ThroughputService {
 
       // Only calculate throughput if we have a reasonable time difference
       if (elapsedSeconds >= _minElapsedSeconds) {
-        final lastRx = _calculateTotalBytes(
-          _lastStats,
-          'rx_bytes',
-          wanDeviceNames: wanDeviceNames,
-        );
-        final lastTx = _calculateTotalBytes(
-          _lastStats,
-          'tx_bytes',
-          wanDeviceNames: wanDeviceNames,
-        );
-        final currentRx = _calculateTotalBytes(
-          networkData,
-          'rx_bytes',
-          wanDeviceNames: wanDeviceNames,
-        );
-        final currentTx = _calculateTotalBytes(
-          networkData,
-          'tx_bytes',
-          wanDeviceNames: wanDeviceNames,
-        );
+        num diffRx = 0;
+        num diffTx = 0;
 
-        num diffRx = currentRx - lastRx;
-        num diffTx = currentTx - lastTx;
+        if (networkData != null && _lastStats != null) {
+          Set<String> effectiveDevices = wanDeviceNames;
+          if (effectiveDevices.isEmpty) {
+            if (networkData.containsKey('wan')) {
+              effectiveDevices = {'wan'};
+            } else if (networkData.containsKey('pppoe-wan')) {
+              effectiveDevices = {'pppoe-wan'};
+            } else if (networkData.containsKey('br-lan')) {
+              effectiveDevices = {'br-lan'};
+            } else if (networkData.containsKey('eth0')) {
+              effectiveDevices = {'eth0'};
+            }
+          }
 
-        // Counter rollover / router reboot handling
-        if (diffRx < 0 || diffTx < 0) {
-          const num uint32Max = 4294967296;
-          if (diffRx < 0 &&
-              (currentRx + uint32Max - lastRx) < _maxRate * elapsedSeconds) {
-            diffRx = currentRx + uint32Max - lastRx;
-          }
-          if (diffTx < 0 &&
-              (currentTx + uint32Max - lastTx) < _maxRate * elapsedSeconds) {
-            diffTx = currentTx + uint32Max - lastTx;
-          }
-          if (diffRx < 0 || diffTx < 0) {
-            // Router rebooted or interface reset - re-establish baseline cleanly
-            _lastStats = networkData;
-            _lastTimestamp = now;
-            return;
-          }
+          networkData.forEach((devName, devData) {
+            if (devName == 'lo' || devName == 'loopback') return;
+            if (effectiveDevices.isEmpty || effectiveDevices.contains(devName)) {
+              final lastDevData = _lastStats![devName];
+              if (lastDevData is Map<String, dynamic> &&
+                  devData is Map<String, dynamic>) {
+                final lastDevRx =
+                    (lastDevData['stats']?['rx_bytes'] ??
+                            lastDevData['rx_bytes'] ??
+                            0)
+                        as num;
+                final lastDevTx =
+                    (lastDevData['stats']?['tx_bytes'] ??
+                            lastDevData['tx_bytes'] ??
+                            0)
+                        as num;
+                final currentDevRx =
+                    (devData['stats']?['rx_bytes'] ?? devData['rx_bytes'] ?? 0)
+                        as num;
+                final currentDevTx =
+                    (devData['stats']?['tx_bytes'] ?? devData['tx_bytes'] ?? 0)
+                        as num;
+
+                num dRx = currentDevRx - lastDevRx;
+                num dTx = currentDevTx - lastDevTx;
+
+                const num uint32Max = 4294967296;
+                // Legitimate 32-bit counter rollover only occurs when previous count
+                // was near 2^32 (> 3GB) and wrapped past zero to < 1GB.
+                // Any other drop is an interface reset / counter clear.
+                if (dRx < 0) {
+                  if (lastDevRx > 3221225472 &&
+                      currentDevRx < 1073741824 &&
+                      (currentDevRx + uint32Max - lastDevRx) <
+                          _maxRate * elapsedSeconds) {
+                    dRx = currentDevRx + uint32Max - lastDevRx;
+                  } else {
+                    dRx = 0;
+                  }
+                }
+                if (dTx < 0) {
+                  if (lastDevTx > 3221225472 &&
+                      currentDevTx < 1073741824 &&
+                      (currentDevTx + uint32Max - lastDevTx) <
+                          _maxRate * elapsedSeconds) {
+                    dTx = currentDevTx + uint32Max - lastDevTx;
+                  } else {
+                    dTx = 0;
+                  }
+                }
+
+                diffRx += dRx;
+                diffTx += dTx;
+              }
+            }
+          });
         }
 
         // Calculate rates with a reasonable maximum to prevent spikes
@@ -233,6 +270,10 @@ class ThroughputService {
 
     final lastStats = _lastStatsPerInterface[interface];
     final lastTimestamp = _lastTimestampPerInterface[interface];
+
+    if (lastTimestamp != null && !now.isAfter(lastTimestamp)) {
+      return;
+    }
 
     if (lastStats == null || lastTimestamp == null) {
       _lastStatsPerInterface[interface] = devData;
@@ -282,17 +323,28 @@ class ThroughputService {
 
       if (diffRx < 0 || diffTx < 0) {
         const num uint32Max = 4294967296;
+        bool validRxRollover = false;
         if (diffRx < 0 &&
+            lastRx > 3221225472 &&
+            currentRx < 1073741824 &&
             (currentRx + uint32Max - lastRx) < _maxRate * elapsedSeconds) {
           diffRx = currentRx + uint32Max - lastRx;
+          validRxRollover = true;
         }
+        bool validTxRollover = false;
         if (diffTx < 0 &&
+            lastTx > 3221225472 &&
+            currentTx < 1073741824 &&
             (currentTx + uint32Max - lastTx) < _maxRate * elapsedSeconds) {
           diffTx = currentTx + uint32Max - lastTx;
+          validTxRollover = true;
         }
-        if (diffRx < 0 || diffTx < 0) {
+        if ((diffRx < 0 && !validRxRollover) ||
+            (diffTx < 0 && !validTxRollover)) {
           _lastStatsPerInterface[interface] = devData;
           _lastTimestampPerInterface[interface] = now;
+          _currentRxRatePerInterface[interface] = 0.0;
+          _currentTxRatePerInterface[interface] = 0.0;
           return;
         }
       }
@@ -372,31 +424,6 @@ class ThroughputService {
     if (_txHistory.length > _maxHistoryLength) {
       _txHistory.removeFirst();
     }
-  }
-
-  num _calculateTotalBytes(
-    Map<String, dynamic>? networkData,
-    String key, {
-    Set<String>? wanDeviceNames,
-  }) {
-    if (networkData == null) return 0;
-    num total = 0;
-    networkData.forEach((devName, devData) {
-      // If wanDeviceNames is null, count all devices (old behavior).
-      // Otherwise, only count devices in the set.
-      if (wanDeviceNames == null || wanDeviceNames.contains(devName)) {
-        if (devData is Map<String, dynamic>) {
-          // Handle both formats: stats.rx_bytes and direct rx_bytes
-          if (devData['stats'] is Map<String, dynamic> &&
-              devData['stats'][key] != null) {
-            total += devData['stats'][key];
-          } else if (devData[key] != null) {
-            total += devData[key];
-          }
-        }
-      }
-    });
-    return total;
   }
 
   /// Resets the baseline timestamp and stats without clearing historical rate queues.

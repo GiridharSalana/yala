@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/widgets/add_static_lease_dialog.dart';
+import 'package:yet_another_luci_app/models/client.dart';
 import '../models/dhcp_dns_info.dart';
 
 import 'package:yet_another_luci_app/widgets/luci_collapsible_card.dart';
@@ -19,12 +20,16 @@ class DhcpDnsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appState = ref.watch(appStateProvider);
-    final l10n = AppLocalizations.of(context);
-    final dashboardData = Map<String, dynamic>.from(
-      appState.dashboardData ?? {},
+    final dashboardDataRaw = ref.watch(
+      appStateProvider.select((s) => s.dashboardData),
     );
-    dashboardData['clients'] = appState.clients
+    final clients = ref.watch(appStateProvider.select((s) => s.clients));
+    final isReviewerMode = ref.watch(
+      appStateProvider.select((s) => s.reviewerModeEnabled),
+    );
+    final l10n = AppLocalizations.of(context);
+    final dashboardData = Map<String, dynamic>.from(dashboardDataRaw ?? {});
+    dashboardData['clients'] = clients
         .map(
           (c) => {
             'macAddress': c.macAddress,
@@ -37,7 +42,7 @@ class DhcpDnsScreen extends ConsumerWidget {
         .toList();
     final overview = DhcpDnsOverview.fromDashboardData(
       dashboardData,
-      isReviewerMode: appState.reviewerModeEnabled,
+      isReviewerMode: isReviewerMode,
     );
 
     return Scaffold(
@@ -46,8 +51,9 @@ class DhcpDnsScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await appState.fetchDashboardData();
-          await appState.fetchClientsForSelectedRouter();
+          final state = ref.read(appStateProvider);
+          await state.fetchDashboardData();
+          await state.fetchClientsForSelectedRouter();
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
@@ -72,7 +78,7 @@ class DhcpDnsScreen extends ConsumerWidget {
               childBuilder: (ctx) => _buildLeasesList(
                 context,
                 ref,
-                appState,
+                clients,
                 overview.activeLeases,
                 overview.staticMappings,
               ),
@@ -95,7 +101,7 @@ class DhcpDnsScreen extends ConsumerWidget {
               childBuilder: (ctx) => _buildStaticMappingsList(
                 context,
                 ref,
-                appState,
+                clients,
                 overview.staticMappings,
               ),
             ),
@@ -178,7 +184,7 @@ class DhcpDnsScreen extends ConsumerWidget {
   Widget _buildLeasesList(
     BuildContext context,
     WidgetRef ref,
-    dynamic appState,
+    List<Client> clients,
     List<DhcpLease> leases,
     List<DhcpStaticMapping> staticMappings,
   ) {
@@ -232,7 +238,7 @@ class DhcpDnsScreen extends ConsumerWidget {
         }
         final isStatic = matchingStatic != null;
         final leaseIcon = _resolveLeaseIcon(
-          appState,
+          clients,
           lease.macAddress,
           lease.hostname,
         );
@@ -309,7 +315,7 @@ class DhcpDnsScreen extends ConsumerWidget {
   Widget _buildStaticMappingsList(
     BuildContext context,
     WidgetRef ref,
-    dynamic appState,
+    List<Client> clients,
     List<DhcpStaticMapping> mappings,
   ) {
     final l10n = AppLocalizations.of(context);
@@ -342,7 +348,7 @@ class DhcpDnsScreen extends ConsumerWidget {
       itemBuilder: (context, index) {
         final mapping = mappings[index];
         final mappingIcon = _resolveLeaseIcon(
-          appState,
+          clients,
           mapping.macAddress,
           mapping.hostname,
         );
@@ -574,12 +580,18 @@ class DhcpDnsScreen extends ConsumerWidget {
   }
 
   IconData _resolveLeaseIcon(
-    dynamic appState,
+    List<Client> clients,
     String macAddress,
     String hostname,
   ) {
     final normMac = ClientNamingHelper.normalizeMac(macAddress);
-    final client = appState.findClientByMac(normMac);
+    Client? client;
+    for (final c in clients) {
+      if (ClientNamingHelper.normalizeMac(c.macAddress) == normMac) {
+        client = c;
+        break;
+      }
+    }
     if (client != null && client.isConnected) {
       return ClientNamingHelper.getDeviceIcon(client, fallbackName: hostname);
     }

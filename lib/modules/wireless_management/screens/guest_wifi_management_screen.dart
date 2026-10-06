@@ -1268,7 +1268,7 @@ class _GuestMasterControlSwitchState
                     _optimisticEnabled = enable;
                   });
 
-                  final actionKey = 'toggle_all_guest_screen';
+                  const actionKey = 'toggle_all_guest_screen';
                   context.showToastLoading(
                     enable
                         ? (l10n?.toastEnablingAllGuest ??

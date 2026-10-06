@@ -28,6 +28,45 @@ class RpcResult<T> {
   bool get isMethodNotFound => status == RpcCallStatus.methodNotFound;
   bool get isPermissionDenied => status == RpcCallStatus.permissionDenied;
 
+  /// Returns true if the RPC error indicates insufficient filesystem / disk storage space.
+  bool get isInsufficientStorage {
+    if (errorMessage == null) return false;
+    final lower = errorMessage!.toLowerCase();
+    return lower.contains('no space left on device') ||
+        lower.contains('disk full') ||
+        lower.contains('insufficient space') ||
+        lower.contains('not enough disk space') ||
+        lower.contains('not enough space') ||
+        lower.contains('needs more disk space') ||
+        (lower.contains('available on filesystem') && lower.contains('needs'));
+  }
+
+  /// Extracts a clean, concise, human-readable error summary from package manager output.
+  String get userFriendlyPackageError {
+    if (errorMessage == null || errorMessage!.trim().isEmpty) {
+      return 'Operation failed';
+    }
+    final raw = errorMessage!.trim();
+    if (isInsufficientStorage) {
+      return 'Insufficient storage space on router (No space left on device).';
+    }
+    // Clean up multiline stderr or raw error codes to get the most relevant line
+    final lines = raw
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    for (final line in lines.reversed) {
+      final lower = line.toLowerCase();
+      if (lower.startsWith('error:') ||
+          lower.startsWith('fatal:') ||
+          lower.contains('failed')) {
+        return line.replaceFirst(RegExp(r'^(ERROR|error):\s*'), '');
+      }
+    }
+    return lines.last;
+  }
+
   factory RpcResult.success(T data) {
     return RpcResult(status: RpcCallStatus.success, data: data);
   }
@@ -84,6 +123,14 @@ class RpcResult<T> {
         if (code == 2 || code == 3 || msg.toLowerCase().contains('not found')) {
           return RpcResult.methodNotFound('Method not found ($msg)');
         }
+        if (code == 7 ||
+            msg.toLowerCase().contains('timed out') ||
+            msg.toLowerCase().contains('timeout')) {
+          return RpcResult.failed(
+            'Operation timed out on router (ubus error 7)',
+            code: code,
+          );
+        }
         return RpcResult.failed('ubus error: $msg', code: code);
       }
       if (rawResponse.length > 1) {
@@ -124,6 +171,14 @@ class RpcResult<T> {
         if (code == 2 || code == 3 || msg.toLowerCase().contains('not found')) {
           return RpcResult.methodNotFound(
             'RPC object or method not found ($msg)',
+          );
+        }
+        if (code == 7 ||
+            msg.toLowerCase().contains('timed out') ||
+            msg.toLowerCase().contains('timeout')) {
+          return RpcResult.failed(
+            'Command timed out on router (ubus error 7)',
+            code: code,
           );
         }
         return RpcResult.failed('RPC transport error: $msg', code: code);

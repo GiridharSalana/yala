@@ -135,7 +135,7 @@ void main() {
         ],
       };
       // networkDevices could be null or empty on some setups
-      final Map<String, dynamic>? networkDevices = null;
+      const Map<String, dynamic>? networkDevices = null;
 
       // Current buggy behavior: requires statsDataSource is Map
       // This test verifies the FIX: interfaces should parse without stats

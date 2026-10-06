@@ -188,7 +188,7 @@ class HttpClientManager {
   /// Load accepted certificates from secure storage
   Future<void> _loadAcceptedCertificates() async {
     try {
-      final storage = const FlutterSecureStorage();
+      const storage = FlutterSecureStorage();
       final certsJson = await storage.read(key: _acceptedCertsKey);
       if (certsJson != null) {
         final certs = Map<String, dynamic>.from(jsonDecode(certsJson));
@@ -207,7 +207,7 @@ class HttpClientManager {
   /// Save accepted certificates to secure storage
   Future<void> _saveAcceptedCertificates() async {
     try {
-      final storage = const FlutterSecureStorage();
+      const storage = FlutterSecureStorage();
       await storage.write(
         key: _acceptedCertsKey,
         value: jsonEncode(_userAcceptedCerts),
@@ -267,7 +267,7 @@ class HttpClientManager {
 
     // Delete from secure storage
     try {
-      final storage = const FlutterSecureStorage();
+      const storage = FlutterSecureStorage();
       await storage.delete(key: _acceptedCertsKey);
     } catch (e) {
       // Ignore errors

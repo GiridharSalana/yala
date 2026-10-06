@@ -7,18 +7,99 @@ import '../models/network_topology.dart';
 import '../models/router_capabilities.dart';
 import '../design/luci_design_system.dart';
 import '../l10n/app_localizations.dart';
+import 'luci_loading_states.dart';
 
 class NetworkTopologyCard extends StatelessWidget {
   final NetworkTopology? topology;
   final VoidCallback? onRetry;
+  final bool isLoading;
 
-  const NetworkTopologyCard({super.key, required this.topology, this.onRetry});
+  const NetworkTopologyCard({
+    super.key,
+    required this.topology,
+    this.onRetry,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
+
+    if (isLoading) {
+      return Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        shape: RoundedRectangleBorder(
+          borderRadius: LuciCardStyles.standardRadius,
+          side: BorderSide(
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.10),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color:
+                          colorScheme.primaryContainer.withValues(alpha: 0.13),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.hub_outlined,
+                      color: colorScheme.primary,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          l10n?.headerSwitchTopology ??
+                              'Switch Topology & VLANs',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const LuciSkeleton(
+                          width: 120,
+                          height: 12,
+                          borderRadius: BorderRadius.all(Radius.circular(4)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: List.generate(
+                  4,
+                  (index) => const Padding(
+                    padding: EdgeInsets.only(right: 8.0),
+                    child: LuciSkeleton(
+                      width: 38,
+                      height: 38,
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (topology == null || !topology!.isAvailable) {
       return Card(

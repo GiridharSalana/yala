@@ -14,7 +14,7 @@ void main() {
       final semantics = tester.ensureSemantics();
 
       await tester.pumpWidget(
-        ProviderScope(
+        const ProviderScope(
           child: MaterialApp(
             home: Scaffold(
               body: InterfacesScreen(scrollToInterface: 'phy0-ap0'),

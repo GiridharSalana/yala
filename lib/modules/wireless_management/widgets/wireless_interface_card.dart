@@ -99,6 +99,10 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
         l10n?.toastDeletedInterface(widget.interface.ssid) ??
             'Deleted interface "${widget.interface.ssid}"',
       );
+    } else {
+      context.showToastError(
+        'Failed to delete wireless interface "${widget.interface.ssid}".',
+      );
     }
   }
 
@@ -540,10 +544,10 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                           },
                           itemBuilder: (ctx) => [
                             if (isGuest)
-                              PopupMenuItem<String>(
+                              const PopupMenuItem<String>(
                                 value: 'mark_standard',
                                 child: Row(
-                                  children: const [
+                                  children: [
                                     Icon(
                                       Icons.wifi_rounded,
                                       size: 16,
@@ -576,10 +580,10 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                                 ),
                               ),
                             if (isCustomTagged || isExcluded)
-                              PopupMenuItem<String>(
+                              const PopupMenuItem<String>(
                                 value: 'reset_override',
                                 child: Row(
-                                  children: const [
+                                  children: [
                                     Icon(Icons.restart_alt_rounded, size: 16),
                                     SizedBox(width: 8),
                                     Text(

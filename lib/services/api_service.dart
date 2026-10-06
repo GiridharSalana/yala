@@ -10,6 +10,7 @@ import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 import 'package:yet_another_luci_app/modules/parental_controls/models/parental_profile.dart';
 import 'package:yet_another_luci_app/modules/services_system/models/ddns_info.dart';
+import 'package:yet_another_luci_app/modules/sqm/models/sqm_queue.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/internet_reachability.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/ping_result.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/traceroute_result.dart';
@@ -17,6 +18,7 @@ import 'package:yet_another_luci_app/modules/diagnostics/models/dns_lookup_resul
 import 'package:yet_another_luci_app/modules/diagnostics/models/routing_neighbor_info.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/diagnostic_report.dart';
 import 'package:yet_another_luci_app/modules/diagnostics/models/flush_dns_result.dart';
+import 'package:yet_another_luci_app/modules/bandwidth_monitor/models/bandwidth_data.dart';
 import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
 import '../utils/http_client_manager.dart';
 import '../utils/logger.dart';
@@ -31,7 +33,7 @@ class LoginResult {
 Uri _buildUrl(String ipAddress, bool useHttps, String path) {
   final scheme = useHttps ? 'https' : 'http';
   // Handle cases where ipAddress might already include a port
-  String host = ipAddress;
+  final String host = ipAddress;
   // Don't add scheme if the address already has one (shouldn't happen with our parser)
   if (host.startsWith('http://') || host.startsWith('https://')) {
     return Uri.parse('$host$path');
@@ -39,8 +41,29 @@ Uri _buildUrl(String ipAddress, bool useHttps, String path) {
   return Uri.parse('$scheme://$host$path');
 }
 
+typedef ApiService = RealApiService;
+
 class RealApiService implements IApiService {
   final HttpClientManager _httpClientManager = HttpClientManager();
+
+  /// Callback to transparently renew expired sessions without UI disruption.
+  Future<String?> Function(String ipAddress, bool useHttps)? onSessionRenew;
+  Future<String?>? _activeRenewalFuture;
+
+  Future<String?> _performSessionRenewal(String ipAddress, bool useHttps) {
+    if (_activeRenewalFuture != null) {
+      return _activeRenewalFuture!;
+    }
+    final handler = onSessionRenew;
+    if (handler == null) {
+      return Future.value(null);
+    }
+    final future = handler(ipAddress, useHttps);
+    _activeRenewalFuture = future;
+    return future.whenComplete(() {
+      _activeRenewalFuture = null;
+    });
+  }
 
   /// OpenWrt rpcd `file.exec` accepts `params` on newer builds and `args` on older ones.
   ///
@@ -119,6 +142,8 @@ class RealApiService implements IApiService {
           data: jsonEncode(ubusPayload),
           options: Options(
             headers: {'Content-Type': 'application/json'},
+            sendTimeout: const Duration(seconds: 5),
+            receiveTimeout: const Duration(seconds: 7),
             followRedirects: false,
             validateStatus: (code) => code != null && code < 500,
           ),
@@ -137,19 +162,18 @@ class RealApiService implements IApiService {
 
         final token = _extractAuthToken(response);
         if (token != null) {
-          final isVerified = await verifyToken(token, useHttps);
-          if (isVerified) {
-            Logger.info(
-              'Step 1 (ubus JSON-RPC $endpoint) succeeded and verified',
-            );
-            return AuthResult.success(token, actualUseHttps: useHttps);
-          }
+          Logger.info('Step 1 (ubus JSON-RPC $endpoint) succeeded');
+          return AuthResult.success(token, actualUseHttps: useHttps);
         }
 
-        if (response.data is Map && response.data['error'] != null) {
+        if (response.data is Map) {
           final err = response.data['error'];
           if (err is Map &&
               (err['code'] == 6 || err['message'] == 'Access denied')) {
+            invalidCredentialsDetected = true;
+          }
+          final resList = response.data['result'];
+          if (resList is List && resList.isNotEmpty && resList[0] == 6) {
             invalidCredentialsDetected = true;
           }
         }
@@ -178,6 +202,8 @@ class RealApiService implements IApiService {
           data: formParams,
           options: Options(
             contentType: Headers.formUrlEncodedContentType,
+            sendTimeout: const Duration(seconds: 5),
+            receiveTimeout: const Duration(seconds: 7),
             followRedirects: true,
             validateStatus: (code) => code != null && code < 500,
           ),
@@ -228,6 +254,8 @@ class RealApiService implements IApiService {
         data: jsonEncode(rpcPayload),
         options: Options(
           headers: {'Content-Type': 'application/json'},
+          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 7),
           followRedirects: false,
           validateStatus: (code) => code != null && code < 500,
         ),
@@ -252,7 +280,7 @@ class RealApiService implements IApiService {
     }
 
     // Step 4: Protocol Fallback Replay (HTTP <-> HTTPS switch)
-    if (redirectDetected || !useHttps) {
+    if (redirectDetected || targetIsHttps) {
       try {
         final replayUseHttps = targetIsHttps || !useHttps;
         final replayClient = _createHttpClient(
@@ -278,6 +306,8 @@ class RealApiService implements IApiService {
           data: jsonEncode(ubusPayload),
           options: Options(
             headers: {'Content-Type': 'application/json'},
+            sendTimeout: const Duration(seconds: 5),
+            receiveTimeout: const Duration(seconds: 7),
             followRedirects: false,
             validateStatus: (code) => code != null && code < 500,
           ),
@@ -285,13 +315,8 @@ class RealApiService implements IApiService {
 
         final token = _extractAuthToken(response);
         if (token != null) {
-          final isVerified = await verifyToken(token, replayUseHttps);
-          if (isVerified) {
-            Logger.info(
-              'Step 4 (Protocol fallback replay) succeeded and verified',
-            );
-            return AuthResult.success(token, actualUseHttps: replayUseHttps);
-          }
+          Logger.info('Step 4 (Protocol fallback replay) succeeded');
+          return AuthResult.success(token, actualUseHttps: replayUseHttps);
         }
       } on DioException catch (e) {
         Logger.info(
@@ -456,6 +481,7 @@ class RealApiService implements IApiService {
     required String method,
     Map<String, dynamic>? params,
     BuildContext? context,
+    bool isRetry = false,
   }) async {
     final client = _createHttpClient(useHttps, ipAddress, context: context);
     final rpcPayload = {
@@ -493,16 +519,96 @@ class RealApiService implements IApiService {
           final decoded = response.data is String
               ? jsonDecode(response.data as String)
               : response.data;
-          if (decoded['error'] != null) {
+
+          bool isAuthError = false;
+          if (decoded is Map && decoded['error'] != null) {
+            final err = decoded['error'];
+            final errCode = err is Map ? err['code'] : null;
+            final errMsg =
+                (err is Map ? err['message'] : err)?.toString().toLowerCase() ??
+                '';
+            if (errCode == -32002 ||
+                errCode == 6 ||
+                errMsg.contains('access denied')) {
+              isAuthError = true;
+            }
+          } else if (decoded is Map && decoded['result'] is List) {
+            final resList = decoded['result'] as List;
+            if (resList.isNotEmpty && resList.length == 1 && resList[0] == 6) {
+              isAuthError = true;
+            }
+          }
+
+          if (isAuthError &&
+              !isRetry &&
+              onSessionRenew != null &&
+              sysauth.isNotEmpty) {
+            Logger.info(
+              'Detected expired session on RPC $object.$method. Attempting transparent renewal...',
+            );
+            try {
+              final newToken = await _performSessionRenewal(
+                ipAddress,
+                useHttps,
+              );
+              if (newToken != null && newToken.isNotEmpty) {
+                Logger.info(
+                  'Transparent session renewal succeeded. Retrying RPC $object.$method...',
+                );
+                return await callWithContext(
+                  ipAddress,
+                  newToken,
+                  useHttps,
+                  object: object,
+                  method: method,
+                  params: params,
+                  context: context,
+                  isRetry: true,
+                );
+              }
+            } catch (reauthErr) {
+              Logger.warning('Transparent session renewal failed: $reauthErr');
+            }
+          }
+
+          if (decoded is Map && decoded['error'] != null) {
             throw Exception('RPC error: ${decoded['error']['message']}');
           }
           // Return in LuCI RPC format: [status, data]
-          final result = decoded['result'];
+          final result = decoded is Map ? decoded['result'] : null;
           if (result is List && result.isNotEmpty) {
             return result;
           } else {
             return [0, result];
           }
+        } else if ((response.statusCode == 401 || response.statusCode == 403) &&
+            !isRetry &&
+            onSessionRenew != null &&
+            sysauth.isNotEmpty) {
+          Logger.info(
+            'Detected HTTP ${response.statusCode} on RPC $object.$method. Attempting transparent renewal...',
+          );
+          try {
+            final newToken = await _performSessionRenewal(ipAddress, useHttps);
+            if (newToken != null && newToken.isNotEmpty) {
+              Logger.info(
+                'Transparent session renewal succeeded. Retrying RPC $object.$method...',
+              );
+              return await callWithContext(
+                ipAddress,
+                newToken,
+                useHttps,
+                object: object,
+                method: method,
+                params: params,
+                context: context,
+                isRetry: true,
+              );
+            }
+          } catch (reauthErr) {
+            Logger.warning('Transparent session renewal failed: $reauthErr');
+          }
+          throw Exception('Failed to call RPC: HTTP ${response.statusCode}');
         } else if (response.statusCode == 404 && i < endpoints.length - 1) {
           // Fallback to next endpoint
           continue;
@@ -759,7 +865,7 @@ class RealApiService implements IApiService {
     required String interface,
     BuildContext? context,
   }) async {
-    final stations = <Map<String, dynamic>>[];
+    final stationsMap = <String, Map<String, dynamic>>{};
 
     try {
       // 1. Try iwinfo assoclist
@@ -780,8 +886,9 @@ class RealApiService implements IApiService {
               final map = Map<String, dynamic>.from(entry);
               final mac = map['mac']?.toString();
               if (mac != null && mac.isNotEmpty) {
-                map['mac'] = mac.toUpperCase().replaceAll('-', ':');
-                stations.add(map);
+                final normMac = mac.toUpperCase().replaceAll('-', ':');
+                map['mac'] = normMac;
+                stationsMap[normMac] = map;
               }
             }
           }
@@ -808,19 +915,32 @@ class RealApiService implements IApiService {
           final clientsMap = data['clients'] as Map<String, dynamic>;
           for (final entry in clientsMap.entries) {
             final normMac = entry.key.toUpperCase().replaceAll('-', ':');
-            if (entry.value is Map) {
-              final map = Map<String, dynamic>.from(entry.value as Map);
-              map['mac'] = normMac;
-              stations.add(map);
+            final clientMap = entry.value is Map
+                ? Map<String, dynamic>.from(entry.value as Map)
+                : <String, dynamic>{};
+            clientMap['mac'] = normMac;
+
+            final existing = stationsMap[normMac];
+            if (existing != null) {
+              // Deep-merge: preserve iwinfo's rx/tx/thr/connected_time, but add hostapd's fields
+              clientMap.forEach((k, v) {
+                if (v != null) {
+                  if (existing[k] == null) {
+                    existing[k] = v;
+                  } else if (existing[k] is Map && v is Map) {
+                    existing[k] = {...(existing[k] as Map), ...v};
+                  }
+                }
+              });
             } else {
-              stations.add({'mac': normMac});
+              stationsMap[normMac] = clientMap;
             }
           }
         }
       }
     } catch (_) {}
 
-    if (stations.isEmpty) {
+    if (stationsMap.isEmpty) {
       try {
         // 3. Command execution fallback (iwinfo <iface> assoclist or iw dev <iface> station dump)
         final resExec1 = await callWithContext(
@@ -839,12 +959,13 @@ class RealApiService implements IApiService {
           for (final m in macRegex.allMatches(stdout)) {
             final macStr = m.group(0);
             if (macStr != null) {
-              stations.add({'mac': macStr.toUpperCase().replaceAll('-', ':')});
+              final normMac = macStr.toUpperCase().replaceAll('-', ':');
+              stationsMap[normMac] = {'mac': normMac};
             }
           }
         }
 
-        if (stations.isEmpty) {
+        if (stationsMap.isEmpty) {
           final resExec2 = await callWithContext(
             ipAddress,
             sysauth,
@@ -861,9 +982,8 @@ class RealApiService implements IApiService {
             for (final m in macRegex.allMatches(stdout)) {
               final macStr = m.group(0);
               if (macStr != null) {
-                stations.add({
-                  'mac': macStr.toUpperCase().replaceAll('-', ':'),
-                });
+                final normMac = macStr.toUpperCase().replaceAll('-', ':');
+                stationsMap[normMac] = {'mac': normMac};
               }
             }
           }
@@ -871,7 +991,7 @@ class RealApiService implements IApiService {
       } catch (_) {}
     }
 
-    return stations;
+    return stationsMap.values.toList();
   }
 
   /// Fetches associated stations (wireless client MACs) for a given wireless interface (e.g., phy0-ap0, wlan0)
@@ -1316,6 +1436,7 @@ class RealApiService implements IApiService {
             'Cookie': 'sysauth=$sysauth; sysauth_http=$sysauth',
           },
           responseType: ResponseType.plain,
+          receiveTimeout: const Duration(seconds: 120),
           validateStatus: (status) => status != null && status < 400,
         ),
       );
@@ -1353,6 +1474,52 @@ class RealApiService implements IApiService {
   }
 
   bool _execSucceeded(dynamic res) => execSucceeded(res);
+
+  @visibleForTesting
+  bool isUciSuccessful(dynamic res) => _isUciSuccessful(res);
+
+  @visibleForTesting
+  bool isExpectedServiceDisconnect(
+    String serviceName,
+    dynamic e, [
+    String action = 'restart',
+  ]) => _isExpectedServiceDisconnect(e, serviceName, action);
+
+  @visibleForTesting
+  List<dynamic>? extractProcessList(dynamic procRes) =>
+      _extractProcessList(procRes);
+
+  bool _isUciSuccessful(dynamic res) {
+    if (res == null) return false;
+    if (res is List && res.isNotEmpty) return res[0] == 0;
+    if (res is Map) {
+      if (res.containsKey('error') && res['error'] != null) return false;
+      if (res['result'] is List && (res['result'] as List).isNotEmpty) {
+        return (res['result'] as List)[0] == 0;
+      }
+      if (res['code'] is int) return res['code'] == 0;
+      if (res['rc'] is int) return res['rc'] == 0;
+      if (res.containsKey('success')) return res['success'] == true;
+      return true;
+    }
+    return res == 0;
+  }
+
+  List<dynamic>? _extractProcessList(dynamic procRes) {
+    if (procRes == null) return null;
+    if (procRes is List) {
+      if (procRes.isEmpty) return null;
+      final payload = procRes.length > 1 ? procRes[1] : procRes[0];
+      if (payload is List) return payload;
+      if (payload is Map && payload['result'] is List) {
+        return payload['result'] as List;
+      }
+      return procRes;
+    } else if (procRes is Map) {
+      if (procRes['result'] is List) return procRes['result'] as List;
+    }
+    return null;
+  }
 
   @override
   Future<bool> setSsidEnabled(
@@ -3198,6 +3365,251 @@ uci commit parental
     }
   }
 
+  static const String fullAclJson = '''{
+  "yet-another-luci-app": {
+    "description": "Yet Another LuCI App Permissions",
+    "read": {
+      "cgi-io": [ "backup", "download", "exec" ],
+      "file": {
+        "/": [ "list" ],
+        "/*": [ "list" ],
+        "/etc/config/*": [ "read" ],
+        "/etc/openwrt_release": [ "read" ],
+        "/etc/os-release": [ "read" ],
+        "/etc/board.json": [ "read" ],
+        "/etc/crontabs/root": [ "read" ],
+        "/etc/dropbear/authorized_keys": [ "read" ],
+        "/proc/*": [ "read" ],
+        "/proc/sys/net/*": [ "read" ],
+        "/sys/*": [ "read" ],
+        "/tmp/*": [ "read" ],
+        "/dev/mtdblock*": [ "read" ],
+        "/bin/*": [ "exec" ],
+        "/sbin/*": [ "exec" ],
+        "/usr/bin/*": [ "exec" ],
+        "/usr/sbin/*": [ "exec" ],
+        "/usr/libexec/*": [ "exec" ],
+        "/bin/sh": [ "exec" ],
+        "/bin/ping": [ "exec" ],
+        "/bin/traceroute": [ "exec" ],
+        "/bin/dmesg": [ "exec" ],
+        "/bin/cat": [ "exec" ],
+        "/bin/df": [ "exec" ],
+        "/bin/free": [ "exec" ],
+        "/bin/grep": [ "exec" ],
+        "/bin/tar": [ "exec" ],
+        "/bin/dd": [ "exec" ],
+        "/bin/rm": [ "exec" ],
+        "/sbin/ip": [ "exec" ],
+        "/sbin/wifi": [ "exec" ],
+        "/sbin/reboot": [ "exec" ],
+        "/sbin/sysupgrade": [ "exec" ],
+        "/sbin/firstboot": [ "exec" ],
+        "/sbin/logread": [ "exec" ],
+        "/usr/bin/nslookup": [ "exec" ],
+        "/usr/bin/speedtest": [ "exec" ],
+        "/usr/bin/speedtest-netperf": [ "exec" ],
+        "/usr/bin/curl": [ "exec" ],
+        "/usr/bin/wget": [ "exec" ],
+        "/usr/bin/iperf3": [ "exec" ],
+        "/usr/bin/top": [ "exec" ],
+        "/usr/bin/etherwake": [ "exec" ],
+        "/usr/bin/wol": [ "exec" ],
+        "/usr/bin/nextdns": [ "exec" ],
+        "/usr/bin/cloudflared": [ "exec" ],
+        "/usr/bin/tailscale": [ "exec" ],
+        "/usr/sbin/tailscale": [ "exec" ],
+        "/usr/sbin/mwan3": [ "exec" ],
+        "/usr/sbin/adblock": [ "exec" ],
+        "/usr/sbin/logread": [ "exec" ],
+        "/usr/libexec/package-manager-call": [ "exec" ]
+      },
+      "uci": [
+        "*",
+        "adblock",
+        "attendedsysupgrade",
+        "cloudflared",
+        "ddns",
+        "dhcp",
+        "dropbear",
+        "etherwake",
+        "firewall",
+        "fstab",
+        "luci",
+        "mwan3",
+        "network",
+        "nextdns",
+        "openclash",
+        "openvpn",
+        "overview",
+        "parental",
+        "passwall",
+        "shadowsocks",
+        "simple-adblock",
+        "snmpd",
+        "sqm",
+        "system",
+        "tailscale",
+        "tinyproxy",
+        "ttyd",
+        "uhttpd",
+        "upnpd",
+        "v2ray",
+        "watchcat",
+        "wireguard",
+        "wireless",
+        "wol",
+        "xray"
+      ],
+      "ubus": {
+        "*": [ "*" ],
+        "file": [ "*" ],
+        "hostapd.*": [ "*" ],
+        "iwinfo": [ "*" ],
+        "log": [ "*" ],
+        "luci": [ "*" ],
+        "luci-rpc": [ "*" ],
+        "luci.temp-status": [ "*" ],
+        "network": [ "*" ],
+        "network.*": [ "*" ],
+        "rc": [ "*" ],
+        "service": [ "*" ],
+        "session": [ "*" ],
+        "sqm": [ "*" ],
+        "system": [ "*" ],
+        "uci": [ "*" ]
+      }
+    },
+    "write": {
+      "cgi-io": [ "backup", "download", "exec", "upload" ],
+      "file": {
+        "/bin/*": [ "exec" ],
+        "/sbin/*": [ "exec" ],
+        "/usr/bin/*": [ "exec" ],
+        "/usr/sbin/*": [ "exec" ],
+        "/usr/libexec/*": [ "exec" ],
+        "/bin/sh": [ "exec" ],
+        "/bin/ping": [ "exec" ],
+        "/bin/traceroute": [ "exec" ],
+        "/bin/dmesg": [ "exec" ],
+        "/bin/cat": [ "exec" ],
+        "/bin/df": [ "exec" ],
+        "/bin/free": [ "exec" ],
+        "/bin/grep": [ "exec" ],
+        "/bin/tar": [ "exec" ],
+        "/bin/dd": [ "exec" ],
+        "/bin/rm": [ "exec" ],
+        "/sbin/ip": [ "exec" ],
+        "/sbin/wifi": [ "exec" ],
+        "/sbin/reboot": [ "exec" ],
+        "/sbin/sysupgrade": [ "exec" ],
+        "/sbin/firstboot": [ "exec" ],
+        "/sbin/logread": [ "exec" ],
+        "/usr/bin/nslookup": [ "exec" ],
+        "/usr/bin/speedtest": [ "exec" ],
+        "/usr/bin/speedtest-netperf": [ "exec" ],
+        "/usr/bin/curl": [ "exec" ],
+        "/usr/bin/wget": [ "exec" ],
+        "/usr/bin/iperf3": [ "exec" ],
+        "/usr/bin/top": [ "exec" ],
+        "/usr/bin/etherwake": [ "exec" ],
+        "/usr/bin/wol": [ "exec" ],
+        "/usr/bin/nextdns": [ "exec" ],
+        "/usr/bin/cloudflared": [ "exec" ],
+        "/usr/bin/tailscale": [ "exec" ],
+        "/usr/sbin/tailscale": [ "exec" ],
+        "/usr/sbin/mwan3": [ "exec" ],
+        "/usr/sbin/adblock": [ "exec" ],
+        "/usr/sbin/logread": [ "exec" ],
+        "/usr/libexec/package-manager-call": [ "exec" ],
+        "/etc/crontabs/root": [ "write" ],
+        "/etc/dropbear/authorized_keys": [ "write" ],
+        "/etc/config/*": [ "write" ],
+        "/tmp/*": [ "write" ]
+      },
+      "uci": [
+        "*",
+        "adblock",
+        "attendedsysupgrade",
+        "cloudflared",
+        "ddns",
+        "dhcp",
+        "dropbear",
+        "etherwake",
+        "firewall",
+        "fstab",
+        "luci",
+        "mwan3",
+        "network",
+        "nextdns",
+        "openclash",
+        "openvpn",
+        "overview",
+        "parental",
+        "passwall",
+        "shadowsocks",
+        "simple-adblock",
+        "snmpd",
+        "sqm",
+        "system",
+        "tailscale",
+        "tinyproxy",
+        "ttyd",
+        "uhttpd",
+        "upnpd",
+        "v2ray",
+        "watchcat",
+        "wireguard",
+        "wireless",
+        "wol",
+        "xray"
+      ],
+      "ubus": {
+        "*": [ "*" ],
+        "file": [ "*" ],
+        "hostapd.*": [ "*" ],
+        "iwinfo": [ "*" ],
+        "log": [ "*" ],
+        "luci": [ "*" ],
+        "luci-rpc": [ "*" ],
+        "luci.temp-status": [ "*" ],
+        "network": [ "*" ],
+        "network.*": [ "*" ],
+        "rc": [ "*" ],
+        "service": [ "*" ],
+        "session": [ "*" ],
+        "sqm": [ "*" ],
+        "system": [ "*" ],
+        "uci": [ "*" ]
+      }
+    }
+  }
+}''';
+
+  static String getPermissionsFixScript() {
+    return '''
+if ! touch /usr/share/rpcd/acl.d/.write_test 2>/dev/null; then
+  mkdir -p /tmp/rpcd_acl_backup
+  cp -p /usr/share/rpcd/acl.d/*.json /tmp/rpcd_acl_backup/ 2>/dev/null || true
+  mount -t tmpfs tmpfs /usr/share/rpcd/acl.d 2>/dev/null || true
+  cp -p /tmp/rpcd_acl_backup/*.json /usr/share/rpcd/acl.d/ 2>/dev/null || true
+fi
+rm -f /usr/share/rpcd/acl.d/.write_test 2>/dev/null || true
+mkdir -p /usr/share/rpcd/acl.d/
+cat << 'EOF' > /usr/share/rpcd/acl.d/yet-another-luci-app.json
+$fullAclJson
+EOF
+if command -v apk >/dev/null 2>&1; then
+  apk update || true
+  apk add luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status || true
+else
+  opkg update || true
+  opkg install luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status || true
+fi
+/etc/init.d/rpcd restart 2>/dev/null || /etc/init.d/rpcd reload 2>/dev/null || true
+''';
+  }
+
   @override
   Future<bool> autoFixPermissions(
     String ipAddress,
@@ -3206,52 +3618,7 @@ uci commit parental
     BuildContext? context,
   }) async {
     try {
-      const fixScript =
-          'mkdir -p /usr/share/rpcd/acl.d/ && '
-          'cat << \'EOF\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json\n'
-          '{\n'
-          '  "yet-another-luci-app": {\n'
-          '    "description": "Yet Another LuCI App Silent RPC Permissions",\n'
-          '    "read": {\n'
-          '      "file": {\n'
-          '        "/usr/sbin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/nextdns": [ "exec" ],\n'
-          '        "/usr/bin/cloudflared": [ "exec" ],\n'
-          '        "/etc/config/cloudflared": [ "read" ],\n'
-          '        "/etc/config/nextdns": [ "read" ]\n'
-          '      },\n'
-          '      "uci": [ "cloudflared", "nextdns" ],\n'
-          '      "ubus": {\n'
-          '        "iwinfo": [ "*" ],\n'
-          '        "rc": [ "*" ],\n'
-          '        "file": [ "*" ],\n'
-          '        "luci-rpc": [ "*" ]\n'
-          '      }\n'
-          '    },\n'
-          '    "write": {\n'
-          '      "file": {\n'
-          '        "/usr/sbin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/nextdns": [ "exec" ],\n'
-          '        "/usr/bin/cloudflared": [ "exec" ]\n'
-          '      },\n'
-          '      "uci": [ "cloudflared", "nextdns" ],\n'
-          '      "ubus": {\n'
-          '        "iwinfo": [ "*" ],\n'
-          '        "rc": [ "*" ],\n'
-          '        "file": [ "*" ],\n'
-          '        "luci-rpc": [ "*" ]\n'
-          '      }\n'
-          '    }\n'
-          '  }\n'
-          '}\n'
-          'EOF\n'
-          'if command -v apk >/dev/null 2>&1; then '
-          'apk update && apk add luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
-          'else '
-          'opkg update && opkg install luci-mod-rpc rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status; '
-          'fi && /etc/init.d/rpcd restart';
+      final fixScript = getPermissionsFixScript();
 
       final res = await callWithContext(
         ipAddress,
@@ -3284,76 +3651,6 @@ uci commit parental
       return _execSucceeded(fallbackRes);
     } catch (e, stack) {
       Logger.exception('autoFixPermissions failed', e, stack);
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> ensureSilentPermissions(
-    String ipAddress,
-    String sysauth,
-    bool useHttps,
-  ) async {
-    try {
-      const aclScript =
-          'if [ ! -f /usr/share/rpcd/acl.d/yet-another-luci-app.json ] || ! grep -q "cloudflared" /usr/share/rpcd/acl.d/yet-another-luci-app.json; then '
-          'mkdir -p /usr/share/rpcd/acl.d/ && '
-          'cat << \'EOF\' > /usr/share/rpcd/acl.d/yet-another-luci-app.json\n'
-          '{\n'
-          '  "yet-another-luci-app": {\n'
-          '    "description": "Yet Another LuCI App Silent RPC Permissions",\n'
-          '    "read": {\n'
-          '      "file": {\n'
-          '        "/usr/sbin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/nextdns": [ "exec" ],\n'
-          '        "/usr/bin/cloudflared": [ "exec" ],\n'
-          '        "/etc/config/cloudflared": [ "read" ],\n'
-          '        "/etc/config/nextdns": [ "read" ]\n'
-          '      },\n'
-          '      "uci": [ "cloudflared", "nextdns" ],\n'
-          '      "ubus": {\n'
-          '        "iwinfo": [ "*" ],\n'
-          '        "rc": [ "*" ],\n'
-          '        "file": [ "*" ],\n'
-          '        "luci-rpc": [ "*" ]\n'
-          '      }\n'
-          '    },\n'
-          '    "write": {\n'
-          '      "file": {\n'
-          '        "/usr/sbin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/tailscale": [ "exec" ],\n'
-          '        "/usr/bin/nextdns": [ "exec" ],\n'
-          '        "/usr/bin/cloudflared": [ "exec" ]\n'
-          '      },\n'
-          '      "uci": [ "cloudflared", "nextdns" ],\n'
-          '      "ubus": {\n'
-          '        "iwinfo": [ "*" ],\n'
-          '        "rc": [ "*" ],\n'
-          '        "file": [ "*" ],\n'
-          '        "luci-rpc": [ "*" ]\n'
-          '      }\n'
-          '    }\n'
-          '  }\n'
-          '}\n'
-          'EOF\n'
-          '(/etc/init.d/rpcd reload 2>/dev/null || /etc/init.d/rpcd restart 2>/dev/null || true); '
-          'fi';
-
-      await call(
-        ipAddress,
-        sysauth,
-        useHttps,
-        object: 'file',
-        method: 'exec',
-        params: {
-          'command': '/bin/sh',
-          'params': ['-c', aclScript],
-        },
-      );
-      return true;
-    } catch (e) {
-      Logger.warning('Silent background permission setup skipped/failed: $e');
       return false;
     }
   }
@@ -3418,6 +3715,30 @@ uci commit parental
     }
   }
 
+  bool _isExpectedServiceDisconnect(
+    dynamic e,
+    String serviceName,
+    String action,
+  ) {
+    if (action != 'restart' && action != 'reload' && action != 'stop') {
+      return false;
+    }
+    final svc = serviceName.toLowerCase();
+    if (svc != 'network' &&
+        svc != 'uhttpd' &&
+        svc != 'firewall' &&
+        svc != 'dropbear') {
+      return false;
+    }
+    final errStr = e.toString().toLowerCase();
+    return errStr.contains('socket') ||
+        errStr.contains('connection reset') ||
+        errStr.contains('broken pipe') ||
+        errStr.contains('connection closed') ||
+        errStr.contains('clientexception') ||
+        errStr.contains('handshake');
+  }
+
   @override
   Future<bool> manageServiceAction(
     String ipAddress,
@@ -3439,7 +3760,10 @@ uci commit parental
           context: context,
         );
         if (_execSucceeded(rcRes)) return true;
-      } catch (_) {
+      } catch (rcErr) {
+        if (_isExpectedServiceDisconnect(rcErr, serviceName, action)) {
+          return true;
+        }
         // Older LuCI/rpcd builds may not expose rc.init; fall back below.
       }
 
@@ -3457,6 +3781,9 @@ uci commit parental
       );
       return _execSucceeded(res);
     } catch (e, stack) {
+      if (_isExpectedServiceDisconnect(e, serviceName, action)) {
+        return true;
+      }
       Logger.exception('manageServiceAction failed for $serviceName', e, stack);
       return false;
     }
@@ -3474,9 +3801,10 @@ uci commit parental
   }) async {
     final macUpper = macAddress.toUpperCase().replaceAll('-', ':');
     final macLower = macAddress.toLowerCase();
-    final ruleName = "nointernet_wireless_clients";
+    const ruleName = "nointernet_wireless_clients";
 
     bool ruleExisted = false;
+    bool ubusSucceeded = false;
 
     // 1. Check existing uci firewall rules via native ubus call
     try {
@@ -3574,6 +3902,7 @@ uci commit parental
           params: {'name': 'firewall', 'action': 'reload'},
           context: mountedContext(context),
         );
+        ubusSucceeded = true;
       }
     } catch (e) {
       Logger.warning(
@@ -3581,9 +3910,18 @@ uci commit parental
       );
     }
 
-    // 2. Shell fallback check and execute for single universal rule (uci, nft, and iptables)
-    final shellScript =
-        '''
+    // 2. Runtime firewall rule insertion and shell fallback check
+    final shellScript = ubusSucceeded
+        ? '''
+MAC_U="$macUpper"
+MAC_L="$macLower"
+nft add rule inet fw4 forward ether saddr "\$MAC_U" drop >/dev/null 2>&1 || true
+nft add rule inet fw4 forward ether saddr "\$MAC_L" drop >/dev/null 2>&1 || true
+iptables -I FORWARD -m mac --mac-source "\$MAC_U" -j DROP >/dev/null 2>&1 || true
+iptables -I FORWARD -m mac --mac-source "\$MAC_L" -j DROP >/dev/null 2>&1 || true
+exit 0
+'''
+        : '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
 RULE_NAME="$ruleName"
@@ -3647,8 +3985,9 @@ exit 0
     final macUpper = macAddress.toUpperCase().replaceAll('-', ':');
     final macLower = macAddress.toLowerCase();
     final macClean = macUpper.replaceAll(':', '');
-    final ruleName = "nointernet_wireless_clients";
+    const ruleName = "nointernet_wireless_clients";
     bool modified = false;
+    bool ubusSucceeded = false;
 
     try {
       final getRes = await callWithContext(
@@ -3675,7 +4014,7 @@ exit 0
             final srcMac = sec['src_mac'];
             final destMac = sec['dest_mac'];
 
-            List<String> macs = [];
+            final List<String> macs = [];
             if (srcMac is List) {
               macs.addAll(
                 srcMac.map(
@@ -3771,14 +4110,24 @@ exit 0
             params: {'name': 'firewall', 'action': 'reload'},
             context: mountedContext(context),
           );
+          ubusSucceeded = true;
         }
       }
     } catch (e) {
       Logger.warning('Native ubus firewall remove encountered issue: $e');
     }
 
-    final script =
-        '''
+    final script = ubusSucceeded
+        ? '''
+MAC_U="$macUpper"
+MAC_L="$macLower"
+nft delete rule inet fw4 forward ether saddr "\$MAC_U" >/dev/null 2>&1 || true
+nft delete rule inet fw4 forward ether saddr "\$MAC_L" >/dev/null 2>&1 || true
+iptables -D FORWARD -m mac --mac-source "\$MAC_U" -j DROP >/dev/null 2>&1 || true
+iptables -D FORWARD -m mac --mac-source "\$MAC_L" -j DROP >/dev/null 2>&1 || true
+exit 0
+'''
+        : '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
 CLEAN="$macClean"
@@ -3861,7 +4210,7 @@ exit 0
             final macfilter = sec['macfilter']?.toString().toLowerCase();
             if (macfilter == 'deny' || macfilter == '2') {
               final rawMaclist = sec['maclist'];
-              List<String> macs = rawMaclist is List
+              final List<String> macs = rawMaclist is List
                   ? rawMaclist
                         .map(
                           (e) =>
@@ -4204,7 +4553,7 @@ exit 0
     BuildContext? context,
   }) async {
     try {
-      final script = '''
+      const script = '''
 DENY_MACS=""
 for s in /var/run/hostapd/* /var/run/hostapd-*/*; do
   if [ -S "\$s" ]; then
@@ -4294,6 +4643,10 @@ echo "\$DENY_MACS \$WIFI_UCI" | tr ' ' '\\n' | grep -vE "^00:00:00:00:00:00\$|^F
       return {'restricted': [], 'banned': []};
     }
   }
+
+  @visibleForTesting
+  static String? sanitizeOpenWrtLeaseTime(String? lt) =>
+      _sanitizeOpenWrtLeaseTime(lt);
 
   static String? _sanitizeOpenWrtLeaseTime(String? lt) {
     if (lt == null) return null;
@@ -4720,8 +5073,8 @@ echo "\$DENY_MACS \$WIFI_UCI" | tr ' ' '\\n' | grep -vE "^00:00:00:00:00:00\$|^F
             params: {},
             context: mountedContext(context),
           );
-          if (procRes is Map && procRes['result'] is List) {
-            final pList = procRes['result'] as List;
+          final pList = _extractProcessList(procRes);
+          if (pList != null) {
             for (final proc in pList) {
               if (proc is Map) {
                 final cmd = (proc['COMMAND'] ?? '').toString();
@@ -4843,8 +5196,8 @@ exit 0
           params: {},
           context: mountedContext(context),
         );
-        if (procRes is Map && procRes['result'] is List) {
-          final pList = procRes['result'] as List;
+        final pList = _extractProcessList(procRes);
+        if (pList != null) {
           for (final proc in pList) {
             if (proc is Map) {
               final cmd = (proc['COMMAND'] ?? '').toString();
@@ -4930,7 +5283,7 @@ exit 0
 
     // 1. Attempt router-side URL fetch via /bin/sh exec (handles CGNAT from router WAN context)
     try {
-      final cmd =
+      const cmd =
           'V4=\$(wget -q -O - http://api.ipify.org 2>/dev/null || wget -q -O - http://checkip.amazonaws.com 2>/dev/null || curl -s -m 3 http://api.ipify.org 2>/dev/null || uclient-fetch -q -O - http://api.ipify.org 2>/dev/null); '
           'V6=\$(wget -q -O - http://api6.ipify.org 2>/dev/null || wget -q -O - http://v6.ipv6-test.com/api/myip.php 2>/dev/null || curl -s -6 -m 3 http://api6.ipify.org 2>/dev/null || uclient-fetch -q -O - http://api6.ipify.org 2>/dev/null); '
           'echo "V4:\$V4"; echo "V6:\$V6"';
@@ -4948,7 +5301,10 @@ exit 0
         context: mountedContext(context),
       );
 
-      if (shellRes is List && shellRes.length > 1 && shellRes[0] == 0) {
+      if (shellRes is List &&
+          shellRes.length > 1 &&
+          shellRes[0] == 0 &&
+          shellRes[1] is Map) {
         final stdout = shellRes[1]['stdout']?.toString() ?? '';
         for (final line in stdout.split('\n')) {
           final trimmed = line.trim();
@@ -5004,6 +5360,9 @@ exit 0
 
     return {'ipv4': publicV4, 'ipv6': publicV6};
   }
+
+  @visibleForTesting
+  static bool isValidIpv4Candidate(String ip) => _isValidIpv4Candidate(ip);
 
   static bool _isValidIpv4Candidate(String ip) {
     final reg = RegExp(
@@ -5091,8 +5450,8 @@ exit 0
           params: {},
           context: mountedContext(context),
         );
-        if (procRes is Map && procRes['result'] is List) {
-          final pList = procRes['result'] as List;
+        final pList = _extractProcessList(procRes);
+        if (pList != null) {
           for (final proc in pList) {
             if (proc is Map) {
               final cmd = (proc['COMMAND'] ?? '').toString();
@@ -5380,8 +5739,11 @@ rm -f "$leasePath" /tmp/dhcp.leases /var/dhcp.leases /tmp/dnsmasq.leases /var/li
         context: mountedContext(context),
       );
 
-      final stdout = rpcRes is Map ? rpcRes['stdout']?.toString() ?? '' : '';
-      final stderr = rpcRes is Map ? rpcRes['stderr']?.toString() ?? '' : '';
+      final execMap = (rpcRes is List && rpcRes.length > 1 && rpcRes[1] is Map)
+          ? rpcRes[1] as Map
+          : (rpcRes is Map ? rpcRes : null);
+      final stdout = execMap?['stdout']?.toString() ?? '';
+      final stderr = execMap?['stderr']?.toString() ?? '';
       final combined = '$stdout\n$stderr'.trim();
 
       if (combined.contains('Address:') || combined.contains('Name:')) {
@@ -5390,10 +5752,18 @@ rm -f "$leasePath" /tmp/dhcp.leases /var/dhcp.leases /tmp/dnsmasq.leases /var/li
         );
       } else if (combined.contains("can't find") ||
           combined.contains('NXDOMAIN') ||
-          combined.contains('ServFail')) {
+          combined.contains('ServFail') ||
+          combined.contains('connection timed out') ||
+          combined.contains('no servers could be reached')) {
         return DdnsValidationResult.failure(
           'Hostname DNS lookup failed ($hostToTest). Ensure domain exists or is registered.',
           testOutput: combined,
+        );
+      }
+
+      if (combined.isEmpty) {
+        return DdnsValidationResult.failure(
+          'No DNS test output received from router for $hostToTest.',
         );
       }
 
@@ -5453,6 +5823,221 @@ rm -f "$leasePath" /tmp/dhcp.leases /var/dhcp.leases /tmp/dnsmasq.leases /var/li
       return true;
     } catch (e, stack) {
       Logger.exception('toggleGlobalDdns failed', e, stack);
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> saveSqmQueue(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required SqmQueue queue,
+    BuildContext? context,
+  }) async {
+    try {
+      var setRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'set',
+        params: {
+          'config': 'sqm',
+          'section': queue.name,
+          'type': 'queue',
+          'values': queue.toUciParams(),
+        },
+        context: mountedContext(context),
+      );
+
+      if (!_isUciSuccessful(setRes)) {
+        // Section might not exist yet — try adding it first via uci.add
+        final addRes = await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'uci',
+          method: 'add',
+          params: {
+            'config': 'sqm',
+            'type': 'queue',
+            'name': queue.name,
+            'values': queue.toUciParams(),
+          },
+          context: mountedContext(context),
+        );
+
+        if (_isUciSuccessful(addRes)) {
+          setRes = addRes;
+        } else {
+          // If named add failed, try anonymous add and update section
+          final anonAddRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'add',
+            params: {'config': 'sqm', 'type': 'queue'},
+            context: mountedContext(context),
+          );
+
+          if (anonAddRes is List &&
+              anonAddRes.isNotEmpty &&
+              anonAddRes[0] == 0 &&
+              anonAddRes.length > 1) {
+            final data = anonAddRes[1];
+            final createdSection =
+                (data is Map
+                    ? data['section']?.toString()
+                    : data?.toString()) ??
+                '';
+            if (createdSection.isNotEmpty) {
+              setRes = await callWithContext(
+                ipAddress,
+                sysauth,
+                useHttps,
+                object: 'uci',
+                method: 'set',
+                params: {
+                  'config': 'sqm',
+                  'section': createdSection,
+                  'type': 'queue',
+                  'values': queue.toUciParams(),
+                },
+                context: mountedContext(context),
+              );
+            }
+          }
+        }
+      }
+
+      if (!_isUciSuccessful(setRes)) return false;
+
+      final commitRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'commit',
+        params: {'config': 'sqm'},
+        context: mountedContext(context),
+      );
+
+      if (!_isUciSuccessful(commitRes)) return false;
+
+      if (queue.enabled) {
+        try {
+          await manageServiceAction(
+            ipAddress,
+            sysauth,
+            useHttps,
+            serviceName: 'sqm',
+            action: 'enable',
+            context: mountedContext(context),
+          );
+        } catch (_) {}
+      }
+
+      try {
+        await manageServiceAction(
+          ipAddress,
+          sysauth,
+          useHttps,
+          serviceName: 'sqm',
+          action: 'restart',
+          context: mountedContext(context),
+        );
+      } catch (_) {}
+
+      return true;
+    } catch (e, stack) {
+      Logger.exception('saveSqmQueue failed', e, stack);
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> deleteSqmQueue(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String sectionName,
+    BuildContext? context,
+  }) async {
+    try {
+      final delRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'delete',
+        params: {'config': 'sqm', 'section': sectionName},
+        context: mountedContext(context),
+      );
+
+      if (!_isUciSuccessful(delRes)) return false;
+
+      final commitRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'commit',
+        params: {'config': 'sqm'},
+        context: mountedContext(context),
+      );
+
+      if (!_isUciSuccessful(commitRes)) return false;
+
+      try {
+        await manageServiceAction(
+          ipAddress,
+          sysauth,
+          useHttps,
+          serviceName: 'sqm',
+          action: 'restart',
+          context: mountedContext(context),
+        );
+      } catch (_) {}
+
+      return true;
+    } catch (e, stack) {
+      Logger.exception('deleteSqmQueue failed', e, stack);
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> toggleSqmService(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required bool enable,
+    BuildContext? context,
+  }) async {
+    try {
+      await manageServiceAction(
+        ipAddress,
+        sysauth,
+        useHttps,
+        serviceName: 'sqm',
+        action: enable ? 'enable' : 'disable',
+        context: mountedContext(context),
+      );
+
+      await manageServiceAction(
+        ipAddress,
+        sysauth,
+        useHttps,
+        serviceName: 'sqm',
+        action: enable ? 'start' : 'stop',
+        context: mountedContext(context),
+      );
+
+      return true;
+    } catch (e, stack) {
+      Logger.exception('toggleSqmService failed', e, stack);
       return false;
     }
   }
@@ -6388,5 +6973,317 @@ rm -f "$leasePath" /tmp/dhcp.leases /var/dhcp.leases /tmp/dnsmasq.leases /var/li
           'No local caching DNS resolver is active on this router. Upstream DNS servers are queried directly.',
       rawOutput: logBuf.toString().trim(),
     );
+  }
+
+  @override
+  Future<List<RealtimeTrafficPoint>> fetchRealtimeStats(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String mode,
+    String? device,
+    BuildContext? context,
+  }) async {
+    try {
+      final params = <String, dynamic>{'mode': mode};
+      if (device != null && device.isNotEmpty) {
+        params['device'] = device;
+      }
+
+      final res = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'luci',
+        method: 'getRealtimeStats',
+        params: params,
+        context: context,
+      );
+
+      final List<dynamic>? rawList;
+      if (res is List && res.length > 1 && res[1] is Map) {
+        final r = res[1]['result'];
+        rawList = r is List ? r : null;
+      } else if (res is Map && res['result'] is List) {
+        rawList = res['result'] as List<dynamic>?;
+      } else {
+        rawList = null;
+      }
+
+      if (rawList == null || rawList.isEmpty) {
+        return const [];
+      }
+
+      final points = <RealtimeTrafficPoint>[];
+      RealtimeTrafficPoint? prev;
+      for (final item in rawList) {
+        if (item is List) {
+          final pt = RealtimeTrafficPoint.fromList(item, previousPoint: prev);
+          points.add(pt);
+          prev = pt;
+        }
+      }
+      return points;
+    } catch (e) {
+      Logger.warning('fetchRealtimeStats failed: $e');
+      return const [];
+    }
+  }
+
+  @override
+  Future<bool> checkNlbwmonInstalled(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    try {
+      final res = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'stat',
+        params: {'path': '/usr/libexec/nlbwmon-action'},
+        context: context,
+      );
+      if (res is List && res.isNotEmpty && res[0] == 0) {
+        return true;
+      }
+      // Fallback check for binary if action script isn't found
+      final binRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'stat',
+        params: {'path': '/usr/sbin/nlbwmon'},
+        context: context,
+      );
+      return binRes is List && binRes.isNotEmpty && binRes[0] == 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<NlbwmonReport?> fetchNlbwmonData(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    String groupBy = 'mac',
+    String? period,
+    BuildContext? context,
+  }) async {
+    try {
+      final params = ['download', '-f', 'json', '-g', groupBy];
+      if (period != null && period.isNotEmpty) {
+        params.addAll(['-t', period]);
+      }
+
+      final res = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'exec',
+        params: fileExecParams('/usr/libexec/nlbwmon-action', params),
+        context: context,
+      );
+
+      String? stdout;
+      if (res is List && res.length > 1 && res[1] is Map) {
+        final data = res[1] as Map;
+        if (data['code'] == 0 && data['stdout'] is String) {
+          stdout = data['stdout'] as String;
+        } else if (data['code'] != 0) {
+          Logger.warning(
+            'nlbwmon-action download failed with code ${data['code']}: ${data['stderr']}',
+          );
+        }
+      } else if (res is Map && res['code'] == 0 && res['stdout'] is String) {
+        stdout = res['stdout'] as String;
+      }
+
+      if (stdout != null && stdout.trim().startsWith('{')) {
+        final decoded = jsonDecode(stdout.trim());
+        if (decoded is Map) {
+          final parsed = Map<String, dynamic>.from(decoded);
+          return NlbwmonReport.fromJson(parsed, period);
+        }
+      }
+    } catch (e) {
+      Logger.warning('fetchNlbwmonData failed: $e');
+    }
+    return null;
+  }
+
+  @override
+  Future<List<String>> fetchNlbwmonPeriods(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    try {
+      final res = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'exec',
+        params: fileExecParams('/usr/libexec/nlbwmon-action', ['periods']),
+        context: context,
+      );
+
+      String? stdout;
+      if (res is List && res.length > 1 && res[1] is Map) {
+        final data = res[1] as Map;
+        if (data['code'] == 0 && data['stdout'] is String) {
+          stdout = data['stdout'] as String;
+        } else if (data['code'] != 0) {
+          Logger.warning(
+            'nlbwmon-action periods failed with code ${data['code']}: ${data['stderr']}',
+          );
+        }
+      } else if (res is Map && res['code'] == 0 && res['stdout'] is String) {
+        stdout = res['stdout'] as String;
+      }
+
+      if (stdout != null && stdout.trim().startsWith('{')) {
+        final decoded = jsonDecode(stdout.trim());
+        if (decoded is Map) {
+          final periods = decoded['periods'];
+          if (periods is List) {
+            return periods.map((p) => p.toString()).toList();
+          }
+        }
+      }
+    } catch (e) {
+      Logger.warning('fetchNlbwmonPeriods failed: $e');
+    }
+    return const [];
+  }
+
+  @override
+  Future<bool> setRouterHostname(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String newHostname, {
+    BuildContext? context,
+  }) async {
+    try {
+      // 1. Get system config to find the section of type 'system'
+      final systemConfig = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'system'},
+        context: mountedContext(context),
+      );
+
+      String? targetSection;
+      if (systemConfig is Map && systemConfig['values'] is Map) {
+        final values = systemConfig['values'] as Map;
+        for (final entry in values.entries) {
+          if (entry.value is Map && entry.value['.type'] == 'system') {
+            targetSection =
+                entry.value['.name']?.toString() ?? entry.key.toString();
+            break;
+          }
+        }
+      } else if (systemConfig is List &&
+          systemConfig.length > 1 &&
+          systemConfig[1] is Map &&
+          (systemConfig[1] as Map)['values'] is Map) {
+        final values = (systemConfig[1] as Map)['values'] as Map;
+        for (final entry in values.entries) {
+          if (entry.value is Map && entry.value['.type'] == 'system') {
+            targetSection =
+                entry.value['.name']?.toString() ?? entry.key.toString();
+            break;
+          }
+        }
+      }
+
+      // Fallback if section was not specifically named
+      targetSection ??= '@system[0]';
+
+      // 2. Set the hostname in UCI system config
+      await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'set',
+        params: {
+          'config': 'system',
+          'section': targetSection,
+          'values': {'hostname': newHostname},
+        },
+        context: mountedContext(context),
+      );
+
+      // 3. Commit system config
+      await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'commit',
+        params: {'config': 'system'},
+        context: mountedContext(context),
+      );
+
+      // 4. Reload system service and dnsmasq service to immediately apply
+      try {
+        await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'rc',
+          method: 'init',
+          params: {'name': 'system', 'action': 'reload'},
+          context: mountedContext(context),
+        );
+      } catch (e) {
+        Logger.warning('rc.init system reload failed (non-critical): $e');
+      }
+
+      try {
+        await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'rc',
+          method: 'init',
+          params: {'name': 'dnsmasq', 'action': 'reload'},
+          context: mountedContext(context),
+        );
+      } catch (e) {
+        Logger.warning('rc.init dnsmasq reload failed (non-critical): $e');
+      }
+
+      // Fallback reload_config invocation
+      try {
+        await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'file',
+          method: 'exec',
+          params: fileExecParams('/sbin/reload_config', const []),
+          context: mountedContext(context),
+        );
+      } catch (_) {}
+
+      return true;
+    } catch (e, stack) {
+      Logger.exception('Failed to set router hostname', e, stack);
+      return false;
+    }
   }
 }

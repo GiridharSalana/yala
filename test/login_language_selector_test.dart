@@ -192,13 +192,13 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(
-            locale: const Locale('fr'),
+          child: const MaterialApp(
+            locale: Locale('fr'),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: MediaQuery(
-              data: const MediaQueryData(textScaler: TextScaler.linear(1.45)),
-              child: const LoginScreen(),
+              data: MediaQueryData(textScaler: TextScaler.linear(1.45)),
+              child: LoginScreen(),
             ),
           ),
         ),
@@ -317,13 +317,13 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(
-            locale: const Locale('zh'),
+          child: const MaterialApp(
+            locale: Locale('zh'),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: MediaQuery(
-              data: const MediaQueryData(textScaler: TextScaler.linear(1.45)),
-              child: const LoginScreen(),
+              data: MediaQueryData(textScaler: TextScaler.linear(1.45)),
+              child: LoginScreen(),
             ),
           ),
         ),

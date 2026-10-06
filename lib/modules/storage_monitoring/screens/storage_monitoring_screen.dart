@@ -96,6 +96,21 @@ class StorageMonitoringScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   _buildOverallUsageCard(context, storage),
+                  if (storage.hasExternalStorage) ...[
+                    const SizedBox(height: 16),
+                    _buildSectionHeader(
+                      context,
+                      l10n?.storageMonExternalDevicesSection(
+                            storage.externalMounts.length,
+                          ) ??
+                          'External Storage Devices (${storage.externalMounts.length})',
+                      Icons.usb_rounded,
+                    ),
+                    const SizedBox(height: 8),
+                    ...storage.externalMounts.map(
+                      (mp) => _buildExternalStorageCard(context, mp),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _buildSectionHeader(
                     context,
@@ -192,11 +207,25 @@ class StorageMonitoringScreen extends ConsumerWidget {
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  l10n?.storageMonTotalSystemStorage ?? 'Total System Storage',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        l10n?.storageMonTotalSystemStorage ??
+                            'Total System Storage',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      if (storage.hasExternalStorage)
+                        _buildExternalStorageBadge(context, storage),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Text(
                   l10n?.storageMonPercentUsed(percent.toStringAsFixed(1)) ??
                       '${percent.toStringAsFixed(1)}% Used',
@@ -221,6 +250,61 @@ class StorageMonitoringScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            if (storage.hasExternalStorage) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.5,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.memory,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '${l10n?.storageMonInbuiltLabel ?? "Inbuilt"}: ${StorageOverview.formatBytes(storage.inbuiltStorageTotalBytes)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.usb_rounded,
+                          size: 14,
+                          color: theme.colorScheme.tertiary,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '${l10n?.storageMonExternalLabel ?? "External"}: ${StorageOverview.formatBytes(storage.externalStorageTotalBytes)}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.tertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -240,6 +324,150 @@ class StorageMonitoringScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExternalStorageBadge(
+    BuildContext context,
+    StorageOverview storage,
+  ) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final sizeFormatted = StorageOverview.formatBytes(
+      storage.externalStorageTotalBytes,
+    );
+    final badgeText =
+        l10n?.storageMonExternalBadge(sizeFormatted) ??
+        'External: $sizeFormatted';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: theme.colorScheme.tertiary.withValues(alpha: 0.4),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.usb_rounded,
+            size: 13,
+            color: theme.colorScheme.onTertiaryContainer,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            badgeText,
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 10.5,
+              color: theme.colorScheme.onTertiaryContainer,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExternalStorageCard(BuildContext context, MountPointItem item) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final percent = item.usedPercent;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.usb_rounded,
+                        color: theme.colorScheme.tertiary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item.mountPath,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    item.filesystemType.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onTertiaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 18),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: (percent / 100).clamp(0.0, 1.0),
+                minHeight: 8,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  percent > 90
+                      ? Colors.red
+                      : (percent > 75
+                          ? Colors.orange
+                          : theme.colorScheme.tertiary),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildDetailRow(
+              l10n?.storageMonBlockDevice ?? 'Block Device',
+              item.device,
+            ),
+            _buildDetailRow(
+              l10n?.storageMonMountTarget ?? 'Mount Target',
+              item.mountPath,
+            ),
+            _buildDetailRow(
+              l10n?.storageMonSize ?? 'Size',
+              StorageOverview.formatBytes(item.sizeBytes),
+            ),
+            _buildDetailRow(
+              l10n?.storageMonUsedSpace ?? 'Used Space',
+              '${StorageOverview.formatBytes(item.usedBytes)} (${percent.toStringAsFixed(1)}%)',
+            ),
+            _buildDetailRow(
+              l10n?.storageMonFreeSpace ?? 'Free Space',
+              StorageOverview.formatBytes(item.availableBytes),
             ),
           ],
         ),
@@ -364,6 +592,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
   }
 
   Widget _buildMountPointCard(BuildContext context, MountPointItem item) {
+    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final mountTarget = item.mountPath;
     final blockDevice = item.device;
@@ -383,15 +612,51 @@ class StorageMonitoringScreen extends ConsumerWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          backgroundColor: item.isExternal
+              ? theme.colorScheme.tertiaryContainer
+              : theme.colorScheme.primaryContainer,
           child: Icon(
-            item.isTmp ? Icons.folder_zip_outlined : Icons.sd_storage_outlined,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
+            item.isExternal
+                ? Icons.usb_rounded
+                : (item.isTmp
+                    ? Icons.folder_zip_outlined
+                    : Icons.sd_storage_outlined),
+            color: item.isExternal
+                ? theme.colorScheme.onTertiaryContainer
+                : theme.colorScheme.onPrimaryContainer,
           ),
         ),
-        title: Text(
-          titleLabel,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                titleLabel,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (item.isExternal) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 1.5,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  l10n?.storageMonExternalLabel ?? 'External',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onTertiaryContainer,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         subtitle: Text(
           item.filesystemType.isNotEmpty

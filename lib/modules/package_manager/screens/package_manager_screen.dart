@@ -2,12 +2,15 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yet_another_luci_app/main.dart';
 import 'package:yet_another_luci_app/design/luci_design_system.dart';
 import 'package:yet_another_luci_app/models/router_capabilities.dart';
+import 'package:yet_another_luci_app/state/app_state.dart';
 import 'package:yet_another_luci_app/widgets/luci_toast.dart';
+import 'package:yet_another_luci_app/widgets/rpc_permissions_dialog.dart';
 import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import '../models/package_info.dart';
 
@@ -25,12 +28,44 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounceTimer;
   String _searchQuery = '';
+  List<OpenWrtPackage> _filteredInstalled = const [];
+  List<OpenWrtPackage> _filteredAvailable = const [];
+  List<OpenWrtPackage> _filteredUpgradable = const [];
   PackageManagerOverview? _overview;
   bool _isLoading = true;
   bool _isUpdatingLists = false;
   String? _errorMessage;
   bool _isPermissionDenied = false;
+
+  void _recomputeFilteredPackages() {
+    final installedList = _overview?.installedPackages ?? const [];
+    final availableList = _overview?.availablePackages ?? const [];
+    final upgradableList = _overview?.upgradablePackages ?? const [];
+
+    if (_searchQuery.isEmpty) {
+      _filteredInstalled = installedList;
+      _filteredAvailable = availableList;
+      _filteredUpgradable = upgradableList;
+      return;
+    }
+
+    _filteredInstalled = installedList.where((p) {
+      return p.name.toLowerCase().contains(_searchQuery) ||
+          p.description.toLowerCase().contains(_searchQuery);
+    }).toList();
+
+    _filteredAvailable = availableList.where((p) {
+      return p.name.toLowerCase().contains(_searchQuery) ||
+          p.description.toLowerCase().contains(_searchQuery);
+    }).toList();
+
+    _filteredUpgradable = upgradableList.where((p) {
+      return p.name.toLowerCase().contains(_searchQuery) ||
+          p.description.toLowerCase().contains(_searchQuery);
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -40,8 +75,16 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
       if (mounted) setState(() {});
     });
     _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.trim().toLowerCase();
+      _searchDebounceTimer?.cancel();
+      _searchDebounceTimer = Timer(const Duration(milliseconds: 250), () {
+        if (!mounted) return;
+        final newQuery = _searchController.text.trim().toLowerCase();
+        if (_searchQuery != newQuery) {
+          setState(() {
+            _searchQuery = newQuery;
+            _recomputeFilteredPackages();
+          });
+        }
       });
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -51,6 +94,7 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -73,6 +117,7 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
           _isLoading = false;
           if (res.isSuccess && res.data != null) {
             _overview = res.data;
+            _recomputeFilteredPackages();
             if (_overview != null &&
                 _overview!.activeManager !=
                     appState.capabilities?.packageEngine) {
@@ -111,6 +156,9 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
     int? exitCode,
     bool isError = true,
   }) {
+    final isReadOnlyError = output.toLowerCase().contains(
+      'read-only file system',
+    );
     showDialog(
       context: context,
       builder: (context) {
@@ -146,6 +194,40 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (isReadOnlyError) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade900.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.amber.shade700.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.amber.shade800,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'The router\'s root filesystem is mounted read-only because there is no space left in the flash overlay partition (/overlay).\n\nTo resolve this:\n• Free up flash space or remove unused packages\n• Run "firstboot" via SSH to reset the overlay\n• Use Extroot (USB drive) for expanded storage',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.amber.shade900,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (exitCode != null) ...[
                   Text(
                     'Exit code: $exitCode',
@@ -193,6 +275,14 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
     final appState = ref.read(appStateProvider);
     final l10n = AppLocalizations.of(context);
 
+    if (appState.isMissingRpcPackages) {
+      await RpcPermissionsDialog.show(
+        context,
+        actionName: l10n?.pkgBtnUpdateLists ?? 'Update lists',
+      );
+      return;
+    }
+
     setState(() => _isUpdatingLists = true);
     context.showToastLoading(
       l10n?.pkgBtnUpdateLists ?? 'Updating package lists...',
@@ -216,7 +306,7 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
       } else {
         context.showToastError(
           l10n?.pkgListsUpdateFailed ?? 'Update Failed',
-          subtitle: res.errorMessage ?? 'Command failed',
+          subtitle: res.userFriendlyPackageError,
           actionKey: 'pkg_update_lists',
         );
         _showCommandOutputDialog(
@@ -232,6 +322,15 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
   Future<void> _showInstallCustomDialog() async {
     final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
+
+    if (appState.isMissingRpcPackages) {
+      await RpcPermissionsDialog.show(
+        context,
+        actionName: l10n?.pkgBtnInstallCustom ?? 'Install Custom Package',
+      );
+      return;
+    }
+
     final isApk =
         (_overview?.activeManager ?? appState.capabilities?.packageEngine) ==
             PackageManagerType.apk ||
@@ -314,7 +413,7 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
       } else {
         context.showToastError(
           'Installation Failed',
-          subtitle: res.errorMessage ?? 'Command failed',
+          subtitle: res.userFriendlyPackageError,
           actionKey: 'pkg_install_$target',
         );
         _showCommandOutputDialog(
@@ -330,6 +429,14 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
   Future<void> _confirmAndUninstall(OpenWrtPackage pkg) async {
     final appState = ref.read(appStateProvider);
     final l10n = AppLocalizations.of(context);
+
+    if (appState.isMissingRpcPackages) {
+      await RpcPermissionsDialog.show(
+        context,
+        actionName: '${l10n?.pkgActionUninstall ?? "Uninstall"} ${pkg.name}',
+      );
+      return;
+    }
 
     final isCritical = PackageController.isCriticalPackage(pkg.name);
 
@@ -453,7 +560,7 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
       } else {
         context.showToastError(
           'Uninstall Failed',
-          subtitle: res.errorMessage ?? 'Command failed',
+          subtitle: res.userFriendlyPackageError,
           actionKey: actionKey,
         );
         _showCommandOutputDialog(
@@ -469,6 +576,14 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
   Future<void> _confirmAndInstall(OpenWrtPackage pkg) async {
     final appState = ref.read(appStateProvider);
     final l10n = AppLocalizations.of(context);
+
+    if (appState.isMissingRpcPackages) {
+      await RpcPermissionsDialog.show(
+        context,
+        actionName: '${l10n?.pkgActionInstall ?? "Install"} ${pkg.name}',
+      );
+      return;
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -521,7 +636,7 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
       } else {
         context.showToastError(
           'Installation Failed',
-          subtitle: res.errorMessage ?? 'Command failed',
+          subtitle: res.userFriendlyPackageError,
           actionKey: actionKey,
         );
         _showCommandOutputDialog(
@@ -537,6 +652,14 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
   Future<void> _confirmAndUpgrade(OpenWrtPackage pkg) async {
     final appState = ref.read(appStateProvider);
     final l10n = AppLocalizations.of(context);
+
+    if (appState.isMissingRpcPackages) {
+      await RpcPermissionsDialog.show(
+        context,
+        actionName: '${l10n?.pkgActionUpgrade ?? "Upgrade"} ${pkg.name}',
+      );
+      return;
+    }
 
     final newVer = pkg.newVersion ?? 'latest';
     final confirmed = await showDialog<bool>(
@@ -594,7 +717,7 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
       } else {
         context.showToastError(
           'Upgrade Failed',
-          subtitle: res.errorMessage ?? 'Command failed',
+          subtitle: res.userFriendlyPackageError,
           actionKey: actionKey,
         );
         _showCommandOutputDialog(
@@ -610,6 +733,7 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
   void _showPackageDetails(BuildContext context, OpenWrtPackage pkg) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final isRpcMissing = ref.read(appStateProvider).isMissingRpcPackages;
 
     showModalBottomSheet(
       context: context,
@@ -773,14 +897,34 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
                           Expanded(
                             child: ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.amber.shade800,
-                                foregroundColor: Colors.white,
+                                backgroundColor: isRpcMissing
+                                    ? theme.colorScheme.surfaceContainerHighest
+                                    : Colors.amber.shade800,
+                                foregroundColor: isRpcMissing
+                                    ? theme.colorScheme.onSurfaceVariant
+                                    : Colors.white,
                               ),
                               onPressed: () {
                                 Navigator.pop(context);
-                                _confirmAndUpgrade(pkg);
+                                if (isRpcMissing) {
+                                  RpcPermissionsDialog.show(
+                                    context,
+                                    actionName:
+                                        '${l10n?.pkgActionUpgrade ?? "Upgrade"} ${pkg.name}',
+                                  );
+                                } else {
+                                  _confirmAndUpgrade(pkg);
+                                }
                               },
-                              icon: const Icon(Icons.upgrade_rounded, size: 18),
+                              icon: Icon(
+                                isRpcMissing
+                                    ? Icons.lock_outline_rounded
+                                    : Icons.upgrade_rounded,
+                                size: 18,
+                                color: isRpcMissing
+                                    ? Colors.amber.shade800
+                                    : null,
+                              ),
                               label: Text(l10n?.pkgActionUpgrade ?? 'Upgrade'),
                             ),
                           ),
@@ -789,14 +933,36 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
                         Expanded(
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(color: Colors.red),
+                              foregroundColor: isRpcMissing
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : Colors.red,
+                              side: BorderSide(
+                                color: isRpcMissing
+                                    ? theme.colorScheme.outlineVariant
+                                    : Colors.red,
+                              ),
                             ),
                             onPressed: () {
                               Navigator.pop(context);
-                              _confirmAndUninstall(pkg);
+                              if (isRpcMissing) {
+                                RpcPermissionsDialog.show(
+                                  context,
+                                  actionName:
+                                      '${l10n?.pkgActionUninstall ?? "Uninstall"} ${pkg.name}',
+                                );
+                              } else {
+                                _confirmAndUninstall(pkg);
+                              }
                             },
-                            icon: const Icon(Icons.delete_outline, size: 18),
+                            icon: Icon(
+                              isRpcMissing
+                                  ? Icons.lock_outline_rounded
+                                  : Icons.delete_outline,
+                              size: 18,
+                              color: isRpcMissing
+                                  ? Colors.amber.shade800
+                                  : null,
+                            ),
                             label: Text(
                               l10n?.pkgActionUninstall ?? 'Uninstall',
                             ),
@@ -807,15 +973,33 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
                   else
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: isRpcMissing
+                            ? theme.colorScheme.surfaceContainerHighest
+                            : theme.colorScheme.primary,
+                        foregroundColor: isRpcMissing
+                            ? theme.colorScheme.onSurfaceVariant
+                            : Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: () {
                         Navigator.pop(context);
-                        _confirmAndInstall(pkg);
+                        if (isRpcMissing) {
+                          RpcPermissionsDialog.show(
+                            context,
+                            actionName:
+                                '${l10n?.pkgActionInstall ?? "Install"} ${pkg.name}',
+                          );
+                        } else {
+                          _confirmAndInstall(pkg);
+                        }
                       },
-                      icon: const Icon(Icons.download_rounded, size: 18),
+                      icon: Icon(
+                        isRpcMissing
+                            ? Icons.lock_outline_rounded
+                            : Icons.download_rounded,
+                        size: 18,
+                        color: isRpcMissing ? Colors.amber.shade800 : null,
+                      ),
                       label: Text(l10n?.pkgActionInstall ?? 'Install Package'),
                     ),
                 ],
@@ -852,11 +1036,90 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
     );
   }
 
+  Widget _buildRpcPermissionsBanner(
+    BuildContext context,
+    AppState appState,
+    AppLocalizations? l10n,
+  ) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade900.withValues(alpha: 0.12),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.amber.shade700.withValues(alpha: 0.3),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.lock_outline_rounded,
+            size: 20,
+            color: Colors.amber.shade800,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n?.rpcdPermissionDenied ?? 'Permissions Required',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber.shade900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  l10n != null
+                      ? l10n.rpcdPermissionDeniedMessage(
+                          l10n.pkgCardPackageManager,
+                        )
+                      : 'Package updates, installations, and removals are restricted until RPC permissions are granted.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.tonal(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.amber.shade700,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: () => RpcPermissionsDialog.show(
+              context,
+              actionName: l10n?.pkgCardPackageManager ?? 'Package Manager',
+            ),
+            child: Text(
+              l10n?.btnFixAutomatically ?? 'Fix Permissions',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final appState = ref.watch(appStateProvider);
-    final caps = appState.capabilities;
+    final caps = ref.watch(appStateProvider.select((s) => s.capabilities));
+    final isRpcMissing = ref.watch(
+      appStateProvider.select((s) => s.isMissingRpcPackages),
+    );
     final isApk =
         (_overview?.activeManager ?? caps?.packageEngine) ==
             PackageManagerType.apk ||
@@ -922,23 +1185,9 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
     final availableList = _overview?.availablePackages ?? [];
     final upgradableList = _overview?.upgradablePackages ?? [];
 
-    final filteredInstalled = installedList.where((p) {
-      if (_searchQuery.isEmpty) return true;
-      return p.name.toLowerCase().contains(_searchQuery) ||
-          p.description.toLowerCase().contains(_searchQuery);
-    }).toList();
-
-    final filteredAvailable = availableList.where((p) {
-      if (_searchQuery.isEmpty) return true;
-      return p.name.toLowerCase().contains(_searchQuery) ||
-          p.description.toLowerCase().contains(_searchQuery);
-    }).toList();
-
-    final filteredUpgradable = upgradableList.where((p) {
-      if (_searchQuery.isEmpty) return true;
-      return p.name.toLowerCase().contains(_searchQuery) ||
-          p.description.toLowerCase().contains(_searchQuery);
-    }).toList();
+    final filteredInstalled = _filteredInstalled;
+    final filteredAvailable = _filteredAvailable;
+    final filteredUpgradable = _filteredUpgradable;
 
     return Scaffold(
       appBar: AppBar(
@@ -1018,6 +1267,12 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
             )
           : Column(
               children: [
+                if (isRpcMissing)
+                  _buildRpcPermissionsBanner(
+                    context,
+                    ref.read(appStateProvider),
+                    l10n,
+                  ),
                 // Top Action Toolbar
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -1044,7 +1299,14 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
                           suffixIcon: _searchQuery.isNotEmpty
                               ? IconButton(
                                   icon: const Icon(Icons.clear, size: 18),
-                                  onPressed: () => _searchController.clear(),
+                                  onPressed: () {
+                                    _searchDebounceTimer?.cancel();
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                      _recomputeFilteredPackages();
+                                    });
+                                  },
                                 )
                               : null,
                           isDense: true,
@@ -1071,10 +1333,23 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
+                                side: isRpcMissing
+                                    ? BorderSide(
+                                        color: theme.colorScheme.outline
+                                            .withValues(alpha: 0.3),
+                                      )
+                                    : null,
                               ),
                               onPressed: _isUpdatingLists
                                   ? null
-                                  : _handleUpdateLists,
+                                  : (isRpcMissing
+                                        ? () => RpcPermissionsDialog.show(
+                                            context,
+                                            actionName:
+                                                l10n?.pkgBtnUpdateLists ??
+                                                'Update lists',
+                                          )
+                                        : _handleUpdateLists),
                               icon: _isUpdatingLists
                                   ? const SizedBox(
                                       width: 14,
@@ -1083,25 +1358,63 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
                                         strokeWidth: 2,
                                       ),
                                     )
-                                  : const Icon(Icons.sync_rounded, size: 16),
+                                  : Icon(
+                                      isRpcMissing
+                                          ? Icons.lock_outline_rounded
+                                          : Icons.sync_rounded,
+                                      size: 16,
+                                      color: isRpcMissing
+                                          ? Colors.amber.shade800
+                                          : null,
+                                    ),
                               label: Text(
                                 l10n?.pkgBtnUpdateLists ?? 'Update lists...',
-                                style: const TextStyle(fontSize: 12),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isRpcMissing
+                                      ? theme.colorScheme.onSurface.withValues(
+                                          alpha: 0.6,
+                                        )
+                                      : null,
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           IconButton.outlined(
-                            tooltip:
-                                l10n?.pkgBtnInstallCustom ??
-                                'Install custom package',
+                            tooltip: isRpcMissing
+                                ? (l10n?.rpcdPermissionDenied ??
+                                      'Permissions Required')
+                                : (l10n?.pkgBtnInstallCustom ??
+                                      'Install custom package'),
                             style: IconButton.styleFrom(
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
+                              side: isRpcMissing
+                                  ? BorderSide(
+                                      color: theme.colorScheme.outline
+                                          .withValues(alpha: 0.3),
+                                    )
+                                  : null,
                             ),
-                            icon: const Icon(Icons.add_box_outlined, size: 18),
-                            onPressed: _showInstallCustomDialog,
+                            icon: Icon(
+                              isRpcMissing
+                                  ? Icons.lock_outline_rounded
+                                  : Icons.add_box_outlined,
+                              size: 18,
+                              color: isRpcMissing
+                                  ? Colors.amber.shade800
+                                  : null,
+                            ),
+                            onPressed: isRpcMissing
+                                ? () => RpcPermissionsDialog.show(
+                                    context,
+                                    actionName:
+                                        l10n?.pkgBtnInstallCustom ??
+                                        'Install custom package',
+                                  )
+                                : _showInstallCustomDialog,
                           ),
                           if (_overview?.formattedFreeSpace != null) ...[
                             const SizedBox(width: 8),
@@ -1201,10 +1514,38 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
                               ),
                             ),
                             const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () => _loadPackages(),
-                              icon: const Icon(Icons.refresh, size: 16),
-                              label: Text(l10n?.pkgMgrBtnRetry ?? 'Retry'),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () => _loadPackages(),
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: Text(l10n?.pkgMgrBtnRetry ?? 'Retry'),
+                                ),
+                                if (_isPermissionDenied || isRpcMissing) ...[
+                                  const SizedBox(width: 12),
+                                  FilledButton.icon(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.amber.shade800,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () => RpcPermissionsDialog.show(
+                                      context,
+                                      actionName:
+                                          l10n?.pkgCardPackageManager ??
+                                          'Package Manager',
+                                    ),
+                                    icon: const Icon(
+                                      Icons.build_circle_outlined,
+                                      size: 16,
+                                    ),
+                                    label: Text(
+                                      l10n?.btnFixAutomatically ??
+                                          'Fix Permissions',
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
@@ -1304,25 +1645,51 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final isCore = PackageController.isCriticalPackage(pkg.name);
+    final isRpcMissing = ref.watch(appStateProvider).isMissingRpcPackages;
 
     final Widget actionButton;
     switch (actionType) {
       case _PackageActionType.uninstall:
         actionButton = OutlinedButton(
           style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.red),
+            side: BorderSide(
+              color: isRpcMissing
+                  ? theme.colorScheme.outlineVariant
+                  : Colors.red,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          onPressed: () => _confirmAndUninstall(pkg),
-          child: Text(
-            l10n?.pkgActionUninstall ?? 'Uninstall',
-            style: const TextStyle(
-              color: Colors.red,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-            ),
+          onPressed: isRpcMissing
+              ? () => RpcPermissionsDialog.show(
+                  context,
+                  actionName:
+                      '${l10n?.pkgActionUninstall ?? "Uninstall"} ${pkg.name}',
+                )
+              : () => _confirmAndUninstall(pkg),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isRpcMissing) ...[
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 12,
+                  color: Colors.amber.shade800,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                l10n?.pkgActionUninstall ?? 'Uninstall',
+                style: TextStyle(
+                  color: isRpcMissing
+                      ? theme.colorScheme.onSurfaceVariant
+                      : Colors.red,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         );
         break;
@@ -1330,16 +1697,42 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
       case _PackageActionType.install:
         actionButton = ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: theme.colorScheme.primary,
-            foregroundColor: Colors.white,
+            backgroundColor: isRpcMissing
+                ? theme.colorScheme.surfaceContainerHighest
+                : theme.colorScheme.primary,
+            foregroundColor: isRpcMissing
+                ? theme.colorScheme.onSurfaceVariant
+                : Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          onPressed: () => _confirmAndInstall(pkg),
-          child: Text(
-            l10n?.pkgActionInstall ?? 'Install',
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          onPressed: isRpcMissing
+              ? () => RpcPermissionsDialog.show(
+                  context,
+                  actionName:
+                      '${l10n?.pkgActionInstall ?? "Install"} ${pkg.name}',
+                )
+              : () => _confirmAndInstall(pkg),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isRpcMissing) ...[
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 12,
+                  color: Colors.amber.shade800,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                l10n?.pkgActionInstall ?? 'Install',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         );
         break;
@@ -1347,16 +1740,42 @@ class _PackageManagerScreenState extends ConsumerState<PackageManagerScreen>
       case _PackageActionType.upgrade:
         actionButton = ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.amber.shade800,
-            foregroundColor: Colors.white,
+            backgroundColor: isRpcMissing
+                ? theme.colorScheme.surfaceContainerHighest
+                : Colors.amber.shade800,
+            foregroundColor: isRpcMissing
+                ? theme.colorScheme.onSurfaceVariant
+                : Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          onPressed: () => _confirmAndUpgrade(pkg),
-          child: Text(
-            l10n?.pkgActionUpgrade ?? 'Upgrade',
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          onPressed: isRpcMissing
+              ? () => RpcPermissionsDialog.show(
+                  context,
+                  actionName:
+                      '${l10n?.pkgActionUpgrade ?? "Upgrade"} ${pkg.name}',
+                )
+              : () => _confirmAndUpgrade(pkg),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isRpcMissing) ...[
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 12,
+                  color: Colors.amber.shade800,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                l10n?.pkgActionUpgrade ?? 'Upgrade',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         );
         break;

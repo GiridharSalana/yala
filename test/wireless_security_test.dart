@@ -159,16 +159,16 @@ void main() {
     );
 
     test('WPA/WPA2/WPA3 passphrase validation rules', () {
-      final valid8Char = '12345678';
+      const valid8Char = '12345678';
       final valid63Char = 'A' * 63;
-      final valid64Hex =
+      const valid64Hex =
           'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90';
 
       expect(valid8Char.length >= 8 && valid8Char.length <= 63, isTrue);
       expect(valid63Char.length >= 8 && valid63Char.length <= 63, isTrue);
       expect(RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(valid64Hex), isTrue);
 
-      final invalidShort = '1234567';
+      const invalidShort = '1234567';
       final invalid64NonHex = 'G' * 64;
       expect(invalidShort.length < 8, isTrue);
       expect(RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(invalid64NonHex), isFalse);

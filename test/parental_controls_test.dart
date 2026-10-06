@@ -28,12 +28,12 @@ void main() {
     });
 
     test('Add, update, and delete profile', () {
-      final profile = ParentalProfile(
+      const profile = ParentalProfile(
         id: 'test_1',
         name: 'Kids Tablet',
         icon: '👦',
         color: '#F97316',
-        macAddresses: const ['AA:BB:CC:DD:EE:11'],
+        macAddresses: ['AA:BB:CC:DD:EE:11'],
         dailyTimeLimitMinutes: 120,
         contentFilter: ContentFilterDns.cloudflareFamilySafe,
       );
@@ -64,12 +64,12 @@ void main() {
     });
 
     test('Pause and resume state management', () {
-      final profile = ParentalProfile(
+      const profile = ParentalProfile(
         id: 'test_pause',
         name: 'Gaming Console',
         icon: '🎮',
         color: '#3B82F6',
-        macAddresses: const ['11:22:33:44:55:66'],
+        macAddresses: ['11:22:33:44:55:66'],
       );
       store.addProfile(profile);
 
@@ -89,13 +89,13 @@ void main() {
     });
 
     test('Serialization and deserialization', () {
-      final profile = ParentalProfile(
+      const profile = ParentalProfile(
         id: 'test_ser',
         name: 'Teen Phone',
         icon: '📱',
         color: '#EF4444',
-        macAddresses: const ['00:11:22:33:44:55'],
-        schedule: const TimeSchedule(
+        macAddresses: ['00:11:22:33:44:55'],
+        schedule: TimeSchedule(
           activeDays: {ScheduleDay.monday, ScheduleDay.friday},
           blockHour: 23,
           blockMinute: 30,
@@ -121,12 +121,12 @@ void main() {
     });
 
     test('Bypass state toggling and isMacPaused behavior', () {
-      final profile = ParentalProfile(
+      const profile = ParentalProfile(
         id: 'test_bypass',
         name: 'Bypass Test',
         icon: '📱',
         color: '#EF4444',
-        macAddresses: const ['AA:BB:CC:DD:EE:99'],
+        macAddresses: ['AA:BB:CC:DD:EE:99'],
         isPaused: true,
         isEnabled: true,
       );
@@ -230,12 +230,12 @@ void main() {
     test(
       'Store persistence round-trip preserves daily minutes and activity log',
       () {
-        final profile = ParentalProfile(
+        const profile = ParentalProfile(
           id: 'test_rt',
           name: 'Roundtrip Profile',
           icon: '🎮',
           color: '#10B981',
-          macAddresses: const ['AA:BB:CC:DD:EE:00'],
+          macAddresses: ['AA:BB:CC:DD:EE:00'],
         );
         store.addProfile(profile);
         store.incrementDailyMinutesUsed('AA:BB:CC:DD:EE:00', 45);
@@ -254,12 +254,12 @@ void main() {
 
     test('Firewall-denied operations return clear failure type', () async {
       final appState = AppState.instance;
-      final profile = ParentalProfile(
+      const profile = ParentalProfile(
         id: 'test_fw',
         name: 'Firewall Test',
         icon: '📱',
         color: '#EF4444',
-        macAddresses: const ['00:11:22:33:44:99'],
+        macAddresses: ['00:11:22:33:44:99'],
       );
 
       final result = await controller.pauseProfile(
@@ -275,12 +275,12 @@ void main() {
       'Clear activity log via controller clears log and persists store',
       () async {
         final appState = AppState.instance;
-        final profile = ParentalProfile(
+        const profile = ParentalProfile(
           id: 'test_clear_log',
           name: 'Log Test',
           icon: '📱',
           color: '#10B981',
-          macAddresses: const ['AA:BB:CC:11:22:33'],
+          macAddresses: ['AA:BB:CC:11:22:33'],
         );
         store.addProfile(profile);
         expect(store.activityLog, isNotEmpty);
@@ -391,12 +391,12 @@ void main() {
     testWidgets(
       'AddEditProfileDialog context awareness disables save until modified when editing',
       (tester) async {
-        final existing = ParentalProfile(
+        const existing = ParentalProfile(
           id: 'p1',
           name: 'Kids Tablet',
           icon: '👦',
           color: '#F97316',
-          macAddresses: const ['AA:BB:CC:DD:EE:FF'],
+          macAddresses: ['AA:BB:CC:DD:EE:FF'],
         );
 
         await tester.pumpWidget(

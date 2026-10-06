@@ -584,7 +584,7 @@
   "@modSystemMonitoringDesc": {
     "description": "System monitoring module description"
   },
-  "modStorageName": "Storage",
+  "modStorageName": "Storage Monitoring",
   "@modStorageName": {
     "description": "Storage module name"
   },
@@ -5964,5 +5964,529 @@
         "example": "myddns_ipv4"
       }
     }
+  },
+  "modSqmName": "Smart Queue Management (SQM)",
+  "@modSqmName": {
+    "description": "Title of the Smart Queue Management module"
+  },
+  "modSqmDesc": "Bufferbloat mitigation, traffic shaping, CAKE and FQ-CoDel queueing disciplines",
+  "@modSqmDesc": {
+    "description": "Description of the Smart Queue Management module"
+  },
+  "modSqmNotInstalledBadge": "Not Installed",
+  "@modSqmNotInstalledBadge": {
+    "description": "Badge indicating SQM is not currently installed"
+  },
+  "modSqmIntroDesc": "Smart Queue Management (SQM) solves bufferbloat by maintaining low network latency under heavy upload and download loads using modern queue disciplines like CAKE and FQ-CoDel.",
+  "@modSqmIntroDesc": {
+    "description": "Introduction description for SQM"
+  },
+  "modSqmBulletBufferbloatTitle": "Eliminates Bufferbloat",
+  "@modSqmBulletBufferbloatTitle": {
+    "description": "Feature bullet title for eliminating bufferbloat"
+  },
+  "modSqmBulletBufferbloatDesc": "Keeps gaming ping low and video calls stable even when downloads max out your bandwidth.",
+  "@modSqmBulletBufferbloatDesc": {
+    "description": "Feature bullet description for bufferbloat elimination"
+  },
+  "modSqmBulletAlgorithmsTitle": "CAKE & FQ-CoDel Support",
+  "@modSqmBulletAlgorithmsTitle": {
+    "description": "Feature bullet title for algorithm support"
+  },
+  "modSqmBulletAlgorithmsDesc": "Advanced packet scheduling algorithms designed specifically for edge routers.",
+  "@modSqmBulletAlgorithmsDesc": {
+    "description": "Feature bullet description for queue algorithms"
+  },
+  "modSqmBulletOverheadTitle": "Framing Overhead Compensation",
+  "@modSqmBulletOverheadTitle": {
+    "description": "Feature bullet title for framing overhead"
+  },
+  "modSqmBulletOverheadDesc": "Compensate for DSL, PPPoE, or Cable per-packet framing overhead.",
+  "@modSqmBulletOverheadDesc": {
+    "description": "Feature bullet description for framing overhead"
+  },
+  "modSqmInstallButton": "Install SQM",
+  "@modSqmInstallButton": {
+    "description": "Button to trigger SQM installation"
+  },
+  "modSqmInstallingButton": "Installing...",
+  "@modSqmInstallingButton": {
+    "description": "Button state while installation is in progress"
+  },
+  "modSqmInstallTitle": "Install Smart Queue Management",
+  "@modSqmInstallTitle": {
+    "description": "Title of the SQM installation dialog"
+  },
+  "modSqmInstallChooseMethod": "Select Installation Package:",
+  "@modSqmInstallChooseMethod": {
+    "description": "Prompt to select which SQM package to install"
+  },
+  "modSqmOptionBackendOnlyTag": "Backend Only (~150 KB)",
+  "@modSqmOptionBackendOnlyTag": {
+    "description": "Tag for sqm-scripts backend option"
+  },
+  "modSqmOptionScriptsDesc": "Installs core traffic shaping scripts. Ideal for storage-constrained routers.",
+  "@modSqmOptionScriptsDesc": {
+    "description": "Description for sqm-scripts installation option"
+  },
+  "modSqmNoticeNoLuciWeb": "SQM controls will be fully accessible within YALA, but will NOT appear in the LuCI browser web interface.",
+  "@modSqmNoticeNoLuciWeb": {
+    "description": "Notice informing user that LuCI browser controls are omitted with sqm-scripts"
+  },
+  "modSqmOptionFullTag": "Web UI + Scripts (~500 KB)",
+  "@modSqmOptionFullTag": {
+    "description": "Tag for luci-app-sqm full package option"
+  },
+  "modSqmOptionLuciDesc": "Full package providing both backend shaping scripts and the browser LuCI web interface.",
+  "@modSqmOptionLuciDesc": {
+    "description": "Description for luci-app-sqm installation option"
+  },
+  "modSqmNoticeInsufficientStorage": "Insufficient storage: requires ~500 KB free in {partition}, but only {free} is available.",
+  "@modSqmNoticeInsufficientStorage": {
+    "description": "Warning message when router lacks sufficient storage for luci-app-sqm",
+    "placeholders": {
+      "partition": {
+        "type": "String",
+        "example": "/overlay"
+      },
+      "free": {
+        "type": "String",
+        "example": "56 KB"
+      }
+    }
+  },
+  "modSqmStorageReadOnlyNotice": "Storage filesystem is read-only or full. Package installation cannot proceed.",
+  "@modSqmStorageReadOnlyNotice": {
+    "description": "Error banner when storage is read-only or exhausted"
+  },
+  "modSqmInstalling": "Installing {packageName}...",
+  "@modSqmInstalling": {
+    "description": "Toast message when installing an SQM package",
+    "placeholders": {
+      "packageName": {
+        "type": "String",
+        "example": "sqm-scripts"
+      }
+    }
+  },
+  "modSqmInstallSuccess": "SQM installed successfully!",
+  "@modSqmInstallSuccess": {
+    "description": "Toast message on successful SQM installation"
+  },
+  "modSqmInstallFailedTitle": "Installation Failed",
+  "@modSqmInstallFailedTitle": {
+    "description": "Dialog and toast title when SQM installation fails"
+  },
+  "modSqmUninstallDialogTitle": "Uninstall SQM?",
+  "@modSqmUninstallDialogTitle": {
+    "description": "Confirmation dialog title for uninstalling SQM"
+  },
+  "modSqmUninstallDialogContent": "This will stop the SQM service and remove SQM packages from your router. Active queue shaping will cease.",
+  "@modSqmUninstallDialogContent": {
+    "description": "Confirmation dialog description for uninstalling SQM"
+  },
+  "modSqmUninstallingToast": "Uninstalling SQM...",
+  "@modSqmUninstallingToast": {
+    "description": "Toast when uninstalling SQM"
+  },
+  "modSqmUninstallSuccessToast": "SQM removed successfully.",
+  "@modSqmUninstallSuccessToast": {
+    "description": "Toast when SQM is successfully uninstalled"
+  },
+  "modSqmUninstallFailedToast": "Failed to remove SQM packages.",
+  "@modSqmUninstallFailedToast": {
+    "description": "Toast when SQM uninstallation fails"
+  },
+  "modSqmQueueCreatedToast": "Created new queue {name}.",
+  "@modSqmQueueCreatedToast": {
+    "description": "Toast when a new SQM queue is created",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "eth1"
+      }
+    }
+  },
+  "modSqmQueueCreateFailedToast": "Failed to create new queue.",
+  "@modSqmQueueCreateFailedToast": {
+    "description": "Toast when creating a new queue fails"
+  },
+  "modSqmQueuesTitle": "Configured Queues",
+  "@modSqmQueuesTitle": {
+    "description": "Header title for configured queue instances"
+  },
+  "modSqmBtnAddQueue": "Add Queue",
+  "@modSqmBtnAddQueue": {
+    "description": "Button to add a new SQM queue"
+  },
+  "modSqmNoQueuesTitle": "No Queues Configured",
+  "@modSqmNoQueuesTitle": {
+    "description": "Title when no queues are configured"
+  },
+  "modSqmNoQueuesDesc": "Add a queue on your WAN interface to start mitigating bufferbloat.",
+  "@modSqmNoQueuesDesc": {
+    "description": "Description when no queues are configured"
+  },
+  "modSqmServiceControlTitle": "SQM Daemon Service",
+  "@modSqmServiceControlTitle": {
+    "description": "Title for SQM daemon service card"
+  },
+  "modSqmStatusRunning": "Running",
+  "@modSqmStatusRunning": {
+    "description": "Status text when service is running"
+  },
+  "modSqmStatusStoppedEnabled": "Stopped (Enabled at boot)",
+  "@modSqmStatusStoppedEnabled": {
+    "description": "Status text when service is stopped but enabled at boot"
+  },
+  "modSqmStatusDisabled": "Disabled",
+  "@modSqmStatusDisabled": {
+    "description": "Status text when service is disabled"
+  },
+  "modSqmBootEnabled": "Starts automatically at boot",
+  "@modSqmBootEnabled": {
+    "description": "Subtitle when service starts at boot"
+  },
+  "modSqmBootDisabled": "Manual start only",
+  "@modSqmBootDisabled": {
+    "description": "Subtitle when service requires manual start"
+  },
+  "modSqmBtnRestartService": "Restart",
+  "@modSqmBtnRestartService": {
+    "description": "Button to restart SQM service"
+  },
+  "modSqmEnablingService": "Enabling SQM service...",
+  "@modSqmEnablingService": {
+    "description": "Toast when enabling SQM service"
+  },
+  "modSqmDisablingService": "Disabling SQM service...",
+  "@modSqmDisablingService": {
+    "description": "Toast when disabling SQM service"
+  },
+  "modSqmServiceEnabledToast": "SQM service started and enabled.",
+  "@modSqmServiceEnabledToast": {
+    "description": "Toast when SQM service is enabled"
+  },
+  "modSqmServiceDisabledToast": "SQM service stopped.",
+  "@modSqmServiceDisabledToast": {
+    "description": "Toast when SQM service is stopped"
+  },
+  "modSqmServiceToggleFailed": "Failed to update SQM service.",
+  "@modSqmServiceToggleFailed": {
+    "description": "Toast when SQM service toggle fails"
+  },
+  "modSqmRestartingService": "Restarting SQM...",
+  "@modSqmRestartingService": {
+    "description": "Toast when restarting SQM service"
+  },
+  "modSqmServiceRestartedToast": "SQM service restarted.",
+  "@modSqmServiceRestartedToast": {
+    "description": "Toast when SQM service is restarted"
+  },
+  "modSqmServiceRestartFailed": "Failed to restart SQM.",
+  "@modSqmServiceRestartFailed": {
+    "description": "Toast when SQM restart fails"
+  },
+  "modSqmQueueEnabled": "Active & Shaping Traffic",
+  "@modSqmQueueEnabled": {
+    "description": "Status text when queue is active"
+  },
+  "modSqmQueueDisabled": "Disabled",
+  "@modSqmQueueDisabled": {
+    "description": "Status text when queue is disabled"
+  },
+  "modSqmInterfaceLabel": "Network Interface",
+  "@modSqmInterfaceLabel": {
+    "description": "Label for interface dropdown"
+  },
+  "modSqmDownloadLabel": "Download (Mbps)",
+  "@modSqmDownloadLabel": {
+    "description": "Label for download bandwidth field"
+  },
+  "modSqmUploadLabel": "Upload (Mbps)",
+  "@modSqmUploadLabel": {
+    "description": "Label for upload bandwidth field"
+  },
+  "modSqmSpeedHint": "Recommendation: Set to 85-95% of your measured speedtest bandwidth. Set 0 to disable.",
+  "@modSqmSpeedHint": {
+    "description": "Hint for shaping speed values"
+  },
+  "modSqmQdiscLabel": "Queue Discipline",
+  "@modSqmQdiscLabel": {
+    "description": "Label for queue discipline selector"
+  },
+  "modSqmScriptLabel": "Setup Script",
+  "@modSqmScriptLabel": {
+    "description": "Label for setup script selector"
+  },
+  "modSqmLinklayerLabel": "Link Layer Framing & Overhead",
+  "@modSqmLinklayerLabel": {
+    "description": "Label for link layer framing section"
+  },
+  "modSqmFramingLabel": "Framing",
+  "@modSqmFramingLabel": {
+    "description": "Label for framing dropdown"
+  },
+  "modSqmOverheadLabel": "Overhead",
+  "@modSqmOverheadLabel": {
+    "description": "Label for overhead field"
+  },
+  "modSqmAdvancedOptionsTitle": "Advanced Queue Options",
+  "@modSqmAdvancedOptionsTitle": {
+    "description": "Title for collapsible advanced options"
+  },
+  "modSqmQdiscAdvanced": "Enable Advanced Qdisc Options",
+  "@modSqmQdiscAdvanced": {
+    "description": "Toggle for advanced qdisc options"
+  },
+  "modSqmSquashDscp": "Squash DSCP Ingress/Egress",
+  "@modSqmSquashDscp": {
+    "description": "Toggle for squashing DSCP marks"
+  },
+  "modSqmSquashIngress": "Squash Ingress DSCP",
+  "@modSqmSquashIngress": {
+    "description": "Toggle for squashing ingress DSCP marks"
+  },
+  "modSqmIngressEcn": "Ingress ECN",
+  "@modSqmIngressEcn": {
+    "description": "Dropdown for ingress ECN"
+  },
+  "modSqmEgressEcn": "Egress ECN",
+  "@modSqmEgressEcn": {
+    "description": "Dropdown for egress ECN"
+  },
+  "modSqmDebugLogging": "Enable Debug Logging",
+  "@modSqmDebugLogging": {
+    "description": "Toggle for debug logging"
+  },
+  "modSqmSavingQueueToast": "Saving SQM queue {name}...",
+  "@modSqmSavingQueueToast": {
+    "description": "Toast when saving queue",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "eth1"
+      }
+    }
+  },
+  "modSqmQueueSavedToast": "SQM configuration saved and applied.",
+  "@modSqmQueueSavedToast": {
+    "description": "Toast when queue is saved"
+  },
+  "modSqmQueueSaveFailedToast": "Failed to save SQM configuration.",
+  "@modSqmQueueSaveFailedToast": {
+    "description": "Toast when queue save fails"
+  },
+  "modSqmDeleteDialogTitle": "Delete Queue {name}?",
+  "@modSqmDeleteDialogTitle": {
+    "description": "Title of delete confirmation dialog",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "eth1"
+      }
+    }
+  },
+  "modSqmDeleteDialogContent": "This will permanently delete this SQM queue instance configuration.",
+  "@modSqmDeleteDialogContent": {
+    "description": "Content of delete confirmation dialog"
+  },
+  "modSqmDeletingQueueToast": "Deleting SQM queue...",
+  "@modSqmDeletingQueueToast": {
+    "description": "Toast when deleting queue"
+  },
+  "modSqmQueueDeletedToast": "SQM queue deleted.",
+  "@modSqmQueueDeletedToast": {
+    "description": "Toast when queue is deleted"
+  },
+  "modSqmQueueDeleteFailedToast": "Failed to delete SQM queue.",
+  "@modSqmQueueDeleteFailedToast": {
+    "description": "Toast when queue deletion fails"
+  },
+  "modSqmFlowOffloadDialogTitle": "Flow Offloading Active",
+  "@modSqmFlowOffloadDialogTitle": {
+    "description": "Title of dialog warning that flow offloading is active before enabling SQM"
+  },
+  "modSqmFlowOffloadDialogContent": "Flow offloading is currently enabled in your router's firewall settings.\n\nWhen flow offloading is active, network traffic bypasses the Linux kernel networking stack and Traffic Control (tc) queueing disciplines. As a result, SQM cannot shape forwarded traffic or mitigate bufferbloat effectively.\n\nTo get the full benefit of SQM, flow offloading should be disabled in Firewall settings.\n\nDo you want to proceed with enabling SQM anyway?",
+  "@modSqmFlowOffloadDialogContent": {
+    "description": "Content explaining that flow offloading prevents SQM from shaping forwarded traffic"
+  },
+  "modSqmFlowOffloadBtnProceed": "Enable Anyway",
+  "@modSqmFlowOffloadBtnProceed": {
+    "description": "Button to enable SQM despite flow offloading being active"
+  },
+  "modSqmFlowOffloadWarningBanner": "Flow offloading is active in Firewall. Forwarded traffic will bypass SQM queue shaping.",
+  "@modSqmFlowOffloadWarningBanner": {
+    "description": "Warning banner shown when flow offloading is active on router"
+  },
+  "tileRpcPermissions": "RPC & Permissions",
+  "@tileRpcPermissions": {
+    "description": "Tile title for router RPC and execution permissions"
+  },
+  "tileRpcPermissionsSubtitle": "Manage router RPC permissions and modules",
+  "@tileRpcPermissionsSubtitle": {
+    "description": "Tile subtitle when RPC permissions are verified"
+  },
+  "tileRpcPermissionsSetupRequired": "Setup or repair router RPC access",
+  "@tileRpcPermissionsSetupRequired": {
+    "description": "Tile subtitle when RPC permissions require setup"
+  },
+  "modBandwidthMonitorName": "Bandwidth Monitor",
+  "@modBandwidthMonitorName": {
+    "description": "Name of Bandwidth Monitor module"
+  },
+  "modBandwidthMonitorDesc": "Real-time per-device bandwidth usage, traffic history charts & LuCI data statistics",
+  "@modBandwidthMonitorDesc": {
+    "description": "Description of Bandwidth Monitor module"
+  },
+  "bandwidthLiveDevices": "Live Devices",
+  "@bandwidthLiveDevices": {
+    "description": "Tab label for live device bandwidth"
+  },
+  "bandwidthTrafficHistory": "Traffic History",
+  "@bandwidthTrafficHistory": {
+    "description": "Tab label for traffic history"
+  },
+  "bandwidthUsageStats": "Usage Stats",
+  "@bandwidthUsageStats": {
+    "description": "Tab label for usage stats"
+  },
+  "bandwidthTotalDownload": "Download",
+  "@bandwidthTotalDownload": {
+    "description": "Label for aggregate download speed"
+  },
+  "bandwidthTotalUpload": "Upload",
+  "@bandwidthTotalUpload": {
+    "description": "Label for aggregate upload speed"
+  },
+  "bandwidthSortDownload": "Highest Download",
+  "@bandwidthSortDownload": {
+    "description": "Sort option for highest download speed"
+  },
+  "bandwidthSortUpload": "Highest Upload",
+  "@bandwidthSortUpload": {
+    "description": "Sort option for highest upload speed"
+  },
+  "bandwidthSortTotal": "Highest Total Data",
+  "@bandwidthSortTotal": {
+    "description": "Sort option for highest total transferred data"
+  },
+  "bandwidthSortName": "Device Name",
+  "@bandwidthSortName": {
+    "description": "Sort option for device name"
+  },
+  "bandwidthSortIp": "IP Address",
+  "@bandwidthSortIp": {
+    "description": "Sort option for IP address"
+  },
+  "bandwidthPauseStream": "Pause Live Stream",
+  "@bandwidthPauseStream": {
+    "description": "Tooltip for pausing live stream"
+  },
+  "bandwidthResumeStream": "Resume Live Stream",
+  "@bandwidthResumeStream": {
+    "description": "Tooltip for resuming live stream"
+  },
+  "bandwidthSearchPlaceholder": "Search devices by name, IP, MAC...",
+  "@bandwidthSearchPlaceholder": {
+    "description": "Search placeholder for bandwidth devices"
+  },
+  "bandwidthNoDevicesFound": "No Connected Devices",
+  "@bandwidthNoDevicesFound": {
+    "description": "Title when no devices are found"
+  },
+  "bandwidthNoMatchingDevices": "No Matching Devices",
+  "@bandwidthNoMatchingDevices": {
+    "description": "Title when no devices match query"
+  },
+  "bandwidthNlbwmonTitle": "Persistent Bandwidth Accounting (nlbwmon)",
+  "@bandwidthNlbwmonTitle": {
+    "description": "Title for nlbwmon persistent accounting card"
+  },
+  "bandwidthNlbwmonNotInstalledDesc": "Install luci-app-nlbwmon to track persistent monthly usage and protocol breakdowns for all wired and wireless clients across router reboots.",
+  "@bandwidthNlbwmonNotInstalledDesc": {
+    "description": "Description explaining nlbwmon features when not installed"
+  },
+  "bandwidthInstallNlbwmon": "Open Package Manager",
+  "@bandwidthInstallNlbwmon": {
+    "description": "Button to open package manager to install nlbwmon"
+  },
+  "storageMonExternalBadge": "External: {size}",
+  "@storageMonExternalBadge": {
+    "description": "Badge text showing external storage capacity attached to total system storage",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "storageMonInbuiltLabel": "Inbuilt",
+  "@storageMonInbuiltLabel": {
+    "description": "Label for on-board router flash/system storage"
+  },
+  "storageMonExternalLabel": "External",
+  "@storageMonExternalLabel": {
+    "description": "Label for connected external storage"
+  },
+  "storageMonExternalStorage": "External Storage",
+  "@storageMonExternalStorage": {
+    "description": "Header title or chip for external storage devices"
+  },
+  "storageMonExternalDevicesSection": "External Storage Devices ({count})",
+  "@storageMonExternalDevicesSection": {
+    "description": "Section header for connected external storage devices",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dialogEditHostnameTitle": "Edit Router Hostname",
+  "@dialogEditHostnameTitle": {
+    "description": "Title for edit router hostname dialog"
+  },
+  "dialogEditHostnameDescription": "Change the system hostname of your OpenWrt router.",
+  "@dialogEditHostnameDescription": {
+    "description": "Description in edit router hostname dialog"
+  },
+  "hostnameInputLabel": "Hostname",
+  "@hostnameInputLabel": {
+    "description": "Label for hostname text input"
+  },
+  "hostnameInputHint": "e.g. OpenWrt, home-router",
+  "@hostnameInputHint": {
+    "description": "Hint text for hostname text input"
+  },
+  "hostnameValidationEmpty": "Hostname cannot be empty",
+  "@hostnameValidationEmpty": {
+    "description": "Error message when hostname is empty"
+  },
+  "hostnameValidationLength": "Hostname must be between 1 and 63 characters",
+  "@hostnameValidationLength": {
+    "description": "Error message when hostname exceeds 63 characters"
+  },
+  "hostnameValidationInvalid": "Only letters (a-z), numbers (0-9), and hyphens (-) allowed",
+  "@hostnameValidationInvalid": {
+    "description": "Error message when hostname contains invalid characters"
+  },
+  "hostnameValidationHyphen": "Hostname cannot start or end with a hyphen",
+  "@hostnameValidationHyphen": {
+    "description": "Error message when hostname starts or ends with a hyphen"
+  },
+  "hostnameSavedSuccess": "Router hostname updated successfully",
+  "@hostnameSavedSuccess": {
+    "description": "Success message when router hostname is updated"
+  },
+  "hostnameSavedFailure": "Failed to update router hostname",
+  "@hostnameSavedFailure": {
+    "description": "Failure message when router hostname update fails"
+  },
+  "hostnameUnchanged": "Hostname is unchanged",
+  "@hostnameUnchanged": {
+    "description": "Message when user submits the unchanged hostname"
+  },
+  "tooltipEditHostname": "Edit hostname",
+  "@tooltipEditHostname": {
+    "description": "Tooltip for edit hostname button"
   }
 }

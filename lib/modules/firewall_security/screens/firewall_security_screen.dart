@@ -2,6 +2,8 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yet_another_luci_app/main.dart';
@@ -26,9 +28,19 @@ class _FirewallSecurityScreenState
   /// Stores staged enable/disable toggles for modified custom firewall rules.
   /// Format: {sectionKey: desiredEnabledStatus}
   final Map<String, bool> _stagedCustomRuleStates = {};
+  bool? _stagedSoftwareFlowOffload;
+  bool? _stagedHardwareFlowOffload;
   bool _isSaving = false;
 
-  bool get _hasUnsavedChanges => _stagedCustomRuleStates.isNotEmpty;
+  bool get _hasUnsavedChanges =>
+      _stagedCustomRuleStates.isNotEmpty ||
+      _stagedSoftwareFlowOffload != null ||
+      _stagedHardwareFlowOffload != null;
+
+  int get _totalUnsavedCount =>
+      _stagedCustomRuleStates.length +
+      (_stagedSoftwareFlowOffload != null ? 1 : 0) +
+      (_stagedHardwareFlowOffload != null ? 1 : 0);
 
   void _toggleCustomRuleState(FirewallCustomRule rule, bool newValue) {
     setState(() {
@@ -40,9 +52,41 @@ class _FirewallSecurityScreenState
     });
   }
 
+  void _toggleSoftwareFlowOffload(FirewallDefaultPolicy policy, bool newValue) {
+    setState(() {
+      if (newValue == policy.flowOffloading) {
+        _stagedSoftwareFlowOffload = null;
+      } else {
+        _stagedSoftwareFlowOffload = newValue;
+      }
+      // If software flow offloading is disabled, hardware flow offloading must also be turned off
+      final effectiveSoftware =
+          _stagedSoftwareFlowOffload ?? policy.flowOffloading;
+      if (!effectiveSoftware) {
+        if (policy.flowOffloadingHw) {
+          _stagedHardwareFlowOffload = false;
+        } else {
+          _stagedHardwareFlowOffload = null;
+        }
+      }
+    });
+  }
+
+  void _toggleHardwareFlowOffload(FirewallDefaultPolicy policy, bool newValue) {
+    setState(() {
+      if (newValue == policy.flowOffloadingHw) {
+        _stagedHardwareFlowOffload = null;
+      } else {
+        _stagedHardwareFlowOffload = newValue;
+      }
+    });
+  }
+
   void _discardChanges() {
     setState(() {
       _stagedCustomRuleStates.clear();
+      _stagedSoftwareFlowOffload = null;
+      _stagedHardwareFlowOffload = null;
     });
     if (mounted) {
       final l10n = AppLocalizations.of(context);
@@ -50,7 +94,7 @@ class _FirewallSecurityScreenState
         'Changes Discarded',
         subtitle:
             l10n?.firewallDiscardedCustomRules ??
-            'Discarded all unsaved firewall custom rule changes.',
+            'Discarded all unsaved firewall changes.',
       );
     }
   }
@@ -58,8 +102,8 @@ class _FirewallSecurityScreenState
   Future<bool> _showConfirmAndDiscardDialog() async {
     return LuciGuardrail.confirmUnsavedChanges(
       context,
-      unsavedCount: _stagedCustomRuleStates.length,
-      itemLabel: 'firewall rule(s)',
+      unsavedCount: _totalUnsavedCount,
+      itemLabel: 'firewall setting(s)',
     );
   }
 
@@ -78,21 +122,53 @@ class _FirewallSecurityScreenState
     });
 
     final appState = ref.read(appStateProvider);
+    final backend =
+        appState.capabilities?.firewallBackend ?? FirewallBackend.fw4;
+    final uciFirewall = appState.dashboardData?['uciFirewallConfig'];
+    final overview = FirewallOverview.fromUciData(
+      uciFirewall,
+      backend: backend,
+      isReviewerMode: appState.reviewerModeEnabled,
+    );
+
     final modifiedEntries = Map<String, bool>.from(_stagedCustomRuleStates);
+    final isFlowOffloadStaged =
+        _stagedSoftwareFlowOffload != null ||
+        _stagedHardwareFlowOffload != null;
+
     final succeededRules = <String>[];
     final failedRules = <String>[];
+    bool flowOffloadSuccess = true;
 
     const actionKey = 'save_firewall_rules';
     if (mounted) {
       context.showToastLoading(
         'Saving Changes',
-        subtitle:
-            'Saving ${modifiedEntries.length} firewall custom rule change(s)...',
+        subtitle: 'Saving firewall changes and reloading service...',
         actionKey: actionKey,
       );
     }
 
+    bool caughtError = false;
     try {
+      // 1. Save flow offloading if staged
+      if (isFlowOffloadStaged) {
+        final defPolicy = overview.defaultPolicy;
+        final targetSoft =
+            _stagedSoftwareFlowOffload ?? defPolicy.flowOffloading;
+        final targetHw = targetSoft
+            ? (_stagedHardwareFlowOffload ?? defPolicy.flowOffloadingHw)
+            : false;
+
+        flowOffloadSuccess = await appState.updateFirewallFlowOffloading(
+          software: targetSoft,
+          hardware: targetHw,
+          sectionKey: defPolicy.sectionKey,
+          context: mounted ? context : null,
+        );
+      }
+
+      // 2. Save custom rules
       for (final entry in modifiedEntries.entries) {
         if (!mounted) break;
         final sectionKey = entry.key;
@@ -111,6 +187,7 @@ class _FirewallSecurityScreenState
         }
       }
     } catch (e) {
+      caughtError = true;
       if (mounted) {
         context.showToastError(
           'Firewall Save Error',
@@ -124,25 +201,37 @@ class _FirewallSecurityScreenState
           for (final secKey in succeededRules) {
             _stagedCustomRuleStates.remove(secKey);
           }
+          if (flowOffloadSuccess) {
+            _stagedSoftwareFlowOffload = null;
+            _stagedHardwareFlowOffload = null;
+          }
           _isSaving = false;
         });
       }
     }
 
-    await appState.fetchDashboardData();
+    unawaited(appState.fetchDashboardData());
 
-    if (!mounted) return failedRules.isEmpty;
+    if (!mounted) {
+      return !caughtError && failedRules.isEmpty && flowOffloadSuccess;
+    }
 
-    if (failedRules.isEmpty) {
+    if (!caughtError && failedRules.isEmpty && flowOffloadSuccess) {
       context.showToastSuccess(
         'Firewall Saved',
-        subtitle:
-            'Successfully updated ${succeededRules.length} firewall custom rule(s).',
+        subtitle: 'Firewall settings and rules saved successfully.',
         actionKey: actionKey,
       );
       return true;
-    } else {
+    } else if (!caughtError) {
       final l10n = AppLocalizations.of(context);
+      final errors = <String>[];
+      if (!flowOffloadSuccess) {
+        errors.add('Failed to update Flow Offloading settings.');
+      }
+      if (failedRules.isNotEmpty) {
+        errors.add('Failed to update ${failedRules.length} custom rule(s).');
+      }
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -151,14 +240,9 @@ class _FirewallSecurityScreenState
           title: Text(
             l10n?.firewallRuleSaveWarning ?? 'Firewall Rule Save Warning',
           ),
-          content: SingleChildScrollView(
-            child: Text(
-              'Updated ${succeededRules.length} rule(s), but failed to update ${failedRules.length} rule(s):\n\n'
-              '${failedRules.join(", ")}',
-            ),
-          ),
+          content: SingleChildScrollView(child: Text(errors.join('\n\n'))),
           actions: [
-            TextButton(
+            FilledButton(
               onPressed: () => Navigator.of(ctx).pop(),
               child: Text(l10n?.actionConfirm ?? 'OK'),
             ),
@@ -167,14 +251,15 @@ class _FirewallSecurityScreenState
       );
       return false;
     }
+    return false;
   }
 
   Future<bool?> _showUnsavedChangesDialog() async {
     final l10n = AppLocalizations.of(context);
     final action = await LuciGuardrail.confirmSaveOrDiscardChanges(
       context,
-      count: _stagedCustomRuleStates.length,
-      itemLabel: 'firewall rule change(s)',
+      count: _totalUnsavedCount,
+      itemLabel: 'firewall setting/rule change(s)',
       title:
           l10n?.firewallUnsavedCustomRulesTitle ??
           'Unsaved Firewall Rule Changes',
@@ -192,15 +277,22 @@ class _FirewallSecurityScreenState
 
   @override
   Widget build(BuildContext context) {
-    final appState = ref.watch(appStateProvider);
-    final capabilities = appState.capabilities;
-    final backend = capabilities?.firewallBackend ?? FirewallBackend.fw4;
-    final uciFirewall = appState.dashboardData?['uciFirewallConfig'];
+    final backend = ref.watch(
+      appStateProvider.select(
+        (s) => s.capabilities?.firewallBackend ?? FirewallBackend.fw4,
+      ),
+    );
+    final uciFirewall = ref.watch(
+      appStateProvider.select((s) => s.dashboardData?['uciFirewallConfig']),
+    );
+    final isReviewerMode = ref.watch(
+      appStateProvider.select((s) => s.reviewerModeEnabled),
+    );
 
     final overview = FirewallOverview.fromUciData(
       uciFirewall,
       backend: backend,
-      isReviewerMode: appState.reviewerModeEnabled,
+      isReviewerMode: isReviewerMode,
     );
 
     final l10n = AppLocalizations.of(context);
@@ -237,7 +329,7 @@ class _FirewallSecurityScreenState
         ),
         body: RefreshIndicator(
           onRefresh: () async {
-            await appState.fetchDashboardData();
+            await ref.read(appStateProvider).fetchDashboardData();
           },
           child: !overview.isAvailable
               ? _buildUnavailableView(context, ref, overview)
@@ -252,6 +344,14 @@ class _FirewallSecurityScreenState
                     ),
                     const SizedBox(height: 8),
                     _buildDefaultPoliciesCard(context, overview.defaultPolicy),
+                    const SizedBox(height: 16),
+                    _buildSectionHeader(
+                      context,
+                      'Routing & Flow Offloading',
+                      Icons.speed_rounded,
+                    ),
+                    const SizedBox(height: 8),
+                    _buildFlowOffloadingCard(context, overview.defaultPolicy),
                     const SizedBox(height: 16),
                     _buildSectionHeader(
                       context,
@@ -318,7 +418,6 @@ class _FirewallSecurityScreenState
     FirewallOverview overview,
   ) {
     final theme = Theme.of(context);
-    final appState = ref.watch(appStateProvider);
 
     return Center(
       child: Padding(
@@ -349,7 +448,8 @@ class _FirewallSecurityScreenState
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () => appState.redetectCapabilities(),
+              onPressed: () =>
+                  ref.read(appStateProvider).redetectCapabilities(),
               icon: const Icon(Icons.refresh, size: 16),
               label: Text(
                 AppLocalizations.of(context)?.firewallReprobeCapabilities ??
@@ -409,6 +509,175 @@ class _FirewallSecurityScreenState
               def.synFlood ? 'ENABLED' : 'DISABLED',
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFlowOffloadingCard(
+    BuildContext context,
+    FirewallDefaultPolicy def,
+  ) {
+    final theme = Theme.of(context);
+
+    final currentSoftware = _stagedSoftwareFlowOffload ?? def.flowOffloading;
+    final isSoftwareStaged = _stagedSoftwareFlowOffload != null;
+
+    final currentHardware = currentSoftware
+        ? (_stagedHardwareFlowOffload ?? def.flowOffloadingHw)
+        : false;
+    final isHardwareStaged = _stagedHardwareFlowOffload != null;
+
+    final hasAnyOffload = currentSoftware || currentHardware;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Software Flow Offloading',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (isSoftwareStaged) ...[
+                            const SizedBox(width: 8),
+                            _buildStagedBadge(),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Software-based packet offloading for routing/NAT. Reduces CPU load and boosts throughput, but bypasses SQM shaping.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Switch(
+                  value: currentSoftware,
+                  onChanged: _isSaving
+                      ? null
+                      : (val) => _toggleSoftwareFlowOffload(def, val),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Opacity(
+              opacity: currentSoftware ? 1.0 : 0.45,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Hardware Flow Offloading',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (isHardwareStaged) ...[
+                              const SizedBox(width: 8),
+                              _buildStagedBadge(),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Requires chipset hardware NAT support. Only active when Software Flow Offloading is enabled.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Switch(
+                    value: currentHardware,
+                    onChanged: (_isSaving || !currentSoftware)
+                        ? null
+                        : (val) => _toggleHardwareFlowOffload(def, val),
+                  ),
+                ],
+              ),
+            ),
+            if (hasAnyOffload) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade900.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.amber.shade700.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.amber.shade800,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Flow offloading bypasses Traffic Control (tc). When enabled, SQM (Smart Queue Management) cannot shape forwarded traffic or mitigate bufferbloat.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber.shade900,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStagedBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.amber.shade700, width: 0.8),
+      ),
+      child: Text(
+        'STAGED',
+        style: TextStyle(
+          color: Colors.amber.shade900,
+          fontWeight: FontWeight.bold,
+          fontSize: 10,
         ),
       ),
     );
@@ -795,7 +1064,15 @@ class _FirewallSecurityScreenState
 
   Widget _buildUnsavedChangesBottomBar(BuildContext context) {
     final theme = Theme.of(context);
-    final count = _stagedCustomRuleStates.length;
+    final count = _totalUnsavedCount;
+    final text =
+        _stagedCustomRuleStates.isNotEmpty &&
+            (_stagedSoftwareFlowOffload != null ||
+                _stagedHardwareFlowOffload != null)
+        ? '$count items modified'
+        : _stagedCustomRuleStates.isNotEmpty
+        ? '$count rule(s) modified'
+        : '$count setting(s) modified';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -815,7 +1092,7 @@ class _FirewallSecurityScreenState
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '$count rule(s) modified',
+                text,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),

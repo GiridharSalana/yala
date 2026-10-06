@@ -49,16 +49,15 @@ linter:
     unawaited_futures: true
     avoid_catching_errors: true
     
-    # === PHASE 3: CODE QUALITY (COMMENTED OUT - ENABLE GRADUALLY) ===
-    # Uncomment these rules one by one after fixing existing violations
-    # prefer_final_locals: true
-    # prefer_const_constructors: true
+    # === PHASE 3: CODE QUALITY (ENABLED) ===
+    prefer_final_locals: true
+    prefer_const_constructors: true
+    prefer_const_declarations: true
     # always_specify_types: true
     
-    # === PHASE 4: PERFORMANCE (COMMENTED OUT - ENABLE GRADUALLY) ===
-    # Uncomment these rules after phase 3 is complete
-    # avoid_function_literals_in_foreach_calls: true
-    # prefer_collection_literals: true
+    # === PHASE 4: PERFORMANCE (ENABLED) ===
+    avoid_function_literals_in_foreach_calls: true
+    prefer_collection_literals: true
     
     # === PHASE 5: STYLE (COMMENTED OUT - ENABLE LAST) ===
     # These are cosmetic and should be enabled last
