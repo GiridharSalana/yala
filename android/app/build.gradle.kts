@@ -135,8 +135,6 @@ kotlin {
 
 dependencies {
     implementation("androidx.core:core:1.13.1")
-    // Official enableEdgeToEdge() API — satisfies Play Store's Android 15 pre-launch check
-    implementation("androidx.activity:activity-ktx:1.9.3")
 }
 
 flutter {

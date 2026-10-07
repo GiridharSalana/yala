@@ -79,6 +79,11 @@ class RealApiService implements IApiService {
     List<String> arguments,
   ) => {'command': command, 'args': arguments};
 
+  /// Safely quotes an argument for POSIX /bin/sh command strings.
+  /// Encloses in single quotes and replaces any single quote with '\''.
+  @visibleForTesting
+  static String shellSingleQuote(String s) => "'${s.replaceAll("'", "'\\''")}'";
+
   Dio _createHttpClient(
     bool useHttps,
     String hostWithPort, {
@@ -3955,23 +3960,29 @@ iptables -I FORWARD -m mac --mac-source "\$MAC_L" -j DROP >/dev/null 2>&1 || tru
 exit 0
 ''';
 
-    await callWithContext(
-      ipAddress,
-      sysauth,
-      useHttps,
-      object: 'file',
-      method: 'exec',
-      params: fileExecParams('/bin/sh', ['-c', shellScript]),
-      context: mountedContext(context),
-    );
+    bool shellSucceeded = false;
+    try {
+      final shellRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'exec',
+        params: fileExecParams('/bin/sh', ['-c', shellScript]),
+        context: mountedContext(context),
+      );
+      shellSucceeded = _execSucceeded(shellRes);
+    } catch (e) {
+      Logger.warning('_enforceFirewallBlock shell script error: $e');
+    }
 
-    if (!ruleExisted) {
+    if (!ruleExisted && ubusSucceeded) {
       Logger.info(
         'Created firewall rule "$ruleName" to restrict client $macUpper',
       );
     }
 
-    return true;
+    return ubusSucceeded || shellSucceeded;
   }
 
   /// Removes firewall block rules for the specified client MAC.
@@ -4158,8 +4169,9 @@ iptables -D FORWARD -m mac --mac-source "\$MAC_L" -j DROP >/dev/null 2>&1 || tru
 exit 0
 ''';
 
+    bool shellSucceeded = false;
     try {
-      await callWithContext(
+      final res = await callWithContext(
         ipAddress,
         sysauth,
         useHttps,
@@ -4168,11 +4180,12 @@ exit 0
         params: fileExecParams('/bin/sh', ['-c', script]),
         context: mountedContext(context),
       );
+      shellSucceeded = _execSucceeded(res);
     } catch (e) {
       Logger.warning('_removeFirewallBlock shell script error: $e');
     }
 
-    return true;
+    return ubusSucceeded || shellSucceeded;
   }
 
   /// Removes wireless MAC-filter ban rules for the specified client MAC.
@@ -4290,8 +4303,9 @@ wifi reload >/dev/null 2>&1 || ubus call network.wireless reload >/dev/null 2>&1
 exit 0
 ''';
 
+    bool shellSucceeded = false;
     try {
-      await callWithContext(
+      final res = await callWithContext(
         ipAddress,
         sysauth,
         useHttps,
@@ -4300,11 +4314,12 @@ exit 0
         params: fileExecParams('/bin/sh', ['-c', script]),
         context: mountedContext(context),
       );
+      shellSucceeded = _execSucceeded(res);
     } catch (e) {
       Logger.warning('_removeWirelessMacFilter shell error: $e');
     }
 
-    return true;
+    return modified || shellSucceeded;
   }
 
   @override
@@ -4371,6 +4386,7 @@ exit 0
       }
 
       // 2. Shell fallback for custom non-standard firmware setups
+      bool shellSuccess = false;
       try {
         final macLower = macAddress.toLowerCase();
         final targetIface = (iface != null && iface.isNotEmpty) ? iface : '';
@@ -4404,7 +4420,7 @@ BAN_MS="$banTimeMs"
 exit 0
 ''';
 
-        await callWithContext(
+        final shellRes = await callWithContext(
           ipAddress,
           sysauth,
           useHttps,
@@ -4413,9 +4429,10 @@ exit 0
           params: fileExecParams('/bin/sh', ['-c', cmdScript]),
           context: mountedContext(context),
         );
+        shellSuccess = _execSucceeded(shellRes);
       } catch (_) {}
 
-      return ubusSuccess || true;
+      return ubusSuccess || shellSuccess;
     } catch (e, stack) {
       Logger.exception('disconnectWirelessClient failed', e, stack);
       return false;
@@ -4835,15 +4852,20 @@ echo "\$DENY_MACS \$WIFI_UCI" | tr ' ' '\\n' | grep -vE "^00:00:00:00:00:00\$|^F
 
       if (!addSuccess) {
         // Fallback: Shell execution via /bin/sh - ensures duplicates are deleted and dnsmasq restarted
+        final safeName = shellSingleQuote(hostname.trim());
+        final safeMac = shellSingleQuote(macUpper);
+        final safeIp = shellSingleQuote(cleanTargetIp);
         final cmdList = [
           'for sec in \$(uci show dhcp 2>/dev/null | grep -iE "$macUpper|$cleanTargetIp" | cut -d. -f2 | sort -u); do uci delete dhcp.\$sec 2>/dev/null || true; done',
           'SECNAME=\$(uci add dhcp host)',
-          'uci set dhcp.\$SECNAME.name="${hostname.trim()}"',
-          'uci set dhcp.\$SECNAME.mac="$macUpper"',
-          'uci set dhcp.\$SECNAME.ip="$cleanTargetIp"',
+          'uci set dhcp.\$SECNAME.name=$safeName',
+          'uci set dhcp.\$SECNAME.mac=$safeMac',
+          'uci set dhcp.\$SECNAME.ip=$safeIp',
         ];
         if (sanitizedLt != null && sanitizedLt.isNotEmpty) {
-          cmdList.add('uci set dhcp.\$SECNAME.leasetime="$sanitizedLt"');
+          cmdList.add(
+            'uci set dhcp.\$SECNAME.leasetime=${shellSingleQuote(sanitizedLt)}',
+          );
         }
         cmdList.add('uci commit dhcp');
 

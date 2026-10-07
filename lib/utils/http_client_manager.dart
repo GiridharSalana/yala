@@ -12,6 +12,7 @@ import 'package:dio/io.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'logger.dart';
+import 'sha256.dart';
 
 /// HTTP client manager that provides secure client instances with proper
 /// certificate validation and connection pooling
@@ -31,22 +32,36 @@ class HttpClientManager {
   }
 
   final Map<String, Dio> _clients = {};
-  final Map<String, bool> _userAcceptedCerts = {};
+
+  /// Maps canonical 'host:port' key → accepted SHA-256 fingerprint (hex).
+  ///
+  /// On every TLS connection the presented certificate's fingerprint is compared
+  /// to the stored fingerprint. A mismatch requires a new explicit user decision.
+  final Map<String, String> _acceptedCertFingerprints = {};
+
   static const String _acceptedCertsKey = 'accepted_certificates';
+
+  /// Canonical client cache key: `hostWithPort-useHttps`
+  String _cacheKey(String hostWithPort, bool useHttps) =>
+      '$hostWithPort-$useHttps';
 
   /// Creates or returns a cached HTTP client for the given host
   /// In production builds, certificate validation is enforced with user warnings
   /// In debug builds, self-signed certificates can be allowed automatically
   Dio getClient(String hostWithPort, bool useHttps, {BuildContext? context}) {
-    // Extract just the hostname without port for certificate validation
-    final host = _extractHostname(hostWithPort);
-    final key = '$hostWithPort-$useHttps';
-
+    final key = _cacheKey(hostWithPort, useHttps);
     if (_clients.containsKey(key)) {
       return _clients[key]!;
     }
 
-    final client = _createSecureClient(host, useHttps, context: context);
+    // Extract just the hostname without port for certificate validation
+    final host = _extractHostname(hostWithPort);
+    final client = _createSecureClient(
+      host,
+      hostWithPort,
+      useHttps,
+      context: context,
+    );
     _clients[key] = client;
     return client;
   }
@@ -73,7 +88,39 @@ class HttpClientManager {
     return hostWithPort;
   }
 
-  Dio _createSecureClient(String host, bool useHttps, {BuildContext? context}) {
+  /// Extract port from a hostWithPort string. Defaults to 443.
+  int _extractPort(String hostWithPort) {
+    if (hostWithPort.startsWith('[')) {
+      // IPv6: [addr]:port
+      final closeBracket = hostWithPort.indexOf(']');
+      if (closeBracket != -1 && closeBracket + 1 < hostWithPort.length) {
+        final rest = hostWithPort.substring(closeBracket + 1);
+        if (rest.startsWith(':')) {
+          return int.tryParse(rest.substring(1)) ?? 443;
+        }
+      }
+    } else {
+      final colonIndex = hostWithPort.lastIndexOf(':');
+      if (colonIndex != -1) {
+        final portPart = hostWithPort.substring(colonIndex + 1);
+        final port = int.tryParse(portPart);
+        if (port != null) return port;
+      }
+    }
+    return 443;
+  }
+
+  /// Compute the SHA-256 fingerprint of a certificate's DER bytes as a hex string.
+  static String _certFingerprint(X509Certificate cert) {
+    return Sha256.hex(cert.der);
+  }
+
+  Dio _createSecureClient(
+    String host,
+    String hostWithPort,
+    bool useHttps, {
+    BuildContext? context,
+  }) {
     final dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 15),
@@ -102,7 +149,7 @@ class HttpClientManager {
             Logger.info(
               'Network transition or socket failure detected for $host. Evicting stale client.',
             );
-            disposeClient(host, useHttps, forceCloseAdapter: false);
+            disposeClient(hostWithPort, useHttps, forceCloseAdapter: false);
           }
 
           handler.next(e);
@@ -115,15 +162,28 @@ class HttpClientManager {
       final httpClient = HttpClient();
       httpClient.connectionTimeout = const Duration(seconds: 15);
       httpClient.badCertificateCallback = (cert, certHost, port) {
-        final certKey = '$certHost:$port';
-        if (_userAcceptedCerts[certKey] == true ||
-            _userAcceptedCerts[certHost] == true) {
-          return true;
-        }
-        // Self-signed SSL certificates are standard on local OpenWrt routers
+        // Local/private router hosts bypass certificate validation.
+        // Self-signed SSL certificates are standard on local OpenWrt routers.
         if (_isLocalOrPrivateHost(certHost) || _isLocalOrPrivateHost(host)) {
           return true;
         }
+
+        final certKey = '$certHost:$port';
+        final storedFingerprint = _acceptedCertFingerprints[certKey];
+        if (storedFingerprint != null) {
+          // Verify the presented certificate matches the previously accepted one.
+          final presentedFingerprint = _certFingerprint(cert);
+          if (presentedFingerprint == storedFingerprint) {
+            return true;
+          }
+          // Certificate changed — require a new user decision. Evict stale acceptance.
+          Logger.warning(
+            'Certificate fingerprint mismatch for $certKey. '
+            'Stored: $storedFingerprint, Presented: $presentedFingerprint',
+          );
+          _acceptedCertFingerprints.remove(certKey);
+        }
+
         return false;
       };
       return httpClient;
@@ -185,53 +245,65 @@ class HttpClientManager {
     return false;
   }
 
-  /// Load accepted certificates from secure storage
+  /// Load accepted certificate fingerprints from secure storage.
+  ///
+  /// Backward-compat: entries with a boolean `true` value (old format, pre-fingerprint)
+  /// are silently dropped so the user is re-prompted on next connection.
   Future<void> _loadAcceptedCertificates() async {
     try {
       const storage = FlutterSecureStorage();
       final certsJson = await storage.read(key: _acceptedCertsKey);
       if (certsJson != null) {
         final certs = Map<String, dynamic>.from(jsonDecode(certsJson));
-        _userAcceptedCerts.clear();
+        _acceptedCertFingerprints.clear();
         certs.forEach((key, value) {
-          if (value == true) {
-            _userAcceptedCerts[key] = true;
+          // Only load string fingerprints (new format).
+          // Old boolean 'true' entries are discarded — user will be re-prompted.
+          if (value is String && value.isNotEmpty) {
+            _acceptedCertFingerprints[key] = value;
           }
         });
       }
     } catch (e) {
-      // Ignore errors loading certificates
+      Logger.warning('Error loading accepted certificate fingerprints: $e');
     }
   }
 
-  /// Save accepted certificates to secure storage
+  /// Save accepted certificate fingerprints to secure storage
   Future<void> _saveAcceptedCertificates() async {
     try {
       const storage = FlutterSecureStorage();
       await storage.write(
         key: _acceptedCertsKey,
-        value: jsonEncode(_userAcceptedCerts),
+        value: jsonEncode(_acceptedCertFingerprints),
       );
     } catch (e) {
-      // Ignore errors saving certificates
+      Logger.warning('Error saving accepted certificate fingerprints: $e');
     }
   }
 
-  /// Disposes of a specific client
+  /// Disposes of a specific cached HTTP client.
+  ///
+  /// Uses exact key matching — disposing `192.168.1.1` does NOT affect
+  /// `192.168.1.10`, `192.168.1.100`, etc.
   void disposeClient(
-    String host,
+    String hostWithPort,
     bool useHttps, {
     bool forceCloseAdapter = false,
   }) {
-    // Remove any cached clients that match the host (with or without port)
-    final hostname = _extractHostname(host);
+    final hostname = _extractHostname(hostWithPort);
+
+    // Exact key match only. Keys are in the form '<hostWithPort>-<bool>' or
+    // '<hostname>-<bool>' depending on how they were inserted.
+    final exactKeys = [
+      _cacheKey(hostWithPort, useHttps),
+      _cacheKey(hostname, useHttps),
+    ];
+
     final keysToRemove = _clients.keys
-        .where(
-          (k) =>
-              (k.startsWith(host) || k.startsWith(hostname)) &&
-              k.endsWith('-$useHttps'),
-        )
+        .where((k) => exactKeys.contains(k))
         .toList();
+
     for (final key in keysToRemove) {
       final dio = _clients.remove(key);
       if (forceCloseAdapter) {
@@ -260,7 +332,7 @@ class HttpClientManager {
   /// Clear accepted certificates (useful for logout or security reset)
   Future<void> clearAcceptedCertificates() async {
     // Clear in-memory certificates
-    _userAcceptedCerts.clear();
+    _acceptedCertFingerprints.clear();
 
     // Clear all cached HTTP clients
     disposeAll(forceCloseAdapter: true);
@@ -270,32 +342,49 @@ class HttpClientManager {
       const storage = FlutterSecureStorage();
       await storage.delete(key: _acceptedCertsKey);
     } catch (e) {
-      // Ignore errors
+      Logger.warning('Error clearing accepted certificates: $e');
     }
   }
 
-  /// Clear certificates for a specific host
+  /// Clear certificates for a specific host.
+  ///
+  /// Uses exact key comparison — clearing `192.168.1.1` does NOT affect
+  /// `192.168.1.10`, `192.168.1.100`, etc.
   Future<void> clearCertificatesForHost(String host) async {
-    // Remove certificates for this host across all ports
-    _userAcceptedCerts.removeWhere(
-      (key, _) => key == host || key.startsWith('$host:'),
+    final hostname = _extractHostname(host);
+
+    // Remove fingerprints for this exact host across all ports.
+    // Matches 'host' exactly or 'host:port' (port-qualified entries).
+    _acceptedCertFingerprints.removeWhere(
+      (key, _) => key == hostname || key.startsWith('$hostname:'),
     );
 
-    // Close and remove cached HTTP clients for this host
-    final keysToRemove = _clients.keys
-        .where((key) => key.startsWith(host))
-        .toList();
+    // Close and remove cached HTTP clients for this exact host.
+    // Keys have the form '<hostWithPort>-<bool>'.
+    final keysToRemove = _clients.keys.where((key) {
+      // Split at the last '-' to get the cache suffix (-true / -false)
+      final lastDash = key.lastIndexOf('-');
+      if (lastDash == -1) return false;
+      final keyHost = key.substring(0, lastDash);
+      final keyHostname = _extractHostname(keyHost);
+      return keyHostname == hostname;
+    }).toList();
+
     for (final key in keysToRemove) {
       _clients[key]?.close();
       _clients.remove(key);
     }
 
-    // Save the updated certificates
+    // Save the updated fingerprints
     await _saveAcceptedCertificates();
   }
 
-  /// Prompts user to accept certificate for a given host
-  /// Returns true if user accepts, false otherwise
+  /// Prompts user to accept certificate for a given host.
+  ///
+  /// On acceptance, stores the SHA-256 fingerprint of the presented certificate
+  /// so that subsequent connections verify the certificate hasn't changed.
+  ///
+  /// Returns true if user accepts, false otherwise.
   Future<bool> promptForCertificateAcceptance({
     required BuildContext context,
     required String hostWithPort,
@@ -305,128 +394,57 @@ class HttpClientManager {
     if (!context.mounted) return false;
 
     final host = _extractHostname(hostWithPort);
+    final port = _extractPort(hostWithPort);
 
-    // Parse the host to get the port if specified
-    int port = 443; // Default HTTPS port
-    if (hostWithPort.contains(':') && !hostWithPort.startsWith('[')) {
-      final parts = hostWithPort.split(':');
-      if (parts.length == 2) {
-        port = int.tryParse(parts[1]) ?? 443;
-      }
-    }
-
-    // Check if already accepted or local router host
     final certKey = '$host:$port';
-    if (_userAcceptedCerts[certKey] == true ||
-        _userAcceptedCerts[host] == true ||
-        _isLocalOrPrivateHost(host)) {
-      return true;
-    }
+
+    // If already accepted and fingerprint is stored, allow.
+    if (_acceptedCertFingerprints.containsKey(certKey)) return true;
+
+    // Local/private router hosts bypass the dialog.
+    if (_isLocalOrPrivateHost(host)) return true;
 
     // Try to make a test connection to trigger certificate validation
     final testClient = HttpClient();
     testClient.connectionTimeout = const Duration(seconds: 15);
 
-    // Apply the same certificate validation logic
-    testClient.badCertificateCallback = (cert, certHost, port) {
-      return _userAcceptedCerts['$certHost:$port'] == true ||
-          _userAcceptedCerts[certHost] == true ||
-          _isLocalOrPrivateHost(certHost);
+    X509Certificate? presentedCert;
+    String? presentedFingerprint;
+
+    // Capture the certificate for display and fingerprinting.
+    testClient.badCertificateCallback = (cert, certHost, certPort) {
+      presentedCert = cert;
+      presentedFingerprint = _certFingerprint(cert);
+      return false; // Reject — we only want to capture, not allow automatically.
     };
 
     try {
       final uri = Uri.parse('https://$hostWithPort');
       final request = await testClient.getUrl(uri);
       await request.close();
-      // If we get here, certificate is already valid or accepted
+      // If we reach here the cert was already valid (system-trusted) — allow.
       return true;
     } catch (e) {
-      if (e is HandshakeException) {
-        // Extract certificate details from the exception if possible
-        // For now, show a simplified dialog
-        if (context.mounted) {
-          final l10n = AppLocalizations.of(context);
-          final result = await showDialog<bool>(
-            context: context,
-            barrierDismissible: false,
-            builder: (BuildContext dialogContext) => AlertDialog(
-              actionsOverflowButtonSpacing: 8,
-              actionsOverflowDirection: VerticalDirection.down,
-              icon: Icon(
-                Icons.warning_amber_rounded,
-                color: Theme.of(context).colorScheme.error,
-                size: 32,
-              ),
-              title: Text(l10n?.httpCertWarningTitle ?? 'Certificate Warning'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'The certificate for $host is not trusted by your device. This could indicate a security risk.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.errorContainer.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.error.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: Theme.of(context).colorScheme.error,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Only proceed if you trust this router and understand the security implications.',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: Text(l10n?.actionCancel ?? 'Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                    foregroundColor: Theme.of(context).colorScheme.onError,
-                  ),
-                  child: Text(l10n?.httpCertAcceptRisk ?? 'Accept Risk'),
-                ),
-              ],
-            ),
-          );
+      if (e is HandshakeException && presentedCert != null && context.mounted) {
+        final result = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) => CertificateWarningDialog(
+            certificate: presentedCert!,
+            fingerprint: presentedFingerprint ?? '',
+            host: host,
+            port: port,
+          ),
+        );
 
-          if (result == true) {
-            // Store acceptance persistently
-            _userAcceptedCerts['$host:$port'] = true;
-            await _saveAcceptedCertificates();
-            return true;
-          }
+        if (result == true && presentedFingerprint != null) {
+          // Bind acceptance to the specific certificate fingerprint.
+          _acceptedCertFingerprints[certKey] = presentedFingerprint!;
+          await _saveAcceptedCertificates();
+          // Evict any stale cached client so the next getClient() call
+          // creates a fresh one that will check the stored fingerprint.
+          disposeClient(hostWithPort, useHttps, forceCloseAdapter: true);
+          return true;
         }
       }
     } finally {
@@ -437,15 +455,20 @@ class HttpClientManager {
   }
 }
 
-/// Dialog for warning users about untrusted certificates
+/// Dialog for warning users about untrusted certificates.
+///
+/// Displays certificate details (subject, issuer, validity) and the SHA-256
+/// fingerprint, allowing users to make an informed trust decision.
 class CertificateWarningDialog extends StatelessWidget {
   final X509Certificate certificate;
+  final String fingerprint;
   final String host;
   final int port;
 
   const CertificateWarningDialog({
     super.key,
     required this.certificate,
+    required this.fingerprint,
     required this.host,
     required this.port,
   });
@@ -506,6 +529,8 @@ class CertificateWarningDialog extends StatelessWidget {
                     'Valid Until',
                     certificate.endValidity.toLocal().toString().split('.')[0],
                   ),
+                  if (fingerprint.isNotEmpty)
+                    _buildCertDetail('SHA-256', fingerprint),
                 ],
               ),
             ),

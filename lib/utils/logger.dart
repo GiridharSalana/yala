@@ -2,6 +2,8 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:developer' as developer;
+
 import 'package:flutter/foundation.dart';
 
 /// Centralized logging utility for the application
@@ -12,34 +14,34 @@ class Logger {
   /// Log debug messages (only in debug mode)
   static void debug(String message) {
     if (kDebugMode) {
-      print('[$_tag] DEBUG: $message');
+      developer.log(message, name: _tag, level: 300);
     }
   }
 
   /// Log info messages
   static void info(String message) {
     if (kDebugMode) {
-      print('[$_tag] INFO: $message');
+      developer.log(message, name: _tag, level: 800);
     }
   }
 
   /// Log warning messages
   static void warning(String message) {
     if (kDebugMode) {
-      print('[$_tag] WARNING: $message');
+      developer.log(message, name: _tag, level: 900);
     }
   }
 
   /// Log error messages with optional stack trace
   static void error(String message, [Object? error, StackTrace? stackTrace]) {
     if (kDebugMode) {
-      print('[$_tag] ERROR: $message');
-      if (error != null) {
-        print('[$_tag] Exception: $error');
-      }
-      if (stackTrace != null) {
-        print('[$_tag] Stack trace: $stackTrace');
-      }
+      developer.log(
+        message,
+        name: _tag,
+        level: 1000,
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 

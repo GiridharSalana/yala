@@ -6,9 +6,9 @@ package com.nightcode.luci
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -22,15 +22,10 @@ class MainActivity : FlutterFragmentActivity() {
     private var pendingPermissionResult: MethodChannel.Result? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // enableEdgeToEdge() MUST be called before super.onCreate() per AndroidX Activity docs.
-        // This satisfies Play Store's Android 15 edge-to-edge pre-launch check and handles
-        // status bar / navigation bar colors correctly across all API levels (21+).
-        enableEdgeToEdge()
-
         super.onCreate(savedInstanceState)
 
-        // Configure display cutout mode for Android 15+ (API 35+)
-        setupDisplayCutout()
+        // Native edge-to-edge window setup without pulling in deprecated AndroidX EdgeToEdgeApi classes
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Unlock high refresh rate (90Hz/120Hz/144Hz) for ultra-smooth 120fps scrolling
         unlockHighRefreshRate()
@@ -191,20 +186,6 @@ class MainActivity : FlutterFragmentActivity() {
             } catch (_: Exception) {
                 // High refresh rate API unsupported or managed by OS
             }
-        }
-    }
-    
-    private fun setupDisplayCutout() {
-        try {
-            // Configure display cutout mode for Android 15+ (API 35+)
-            // enableEdgeToEdge() already handles WindowCompat.setDecorFitsSystemWindows()
-            if (Build.VERSION.SDK_INT >= 35) {
-                val lp = window.attributes
-                lp.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-                window.attributes = lp
-            }
-        } catch (_: Exception) {
-            // Defensive fallback ensuring zero startup crashes on non-standard device hardware/ROMs
         }
     }
 
