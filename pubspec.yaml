@@ -15,8 +15,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # build by specifying --build-name and --build-number, respectively.
 # In Android, build-name is used as versionName while build-number used as versionCode.
 # Read more about Android versioning at https://developer.android.com/studio/publish/versioning
-# Match nightcodex7/yala pubspec version after each upstream sync (see README).
-version: 2.2.6+227
+# App X.Y.Z = upstream latest GitHub release; +N = fork Android versionCode (see README).
+version: 2.2.5+231
 
 environment:
   sdk: ^3.8.1
