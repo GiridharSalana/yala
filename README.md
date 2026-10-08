@@ -458,21 +458,20 @@ This is a **personal fork**: builds are for my own devices only. I install APKs 
 | [**CI & Release**](.github/workflows/ci.yml) | PRs & pushes to `main` | Format, analyze, test |
 | Same workflow | Push tag `v*` or manual dispatch | Build signed APKs/AAB and attach to [Releases](https://github.com/GiridharSalana/yala/releases) |
 
-Pushes to `main` alone do **not** create a release — tag or run the workflow manually with a version (e.g. `v2.1.0+231`).
+Pushes to `main` alone do **not** create a release — tag or run the workflow manually with a version (e.g. `v2.2.6+227`, same as upstream).
 
-**Versioning (always follow upstream):**
+**Versioning (match upstream):**
 
-| Source | `pubspec.yaml` example | Meaning |
-|--------|------------------------|---------|
-| Upstream `nightcodex7/yala` | `2.1.0+224` | App `2.1.0`, Android `versionCode` **224** |
-| This fork | `2.1.0+225` | Same **2.1.0** as upstream; **225+** = personal fork build (`upstream build + 1`, then increment each release) |
+Copy the full `version:` line from [upstream `pubspec.yaml`](https://github.com/nightcodex7/yala/blob/main/pubspec.yaml) whenever you merge — **same `X.Y.Z` and same `+N` build** (e.g. `2.2.6+227`).
 
-After merging upstream, set `version` to upstream’s `X.Y.Z+N`, then use **`N + 1`** for the next fork APK (e.g. upstream `2.1.0+230` → fork `2.1.0+231`).
+| Source | `pubspec.yaml` example |
+|--------|------------------------|
+| Upstream & this fork | `2.2.6+227` |
 
 **To create a release:**
-1. Bump only the **`+` build number** in `pubspec.yaml` (keep `X.Y.Z` aligned with upstream), commit, push `main`.
-2. **Tag push (recommended):** `git tag 'v2.1.0+225' && git push origin 'v2.1.0+225'` — tag must match the `+` build (Release workflow listens for `v*`).
-3. **Manual:** Actions → **CI & Release** → **Run workflow** → set **version** to the same tag (e.g. `v2.1.0+231`).
+1. Ensure `pubspec.yaml` `version` matches upstream, commit, push `main`.
+2. **Tag push (recommended):** `git tag 'v2.2.6+227' && git push origin 'v2.2.6+227'` — tag must match `pubspec.yaml` (Release workflow listens for `v*`).
+3. **Manual:** Actions → **CI & Release** → **Run workflow** → set **version** to the same tag (e.g. `v2.2.6+227`).
 
 **GitHub Actions secrets** (repo → Settings → Secrets and variables → Actions):
 
@@ -539,6 +538,6 @@ git checkout main && git pull origin main
 git merge upstream/main
 ```
 
-After resolving conflicts, **keep fork identity**: `com.giridharsalana.yala`, [`lib/config/app_config.dart`](lib/config/app_config.dart) (repo URLs & maintainer), [`.github/workflows/ci.yml`](.github/workflows/ci.yml), and splash/login behavior. Then bump `pubspec.yaml` per the versioning table above, run `dart analyze` and `flutter test`, push `main`, and tag `vX.Y.Z+build`.
+After resolving conflicts, **keep fork identity**: `com.giridharsalana.yala`, [`lib/config/app_config.dart`](lib/config/app_config.dart) (repo URLs & maintainer), [`.github/workflows/ci.yml`](.github/workflows/ci.yml), and splash/login behavior. Set `pubspec.yaml` `version` to upstream’s value, run `dart analyze` and `flutter test`, push `main`, and tag `vX.Y.Z+N` to match.
 
 **Quick links:** [Upstream repo](https://github.com/nightcodex7/yala) · [Upstream releases](https://github.com/nightcodex7/yala/releases) · [Privacy policy](PRIVACY_POLICY.md) · [License](LICENSE)
