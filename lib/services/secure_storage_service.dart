@@ -30,6 +30,14 @@ class SecureStorageService {
     }
   }
 
+  static bool _isMockRouter(Router r) {
+    return r.id == 'reviewer-mock-router' ||
+        r.id.startsWith('reviewer://') ||
+        r.lastKnownHostname == 'OpenWrt-Reviewer' ||
+        (r.id == 'http://192.168.1.1-root' &&
+            r.lastKnownHostname == 'OpenWrt-Reviewer');
+  }
+
   Future<Map<String, String?>> getCredentials() async {
     try {
       final all = await _storage.readAll();
@@ -43,6 +51,14 @@ class SecureStorageService {
                 orElse: () => routers.first,
               )
             : routers.first;
+        if (_isMockRouter(router)) {
+          return {
+            'ipAddress': null,
+            'username': null,
+            'password': null,
+            'useHttps': null,
+          };
+        }
         return {
           'ipAddress': router.ipAddress,
           'username': router.username,
@@ -55,6 +71,18 @@ class SecureStorageService {
       final username = all['username'];
       final password = all['password'];
       final useHttps = all['useHttps'];
+      if (ipAddress == '192.168.1.1' &&
+          username == 'root' &&
+          (password == '' || password == null) &&
+          (all[_selectedRouterKey] == 'reviewer-mock-router' ||
+              all[_selectedRouterKey]?.startsWith('reviewer://') == true)) {
+        return {
+          'ipAddress': null,
+          'username': null,
+          'password': null,
+          'useHttps': null,
+        };
+      }
       if (ipAddress != null &&
           ipAddress.isNotEmpty &&
           username != null &&
@@ -124,7 +152,8 @@ class SecureStorageService {
 
   Future<void> saveRouters(List<Router> routers) async {
     try {
-      final jsonList = routers.map((r) => r.toJson()).toList();
+      final cleanList = routers.where((r) => !_isMockRouter(r)).toList();
+      final jsonList = cleanList.map((r) => r.toJson()).toList();
       await _storage.write(key: _routersKey, value: jsonEncode(jsonList));
     } catch (e, stack) {
       Logger.exception('Failed to save routers', e, stack);
@@ -137,7 +166,16 @@ class SecureStorageService {
       final jsonString = await _storage.read(key: _routersKey);
       if (jsonString == null || jsonString.isEmpty) return [];
       final List<dynamic> jsonList = jsonDecode(jsonString);
-      return jsonList.map((e) => Router.fromJson(e)).toList();
+      return jsonList
+          .whereType<Map>()
+          .map((e) => Router.fromJson(Map<String, dynamic>.from(e)))
+          .where(
+            (r) =>
+                r.id.isNotEmpty &&
+                r.ipAddress.isNotEmpty &&
+                !_isMockRouter(r),
+          )
+          .toList();
     } catch (e, stack) {
       Logger.exception('Failed to get routers', e, stack);
       return [];
@@ -171,7 +209,9 @@ class SecureStorageService {
 
   Future<void> saveSelectedRouterId(String? id) async {
     try {
-      if (id == null) {
+      if (id == null ||
+          id == 'reviewer-mock-router' ||
+          id.startsWith('reviewer://')) {
         await _storage.delete(key: _selectedRouterKey);
       } else {
         await _storage.write(key: _selectedRouterKey, value: id);

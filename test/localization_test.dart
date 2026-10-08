@@ -11,7 +11,7 @@ void main() {
 
   group('Localization and Supported Locales Unit Tests', () {
     test('Supported locales list contains only the approved locales', () {
-      final supportedLocales = AppLocalizations.supportedLocales;
+      const supportedLocales = AppLocalizations.supportedLocales;
 
       // Extract language & country pairs
       final formatted = supportedLocales.map((l) {

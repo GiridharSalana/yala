@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 💬 Discussions
-    url: https://github.com/GiridharSalana/yala/discussions
-    about: For general questions and discussions.
+  - name: Upstream Yala (features & bugs)
+    url: https://github.com/nightcodex7/yala/issues
+    about: Report app bugs and request features on the main Yala project.
+  - name: Upstream releases
+    url: https://github.com/nightcodex7/yala/releases
+    about: Official APKs, F-Droid, and iOS builds from nightcodex7/yala.

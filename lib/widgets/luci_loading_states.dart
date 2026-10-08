@@ -2,6 +2,8 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../design/luci_design_system.dart';
 
@@ -41,7 +43,11 @@ class _LuciSkeletonState extends State<LuciSkeleton>
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    _animationController.repeat(reverse: true);
+    final bool isTest =
+        !kIsWeb && (Platform.environment.containsKey('FLUTTER_TEST'));
+    if (!isTest) {
+      _animationController.repeat(reverse: true);
+    }
   }
 
   @override
@@ -114,7 +120,7 @@ class LuciCardSkeleton extends StatelessWidget {
         borderRadius: LuciCardStyles.standardRadius,
       ),
       child: Padding(
-        padding: EdgeInsets.all(LuciSpacing.md),
+        padding: const EdgeInsets.all(LuciSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -123,14 +129,14 @@ class LuciCardSkeleton extends StatelessWidget {
                 width: MediaQuery.of(context).size.width * 0.6,
                 height: 20,
               ),
-              SizedBox(height: LuciSpacing.sm),
+              const SizedBox(height: LuciSpacing.sm),
             ],
             if (showSubtitle) ...[
               LuciSkeleton(
                 width: MediaQuery.of(context).size.width * 0.4,
                 height: 16,
               ),
-              SizedBox(height: LuciSpacing.md),
+              const SizedBox(height: LuciSpacing.md),
             ],
             if (showContent) ...[
               ...List.generate(contentLines, (index) {
@@ -181,7 +187,7 @@ class LuciListItemSkeleton extends StatelessWidget {
       subtitle: LuciSkeleton(
         width: MediaQuery.of(context).size.width * 0.3,
         height: 14,
-        margin: EdgeInsets.only(top: LuciSpacing.xs),
+        margin: const EdgeInsets.only(top: LuciSpacing.xs),
       ),
       trailing: showTrailing
           ? const LuciSkeleton(
@@ -204,14 +210,14 @@ class LuciChartSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: height,
-      padding: EdgeInsets.all(LuciSpacing.md),
+      padding: const EdgeInsets.all(LuciSpacing.md),
       child: Column(
         children: [
           // Chart title skeleton
           LuciSkeleton(
             width: MediaQuery.of(context).size.width * 0.4,
             height: 18,
-            margin: EdgeInsets.only(bottom: LuciSpacing.md),
+            margin: const EdgeInsets.only(bottom: LuciSpacing.md),
           ),
           // Chart area
           Expanded(
@@ -276,9 +282,9 @@ class LuciChartSkeleton extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(height: LuciSpacing.sm),
+          const SizedBox(height: LuciSpacing.sm),
           // Legend skeleton
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               LuciSkeleton(

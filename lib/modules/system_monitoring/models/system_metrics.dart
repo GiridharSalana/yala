@@ -73,12 +73,29 @@ class SystemMetrics {
               : (rawLoad != null ? [rawLoad] : null));
 
     if (loadList != null && loadList.isNotEmpty) {
+      final bool hasDecimals = loadList.any((val) {
+        if (val is double && val != val.truncateToDouble()) return true;
+        if (val is String && val.contains('.')) return true;
+        return false;
+      });
+
+      final bool isKernelFixedPoint =
+          !hasDecimals &&
+          loadList.any((val) {
+            final num? n =
+                val is num ? val : num.tryParse(val.toString().trim());
+            return n != null && n >= 256;
+          });
+
       double parseLoad(dynamic val) {
         if (val == null) return 0.0;
         final num? n = val is num ? val : num.tryParse(val.toString().trim());
         if (n == null) return 0.0;
         final double dVal = n.toDouble();
-        return dVal > 10.0 ? dVal / 65536.0 : dVal;
+        if (isKernelFixedPoint || dVal >= 256.0) {
+          return dVal / 65536.0;
+        }
+        return dVal;
       }
 
       l1 = parseLoad(loadList[0]);

@@ -35,9 +35,23 @@ class WireguardPeer {
       publicKey: json['public_key']?.toString() ?? 'Unknown Key',
       endpoint: json['endpoint']?.toString(),
       allowedIps: ips,
-      rxBytes: (json['rx_bytes'] as num?) ?? 0,
-      txBytes: (json['tx_bytes'] as num?) ?? 0,
-      latestHandshakeTimestamp: (json['latest_handshake'] as num?)?.toInt(),
+      rxBytes:
+          (json['rx_bytes'] as num?) ??
+          (json['transfer_rx'] as num?) ??
+          num.tryParse(json['rx_bytes']?.toString() ?? '') ??
+          num.tryParse(json['transfer_rx']?.toString() ?? '') ??
+          0,
+      txBytes:
+          (json['tx_bytes'] as num?) ??
+          (json['transfer_tx'] as num?) ??
+          num.tryParse(json['tx_bytes']?.toString() ?? '') ??
+          num.tryParse(json['transfer_tx']?.toString() ?? '') ??
+          0,
+      latestHandshakeTimestamp:
+          (json['latest_handshake'] as num?)?.toInt() ??
+          (json['last_handshake'] as num?)?.toInt() ??
+          int.tryParse(json['latest_handshake']?.toString() ?? '') ??
+          int.tryParse(json['last_handshake']?.toString() ?? ''),
     );
   }
 
@@ -47,6 +61,7 @@ class WireguardPeer {
     }
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final diff = now - latestHandshakeTimestamp!;
+    if (diff <= 0) return 'Just now';
     if (diff < 60) return '$diff seconds ago';
     if (diff < 3600) return '${diff ~/ 60}m ${diff % 60}s ago';
     return '${diff ~/ 3600}h ago';
@@ -74,14 +89,14 @@ class WireguardInterface {
     final rawPeers = json['peers'];
     if (rawPeers is List) {
       for (final p in rawPeers) {
-        if (p is Map<String, dynamic>) {
-          peerList.add(WireguardPeer.fromJson(p));
+        if (p is Map) {
+          peerList.add(WireguardPeer.fromJson(Map<String, dynamic>.from(p)));
         }
       }
     } else if (rawPeers is Map) {
       rawPeers.forEach((_, p) {
-        if (p is Map<String, dynamic>) {
-          peerList.add(WireguardPeer.fromJson(p));
+        if (p is Map) {
+          peerList.add(WireguardPeer.fromJson(Map<String, dynamic>.from(p)));
         }
       });
     }
@@ -457,20 +472,28 @@ class VpnConnectivityOverview {
     Map<String, dynamic>? cfRaw;
 
     if (data != null) {
-      final wgMap = data['wireguard'] as Map<String, dynamic>?;
+      final wgMap = (data['wireguard'] is Map)
+          ? Map<String, dynamic>.from(data['wireguard'] as Map)
+          : null;
       if (wgMap != null) {
         wgMap.forEach((name, val) {
-          if (val is Map<String, dynamic>) {
-            wgList.add(WireguardInterface.fromJson(name, val));
+          if (val is Map) {
+            wgList.add(
+              WireguardInterface.fromJson(name, Map<String, dynamic>.from(val)),
+            );
           }
         });
       }
 
-      final ovpnMap = data['openvpn'] as Map<String, dynamic>?;
+      final ovpnMap = (data['openvpn'] is Map)
+          ? Map<String, dynamic>.from(data['openvpn'] as Map)
+          : null;
       if (ovpnMap != null) {
         ovpnMap.forEach((name, val) {
-          if (val is Map<String, dynamic>) {
-            ovpnList.add(OpenVpnInstance.fromJson(name, val));
+          if (val is Map) {
+            ovpnList.add(
+              OpenVpnInstance.fromJson(name, Map<String, dynamic>.from(val)),
+            );
           }
         });
       }
@@ -485,16 +508,19 @@ class VpnConnectivityOverview {
       }
       if (interfaces != null) {
         for (final item in interfaces) {
-          if (item is Map<String, dynamic>) {
-            final ifname = item['interface']?.toString() ?? '';
-            final proto = item['proto']?.toString().toLowerCase() ?? '';
+          if (item is Map) {
+            final itemMap = Map<String, dynamic>.from(item);
+            final ifname = itemMap['interface']?.toString() ?? '';
+            final proto = itemMap['proto']?.toString().toLowerCase() ?? '';
             final dev =
-                (item['device'] ?? item['l3_device'])
+                (itemMap['device'] ?? itemMap['l3_device'])
                     ?.toString()
                     .toLowerCase() ??
                 '';
             final isUp =
-                item['up'] == true || item['up'] == 1 || item['up'] == '1';
+                itemMap['up'] == true ||
+                itemMap['up'] == 1 ||
+                itemMap['up'] == '1';
 
             if (ifname.isNotEmpty) {
               if (proto == 'wireguard' ||
@@ -539,9 +565,15 @@ class VpnConnectivityOverview {
         }
       }
 
-      tsRaw = data['tailscale'] as Map<String, dynamic>?;
-      ndnsRaw = data['nextdns'] as Map<String, dynamic>?;
-      cfRaw = data['cloudflared'] as Map<String, dynamic>?;
+      tsRaw = (data['tailscale'] is Map)
+          ? Map<String, dynamic>.from(data['tailscale'] as Map)
+          : null;
+      ndnsRaw = (data['nextdns'] is Map)
+          ? Map<String, dynamic>.from(data['nextdns'] as Map)
+          : null;
+      cfRaw = (data['cloudflared'] is Map)
+          ? Map<String, dynamic>.from(data['cloudflared'] as Map)
+          : null;
     }
 
     // Default mock data only if in Reviewer Mode

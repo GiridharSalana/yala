@@ -17,6 +17,7 @@ import 'package:yala/utils/release_utils.dart';
 import 'package:yala/design/luci_design_system.dart';
 import 'package:yala/models/client.dart';
 import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/widgets/luci_loading_states.dart';
 import 'package:yala/modules/system_monitoring/models/system_metrics.dart';
 import 'package:yala/modules/system_monitoring/models/router_temperature.dart';
 import 'package:yala/modules/system_monitoring/screens/system_monitoring_screen.dart';
@@ -24,6 +25,7 @@ import 'package:yala/modules/system_monitoring/widgets/add_rpc_handler_dialog.da
 import 'package:yala/modules/wireless_management/screens/guest_wifi_management_screen.dart';
 import 'package:yala/modules/vpn_connectivity/screens/vpn_connectivity_screen.dart';
 import 'package:yala/screens/manage_routers_screen.dart';
+import 'package:yala/widgets/rpc_permissions_dialog.dart';
 import 'package:yala/l10n/app_localizations.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -252,7 +254,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     final hasMultipleRouters = appState.routers.length > 1;
 
-    Widget titleRow = Row(
+    final Widget titleRow = Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -934,6 +936,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required String label,
     required String value,
     Color? valueColor,
+    bool isLoading = false,
   }) {
     final labelStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
       color: Theme.of(context).colorScheme.onSurface,
@@ -951,10 +954,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Text(label, style: labelStyle),
         ),
         const SizedBox(height: 4),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(value, style: valueStyle, textAlign: TextAlign.center),
-        ),
+        if (isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 2.0),
+            child: LuciSkeleton(
+              width: 44,
+              height: 14,
+              borderRadius: BorderRadius.all(Radius.circular(6)),
+            ),
+          )
+        else
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(value, style: valueStyle, textAlign: TextAlign.center),
+          ),
       ],
     );
   }
@@ -963,30 +976,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final sysInfo = appState.dashboardData?['sysInfo'] as Map<String, dynamic>?;
     final boardInfo =
         appState.dashboardData?['boardInfo'] as Map<String, dynamic>?;
+    final bool isVitalsLoading = sysInfo == null || sysInfo.isEmpty;
     final metrics = SystemMetrics.fromSysInfo(
       sysInfo,
       boardInfo: boardInfo,
       temperature: appState.dashboardData?['temperature'],
     );
 
-    final uptimeValue = metrics.formattedUptime;
-    final cpuLoadValue = '${metrics.cpuUsagePercent.toStringAsFixed(0)}%';
-    final loadAvgValue = metrics.load1m.toStringAsFixed(2);
-    final memoryValue = metrics.totalMemoryBytes > 0
-        ? '${metrics.memoryUsagePercent.toStringAsFixed(0)}%'
-        : 'N/A';
+    final uptimeValue = isVitalsLoading ? '' : metrics.formattedUptime;
+    final cpuLoadValue = isVitalsLoading
+        ? ''
+        : '${metrics.cpuUsagePercent.toStringAsFixed(0)}%';
+    final loadAvgValue = isVitalsLoading ? '' : metrics.load1m.toStringAsFixed(2);
+    final memoryValue = isVitalsLoading
+        ? ''
+        : (metrics.totalMemoryBytes > 0
+            ? '${metrics.memoryUsagePercent.toStringAsFixed(0)}%'
+            : 'N/A');
     final prefs = appState.dashboardPreferences;
-    final tempValue = metrics.formattedTemperatureForUnit(
-      prefs.temperatureUnit,
-    );
+    final tempValue = isVitalsLoading
+        ? ''
+        : metrics.formattedTemperatureForUnit(
+            prefs.temperatureUnit,
+          );
     final vitals = <Widget>[];
     final l10n = AppLocalizations.of(context);
     if (prefs.showCpuLoad) {
       vitals.add(
         _buildVitalsColumn(
           context,
-          label: l10n?.cpuUsage ?? 'CPU Load',
+          label: l10n?.cpuUsage ?? 'CPU Usage',
           value: cpuLoadValue,
+          isLoading: isVitalsLoading,
         ),
       );
     }
@@ -994,13 +1015,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       vitals.add(
         _buildVitalsColumn(
           context,
-          label: l10n?.memoryUsage ?? 'RAM Usage',
+          label: l10n?.memoryUsage ?? 'Memory',
           value: memoryValue,
+          isLoading: isVitalsLoading,
         ),
       );
     }
+    if (prefs.showLoadAverage) {
+      vitals.add(
+        _buildVitalsColumn(
+          context,
+          label: l10n?.metricLoadAvg ?? 'Load Average',
+          value: loadAvgValue,
+          isLoading: isVitalsLoading,
+        ),
+      );
+    }
+    if (prefs.showUptime) {
+      vitals.add(
+        _buildVitalsColumn(
+          context,
+          label: l10n?.systemUptime ?? 'Uptime',
+          value: uptimeValue,
+          isLoading: isVitalsLoading,
+        ),
+      );
+    }
+
+    // Dynamic temperature field: only added if hardware sensor exists and has valid reading
     final tempObj = metrics.temperature;
     final hasUsableTemp =
+        !isVitalsLoading &&
         tempObj != null &&
         tempObj.isSupported &&
         tempObj.mainTemperature != null;
@@ -1014,27 +1059,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       vitals.add(
         _buildVitalsColumn(
           context,
-          label: l10n?.metricTemperature ?? 'Temp',
+          label: l10n?.metricTemperature ?? 'Temperature',
           value: tempValue,
           valueColor: tempColor,
-        ),
-      );
-    }
-    if (prefs.showLoadAverage) {
-      vitals.add(
-        _buildVitalsColumn(
-          context,
-          label: l10n?.metricLoadAvg ?? 'Load Avg',
-          value: loadAvgValue,
-        ),
-      );
-    }
-    if (prefs.showUptime) {
-      vitals.add(
-        _buildVitalsColumn(
-          context,
-          label: l10n?.systemUptime ?? 'Uptime',
-          value: uptimeValue,
         ),
       );
     }
@@ -1232,19 +1259,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         .length;
     final isLoading =
         !appState.hasFetchedClients &&
-        (appState.isDashboardLoading || appState.isClientsLoading);
+        (appState.isDashboardLoading ||
+            appState.isClientsLoading ||
+            appState.dashboardData == null);
 
     Widget buildCountText(int count) {
       if (isLoading) {
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: SizedBox(
-            width: 14,
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 2.0),
+          child: LuciSkeleton(
+            width: 76,
             height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: colorScheme.primary,
-            ),
+            borderRadius: BorderRadius.all(Radius.circular(6)),
           ),
         );
       }
@@ -2114,7 +2140,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       return buildEmptyInterfaceCard();
     }
 
-    List<Widget> interfaceCardWidgets = [];
+    final List<Widget> interfaceCardWidgets = [];
     for (var item in wanVpnInterfaces) {
       final interface = item as Map<String, dynamic>;
       final name = interface['interface'] as String? ?? 'N/A';
@@ -2325,7 +2351,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       );
     }
 
-    final cardWidth = 220.0;
+    const cardWidth = 220.0;
     final textScale = MediaQuery.textScalerOf(context).scale(1.0);
     final cardHeight = (132.0 * textScale).clamp(130.0, 168.0);
     return SizedBox(
@@ -2352,11 +2378,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         children: [
           const Icon(Icons.rate_review_rounded, color: Colors.white, size: 20),
           const SizedBox(width: 10),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              children: const [
+              children: [
                 Text(
                   'REVIEWER MODE ACTIVE',
                   style: TextStyle(
@@ -2534,141 +2560,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildSkeletonVitalsCard(BuildContext context) {
-    final appState = ref.read(appStateProvider);
-    final prefs = appState.dashboardPreferences;
-    final temp = appState.dashboardData?['temperature'];
-    final tempObj = temp is RouterTemperature
-        ? temp
-        : (temp != null ? RouterTemperature.parse(temp) : null);
-    final hasUsableTemp =
-        tempObj != null &&
-        tempObj.isSupported &&
-        tempObj.mainTemperature != null;
-
-    int count = 0;
-    if (prefs.showCpuLoad) count++;
-    if (prefs.showRamUsage) count++;
-    if (prefs.showTemperature && hasUsableTemp) count++;
-    if (prefs.showLoadAverage) count++;
-    if (prefs.showUptime) count++;
-    if (count == 0) return const SizedBox.shrink();
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 8.0),
-        child: Row(
-          children: List.generate(count, (index) {
-            return Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildSkeletonPill(context, width: 48, height: 10),
-                  const SizedBox(height: 6),
-                  _buildSkeletonPill(context, width: 36, height: 14),
-                ],
-              ),
-            );
-          }),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSkeletonClientsCard(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      margin: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Padding(
-        padding: const EdgeInsets.all(4.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12.0,
-                  horizontal: 12.0,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.08,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildSkeletonPill(context, width: 70, height: 10),
-                          const SizedBox(height: 6),
-                          _buildSkeletonPill(context, width: 50, height: 12),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Container(
-              width: 1,
-              height: 36,
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12.0,
-                  horizontal: 12.0,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.08,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildSkeletonPill(context, width: 70, height: 10),
-                          const SizedBox(height: 6),
-                          _buildSkeletonPill(context, width: 50, height: 12),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSkeletonDashboard(BuildContext context, AppState appState) {
     final l10n = AppLocalizations.of(context);
+    final tempPill = _buildTemperaturePromptPill(context, appState);
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -2689,14 +2583,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             context,
             l10n?.cardSystemVitals ?? 'System Vitals',
             Icons.monitor_heart,
+            action: tempPill,
           ),
-          _buildSkeletonVitalsCard(context),
+          _buildSystemVitalsCard(appState),
           _buildSectionHeader(
             context,
             l10n?.cardConnectedClients ?? 'Connected Clients Overview',
             Icons.devices,
           ),
-          _buildSkeletonClientsCard(context),
+          _buildClientsSummaryCard(appState),
           _buildSectionHeader(
             context,
             l10n?.cardWirelessRadios ?? 'Wireless Radios & SSIDs',
@@ -2932,6 +2827,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final enabledActions = appState.dashboardPreferences.enabledQuickActions;
     if (enabledActions.isEmpty) return null;
     final l10n = AppLocalizations.of(context);
+    final isRpcMissing = appState.isMissingRpcPackages;
 
     final buttons = <Widget>[];
 
@@ -2939,10 +2835,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       buttons.add(
         _buildQuickActionButton(
           context,
-          icon: Icons.restart_alt,
+          icon: isRpcMissing ? Icons.lock_outline_rounded : Icons.restart_alt,
           color: Colors.amber.shade700,
           label: l10n?.quickActionReboot ?? 'Reboot',
-          onTap: () => _showQuickRebootDialog(context, appState),
+          enabled: !isRpcMissing,
+          restrictionReason: isRpcMissing
+              ? 'Requires router RPC permissions'
+              : null,
+          onTap: isRpcMissing
+              ? () => RpcPermissionsDialog.show(
+                  context,
+                  actionName: l10n?.quickActionReboot ?? 'Reboot Router',
+                )
+              : () => _showQuickRebootDialog(context, appState),
         ),
       );
     }
@@ -2951,41 +2856,59 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       buttons.add(
         _buildQuickActionButton(
           context,
-          icon: Icons.cleaning_services,
+          icon: isRpcMissing
+              ? Icons.lock_outline_rounded
+              : Icons.cleaning_services,
           color: Colors.teal,
           label: l10n?.quickActionFlushDns ?? 'Flush DNS',
-          onTap: () async {
-            const actionKey = 'flush_dns_action';
-            context.showToastLoading(
-              'Flushing DNS cache...',
-              actionKey: actionKey,
-            );
-            final success = await appState.manageServiceAction(
-              'dnsmasq',
-              'restart',
-              context: context,
-            );
-            if (context.mounted) {
-              final l10n = AppLocalizations.of(context);
-              if (success) {
-                context.showToastSuccess(
-                  'DNS Cache Flushed',
-                  subtitle:
-                      l10n?.dashDnsRestartSuccess ??
-                      'dnsmasq restarted successfully',
-                  actionKey: actionKey,
-                );
-              } else {
-                context.showToastError(
-                  'Flush DNS Failed',
-                  subtitle:
-                      l10n?.dashDnsRestartFailed ??
-                      'Could not send command to router',
-                  actionKey: actionKey,
-                );
-              }
-            }
-          },
+          enabled: !isRpcMissing,
+          restrictionReason: isRpcMissing
+              ? 'Requires router RPC permissions'
+              : null,
+          onTap: isRpcMissing
+              ? () => RpcPermissionsDialog.show(
+                  context,
+                  actionName: l10n?.quickActionFlushDns ?? 'Flush DNS',
+                )
+              : () async {
+                  const actionKey = 'flush_dns_action';
+                  if (ActionRateLimiter.isRateLimited(
+                    actionKey,
+                    cooldown: const Duration(seconds: 2),
+                  )) {
+                    return;
+                  }
+                  context.showToastLoading(
+                    'Flushing DNS cache...',
+                    actionKey: actionKey,
+                  );
+                  try {
+                    final res = await appState.flushDns(context: context);
+                    if (context.mounted) {
+                      if (res.isSuccess) {
+                        context.showToastSuccess(
+                          'DNS Cache Flushed',
+                          subtitle: res.message,
+                          actionKey: actionKey,
+                        );
+                      } else {
+                        context.showToastError(
+                          'Flush DNS Failed',
+                          subtitle: res.message,
+                          actionKey: actionKey,
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      context.showToastError(
+                        'Flush DNS Failed',
+                        subtitle: e.toString().replaceAll('Exception: ', ''),
+                        actionKey: actionKey,
+                      );
+                    }
+                  }
+                },
         ),
       );
     }
@@ -3037,12 +2960,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               'Refreshing Dashboard...',
               actionKey: actionKey,
             );
-            await appState.fetchDashboardData(force: true);
-            if (context.mounted) {
-              context.showToastSuccess(
-                'Dashboard Updated',
-                actionKey: actionKey,
-              );
+            try {
+              await appState.fetchDashboardData(force: true);
+              if (context.mounted) {
+                context.showToastSuccess(
+                  'Dashboard Updated',
+                  actionKey: actionKey,
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                context.showToastError(
+                  'Refresh Failed',
+                  subtitle: e.toString().replaceAll('Exception: ', ''),
+                  actionKey: actionKey,
+                );
+              }
             }
           },
         ),
@@ -3106,18 +3039,48 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     required Color color,
     required String label,
     required VoidCallback onTap,
+    bool enabled = true,
+    String? restrictionReason,
   }) {
-    return ActionChip(
-      avatar: Icon(icon, size: 16, color: color),
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+    final effectiveColor = enabled ? color : color.withValues(alpha: 0.55);
+    final chip = Opacity(
+      opacity: enabled ? 1.0 : 0.6,
+      child: ActionChip(
+        avatar: Icon(icon, size: 16, color: effectiveColor),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: enabled ? null : Theme.of(context).colorScheme.outline,
+              ),
+            ),
+            if (!enabled) ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.lock_outline_rounded,
+                size: 11,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ],
+          ],
+        ),
+        onPressed: onTap,
+        backgroundColor: effectiveColor.withValues(alpha: enabled ? 0.1 : 0.05),
+        side: BorderSide(
+          color: effectiveColor.withValues(alpha: enabled ? 0.3 : 0.15),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
-      onPressed: onTap,
-      backgroundColor: color.withValues(alpha: 0.1),
-      side: BorderSide(color: color.withValues(alpha: 0.3)),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
+
+    if (restrictionReason != null) {
+      return Tooltip(message: restrictionReason, child: chip);
+    }
+    return chip;
   }
 
   void _showQuickRebootDialog(BuildContext context, AppState appState) {
@@ -3143,6 +3106,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             onPressed: () async {
               Navigator.of(ctx).pop();
               const actionKey = 'router_reboot';
+              if (ActionRateLimiter.isRateLimited(
+                actionKey,
+                cooldown: const Duration(seconds: 5),
+              )) {
+                return;
+              }
               context.showToastLoading(
                 l10n?.dialogRebootToast ?? 'Rebooting Router...',
                 actionKey: actionKey,
@@ -3337,21 +3306,72 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   List<Widget> _buildModuleDashboardWidgets(BuildContext context) {
     final widgets = <Widget>[];
     final modules = LuciModuleRegistry.instance.enabledModules;
+    final isRpcMissing = ref.watch(appStateProvider).isMissingRpcPackages;
+    const rpcDependentModules = {
+      'package_manager',
+      'system_backup_upgrade',
+      'diagnostics',
+      'sqm',
+    };
+
     for (final module in modules) {
       if (module.showInBottomNav) continue; // Skip core tab bar screens
       final widget = module.buildDashboardWidget(context);
       if (widget != null) {
+        final isRestricted =
+            isRpcMissing && rpcDependentModules.contains(module.id);
         widgets.add(
-          InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => module.buildScreen(context),
+          Stack(
+            children: [
+              Opacity(
+                opacity: isRestricted ? 0.65 : 1.0,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => module.buildScreen(context),
+                      ),
+                    );
+                  },
+                  child: widget,
                 ),
-              );
-            },
-            child: widget,
+              ),
+              if (isRestricted)
+                Positioned(
+                  top: 12,
+                  right: 14,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade900.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          size: 11,
+                          color: Colors.white,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Permissions Required',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
         );
         widgets.add(const SizedBox(height: 10));

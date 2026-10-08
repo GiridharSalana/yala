@@ -26,13 +26,13 @@ void main() {
 
   const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
 
-  final mockRadio = WirelessRadio(
+  const mockRadio = WirelessRadio(
     name: 'radio0',
     isUp: true,
     channel: '6',
     country: 'US',
     interfaces: [
-      const WirelessInterface(
+      WirelessInterface(
         ifName: 'wlan0',
         sectionName: 'cfg0',
         ssid: 'Home_WiFi',
@@ -144,7 +144,7 @@ void main() {
         });
 
         await tester.pumpWidget(
-          ProviderScope(
+          const ProviderScope(
             child: MaterialApp(
               home: Scaffold(
                 body: AddSsidDialog(

@@ -1,6 +1,11 @@
-# Contributing to YALA (Yala)
+# Contributing to this fork
 
-Thank you for your interest in contributing to YALA! This project is an independent, open-source, GPLv3-licensed mobile client for OpenWrt, originally derived from [`cogwheel0/luci-mobile`](https://github.com/cogwheel0/luci-mobile). I welcome contributions, bug fixes, and feature enhancements that respect open-source licensing and original authorship.
+**[`GiridharSalana/yala`](https://github.com/GiridharSalana/yala)** is a personal Android fork of [**nightcodex7/yala**](https://github.com/nightcodex7/yala). It is GPLv3-licensed (see [LICENSE](LICENSE)) and traces back to [`cogwheel0/luci-mobile`](https://github.com/cogwheel0/luci-mobile).
+
+- **App features, bugs, and translations:** please open issues and PRs on [nightcodex7/yala](https://github.com/nightcodex7/yala).
+- **This repo:** fork packaging (`com.giridharsalana.yala`), GitHub Actions releases, and personal UX tweaks. Issues here should be limited to those topics.
+
+Thank you for respecting upstream authorship and GPL copyleft.
 
 ## Table of Contents
 
@@ -35,15 +40,15 @@ All contributions to this repository must be licensed under the **GNU General Pu
 
 ### Fork and Clone
 
-1. Fork this repository on GitHub (`GiridharSalana/yala`).
-2. Clone your fork locally:
+1. Clone this fork (or your own fork of it):
    ```bash
-   git clone https://github.com/YOUR_USERNAME/yala.git
+   git clone https://github.com/GiridharSalana/yala.git
    cd yala
    ```
-3. Set the upstream remote to track this main repository:
+2. Add the Yala upstream remote (for syncing):
    ```bash
    git remote add upstream https://github.com/nightcodex7/yala.git
+   git fetch upstream
    ```
 
 ## Development Setup

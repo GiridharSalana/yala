@@ -189,7 +189,7 @@ class _RouterDashboardSettingsScreenState
   }) {
     return Card(
       elevation: 2,
-      margin: EdgeInsets.symmetric(
+      margin: const EdgeInsets.symmetric(
         horizontal: LuciSpacing.md,
         vertical: LuciSpacing.sm,
       ),
@@ -211,7 +211,7 @@ class _RouterDashboardSettingsScreenState
           shape: RoundedRectangleBorder(
             borderRadius: LuciCardStyles.standardRadius,
           ),
-          childrenPadding: EdgeInsets.symmetric(
+          childrenPadding: const EdgeInsets.symmetric(
             horizontal: LuciSpacing.md,
             vertical: LuciSpacing.sm,
           ),
@@ -820,7 +820,7 @@ class _RouterDashboardSettingsScreenState
           ),
         ),
         if (!_preferences.showAllThroughput && interfaces.isNotEmpty) ...[
-          SizedBox(height: LuciSpacing.sm),
+          const SizedBox(height: LuciSpacing.sm),
           RadioGroup<String>(
             groupValue: _preferences.primaryThroughputInterface,
             onChanged: (value) {
@@ -836,7 +836,7 @@ class _RouterDashboardSettingsScreenState
             child: Column(
               children: interfaces.map((iface) {
                 return Padding(
-                  padding: EdgeInsets.symmetric(vertical: LuciSpacing.xs),
+                  padding: const EdgeInsets.symmetric(vertical: LuciSpacing.xs),
                   child: RadioListTile<String>(
                     title: Text(
                       iface,
@@ -957,13 +957,13 @@ class _RouterDashboardSettingsScreenState
           ),
         ),
         if (_preferences.enabledWirelessInterfaces.isNotEmpty) ...[
-          SizedBox(height: LuciSpacing.sm),
+          const SizedBox(height: LuciSpacing.sm),
           ...sortedInterfaces.map((interface) {
             final isEnabled = _preferences.enabledWirelessInterfaces.contains(
               interface,
             );
             return Padding(
-              padding: EdgeInsets.symmetric(vertical: LuciSpacing.xs),
+              padding: const EdgeInsets.symmetric(vertical: LuciSpacing.xs),
               child: CheckboxListTile(
                 title: Text(
                   interface,
@@ -1052,14 +1052,14 @@ class _RouterDashboardSettingsScreenState
           ),
         ),
         if (_preferences.enabledWiredInterfaces.isNotEmpty) ...[
-          SizedBox(height: LuciSpacing.sm),
+          const SizedBox(height: LuciSpacing.sm),
           ...sortedInterfaces.map((interface) {
             final isEnabled = _preferences.enabledWiredInterfaces.contains(
               interface,
             );
             final description = _getInterfaceDescription(interface);
             return Padding(
-              padding: EdgeInsets.symmetric(vertical: LuciSpacing.xs),
+              padding: const EdgeInsets.symmetric(vertical: LuciSpacing.xs),
               child: CheckboxListTile(
                 title: Text(
                   interface.toUpperCase(),
@@ -1155,7 +1155,7 @@ class _RouterDashboardSettingsScreenState
     return Scaffold(
       appBar: LuciAppBar(title: title, showBack: true),
       body: ListView(
-        padding: EdgeInsets.symmetric(vertical: LuciSpacing.sm),
+        padding: const EdgeInsets.symmetric(vertical: LuciSpacing.sm),
         children: [
           LuciStaggeredAnimation(
             staggerDelay: const Duration(milliseconds: 40),
@@ -1167,7 +1167,7 @@ class _RouterDashboardSettingsScreenState
               _buildNetworkPrivacySection(),
               _buildWirelessInterfacesSection(),
               _buildWiredInterfacesSection(),
-              SizedBox(height: LuciSpacing.lg),
+              const SizedBox(height: LuciSpacing.lg),
             ],
           ),
         ],

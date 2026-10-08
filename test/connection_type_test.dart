@@ -115,8 +115,8 @@ void main() {
       'disconnected wireless client tracked via knownWirelessMacs remains wireless and disconnected',
       () {
         final knownWirelessMacs = {'AA:BB:CC:11:22:33'};
-        final macNorm = 'AA:BB:CC:11:22:33';
-        final isWirelessActive = false; // Left Wi-Fi
+        const macNorm = 'AA:BB:CC:11:22:33';
+        const isWirelessActive = false; // Left Wi-Fi
 
         final isWirelessClient =
             isWirelessActive || knownWirelessMacs.contains(macNorm);

@@ -118,6 +118,10 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
 
   Future<void> _exportProfiles(BuildContext context, AppState appState) async {
     final l10n = AppLocalizations.of(context);
+    if (appState.reviewerModeEnabled) {
+      context.showToastInfo('Export is disabled in Reviewer Mode.');
+      return;
+    }
     if (appState.routers.isEmpty) {
       context.showToastInfo(
         l10n?.manageRouterNoProfiles ?? 'No router profiles to export.',
@@ -177,6 +181,10 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
   }
 
   Future<void> _importProfiles(BuildContext context, AppState appState) async {
+    if (appState.reviewerModeEnabled) {
+      context.showToastInfo('Import is disabled in Reviewer Mode.');
+      return;
+    }
     try {
       final result = await appState.importRouterProfilesFromFile();
 
@@ -588,27 +596,59 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
         title: l10n?.manageRoutersTitle ?? 'Routers',
         showBack: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.file_download_outlined),
-            tooltip:
-                l10n?.manageRouterImportTooltip ?? 'Import Profiles from JSON',
-            onPressed: () => _importProfiles(context, appState),
-          ),
-          if (routers.isNotEmpty)
+          if (!appState.reviewerModeEnabled) ...[
             IconButton(
-              icon: const Icon(Icons.file_upload_outlined),
+              icon: const Icon(Icons.file_download_outlined),
               tooltip:
-                  l10n?.manageRouterExportTooltip ?? 'Export Profiles as JSON',
-              onPressed: () => _exportProfiles(context, appState),
+                  l10n?.manageRouterImportTooltip ?? 'Import Profiles from JSON',
+              onPressed: () => _importProfiles(context, appState),
             ),
-
+            if (routers.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.file_upload_outlined),
+                tooltip:
+                    l10n?.manageRouterExportTooltip ?? 'Export Profiles as JSON',
+                onPressed: () => _exportProfiles(context, appState),
+              ),
+          ],
           const SizedBox(width: 8),
         ],
       ),
       backgroundColor: Theme.of(context).colorScheme.surface,
       body: Column(
         children: [
-          const SizedBox(height: 16),
+          if (appState.reviewerModeEnabled)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Theme.of(context).colorScheme.tertiary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Reviewer Mode Active: Profiles displayed here are in demo mode. Any added or modified profiles will not be saved permanently or exported.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onTertiaryContainer,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async => appState.loadRouters(),
@@ -775,7 +815,6 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                       context: context,
                                     );
                                     if (appState.hasActiveSession) {
-                                      await appState.fetchDashboardData();
                                       if (!context.mounted) return;
                                       if (widget.isFromLogin) {
                                         Navigator.of(

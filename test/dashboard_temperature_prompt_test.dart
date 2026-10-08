@@ -106,6 +106,33 @@ void main() {
   );
 
   testWidgets(
+    'DashboardScreen does NOT show temperature prompt pill when handler is installed but sensors are offline/empty',
+    (WidgetTester tester) async {
+      final installedHandlerOfflineTemp = RouterTemperature.unavailable(
+        hasPhysicalSensors: true,
+        isHandlerInstalled: true,
+        reason:
+            'Temperature script is installed, but thermal sensors are currently offline or inactive.',
+      );
+
+      appState.setDashboardPreferencesForTesting(
+        DashboardPreferences(dismissTemperaturePrompt: false),
+      );
+      appState.setDashboardDataForTesting(
+        createDashboardData(temperature: installedHandlerOfflineTemp),
+      );
+
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: DashboardScreen())),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Temp Script Missing'), findsNothing);
+      expect(find.byIcon(Icons.thermostat_outlined), findsNothing);
+    },
+  );
+
+  testWidgets(
     'DashboardScreen DOES show temperature prompt pill when hardware sensors exist but script is missing',
     (WidgetTester tester) async {
       final needsHandlerTemp = RouterTemperature.unavailable(

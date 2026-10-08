@@ -39,4 +39,34 @@ void main() {
       expect(find.text('Close'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'WifiQrDialog generates correct QR payload for WPA3-SAE and Open',
+    (WidgetTester tester) async {
+      const saeIface = WirelessInterface(
+        ifName: 'wlan0',
+        sectionName: 'default_radio0',
+        ssid: 'SAE_Network',
+        mode: 'ap',
+        encryption: 'sae',
+        securityMode: WifiSecurityMode.saeOnly,
+        pmfState: PmfState.required,
+        channel: '36',
+        isEnabled: true,
+        stations: [],
+        key: 'Wpa3Password123',
+      );
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(body: WifiQrDialog(interface: saeIface)),
+          ),
+        ),
+      );
+
+      expect(find.text('SAE_Network'), findsOneWidget);
+      expect(find.text('Close'), findsOneWidget);
+    },
+  );
 }

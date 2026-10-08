@@ -13,8 +13,12 @@ import 'package:yala/state/app_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yala/widgets/scroll_jitter_guard.dart';
 import 'package:yala/design/luci_design_system.dart';
+import 'package:yala/utils/gateway_utils.dart';
+import 'package:yala/services/secure_storage_service.dart';
+import 'package:yala/screens/login_screen.dart';
 import 'package:yala/utils/os_platform_integration.dart';
 import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/widgets/luci_toast.dart';
 
 class MainScreen extends ConsumerStatefulWidget {
   final int? initialTab;
@@ -70,14 +74,41 @@ class _MainScreenState extends ConsumerState<MainScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _appState = ref.read(appStateProvider);
+    final newAppState = ref.read(appStateProvider);
+    if (_appState != newAppState) {
+      _appState?.removeRouterBackOnlineListener(_handleRouterBackOnline);
+      _appState = newAppState;
+      _appState?.addRouterBackOnlineListener(_handleRouterBackOnline);
+    }
   }
 
   @override
   void dispose() {
+    _appState?.removeRouterBackOnlineListener(_handleRouterBackOnline);
     WidgetsBinding.instance.removeObserver(this);
     _appState?.pauseThroughputTimer();
     super.dispose();
+  }
+
+  void _handleRouterBackOnline(bool success) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    if (success) {
+      context.showToastSuccess(
+        l10n?.moreRouterOnline ?? 'Router Online',
+        subtitle:
+            l10n?.moreRouterOnlineSubtitle ??
+            'Router is back online, reconnecting…',
+        actionKey: 'router_reboot',
+      );
+    } else {
+      context.showToastError(
+        'Reboot Timeout',
+        subtitle:
+            'Router did not respond in time. Please check your connection.',
+        actionKey: 'router_reboot',
+      );
+    }
   }
 
   @override
@@ -238,6 +269,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     }
 
     final isRebooting = appState.isRebooting;
+    final connectionStatus = appState.connectionStatus;
     final colorScheme = Theme.of(context).colorScheme;
     final isTablet = LuciBreakpoints.isTablet(context);
     final l10n = AppLocalizations.of(context);
@@ -268,6 +300,22 @@ class _MainScreenState extends ConsumerState<MainScreen>
               : const SizedBox.shrink(),
         ],
       ),
+    );
+
+    final showConnectivityBanner =
+        connectionStatus != RouterConnectionStatus.connected && !isRebooting;
+
+    final contentWithBanner = Column(
+      children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          child: showConnectivityBanner
+              ? _buildConnectivityBanner(context, connectionStatus)
+              : const SizedBox.shrink(),
+        ),
+        Expanded(child: body),
+      ],
     );
 
     return PopScope(
@@ -409,13 +457,13 @@ class _MainScreenState extends ConsumerState<MainScreen>
                     ),
                   ),
                   const VerticalDivider(thickness: 1, width: 1),
-                  Expanded(child: body),
+                  Expanded(child: contentWithBanner),
                 ],
               ),
             )
           // ── Phone layout: Custom bottom navigation bar ─────────────────────
           : Scaffold(
-              body: body,
+              body: contentWithBanner,
               bottomNavigationBar: Container(
                 color: colorScheme.surfaceContainer,
                 child: SafeArea(
@@ -908,6 +956,80 @@ class _MainScreenState extends ConsumerState<MainScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildConnectivityBanner(
+    BuildContext context,
+    RouterConnectionStatus status,
+  ) {
+    final theme = Theme.of(context);
+    final isReconnecting = status == RouterConnectionStatus.reconnecting;
+    final bgColor = isReconnecting
+        ? Colors.amber.shade900.withValues(alpha: 0.9)
+        : theme.colorScheme.error.withValues(alpha: 0.9);
+    final icon = isReconnecting
+        ? Icons.sync_problem_rounded
+        : Icons.wifi_off_rounded;
+    final label = isReconnecting
+        ? 'Reconnecting to router...'
+        : 'Router disconnected';
+
+    return Material(
+      color: bgColor,
+      elevation: 2,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (!isReconnecting)
+                InkWell(
+                  onTap: () {
+                    ref.read(appStateProvider).fetchDashboardData(force: true);
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 8.0,
+                      vertical: 2.0,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.refresh, size: 14, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          'Retry',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

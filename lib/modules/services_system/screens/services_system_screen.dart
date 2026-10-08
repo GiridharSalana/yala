@@ -120,6 +120,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       );
     }
 
+    bool caughtError = false;
     try {
       for (final entry in modifiedEntries.entries) {
         if (!mounted) break;
@@ -140,6 +141,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
         }
       }
     } catch (e) {
+      caughtError = true;
       if (mounted) {
         context.showToastError(
           'Error saving init scripts',
@@ -157,17 +159,17 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       }
     }
 
-    await appState.fetchDashboardData();
+    unawaited(appState.fetchDashboardData());
 
-    if (!mounted) return failedScripts.isEmpty;
+    if (!mounted) return !caughtError && failedScripts.isEmpty;
 
-    if (failedScripts.isEmpty) {
+    if (!caughtError && failedScripts.isEmpty) {
       context.showToastSuccess(
         l10n?.servicesSysToastInitSuccess ?? 'Init Scripts Updated',
         subtitle: 'Successfully updated ${succeededScripts.length} script(s).',
       );
       return true;
-    } else {
+    } else if (!caughtError) {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -192,6 +194,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       );
       return false;
     }
+    return false;
   }
 
   Future<bool?> _showUnsavedChangesDialog() async {
@@ -228,7 +231,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
             onPressed: () async {
               Navigator.of(ctx).pop(false);
               final saved = await _saveChanges();
-              if (saved && mounted) {
+              if (saved && mounted && context.mounted) {
                 Navigator.of(context).pop();
               }
             },
@@ -242,14 +245,19 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final appState = ref.watch(appStateProvider);
+    final dashboardData = ref.watch(
+      appStateProvider.select((s) => s.dashboardData),
+    );
+    final isReviewerMode = ref.watch(
+      appStateProvider.select((s) => s.reviewerModeEnabled),
+    );
     final overview = ServicesSystemOverview.fromDashboardData(
-      appState.dashboardData,
-      isReviewerMode: appState.reviewerModeEnabled,
+      dashboardData,
+      isReviewerMode: isReviewerMode,
     );
     final ddnsOverview = DdnsOverview.fromDashboardData(
-      appState.dashboardData,
-      isReviewerMode: appState.reviewerModeEnabled,
+      dashboardData,
+      isReviewerMode: isReviewerMode,
     );
 
     return PopScope(
@@ -282,7 +290,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
         ),
         body: RefreshIndicator(
           onRefresh: () async {
-            await appState.fetchDashboardData();
+            await ref.read(appStateProvider).fetchDashboardData();
           },
           child: ListView(
             padding: const EdgeInsets.all(16.0),
@@ -407,12 +415,14 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
     bool success = false;
+    bool caughtError = false;
     try {
       success = await appState.saveCronJobs(
         cronLines,
         context: mounted ? context : null,
       );
     } catch (e) {
+      caughtError = true;
       if (mounted) {
         context.showToastError(
           l10n?.servicesSysToastCronFail ?? 'Update Failed',
@@ -436,8 +446,8 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
             l10n?.servicesSysToastCronSuccessSubtitle ??
             'System cron jobs updated successfully.',
       );
-      await appState.fetchDashboardData();
-    } else {
+      unawaited(appState.fetchDashboardData());
+    } else if (!caughtError) {
       context.showToastError(
         l10n?.servicesSysToastCronFail ?? 'Update Failed',
         subtitle:
@@ -877,7 +887,6 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                       svc.name,
                       'restart',
                     );
-                    await appState.fetchDashboardData();
                     if (context.mounted) {
                       if (success) {
                         context.showToastSuccess(
@@ -891,6 +900,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                         );
                       }
                     }
+                    unawaited(appState.fetchDashboardData());
                   },
                   icon: const Icon(Icons.refresh, size: 16),
                   label: Text(
@@ -922,7 +932,6 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                       svc.name,
                       targetAction,
                     );
-                    await appState.fetchDashboardData();
                     if (context.mounted) {
                       if (success) {
                         context.showToastSuccess(
@@ -936,6 +945,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                         );
                       }
                     }
+                    unawaited(appState.fetchDashboardData());
                   },
                   icon: Icon(
                     svc.isRunning ? Icons.stop : Icons.play_arrow,
@@ -1810,6 +1820,11 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
   Future<void> _installDdnsPackage(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
+    final freeBytes = await appState.getFreeDiskSpace();
+    final isLowStorage = freeBytes != null && freeBytes < 400 * 1024;
+
+    if (!context.mounted) return;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1818,9 +1833,49 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
         title: Text(
           l10n?.servicesSysInstallDdnsTitle ?? 'Install DDNS Scripts Package',
         ),
-        content: const SingleChildScrollView(
-          child: Text(
-            'This will install the official OpenWrt ddns-scripts core package and dynamic DNS provider scripts.\n\nDo you want to proceed?',
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This will install the official OpenWrt ddns-scripts core package and dynamic DNS provider scripts.\n\nDo you want to proceed?',
+              ),
+              if (isLowStorage) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: LuciStatusColors.warning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: LuciStatusColors.warning.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: LuciStatusColors.warning,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Low Storage Warning: Only ${(freeBytes / 1024).toStringAsFixed(0)} KB available on router overlay storage. ddns-scripts requires ~350 KB. Installation may fail due to insufficient space.',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: LuciStatusColors.warning,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         actions: [
@@ -1846,20 +1901,24 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       );
     }
 
-    final success = await appState.managePackage(
+    final res = await appState.managePackageResult(
       packageName: 'ddns-scripts',
       action: 'install',
     );
 
     if (mounted && context.mounted) {
-      if (success) {
+      if (res.isSuccess) {
         context.showToastSuccess(
           'ddns-scripts package installed successfully!',
           actionKey: actionKey,
         );
       } else {
+        final errorSubtitle = res.isInsufficientStorage
+            ? 'Insufficient storage space on router (No space left on device).'
+            : res.userFriendlyPackageError;
         context.showToastError(
           'Failed to install ddns-scripts package.',
+          subtitle: errorSubtitle,
           actionKey: actionKey,
         );
       }
@@ -1909,12 +1968,12 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
 
     if (confirm != true || !mounted) return;
 
-    final success = await appState.managePackage(
+    final res = await appState.managePackageResult(
       packageName: 'ddns-scripts',
       action: 'remove',
     );
     if (mounted && context.mounted) {
-      if (success) {
+      if (res.isSuccess) {
         context.showToastSuccess(
           l10n?.servicesSysDdnsUninstalledToast ?? 'DDNS package uninstalled.',
         );
@@ -1922,6 +1981,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
         context.showToastError(
           l10n?.servicesSysDdnsUninstallFailedToast ??
               'Failed to uninstall DDNS package.',
+          subtitle: res.userFriendlyPackageError,
         );
       }
       await appState.fetchDashboardData();
@@ -1965,20 +2025,18 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     if (confirm == true && mounted) {
       final success = await appState.deleteDdnsInstance(name);
       if (context.mounted) {
-        await appState.fetchDashboardData();
-        if (context.mounted) {
-          if (success) {
-            context.showToastSuccess(
-              l10n?.servicesSysDdnsDeletedToast(name) ??
-                  'Deleted DDNS instance "$name".',
-            );
-          } else {
-            context.showToastError(
-              l10n?.servicesSysDdnsDeleteFailedToast(name) ??
-                  'Failed to delete DDNS instance "$name".',
-            );
-          }
+        if (success) {
+          context.showToastSuccess(
+            l10n?.servicesSysDdnsDeletedToast(name) ??
+                'Deleted DDNS instance "$name".',
+          );
+        } else {
+          context.showToastError(
+            l10n?.servicesSysDdnsDeleteFailedToast(name) ??
+                'Failed to delete DDNS instance "$name".',
+          );
         }
+        unawaited(appState.fetchDashboardData());
       }
     }
   }
@@ -2013,6 +2071,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     if (!mounted) return;
     navigator.pop();
 
+    if (!context.mounted) return;
     unawaited(
       showDialog(
         context: context,
@@ -2093,24 +2152,22 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
           final appState = ref.read(appStateProvider);
           final success = await appState.saveDdnsInstance(instance);
           if (context.mounted) {
-            await appState.fetchDashboardData();
-            if (context.mounted) {
-              if (success) {
-                context.showToastSuccess(
-                  l10n?.servicesSysDdnsSavedToast ?? 'DDNS Saved',
-                  subtitle:
-                      l10n?.servicesSysDdnsSavedSubtitle ??
-                      'DDNS instance saved successfully!',
-                );
-              } else {
-                context.showToastError(
-                  l10n?.servicesSysDdnsSaveFailedToast ?? 'Save Failed',
-                  subtitle:
-                      l10n?.servicesSysDdnsSaveFailedSubtitle ??
-                      'Failed to save DDNS instance.',
-                );
-              }
+            if (success) {
+              context.showToastSuccess(
+                l10n?.servicesSysDdnsSavedToast ?? 'DDNS Saved',
+                subtitle:
+                    l10n?.servicesSysDdnsSavedSubtitle ??
+                    'DDNS instance saved successfully!',
+              );
+            } else {
+              context.showToastError(
+                l10n?.servicesSysDdnsSaveFailedToast ?? 'Save Failed',
+                subtitle:
+                    l10n?.servicesSysDdnsSaveFailedSubtitle ??
+                    'Failed to save DDNS instance.',
+              );
             }
+            unawaited(appState.fetchDashboardData());
           }
           return success;
         },
@@ -3255,10 +3312,10 @@ class _DdnsEditDialogState extends State<_DdnsEditDialog> {
 
                 // Live Validation Test Output Box
                 if (_isTesting)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
                     child: Row(
-                      children: const [
+                      children: [
                         SizedBox(
                           width: 16,
                           height: 16,

@@ -155,6 +155,65 @@ class ThroughputController {
     return interfaceId;
   }
 
+  /// Resolves the set of network device names to monitor for overall throughput.
+  ///
+  /// For standard gateway routers with a WAN interface (DHCP, PPPoE, static WAN, etc.),
+  /// this returns only the external WAN layer-3 device(s), preventing double-counting
+  /// with LAN bridges or local Wi-Fi traffic.
+  ///
+  /// For routers in Dumb AP or bridge-only mode (where no WAN interface exists),
+  /// this falls back exclusively to the primary LAN bridge device (e.g. `br-lan`),
+  /// avoiding duplication across physical member switch ports and wireless radios.
+  static Set<String> resolveThroughputDeviceNames(
+    Map<String, dynamic>? interfaceDump,
+  ) {
+    if (interfaceDump == null || interfaceDump['interface'] is! List) {
+      return const <String>{};
+    }
+
+    final wanDevices = <String>{};
+    final lanDevices = <String>{};
+
+    for (final interface in interfaceDump['interface']) {
+      if (interface is! Map<String, dynamic>) continue;
+      final ifname = (interface['interface'] as String?)?.toLowerCase();
+      if (ifname == null || ifname == 'loopback' || ifname == 'lo') continue;
+
+      final proto = (interface['proto'] as String?)?.toLowerCase();
+      // Prefer l3_device (the layer-3 routed interface, e.g. pppoe-wan or eth1)
+      // over device (the underlying carrier) to prevent double counting.
+      final device = interface['device'] as String?;
+      final l3Device = interface['l3_device'] as String?;
+      final targetDev = (l3Device != null && l3Device.isNotEmpty)
+          ? l3Device
+          : device;
+
+      if (targetDev == null || targetDev == 'lo' || targetDev.isEmpty) continue;
+
+      final isWan = ifname.startsWith('wan') ||
+          proto == 'pppoe' ||
+          interface['is_wan'] == true;
+
+      if (isWan) {
+        wanDevices.add(targetDev);
+      } else if (ifname == 'lan') {
+        lanDevices.add(targetDev);
+      } else if (ifname.startsWith('lan') && lanDevices.isEmpty) {
+        lanDevices.add(targetDev);
+      }
+    }
+
+    if (wanDevices.isNotEmpty) {
+      return wanDevices;
+    }
+
+    if (lanDevices.isNotEmpty) {
+      return lanDevices;
+    }
+
+    return const <String>{};
+  }
+
   /// Cleans up all resources. Must be called from AppState.dispose().
   void dispose() {
     _throughputTimer?.cancel();

@@ -30,6 +30,11 @@ import 'package:yala/utils/os_platform_integration.dart';
 class SessionController {
   SessionController({
     bool initialReviewerMode = false,
+    ThemeMode initialThemeMode = ThemeMode.system,
+    AppThemePalette initialThemePalette = AppThemePalette.amber,
+    Locale? initialLocale,
+    bool initialClientsAggregateAllRouters = true,
+    DashboardPreferences? initialDashboardPreferences,
     required IApiService? Function() apiServiceRef,
     required IAuthService? Function() authServiceRef,
     required RouterService? Function() routerServiceRef,
@@ -43,7 +48,13 @@ class SessionController {
     required void Function(bool isLoading) setLoadingState,
     required void Function(String? error) setErrorState,
     required VoidCallback notifyListeners,
+    VoidCallback? onSessionReset,
   }) : _reviewerModeEnabled = initialReviewerMode,
+       _themeMode = initialThemeMode,
+       _themePalette = initialThemePalette,
+       _locale = initialLocale,
+       _clientsAggregateAllRouters = initialClientsAggregateAllRouters,
+       _dashboardPreferences = initialDashboardPreferences ?? DashboardPreferences(),
        _apiServiceRef = apiServiceRef,
        _authServiceRef = authServiceRef,
        _routerServiceRef = routerServiceRef,
@@ -56,7 +67,8 @@ class SessionController {
        _initializeServices = initializeServices,
        _setLoadingState = setLoadingState,
        _setErrorState = setErrorState,
-       _notifyListeners = notifyListeners;
+       _notifyListeners = notifyListeners,
+       _onSessionReset = onSessionReset;
 
   final IApiService? Function() _apiServiceRef;
   final IAuthService? Function() _authServiceRef;
@@ -71,6 +83,7 @@ class SessionController {
   final void Function(bool isLoading) _setLoadingState;
   final void Function(String? error) _setErrorState;
   final VoidCallback _notifyListeners;
+  final VoidCallback? _onSessionReset;
 
   IApiService? get _apiService => _apiServiceRef();
   IAuthService? get _authService => _authServiceRef();
@@ -145,6 +158,7 @@ class SessionController {
     // Invalidate active auth session token to prevent real router context bleed into reviewer mode or vice versa
     await _authService?.logout();
     _dashboardController?.resetState();
+    _onSessionReset?.call();
 
     _reviewerModeEnabled = enabled;
     await _secureStorageService.writeValue(
@@ -163,6 +177,7 @@ class SessionController {
     } else {
       _publicIpv4 = null;
       _publicIpv6 = null;
+      await _routerService?.loadRouters();
     }
     _setLoadingState(false);
     _notifyListeners();
@@ -306,6 +321,11 @@ class SessionController {
   Future<void> saveDashboardPreferences(DashboardPreferences prefs) async {
     try {
       _dashboardPreferences = prefs;
+      if (_reviewerModeEnabled ||
+          RouterService.isMockRouter(_routerService?.selectedRouter)) {
+        _notifyListeners();
+        return;
+      }
       final routerId = _routerService?.selectedRouter?.id;
       final key = routerId != null
           ? 'dashboard_preferences:$routerId'
@@ -438,46 +458,70 @@ class SessionController {
     }
   }
 
+  int _switchEpoch = 0;
+
   Future<void> selectRouter(String id, {BuildContext? context}) async {
     if (_routerService == null || _routerService!.routers.isEmpty) return;
 
+    // Fast-path: if already connected to this router and session is valid, no need to re-login from scratch
+    if (_routerService?.selectedRouter?.id == id &&
+        _authService?.isAuthenticated == true &&
+        _dashboardController?.dashboardData != null) {
+      _setLoadingState(false);
+      return;
+    }
+
+    final currentEpoch = ++_switchEpoch;
+
     final found = await _routerService!.selectRouter(id);
-    if (found == null) return;
+    if (found == null || currentEpoch != _switchEpoch) return;
 
     _setLoadingState(true);
     _setErrorState(null);
     _cancelThroughputTimer();
 
-    // Context-aware guardrail: Ensure previous socket connections and auth token
-    // are completely cleared before initializing a session for the newly selected router profile
-    _httpClientManager.disposeAll();
-    await _authService?.logout();
-    _dashboardController?.resetState();
+    try {
+      // Context-aware guardrail: Ensure previous socket connections and auth token
+      // are completely cleared before initializing a session for the newly selected router profile
+      _httpClientManager.disposeAll(forceCloseAdapter: true);
+      await _authService?.logout();
+      if (currentEpoch != _switchEpoch) return;
 
-    await loadDashboardPreferences();
-
-    _notifyListeners();
-    final loginSuccess = await login(
-      found.ipAddress,
-      found.username,
-      found.password,
-      found.useHttps,
-      fromRouter: true,
-      context: (context != null && context.mounted) ? context : null,
-    );
-    if (loginSuccess) {
-      await _fetchDashboardData(force: true);
-      _startThroughputTimer();
-    } else {
-      // Guardrail: Reset dashboard state if connection fails to avoid displaying stale data under new profile label
       _dashboardController?.resetState();
-      final routerLabel = found.lastKnownHostname ?? found.ipAddress;
-      _setErrorState(
-        'Failed to establish session with $routerLabel (${found.ipAddress}).',
+      _onSessionReset?.call();
+
+      await loadDashboardPreferences();
+      if (currentEpoch != _switchEpoch) return;
+
+      _notifyListeners();
+      final loginSuccess = await login(
+        found.ipAddress,
+        found.username,
+        found.password,
+        found.useHttps,
+        fromRouter: true,
+        context: (context != null && context.mounted) ? context : null,
       );
+      if (currentEpoch != _switchEpoch) return;
+
+      if (loginSuccess) {
+        await _fetchDashboardData(force: true);
+        if (currentEpoch != _switchEpoch) return;
+        _startThroughputTimer();
+      } else {
+        // Guardrail: Reset dashboard state if connection fails to avoid displaying stale data under new profile label
+        _dashboardController?.resetState();
+        final routerLabel = found.lastKnownHostname ?? found.ipAddress;
+        _setErrorState(
+          'Failed to establish session with $routerLabel (${found.ipAddress}).',
+        );
+      }
+    } finally {
+      if (currentEpoch == _switchEpoch) {
+        _setLoadingState(false);
+        _notifyListeners();
+      }
     }
-    _setLoadingState(false);
-    _notifyListeners();
   }
 
   Future<void> updateRouter(model.Router router) async {
@@ -705,14 +749,25 @@ class SessionController {
   Future<void> logout() async {
     _cancelThroughputTimer();
     await _authService?.logout();
+    final wasReviewer = _reviewerModeEnabled;
     _reviewerModeEnabled = false;
     await _secureStorageService.writeValue(AppConfig.reviewerModeKey, 'false');
-    // Preserve saved router profiles — only clear the active session token.
-    // Router profiles persist until the user explicitly removes them from the profile list.
+
+    // Guarantee that service container is restored to production factory!
+    ServiceContainer.configure(reviewerMode: false);
+    _initializeServices();
+
+    // Reset all controller states to prevent ANY data leakage
     _dashboardController?.resetState();
+    _onSessionReset?.call();
     _publicIpv4 = null;
     _publicIpv6 = null;
     _setErrorState(null);
+
+    // If was in reviewer mode, reload real production routers cleanly
+    if (wasReviewer) {
+      await _routerService?.loadRouters();
+    }
     _notifyListeners();
   }
 
@@ -721,14 +776,18 @@ class SessionController {
     bool fetchDashboard = true,
     BuildContext? context,
   }) async {
+    if (_routerService?.selectedRouter == null) {
+      await loadRouters();
+    }
+    final selected = _routerService?.selectedRouter;
     final success =
         await _authService?.tryAutoLogin(
-          null,
-          null,
-          null,
-          null,
+          selected?.ipAddress,
+          selected?.username,
+          selected?.password,
+          selected?.useHttps,
           force: force,
-          context: context,
+          context: (context != null && context.mounted) ? context : null,
         ) ??
         false;
     if (success) {
@@ -753,9 +812,6 @@ class SessionController {
     if (_reviewerModeEnabled) {
       return;
     }
-
-    // Flush stale HTTP client sockets from memory on app resume to ensure immediate fresh TCP connections
-    _httpClientManager.disposeAll();
 
     // Refresh dashboard data upon resuming from background if authenticated
     if (selectedRouter != null && _authService?.isAuthenticated == true) {

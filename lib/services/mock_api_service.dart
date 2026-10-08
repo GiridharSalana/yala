@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:yala/modules/parental_controls/models/parental_profile.dart';
 import 'package:yala/modules/services_system/models/ddns_info.dart';
+import 'package:yala/modules/sqm/models/sqm_queue.dart';
 import 'package:yala/modules/diagnostics/models/internet_reachability.dart';
 import 'package:yala/modules/diagnostics/models/ping_result.dart';
 import 'package:yala/modules/diagnostics/models/traceroute_result.dart';
@@ -15,6 +16,7 @@ import 'package:yala/modules/diagnostics/models/dns_lookup_result.dart';
 import 'package:yala/modules/diagnostics/models/routing_neighbor_info.dart';
 import 'package:yala/modules/diagnostics/models/diagnostic_report.dart';
 import 'package:yala/modules/diagnostics/models/flush_dns_result.dart';
+import 'package:yala/modules/bandwidth_monitor/models/bandwidth_data.dart';
 import 'package:yala/services/interfaces/api_service_interface.dart';
 import 'package:yala/config/app_config.dart';
 import 'package:yala/models/router_capabilities.dart';
@@ -34,6 +36,11 @@ class MockApiService implements IApiService {
   static int _baseLanTxPackets = 18765;
   static final Set<String> _mockRestrictedMacs = {'11:22:33:44:55:66'};
   static final Set<String> _mockBannedMacs = {'99:88:77:66:55:44'};
+  static String _mockHostname = 'MockRouter';
+
+  static void resetMockState() {
+    _mockHostname = 'MockRouter';
+  }
 
   @override
   Future<AuthResult> authenticate(
@@ -121,6 +128,9 @@ class MockApiService implements IApiService {
             '${AppConfig.mockDataPath}$mockDataFile',
           );
           final jsonData = jsonDecode(jsonString);
+          if (jsonData is Map && object == 'system' && method == 'board') {
+            jsonData['hostname'] = _mockHostname;
+          }
           return [0, jsonData]; // Wrap in standard RPC response format
         } catch (e) {
           // Log file loading error and fall back to default data
@@ -272,6 +282,9 @@ class MockApiService implements IApiService {
             '${AppConfig.mockDataPath}$mockDataFile',
           );
           final jsonData = jsonDecode(jsonString);
+          if (jsonData is Map && object == 'system' && method == 'board') {
+            jsonData['hostname'] = _mockHostname;
+          }
           return [0, jsonData]; // Wrap in standard RPC response format
         } catch (e) {
           // Log file loading error and fall back to default data
@@ -386,8 +399,12 @@ class MockApiService implements IApiService {
               'endpoint': '192.168.1.100:51820',
               'last_handshake':
                   _getVariedTimestamp() - _random.nextInt(300) - 30,
+              'latest_handshake':
+                  _getVariedTimestamp() - _random.nextInt(300) - 30,
               'transfer_rx': _random.nextInt(1000000),
+              'rx_bytes': _random.nextInt(1000000),
               'transfer_tx': _random.nextInt(500000),
+              'tx_bytes': _random.nextInt(500000),
               'persistent_keepalive': 25,
             },
             'peer_public_key_2': {
@@ -395,8 +412,12 @@ class MockApiService implements IApiService {
               'endpoint': '192.168.1.101:51820',
               'last_handshake':
                   _getVariedTimestamp() - _random.nextInt(600) - 60,
+              'latest_handshake':
+                  _getVariedTimestamp() - _random.nextInt(600) - 60,
               'transfer_rx': _random.nextInt(2000000),
+              'rx_bytes': _random.nextInt(2000000),
               'transfer_tx': _random.nextInt(1000000),
+              'tx_bytes': _random.nextInt(1000000),
               'persistent_keepalive': 0,
             },
           },
@@ -455,7 +476,7 @@ class MockApiService implements IApiService {
         return [
           0,
           {
-            'hostname': 'MockRouter',
+            'hostname': _mockHostname,
             'model': 'Mock Router Model X',
             'release': {
               'distribution': 'OpenWrt',
@@ -753,8 +774,12 @@ class MockApiService implements IApiService {
                   'endpoint': '192.168.1.100:51820',
                   'last_handshake':
                       _getVariedTimestamp() - _random.nextInt(300) - 30,
+                  'latest_handshake':
+                      _getVariedTimestamp() - _random.nextInt(300) - 30,
                   'transfer_rx': _random.nextInt(1000000),
+                  'rx_bytes': _random.nextInt(1000000),
                   'transfer_tx': _random.nextInt(500000),
+                  'tx_bytes': _random.nextInt(500000),
                   'persistent_keepalive': 25,
                 },
                 'peer_public_key_2': {
@@ -762,8 +787,12 @@ class MockApiService implements IApiService {
                   'endpoint': '192.168.1.101:51820',
                   'last_handshake':
                       _getVariedTimestamp() - _random.nextInt(600) - 60,
+                  'latest_handshake':
+                      _getVariedTimestamp() - _random.nextInt(600) - 60,
                   'transfer_rx': _random.nextInt(2000000),
+                  'rx_bytes': _random.nextInt(2000000),
                   'transfer_tx': _random.nextInt(1000000),
+                  'tx_bytes': _random.nextInt(1000000),
                   'persistent_keepalive': 0,
                 },
               },
@@ -1386,15 +1415,6 @@ class MockApiService implements IApiService {
   }
 
   @override
-  Future<bool> ensureSilentPermissions(
-    String ipAddress,
-    String sysauth,
-    bool useHttps,
-  ) async {
-    return true;
-  }
-
-  @override
   Future<bool> manageServiceAction(
     String ipAddress,
     String sysauth,
@@ -1622,6 +1642,42 @@ class MockApiService implements IApiService {
 
   @override
   Future<bool> toggleGlobalDdns(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required bool enable,
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return true;
+  }
+
+  @override
+  Future<bool> saveSqmQueue(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required SqmQueue queue,
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return true;
+  }
+
+  @override
+  Future<bool> deleteSqmQueue(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String sectionName,
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return true;
+  }
+
+  @override
+  Future<bool> toggleSqmService(
     String ipAddress,
     String sysauth,
     bool useHttps, {
@@ -2526,5 +2582,125 @@ Description: Command line tool for transferring data
       }
     }
     return null;
+  }
+
+  @override
+  Future<List<RealtimeTrafficPoint>> fetchRealtimeStats(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String mode,
+    String? device,
+    BuildContext? context,
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final points = <RealtimeTrafficPoint>[];
+    int baseRx = _baseRxBytes;
+    int baseTx = _baseTxBytes;
+    RealtimeTrafficPoint? prev;
+    for (int i = 20; i >= 0; i--) {
+      final ts = now - i;
+      baseRx += 50000 + _random.nextInt(200000);
+      baseTx += 20000 + _random.nextInt(80000);
+      final pt = RealtimeTrafficPoint.fromList([
+        ts,
+        baseRx,
+        baseRx ~/ 1000,
+        baseTx,
+        baseTx ~/ 1000,
+      ], previousPoint: prev);
+      points.add(pt);
+      prev = pt;
+    }
+    return points;
+  }
+
+  @override
+  Future<bool> checkNlbwmonInstalled(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    return true;
+  }
+
+  @override
+  Future<NlbwmonReport?> fetchNlbwmonData(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    String groupBy = 'mac',
+    String? period,
+    BuildContext? context,
+  }) async {
+    final mockJson = {
+      'columns': [
+        'mac',
+        'ip',
+        'conns',
+        'rx_bytes',
+        'rx_pkts',
+        'tx_bytes',
+        'tx_pkts',
+        'layer7',
+      ],
+      'data': [
+        [
+          'AA:BB:CC:DD:EE:01',
+          '192.168.1.101',
+          42,
+          542000000,
+          412000,
+          89000000,
+          112000,
+          'HTTPS',
+        ],
+        [
+          'AA:BB:CC:DD:EE:02',
+          '192.168.1.102',
+          18,
+          120000000,
+          95000,
+          34000000,
+          45000,
+          'QUIC',
+        ],
+        [
+          'AA:BB:CC:DD:EE:03',
+          '192.168.1.103',
+          5,
+          23000000,
+          18000,
+          5000000,
+          6000,
+          'DNS',
+        ],
+      ],
+    };
+    return NlbwmonReport.fromJson(mockJson, period ?? '2026-10-01');
+  }
+
+  @override
+  Future<List<String>> fetchNlbwmonPeriods(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    return const ['2026-10-01', '2026-09-01'];
+  }
+
+  @override
+  Future<bool> setRouterHostname(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String newHostname, {
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _mockHostname = newHostname;
+    return true;
   }
 }

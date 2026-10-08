@@ -596,5 +596,76 @@ L:MIT
         expect(overview.installedPackages[236].fileExtension, equals('.apk'));
       },
     );
+
+    test('isInsufficientStorage detects out of space errors accurately', () {
+      final apkError = RpcResult<String>.failed(
+        'ERROR: ip-tiny-6.18.0-r2: failed to extract usr/libexec/ip-tiny: No space left on device\n'
+        'ERROR: ip-tiny-6.18.0-r2: No space left on device\n'
+        'ERROR: System state may be inconsistent: failed to write database: No space left on device',
+        code: 5,
+      );
+      expect(apkError.isInsufficientStorage, isTrue);
+      expect(
+        apkError.userFriendlyPackageError,
+        equals('Insufficient storage space on router (No space left on device).'),
+      );
+
+      final opkgError = RpcResult<String>.failed(
+        'Collected errors:\n'
+        ' * verify_pkg_installable: Only 64kb available on filesystem /overlay, pkg ddns-scripts needs 350kb.\n'
+        ' * opkg_install_cmd: Cannot install package ddns-scripts.',
+        code: 1,
+      );
+      expect(opkgError.isInsufficientStorage, isTrue);
+      expect(
+        opkgError.userFriendlyPackageError,
+        equals('Insufficient storage space on router (No space left on device).'),
+      );
+
+      final normalError = RpcResult<String>.failed(
+        'ERROR: unable to select packages:\n  ddns-scripts-bogus (no such package)',
+        code: 1,
+      );
+      expect(normalError.isInsufficientStorage, isFalse);
+      expect(
+        normalError.userFriendlyPackageError,
+        equals('unable to select packages:'),
+      );
+    });
+
+    test('fromUbusResponse and classifyExecResult recognize ubus timeout code 7', () {
+      final ubusTimeout = RpcResult.fromUbusResponse<String>(
+        [7],
+        (d) => d.toString(),
+      );
+      expect(ubusTimeout.status, equals(RpcCallStatus.failed));
+      expect(ubusTimeout.errorCode, equals(7));
+      expect(ubusTimeout.errorMessage, contains('timed out on router (ubus error 7)'));
+
+      final execTimeout = RpcResult.classifyExecResult<String>(
+        [7],
+        (d) => d.toString(),
+      );
+      expect(execTimeout.status, equals(RpcCallStatus.failed));
+      expect(execTimeout.errorCode, equals(7));
+      expect(execTimeout.errorMessage, contains('timed out on router (ubus error 7)'));
+    });
+
+    test('PackageController.getFreeDiskSpace returns mock bytes in reviewer mode', () async {
+      final controller = PackageController(
+        apiServiceRef: () => null,
+        authServiceRef: () => null,
+        routerServiceRef: () => null,
+        capabilitiesRef: () => null,
+        reviewerModeRef: () => true,
+        refreshDashboard: () async {},
+        redetectCapabilities: () async {},
+      );
+
+      final freeSpace = await controller.getFreeDiskSpace();
+      expect(freeSpace, isNotNull);
+      expect(freeSpace, equals(50 * 1024 * 1024));
+    });
   });
 }
+

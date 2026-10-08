@@ -29,7 +29,7 @@ class DashboardSettingsListScreen extends ConsumerWidget {
       body: routers.isEmpty
           ? Center(
               child: Padding(
-                padding: EdgeInsets.all(LuciSpacing.lg),
+                padding: const EdgeInsets.all(LuciSpacing.lg),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -38,12 +38,12 @@ class DashboardSettingsListScreen extends ConsumerWidget {
                       size: 56,
                       color: Theme.of(context).colorScheme.outline,
                     ),
-                    SizedBox(height: LuciSpacing.md),
+                    const SizedBox(height: LuciSpacing.md),
                     Text(
                       l10n?.noRoutersAdded ?? 'No Routers Added',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    SizedBox(height: LuciSpacing.xs),
+                    const SizedBox(height: LuciSpacing.xs),
                     Text(
                       l10n?.noRoutersAddedSubtitle ??
                           'Add a router to customize its dashboard settings.',
@@ -55,7 +55,7 @@ class DashboardSettingsListScreen extends ConsumerWidget {
               ),
             )
           : ListView.separated(
-              padding: EdgeInsets.symmetric(
+              padding: const EdgeInsets.symmetric(
                 vertical: LuciSpacing.sm,
                 horizontal: LuciSpacing.md,
               ),
@@ -97,7 +97,7 @@ class DashboardSettingsListScreen extends ConsumerWidget {
                 );
               },
               separatorBuilder: (context, index) =>
-                  SizedBox(height: LuciSpacing.sm),
+                  const SizedBox(height: LuciSpacing.sm),
               itemCount: routers.length,
             ),
     );

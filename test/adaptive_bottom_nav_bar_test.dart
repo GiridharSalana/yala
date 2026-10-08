@@ -374,16 +374,16 @@ void main() {
         addTearDown(tester.view.resetDevicePixelRatio);
 
         await tester.pumpWidget(
-          ProviderScope(
+          const ProviderScope(
             child: MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
               home: MediaQuery(
-                data: const MediaQueryData(
+                data: MediaQueryData(
                   size: Size(590, 800),
                   textScaler: TextScaler.linear(1.6),
                 ),
-                child: const MainScreen(initialTab: 4),
+                child: MainScreen(initialTab: 4),
               ),
             ),
           ),

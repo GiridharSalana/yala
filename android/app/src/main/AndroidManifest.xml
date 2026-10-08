@@ -67,11 +67,6 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <!-- Opt-out of restricted display cutout bounds on Android 15+ -->
-            <meta-data
-              android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_DISPLAY_CUTOUT"
-              android:value="false"
-              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

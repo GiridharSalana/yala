@@ -20,6 +20,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:yala/config/app_config.dart';
 import 'package:yala/widgets/luci_toast.dart';
@@ -27,8 +28,21 @@ import 'package:yala/widgets/luci_toast.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Prevent runtime font fetching from Google servers (e.g. fonts.gstatic.com)
+  // Ensures 100% offline self-containment for F-Droid and reproducible builds.
+  GoogleFonts.config.allowRuntimeFetching = false;
+
   // Modern Android Edge-to-Edge System Bar Integration
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+  // Register SIL Open Font License (OFL) for bundled Geist and Geist Mono fonts
+  LicenseRegistry.addLicense(() async* {
+    final license = await rootBundle.loadString('assets/fonts/OFL.txt');
+    yield LicenseEntryWithLineBreaks(
+      ['google_fonts', 'Geist', 'Geist Mono'],
+      license,
+    );
+  });
 
   // Register YALA's GPLv3 copyleft license and copyright attributions in Flutter LicenseRegistry
   LicenseRegistry.addLicense(() async* {

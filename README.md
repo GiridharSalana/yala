@@ -1,33 +1,35 @@
 # Yala
 
 <div align="center">
-  <img src="assets/images/app_logo_transparent.png" width="120" alt="App Logo" />
-  <h2>Modern OpenWrt & LuCI Router Manager</h2>
-
-  [![Version](https://img.shields.io/badge/Version-2.1.0%2B228-blue.svg?style=for-the-badge&logo=github)](https://github.com/GiridharSalana/yala/releases)
-  [![Downloads](https://img.shields.io/github/downloads/GiridharSalana/yala/total.svg?style=for-the-badge&logo=github&color=blue)](https://github.com/GiridharSalana/yala/releases)
-  [![Page Views](https://komarev.com/ghpvc/?username=GiridharSalana-yala&label=Page%20Views&color=0175C2&style=for-the-badge)](https://github.com/GiridharSalana/yala)
-  [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20(Beta)-3DDC84?style=for-the-badge&logo=android&logoColor=white)]()
-  [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](LICENSE)
-  [![Build Status](https://img.shields.io/badge/Build-Passing-teal.svg?style=for-the-badge)](https://github.com/GiridharSalana/yala/actions)
-  [![OpenWrt](https://img.shields.io/badge/OpenWrt-19.07--25.x-1589F0?style=for-the-badge&logo=openwrt&logoColor=white)](https://openwrt.org)
-
-  <br>
-
-  <a href="https://github.com/GiridharSalana/yala/releases/latest">
-    <img src="store-badges/github.webp" alt="Get it on GitHub" height="60" />
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://github.com/GiridharSalana/yala/releases/tag/v2.1.0-beta-ipa">
-    <img src="store-badges/github.webp" alt="iOS Beta on GitHub" height="60" />
-  </a>
+  <img src="assets/images/app_logo_transparent.png" width="120" alt="Yala logo" />
+  <h2>OpenWrt & LuCI router manager</h2>
 
   <p>
-    <a href="https://github.com/GiridharSalana/yala/releases/tag/v2.1.0-beta-ipa">
-      <b>iOS Beta IPA Available on GitHub Releases</b>
-    </a>
+    <strong>Personal Android fork</strong> maintained by
+    <a href="https://github.com/GiridharSalana">@GiridharSalana</a>.
+    Based on <a href="https://github.com/nightcodex7/yala">nightcodex7/yala</a>
+    (GPL-3.0). Install signed APKs from
+    <a href="https://github.com/GiridharSalana/yala/releases">GitHub Releases</a>
+    — not on Play Store or F-Droid.
   </p>
+
+  [![Release](https://img.shields.io/github/v/release/GiridharSalana/yala?style=for-the-badge&logo=github&label=Release)](https://github.com/GiridharSalana/yala/releases/latest)
+  [![Downloads](https://img.shields.io/github/downloads/GiridharSalana/yala/total.svg?style=for-the-badge&logo=github&color=blue&label=Downloads)](https://github.com/GiridharSalana/yala/releases)
+  [![CI](https://img.shields.io/github/actions/workflow/status/GiridharSalana/yala/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/GiridharSalana/yala/actions/workflows/ci.yml)
+  [![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/GiridharSalana/yala/releases/latest)
+  [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](LICENSE)
+  [![OpenWrt](https://img.shields.io/badge/OpenWrt-19.07--25.x-1589F0?style=for-the-badge&logo=openwrt&logoColor=white)](https://openwrt.org)
+
   <br><br>
+
+  <a href="https://github.com/GiridharSalana/yala/releases/latest">
+    <img src="store-badges/github.webp" alt="Download latest APK on GitHub Releases" height="60" />
+  </a>
+
+  <p><sub>Upstream project &amp; iOS builds:
+  <a href="https://github.com/nightcodex7/yala">nightcodex7/yala</a></sub></p>
+
+  <br>
 
   <h3>Dashboard Preview (Light & Dark Theme)</h3>
   <p>
@@ -39,26 +41,33 @@
 
 <br>
 
-**Yala** is an open-source mobile client for managing OpenWrt routers. It connects directly to your router using LuCI JSON-RPC, ubus, and standard OpenWrt system services, allowing you to monitor real-time bandwidth, manage connected devices, run network diagnostics, configure wireless radios, inspect storage, and update packages directly from your phone or tablet.
+**Yala** is an open-source mobile client for managing OpenWrt routers. It connects directly to your router using LuCI JSON-RPC, ubus, and standard OpenWrt system services, allowing you to monitor real-time bandwidth, manage connected devices, run network diagnostics, configure wireless radios, inspect storage, and update packages from your phone or tablet.
+
+### This fork vs upstream
+
+| | **This repo** (`GiridharSalana/yala`) | **Upstream** (`nightcodex7/yala`) |
+|---|----------------------------------------|-----------------------------------|
+| **Purpose** | Personal builds for my own routers | Community / store releases |
+| **Android package** | `com.giridharsalana.yala` | Upstream application ID |
+| **Install** | [GitHub Releases](https://github.com/GiridharSalana/yala/releases) (CI-signed APK) | GitHub, F-Droid, Play Store, etc. |
+| **Extras here** | Splash auto-login, wireless tab badge, fork branding & update checks | Canonical feature set |
+
+> [!IMPORTANT]
+> Bug reports and feature ideas for **Yala itself** are best filed on [nightcodex7/yala](https://github.com/nightcodex7/yala/issues). Use this repo for fork-specific build or packaging issues only.
 
 ---
 
 ## Supported Devices & Scope
 
-Yala is purpose-built for mobile, tablet, and touch-first form factors:
+**What I build and install from this repo:** Android phones and tablets (Android 8.0+), including Chromebooks via the Android runtime.
 
-- **Smartphones:** Android (Android 8.0 Oreo up to Android 15/16) and Apple iPhone (iOS 14.0+).
-- **Tablets & iPads:** Android Tablets and Apple iPads with dedicated wide-screen multi-column layouts and adaptive split views.
-- **Foldables & Dual-Screen Devices:** Adaptive layouts with screen hinge and fold awareness (including Samsung Galaxy Fold/Flip series and Apple Duo / foldable layouts).
+The codebase still includes iOS targets from upstream, but **this fork does not publish iOS IPAs**. For iOS beta builds, use [upstream releases](https://github.com/nightcodex7/yala/releases).
+
+- **Smartphones & tablets:** Responsive layouts for phones, tablets, and foldables.
 - **Chromebooks:** Supported through the ChromeOS Android runtime.
-- **Android XR:** Spatial Android XR support.
-
-> [!TIP]
-> **iOS Beta Availability:**  
-> An experimental iOS Beta `.ipa` build is available for sideloading on [GitHub Releases](https://github.com/GiridharSalana/yala/releases/tag/v2.1.0-beta-ipa).
 
 > [!NOTE]
-> **Platform Scope:** Yala is tailored specifically for phone, tablet, and handheld interfaces. Desktop and laptop operating systems (native Windows, macOS, or desktop Linux) are outside the scope of this project, except for Chromebooks running Android apps.
+> Native desktop OS builds (Windows, macOS, Linux) are out of scope; ChromeOS Android apps are supported.
 
 ---
 
@@ -323,7 +332,7 @@ Yala is purpose-built for mobile, tablet, and touch-first form factors:
 
 ```
 yala/
-├── .github/                   # CI/CD workflows (including unsigned iOS IPA build)
+├── .github/                   # CI & Release workflow (validate + tag releases)
 ├── android/                   # Android native platform code & signing configs
 ├── assets/                    # Static app assets
 │   ├── icons/                 # App launcher icons
@@ -400,11 +409,10 @@ apk add rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status
 
 ### Prerequisites
 
-- **Flutter SDK:** 3.27.0+ (or Flutter 3.32+)
-- **Dart SDK:** 3.8.1+
-- **JDK:** OpenJDK 17 or higher
-- **Android Studio / Android SDK:** API level 35/36 (for Android builds)
-- **Xcode:** 15.0+ (optional, for macOS/iOS builds)
+- **Flutter SDK:** 3.47.x (matches [CI](.github/workflows/ci.yml))
+- **Dart SDK:** bundled with Flutter
+- **JDK:** OpenJDK 21 (CI) or 17+
+- **Android Studio / Android SDK:** API 35+ for release builds
 
 ### Quick Local Run
 
@@ -426,15 +434,16 @@ flutter test
 flutter run
 ```
 
-### Building Release Packages
+### Building release APKs (community flavor)
 
-- **Android APK (split by ABI):**
-  ```bash
-  flutter build apk --split-per-abi
-  ```
-  *(Outputs architecture-specific APKs: `arm64-v8a`, `armeabi-v7a`, and `x86_64`)*
+```bash
+flutter build apk --split-per-abi --release \
+  --flavor community \
+  --dart-define=FLAVOR=community \
+  --dart-define=OFFICIAL_BUILD=true
+```
 
-- **iOS (local only):** `flutter build ios --no-codesign --release`
+Outputs per-ABI APKs (`arm64-v8a`, `armeabi-v7a`, `x86_64`). CI also builds a universal APK and AAB on release tags.
 
 ---
 
@@ -444,9 +453,12 @@ This is a **personal fork**: builds are for my own devices only. I install APKs 
 
 **GitHub Actions** on this repo:
 
-| Workflow | Trigger | Artifacts |
-|----------|---------|-----------|
-| **CI & Release** | Push `main` / PRs / tag `v*` / manual | **1)** format, analyze, test → **2)** release APKs/AAB only on tag or manual dispatch |
+| Workflow | Trigger | What it does |
+|----------|---------|----------------|
+| [**CI & Release**](.github/workflows/ci.yml) | PRs & pushes to `main` | Format, analyze, test |
+| Same workflow | Push tag `v*` or manual dispatch | Build signed APKs/AAB and attach to [Releases](https://github.com/GiridharSalana/yala/releases) |
+
+Pushes to `main` alone do **not** create a release — tag or run the workflow manually with a version (e.g. `v2.1.0+231`).
 
 **Versioning (always follow upstream):**
 
@@ -460,7 +472,7 @@ After merging upstream, set `version` to upstream’s `X.Y.Z+N`, then use **`N +
 **To create a release:**
 1. Bump only the **`+` build number** in `pubspec.yaml` (keep `X.Y.Z` aligned with upstream), commit, push `main`.
 2. **Tag push (recommended):** `git tag 'v2.1.0+225' && git push origin 'v2.1.0+225'` — tag must match the `+` build (Release workflow listens for `v*`).
-3. **Manual:** Actions → **Release** → set **version** to the same tag (e.g. `v2.1.0+225`).
+3. **Manual:** Actions → **CI & Release** → **Run workflow** → set **version** to the same tag (e.g. `v2.1.0+231`).
 
 **GitHub Actions secrets** (repo → Settings → Secrets and variables → Actions):
 
@@ -483,13 +495,9 @@ After a release finishes, download **`app-arm64-v8a-release.apk`** (most phones)
 
 ## Contributing
 
-Contributions, bug reports, and suggestions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting pull requests.
+This repository is a **personal fork**, not a second upstream. For changes to Yala features, please contribute to [nightcodex7/yala](https://github.com/nightcodex7/yala) (see their [CONTRIBUTING.md](https://github.com/nightcodex7/yala/blob/main/CONTRIBUTING.md)).
 
-1. Fork this repository on GitHub (`GiridharSalana/yala`).
-2. Create your feature branch (`git checkout -b feature/your-feature-name`).
-3. Commit your changes (`git commit -m 'feat: description of change'`).
-4. Push to the branch (`git push origin feature/your-feature-name`).
-5. Open a Pull Request.
+Fork-specific notes (syncing upstream, local builds) are in [CONTRIBUTING.md](CONTRIBUTING.md). Open an [issue](https://github.com/GiridharSalana/yala/issues) here only for problems with **this fork’s** builds, package ID, or CI.
 
 ---
 
@@ -514,20 +522,23 @@ Contributions, bug reports, and suggestions are welcome! Please read [CONTRIBUTI
 
 ### Copyright
 
-- Original work Copyright (C) 2025–2026 cogwheel0.
-- Modifications and enhancements Copyright (C) 2026 @nightcodex7.
-- Fork customizations Copyright (C) 2026 GiridharSalana.
+- Original work Copyright (C) 2025–2026 [cogwheel0](https://github.com/cogwheel0).
+- Yala modifications Copyright (C) 2026 [@nightcodex7](https://github.com/nightcodex7).
+- This fork Copyright (C) 2026 [GiridharSalana](https://github.com/GiridharSalana).
 
 ---
 
-## Upstream Sync
+## Upstream sync
 
-This fork tracks the upstream repository at `nightcodex7/yala`. To pull upstream changes:
+Track [nightcodex7/yala](https://github.com/nightcodex7/yala) and merge periodically:
 
 ```bash
-git remote add upstream https://github.com/nightcodex7/yala.git
+git remote add upstream https://github.com/nightcodex7/yala.git   # once
 git fetch upstream
+git checkout main && git pull origin main
 git merge upstream/main
 ```
 
-Resolve any conflicts (especially in package name / app identity files), then push to your fork.
+After resolving conflicts, **keep fork identity**: `com.giridharsalana.yala`, [`lib/config/app_config.dart`](lib/config/app_config.dart) (repo URLs & maintainer), [`.github/workflows/ci.yml`](.github/workflows/ci.yml), and splash/login behavior. Then bump `pubspec.yaml` per the versioning table above, run `dart analyze` and `flutter test`, push `main`, and tag `vX.Y.Z+build`.
+
+**Quick links:** [Upstream repo](https://github.com/nightcodex7/yala) · [Upstream releases](https://github.com/nightcodex7/yala/releases) · [Privacy policy](PRIVACY_POLICY.md) · [License](LICENSE)

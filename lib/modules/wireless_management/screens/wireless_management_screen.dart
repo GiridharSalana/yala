@@ -1239,7 +1239,7 @@ class _WirelessManagementScreenState
 
   String _formatBandwidthRate(num? rawRate) {
     if (rawRate == null) return 'N/A';
-    double rate = rawRate.toDouble();
+    final double rate = rawRate.toDouble();
     if (rate <= 0) return '0 Mbps';
 
     double rateMbps;

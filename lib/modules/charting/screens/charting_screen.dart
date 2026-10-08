@@ -19,7 +19,9 @@ class ChartingScreen extends ConsumerWidget {
     final metricsData = ref.watch(metricsChartEngineProvider);
     final engine = ref.read(metricsChartEngineProvider.notifier);
 
-    final appState = ref.watch(appStateProvider);
+    final throughputInterval = ref.watch(
+      appStateProvider.select((s) => s.throughputIntervalSeconds),
+    );
 
     // Listen for periodic app state telemetry ticks to push samples safely without build-loop recursion
     ref.listen(appStateProvider, (previous, next) {
@@ -38,15 +40,15 @@ class ChartingScreen extends ConsumerWidget {
       );
     });
 
-    if (metricsData.pollingIntervalSeconds !=
-        appState.throughputIntervalSeconds) {
+    if (metricsData.pollingIntervalSeconds != throughputInterval) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        engine.updatePollingInterval(appState.throughputIntervalSeconds);
+        engine.updatePollingInterval(throughputInterval);
       });
     }
 
     // Seed initial sample if buffer is empty
     if (metricsData.cpuHistory.isEmpty) {
+      final appState = ref.read(appStateProvider);
       final sysInfo =
           appState.dashboardData?['sysInfo'] as Map<String, dynamic>?;
       final boardInfo =
@@ -68,6 +70,11 @@ class ChartingScreen extends ConsumerWidget {
     }
 
     final l10n = AppLocalizations.of(context);
+    final networkDevices = ref.watch(
+      appStateProvider.select(
+        (s) => s.dashboardData?['networkDevices'] as Map<String, dynamic>?,
+      ),
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n?.chartingTitle ?? 'Real-Time Metrics')),
@@ -143,7 +150,7 @@ class ChartingScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          _buildThroughputTableCard(context, appState),
+          _buildThroughputTableCard(context, networkDevices),
           const SizedBox(height: 32),
         ],
       ),
@@ -292,9 +299,10 @@ class ChartingScreen extends ConsumerWidget {
     return '${(bits / 1000000).toStringAsFixed(2)} Mbps';
   }
 
-  Widget _buildThroughputTableCard(BuildContext context, dynamic appState) {
-    final devices =
-        appState.dashboardData?['networkDevices'] as Map<String, dynamic>?;
+  Widget _buildThroughputTableCard(
+    BuildContext context,
+    Map<String, dynamic>? devices,
+  ) {
     final statsMap = <String, Map<String, num>>{};
 
     if (devices != null) {

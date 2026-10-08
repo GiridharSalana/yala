@@ -121,7 +121,9 @@ class MockClientControllerWithFixedClients extends ClientController {
   Future<List<Client>> fetchClientsForSelectedRouter() async => fixedClients;
 
   @override
-  Future<List<Client>> fetchAggregatedClients() async => fixedClients;
+  Future<List<Client>> fetchAggregatedClients({
+    void Function(List<Client>)? onIncrementalUpdate,
+  }) async => fixedClients;
 }
 
 void main() {
@@ -233,6 +235,30 @@ void main() {
       expect(client.formattedConnectedTime, '1h 1m');
       expect(client.hasTrafficData, isTrue);
     });
+
+    test('Hostapd rate scale (> 1,000,000) normalizes to Mbps properly', () {
+      final clientHostapd = Client(
+        ipAddress: '192.168.1.100',
+        macAddress: 'AA:BB:CC:DD:EE:FF',
+        hostname: 'Phone',
+        rxRate: 65000000, // 650 Mbps in hostapd 100 bps units
+        txRate: 26000000, // 260 Mbps in hostapd 100 bps units
+      );
+      expect(clientHostapd.formattedPhyRate, '↓ 260 Mbps • ↑ 650 Mbps');
+    });
+
+    test(
+      'Connected duration falls back to activeTime when connectedTime is null',
+      () {
+        final clientActive = Client(
+          ipAddress: '192.168.1.100',
+          macAddress: 'AA:BB:CC:DD:EE:FF',
+          hostname: 'Wired-PC',
+          activeTime: 7200, // 2 hours
+        );
+        expect(clientActive.formattedConnectedTime, '2h');
+      },
+    );
   });
 
   group('ClientController - Bandwidth Monitoring & Speed Delta Tests', () {
@@ -390,9 +416,37 @@ void main() {
       );
       expect(wiredClient.connectionType, ConnectionType.wired);
       expect(wiredClient.hasTrafficData, isFalse);
-      expect(wiredClient.formattedDownloadSpeed, isNull);
       expect(wiredClient.formattedPhyRate, isNull);
     });
+
+    test(
+      'Extracts vitals from hostapd schema ({bytes: {rx, tx}, rate: {rx, tx}})',
+      () async {
+        mockApi.mockStationDetails = {
+          'phy2-ap0|MyWiFi': [
+            {
+              'mac': 'AA:BB:CC:DD:EE:02',
+              'signal': -46,
+              'bytes': {'rx': 44397734, 'tx': 511611221},
+              'packets': {'rx': 131830, 'tx': 440857},
+              'rate': {'rx': 65000000, 'tx': 26000000},
+            },
+          ],
+        };
+
+        final clients = await clientController.fetchClientsForSelectedRouter();
+        final phone = clients.firstWhere(
+          (c) => c.macAddress == 'AA:BB:CC:DD:EE:02',
+        );
+
+        expect(phone.connectionType, ConnectionType.wireless);
+        expect(phone.rxBytes, 44397734);
+        expect(phone.txBytes, 511611221);
+        expect(phone.rxRate, 65000000);
+        expect(phone.txRate, 26000000);
+        expect(phone.formattedPhyRate, '↓ 260 Mbps • ↑ 650 Mbps');
+      },
+    );
 
     test(
       'WAN upstream gateway and WAN interface devices are excluded from client list',
@@ -502,19 +556,11 @@ void main() {
           find.textContaining('Wi-Fi • Main-5G • -54 dBm'),
           findsOneWidget,
         );
-        expect(
-          find.textContaining('20.0 Mbps'),
-          findsWidgets,
-        ); // Download speed in pill (default bits mode)
-        expect(
-          find.textContaining('2.0 Mbps'),
-          findsWidgets,
-        ); // Upload speed in pill (default bits mode)
 
         // Wired card checks:
         expect(find.text('Wired (LAN Port)'), findsWidgets);
 
-        // Tap card to expand and verify detailed PHY & transfer vitals
+        // Tap card to expand and verify detailed PHY, live speed & transfer vitals
         await tester.tap(find.text('Laptop-WiFi'));
         await tester.pumpAndSettle();
 
@@ -522,6 +568,10 @@ void main() {
           find.textContaining('↓ 867 Mbps • ↑ 867 Mbps'),
           findsOneWidget,
         ); // PHY rate in details
+        expect(
+          find.text('Current Speed'),
+          findsNothing,
+        ); // Current Speed removed per UX requirement
         expect(
           find.textContaining('-54 dBm (Good)'),
           findsOneWidget,

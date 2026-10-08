@@ -23,9 +23,9 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Modern edge-to-edge layout & display cutout handling without deprecated APIs
-        setupEdgeToEdge()
+
+        // Native edge-to-edge window setup without pulling in deprecated AndroidX EdgeToEdgeApi classes
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Unlock high refresh rate (90Hz/120Hz/144Hz) for ultra-smooth 120fps scrolling
         unlockHighRefreshRate()
@@ -186,22 +186,6 @@ class MainActivity : FlutterFragmentActivity() {
             } catch (_: Exception) {
                 // High refresh rate API unsupported or managed by OS
             }
-        }
-    }
-    
-    private fun setupEdgeToEdge() {
-        try {
-            // Modern edge-to-edge window setup without using deprecated WindowManager cutout flags
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-
-            // Configure modern display cutout mode for Android 15+ (API 35+)
-            if (Build.VERSION.SDK_INT >= 35) {
-                val lp = window.attributes
-                lp.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-                window.attributes = lp
-            }
-        } catch (_: Exception) {
-            // Defensive fallback ensuring zero startup crashes on non-standard device hardware/ROMs
         }
     }
 

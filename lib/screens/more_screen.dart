@@ -19,10 +19,11 @@ import 'package:yala/config/app_config.dart';
 import 'package:yala/utils/http_client_manager.dart';
 import 'package:yala/utils/gateway_utils.dart';
 import 'package:yala/services/secure_storage_service.dart';
-import 'package:yala/state/app_state.dart';
 import 'package:yala/modules/core/luci_module_registry.dart';
 import 'package:yala/widgets/theme_router_logo.dart';
+import 'package:yala/widgets/rpc_permissions_dialog.dart';
 import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/state/app_state.dart';
 
 class _MoreScreenSection extends StatelessWidget {
   final List<Widget> tiles;
@@ -55,43 +56,9 @@ class MoreScreen extends ConsumerStatefulWidget {
 }
 
 class _MoreScreenState extends ConsumerState<MoreScreen> {
-  AppState? _appState;
-
-  @override
-  void initState() {
-    super.initState();
-    // Do not use context here
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _appState = ref.read(appStateProvider);
-    _appState!.onRouterBackOnline = _showRouterBackOnlineMessage;
-  }
-
-  @override
-  void dispose() {
-    // Clear the callback before calling super.dispose()
-    _appState?.onRouterBackOnline = null;
-    super.dispose();
-  }
-
-  void _showRouterBackOnlineMessage() {
-    if (mounted) {
-      final l10n = AppLocalizations.of(context);
-      context.showToastSuccess(
-        l10n?.moreRouterOnline ?? 'Router Online',
-        subtitle:
-            l10n?.moreRouterOnlineSubtitle ??
-            'Router is back online, reconnecting…',
-        actionKey: 'router_reboot',
-      );
-    }
-  }
-
   Future<void> _showLogoutDialog(BuildContext context) async {
     final appState = ref.read(appStateProvider);
+    final isReviewer = appState.reviewerModeEnabled;
     final l10n = AppLocalizations.of(context);
     return showDialog<void>(
       context: context,
@@ -99,10 +66,16 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
         return AlertDialog(
           actionsOverflowButtonSpacing: 8,
           actionsOverflowDirection: VerticalDirection.down,
-          title: Text(l10n?.dialogLogoutTitle ?? 'Logout?'),
+          title: Text(
+            isReviewer
+                ? 'Exit Reviewer Mode?'
+                : (l10n?.dialogLogoutTitle ?? 'Logout?'),
+          ),
           content: SingleChildScrollView(
             child: Text(
-              l10n?.dialogLogoutMessage ?? 'Are you sure you want to logout?',
+              isReviewer
+                  ? 'Are you sure you want to exit Reviewer Mode and return to the login screen?'
+                  : (l10n?.dialogLogoutMessage ?? 'Are you sure you want to logout?'),
             ),
           ),
           actions: <Widget>[
@@ -113,13 +86,17 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
               },
             ),
             TextButton(
-              child: Text(l10n?.tileLogout ?? 'Logout'),
+              child: Text(
+                isReviewer ? 'Exit' : (l10n?.tileLogout ?? 'Logout'),
+              ),
               onPressed: () async {
                 await appState.logout();
                 // Clear all accepted certificates on logout
                 await HttpClientManager().clearAcceptedCertificates();
                 if (context.mounted) {
-                  final creds = await SecureStorageService().getCredentials();
+                  final creds = isReviewer
+                      ? <String, String?>{}
+                      : await SecureStorageService().getCredentials();
                   final detectedGateway = await GatewayUtils.detectGatewayIp();
                   final effectiveIp =
                       (creds['ipAddress'] != null &&
@@ -131,9 +108,10 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                     await Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (context) => LoginScreen(
-                          initialIp: effectiveIp,
-                          initialUsername: creds['username'],
-                          initialPassword: creds['password'],
+                          initialIp: isReviewer ? detectedGateway : effectiveIp,
+                          initialUsername:
+                              isReviewer ? 'root' : creds['username'],
+                          initialPassword: isReviewer ? null : creds['password'],
                         ),
                       ),
                       (Route<dynamic> route) => false,
@@ -224,11 +202,11 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            title: Row(
+            title: const Row(
               children: [
-                const ThemeRouterLogo(width: 28, height: 28, showShadow: false),
-                const SizedBox(width: 12),
-                const Expanded(
+                ThemeRouterLogo(width: 28, height: 28, showShadow: false),
+                SizedBox(width: 12),
+                Expanded(
                   child: Text(
                     'Yala',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -562,7 +540,10 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
             LuciSectionHeader(l10n?.secDeviceManagement ?? 'Device Management'),
             Builder(
               builder: (context) {
-                final isRebooting = ref.watch(appStateProvider).isRebooting;
+                final appState = ref.watch(appStateProvider);
+                final isRebooting = appState.isRebooting;
+                final isRpcMissing = appState.isMissingRpcPackages;
+
                 return _MoreScreenSection(
                   tiles: [
                     _buildMoreTile(
@@ -583,17 +564,99 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                     ),
                     _buildMoreTile(
                       context,
-                      icon: Icons.restart_alt,
-                      iconColor: Theme.of(context).colorScheme.primary,
+                      icon: isRpcMissing
+                          ? Icons.build_circle_outlined
+                          : Icons.verified_user_outlined,
+                      iconColor: isRpcMissing
+                          ? Colors.amber.shade800
+                          : Colors.teal,
+                      title: l10n?.tileRpcPermissions ?? 'RPC & Permissions',
+                      subtitle: isRpcMissing
+                          ? (l10n?.tileRpcPermissionsSetupRequired ??
+                                'Setup or repair router RPC access')
+                          : (l10n?.tileRpcPermissionsSubtitle ??
+                                'Manage router RPC permissions and modules'),
+                      onTap: () => RpcPermissionsDialog.show(
+                        context,
+                        actionName:
+                            l10n?.tileRpcPermissions ?? 'RPC & Permissions',
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              (isRpcMissing
+                                      ? Colors.amber.shade900
+                                      : Colors.teal)
+                                  .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color:
+                                (isRpcMissing
+                                        ? Colors.amber.shade700
+                                        : Colors.teal)
+                                    .withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isRpcMissing
+                                  ? Icons.warning_amber_rounded
+                                  : Icons.check_circle_outline_rounded,
+                              size: 12,
+                              color: isRpcMissing
+                                  ? Colors.amber.shade800
+                                  : Colors.teal,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isRpcMissing ? 'Setup' : 'Ready',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isRpcMissing
+                                    ? Colors.amber.shade900
+                                    : Colors.teal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _buildMoreTile(
+                      context,
+                      icon: isRpcMissing
+                          ? Icons.lock_outline_rounded
+                          : Icons.restart_alt,
+                      iconColor: isRpcMissing
+                          ? Colors.amber.shade800
+                          : Theme.of(context).colorScheme.primary,
                       title: l10n?.tileRebootRouter ?? 'Reboot Router',
-                      subtitle:
-                          l10n?.tileRebootRouterSubtitle ??
-                          'Perform a system restart',
+                      subtitle: isRpcMissing
+                          ? 'Requires router RPC permissions'
+                          : (l10n?.tileRebootRouterSubtitle ??
+                                'Perform a system restart'),
                       onTap: isRebooting
                           ? null
-                          : () => _showRebootDialog(context),
+                          : (isRpcMissing
+                                ? () => RpcPermissionsDialog.show(
+                                    context,
+                                    actionName:
+                                        l10n?.tileRebootRouter ??
+                                        'Reboot Router',
+                                  )
+                                : () => _showRebootDialog(context)),
                       enabled: !isRebooting,
                       showSpinner: isRebooting,
+                      isRestricted: isRpcMissing,
+                      restrictionBadgeText: isRpcMissing
+                          ? 'Permissions Required'
+                          : null,
                     ),
                   ],
                 );
@@ -606,6 +669,18 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
               tiles: LuciModuleRegistry.instance.enabledModules
                   .where((m) => !m.showInBottomNav)
                   .map((module) {
+                    final isRpcMissing = ref
+                        .watch(appStateProvider)
+                        .isMissingRpcPackages;
+                    const rpcDependentModules = {
+                      'package_manager',
+                      'system_backup_upgrade',
+                      'diagnostics',
+                      'sqm',
+                    };
+                    final isRestricted =
+                        isRpcMissing && rpcDependentModules.contains(module.id);
+
                     final (modName, modDesc) = _getLocalizedModuleInfo(
                       module.id,
                       l10n,
@@ -614,10 +689,20 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                     );
                     return _buildMoreTile(
                       context,
-                      icon: module.icon,
-                      iconColor: Theme.of(context).colorScheme.primary,
+                      icon: isRestricted
+                          ? Icons.lock_outline_rounded
+                          : module.icon,
+                      iconColor: isRestricted
+                          ? Colors.amber.shade800
+                          : Theme.of(context).colorScheme.primary,
                       title: modName,
-                      subtitle: modDesc,
+                      subtitle: isRestricted
+                          ? '$modDesc (RPC permissions required)'
+                          : modDesc,
+                      isRestricted: isRestricted,
+                      restrictionBadgeText: isRestricted
+                          ? 'Permissions Required'
+                          : null,
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -657,19 +742,28 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                       'App version, license, and credits',
                   onTap: () => _showAboutDialog(context),
                 ),
-                _buildMoreTile(
-                  context,
-                  icon: Icons.logout,
-                  iconColor: Theme.of(context).colorScheme.error,
-                  title: l10n?.tileLogout ?? 'Logout',
-                  subtitle:
-                      l10n?.tileLogoutSubtitle ??
-                      'End your session and sign out',
-                  titleColor: Theme.of(context).colorScheme.error,
-                  subtitleColor: Theme.of(
-                    context,
-                  ).colorScheme.error.withValues(alpha: 0.7),
-                  onTap: () => _showLogoutDialog(context),
+                Builder(
+                  builder: (context) {
+                    final isReviewer =
+                        ref.watch(appStateProvider).reviewerModeEnabled;
+                    return _buildMoreTile(
+                      context,
+                      icon: Icons.logout,
+                      iconColor: Theme.of(context).colorScheme.error,
+                      title: isReviewer
+                          ? 'Exit Reviewer Mode'
+                          : (l10n?.tileLogout ?? 'Logout'),
+                      subtitle: isReviewer
+                          ? 'End demo session and return to login'
+                          : (l10n?.tileLogoutSubtitle ??
+                              'End your session and sign out'),
+                      titleColor: Theme.of(context).colorScheme.error,
+                      subtitleColor: Theme.of(
+                        context,
+                      ).colorScheme.error.withValues(alpha: 0.7),
+                      onTap: () => _showLogoutDialog(context),
+                    );
+                  },
                 ),
               ],
             ),
@@ -693,7 +787,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
       case 'storage_monitoring':
         return (l10n.modStorageName, l10n.modStorageDesc);
       case 'charting':
-        return (l10n.modChartingName, l10n.modChartingDesc);
+        return (l10n.chartingTitle, l10n.modChartingDesc);
       case 'wireless':
       case 'wireless_management':
         return (l10n.modWirelessName, l10n.modWirelessDesc);
@@ -718,6 +812,10 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
         return (l10n.modParentalControlsName, l10n.modParentalControlsDesc);
       case 'diagnostics':
         return (l10n.modDiagnosticsName, l10n.modDiagnosticsDesc);
+      case 'sqm':
+        return (l10n.modSqmName, l10n.modSqmDesc);
+      case 'bandwidth_monitor':
+        return (l10n.modBandwidthMonitorName, l10n.modBandwidthMonitorDesc);
       default:
         return (defaultName, defaultDesc);
     }
@@ -735,12 +833,15 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
     Color? subtitleColor,
     bool showSpinner = false,
     bool showBadge = false,
+    bool isRestricted = false,
+    String? restrictionBadgeText,
+    Widget? trailing,
   }) {
     final theme = Theme.of(context);
     // Persistent spinning icon using AnimationController
     Widget spinningIconWidget = Icon(
       icon,
-      color: iconColor,
+      color: isRestricted ? Colors.amber.shade800 : iconColor,
       size: 24,
       semanticLabel: title,
     );
@@ -751,15 +852,54 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
         label: title,
       );
     }
+
+    Widget? effectiveTrailing = trailing;
+    if (isRestricted &&
+        restrictionBadgeText != null &&
+        effectiveTrailing == null) {
+      effectiveTrailing = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade900.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.amber.shade700.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.lock_outline_rounded,
+              size: 12,
+              color: Colors.amber.shade800,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              restrictionBadgeText,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.amber.shade900,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final double effectiveOpacity = enabled ? (isRestricted ? 0.65 : 1.0) : 0.5;
+
     return Opacity(
-      opacity: enabled ? 1.0 : 0.5,
+      opacity: effectiveOpacity,
       child: ListTile(
         leading: Stack(
           clipBehavior: Clip.none,
           children: [
             Container(
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
+                color: (isRestricted ? Colors.amber.shade800 : iconColor)
+                    .withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               padding: const EdgeInsets.all(10),
@@ -805,6 +945,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
               : LuciTextStyles.cardSubtitle(context),
           semanticsLabel: subtitle,
         ),
+        trailing: effectiveTrailing,
         enabled: enabled,
         onTap: enabled ? onTap : null,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

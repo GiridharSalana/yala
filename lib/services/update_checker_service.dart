@@ -18,6 +18,9 @@ class UpdateCheckerService {
 
   /// Performs a manual check for updates on GitHub Releases and displays an interactive dialog.
   static Future<void> checkForUpdates(BuildContext context) async {
+    if (AppConfig.isFdroidBuild) {
+      return;
+    }
     final l10n = AppLocalizations.of(context);
     // Display progress dialog
     unawaited(

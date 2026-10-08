@@ -928,20 +928,22 @@ class WirelessRadio {
 
     if (ifacesRaw is List) {
       for (final item in ifacesRaw) {
-        if (item is Map<String, dynamic>) {
-          ifaceList.add(WirelessInterface.fromJson(item, assocData));
-          if ((freq == null || freq == 0) && item['iwinfo'] != null) {
-            final iwFreq = (item['iwinfo']['frequency'] as num?)?.toInt();
+        if (item is Map) {
+          final itemMap = Map<String, dynamic>.from(item);
+          ifaceList.add(WirelessInterface.fromJson(itemMap, assocData));
+          if ((freq == null || freq == 0) && itemMap['iwinfo'] is Map) {
+            final iwFreq = (itemMap['iwinfo']['frequency'] as num?)?.toInt();
             if (iwFreq != null && iwFreq > 0) freq = iwFreq;
           }
         }
       }
     } else if (ifacesRaw is Map) {
       ifacesRaw.forEach((_, item) {
-        if (item is Map<String, dynamic>) {
-          ifaceList.add(WirelessInterface.fromJson(item, assocData));
-          if ((freq == null || freq == 0) && item['iwinfo'] != null) {
-            final iwFreq = (item['iwinfo']['frequency'] as num?)?.toInt();
+        if (item is Map) {
+          final itemMap = Map<String, dynamic>.from(item);
+          ifaceList.add(WirelessInterface.fromJson(itemMap, assocData));
+          if ((freq == null || freq == 0) && itemMap['iwinfo'] is Map) {
+            final iwFreq = (itemMap['iwinfo']['frequency'] as num?)?.toInt();
             if (iwFreq != null && iwFreq > 0) freq = iwFreq;
           }
         }
@@ -1219,7 +1221,7 @@ class WirelessOverview {
     // Default mock data only if in Reviewer Mode
     if (isReviewerMode && radioList.isEmpty) {
       radioList.addAll([
-        WirelessRadio(
+        const WirelessRadio(
           name: 'radio0',
           isUp: true,
           channel: '6',
@@ -1227,7 +1229,7 @@ class WirelessOverview {
           txPowerDbm: 20,
           country: 'US',
           interfaces: [
-            const WirelessInterface(
+            WirelessInterface(
               ifName: 'wlan0',
               sectionName: 'wifinet0',
               ssid: 'OpenWrt-2.4G',
@@ -1264,7 +1266,7 @@ class WirelessOverview {
                 ),
               ],
             ),
-            const WirelessInterface(
+            WirelessInterface(
               ifName: 'wlan0-1',
               sectionName: 'wifinet_guest',
               ssid: 'OpenWrt-Guest',
@@ -1282,7 +1284,7 @@ class WirelessOverview {
             ),
           ],
         ),
-        WirelessRadio(
+        const WirelessRadio(
           name: 'radio1',
           isUp: true,
           channel: '36',
@@ -1290,7 +1292,7 @@ class WirelessOverview {
           txPowerDbm: 23,
           country: 'US',
           interfaces: [
-            const WirelessInterface(
+            WirelessInterface(
               ifName: 'wlan1',
               sectionName: 'wifinet1',
               ssid: 'OpenWrt-5G',

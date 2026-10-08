@@ -202,7 +202,7 @@ class LuciListPullToRefresh extends StatelessWidget {
                     size: 64,
                     color: Theme.of(context).colorScheme.outline,
                   ),
-                  SizedBox(height: LuciSpacing.md),
+                  const SizedBox(height: LuciSpacing.md),
                   Text(
                     emptyMessage,
                     style: LuciTextStyles.cardTitle(
@@ -210,7 +210,7 @@ class LuciListPullToRefresh extends StatelessWidget {
                     ).copyWith(color: Theme.of(context).colorScheme.outline),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: LuciSpacing.sm),
+                  const SizedBox(height: LuciSpacing.sm),
                   Text(
                     'Pull down to refresh',
                     style: LuciTextStyles.cardSubtitle(

@@ -16,6 +16,7 @@ class MountPointItem {
   final int sizeBytes;
   final int usedBytes;
   final int availableBytes;
+  final bool isReadOnly;
 
   const MountPointItem({
     required this.mountPath,
@@ -24,11 +25,13 @@ class MountPointItem {
     required this.sizeBytes,
     required this.usedBytes,
     required this.availableBytes,
+    this.isReadOnly = false,
   });
 
   factory MountPointItem.fromJson(
     Map<String, dynamic> json, {
     StorageDataSource dataSource = StorageDataSource.rpcJson,
+    bool datasetHasByteScale = false,
   }) {
     final mount =
         json['mount']?.toString() ??
@@ -103,7 +106,7 @@ class MountPointItem {
       return 0;
     }
 
-    int rawSize = parseNum(
+    final int rawSize = parseNum(
       json['size'] ??
           json['total'] ??
           json['blocks'] ??
@@ -111,14 +114,14 @@ class MountPointItem {
           json['bytes'] ??
           json['capacity'],
     );
-    int rawAvail = parseNum(
+    final int rawAvail = parseNum(
       json['avail'] ??
           json['available'] ??
           json['free'] ??
           json['availableBytes'] ??
           json['freeBytes'],
     );
-    int rawUsed = parseNum(json['used'] ?? json['usedBytes']);
+    final int rawUsed = parseNum(json['used'] ?? json['usedBytes']);
 
     final bsize = parseNum(
       json['bsize'] ?? json['block_size'] ?? json['blockSize'],
@@ -138,6 +141,20 @@ class MountPointItem {
         unitStr == 'bytes' ||
         unitStr == 'b';
 
+    final options =
+        json['options']?.toString() ??
+        json['opts']?.toString() ??
+        json['mode']?.toString() ??
+        '';
+    final optionsList = options.split(RegExp(r'[,\s]+'));
+    final bool isExplicitRo =
+        optionsList.contains('ro') ||
+        json['read_only'] == true ||
+        json['isReadOnly'] == true ||
+        json['ro'] == true;
+    final bool isRo =
+        isExplicitRo || mount == '/rom' || fs.toLowerCase() == 'squashfs';
+
     final multiplier = determineByteMultiplier(
       rawSize: rawSize,
       rawUsed: rawUsed,
@@ -148,9 +165,10 @@ class MountPointItem {
       unitStr: unitStr,
       mountPath: mount,
       dataSource: dataSource,
+      datasetHasByteScale: datasetHasByteScale,
     );
 
-    int sizeBytes = rawSize * multiplier;
+    final int sizeBytes = rawSize * multiplier;
     int availBytes = rawAvail * multiplier;
     int usedBytes = rawUsed * multiplier;
 
@@ -174,6 +192,7 @@ class MountPointItem {
       sizeBytes: sizeBytes,
       usedBytes: usedBytes,
       availableBytes: availBytes < 0 ? 0 : availBytes,
+      isReadOnly: isRo,
     );
   }
 
@@ -187,6 +206,7 @@ class MountPointItem {
     required String unitStr,
     required String mountPath,
     required StorageDataSource dataSource,
+    bool datasetHasByteScale = false,
   }) {
     if (bsize > 0) {
       return bsize;
@@ -196,7 +216,8 @@ class MountPointItem {
       if (hasExplicitByteKey ||
           hasUnitSuffix ||
           unitStr == 'bytes' ||
-          unitStr == 'b') {
+          unitStr == 'b' ||
+          datasetHasByteScale) {
         return 1;
       }
       if (rawSize > 0 && rawSize <= 8192) {
@@ -300,6 +321,104 @@ class MountPointItem {
       mountPath.contains('/tmp') ||
       filesystemType == 'tmpfs' ||
       device == 'tmpfs';
+
+  /// True if this mount point represents an external storage device (USB flash drive, external SSD/HDD,
+  /// external SD card, or network/remote share) rather than the router's on-board flash/RAM.
+  bool get isExternal {
+    // 1. Virtual, RAM, and pseudo filesystems are NEVER external
+    if (isTmp) return false;
+    if (mountPath.startsWith('/proc') ||
+        mountPath.startsWith('/sys') ||
+        mountPath.startsWith('/dev/pts') ||
+        mountPath == '/dev/shm') {
+      return false;
+    }
+
+    // 2. On-board firmware and internal flash are NEVER external
+    if (mountPath == '/rom' || filesystemType.toLowerCase() == 'squashfs') {
+      return false;
+    }
+    if (device == '/dev/root' ||
+        device.contains('mtdblock') ||
+        device.contains('ubi')) {
+      return false;
+    }
+
+    final devLower = device.toLowerCase().trim();
+    final mountLower = mountPath.toLowerCase().trim();
+    final fsLower = filesystemType.toLowerCase().trim();
+
+    // 3. Root directory (/) is inbuilt router system storage UNLESS explicitly running Extroot on an external drive
+    if (mountLower == '/') {
+      final isExternalExtroot = devLower.contains('/dev/sd') ||
+          devLower.contains('/dev/nvme') ||
+          RegExp(r'(^|/)sd[a-z][0-9]*').hasMatch(devLower) ||
+          RegExp(r'(^|/)nvme[0-9]').hasMatch(devLower);
+      return isExternalExtroot;
+    }
+
+    // 4. Overlay directory (/overlay) is inbuilt internal flash UNLESS running Extroot on an external drive
+    if (mountLower == '/overlay') {
+      final isExternalExtroot = devLower.contains('/dev/sd') ||
+          devLower.contains('/dev/nvme') ||
+          RegExp(r'(^|/)sd[a-z][0-9]*').hasMatch(devLower) ||
+          RegExp(r'(^|/)nvme[0-9]').hasMatch(devLower);
+      return isExternalExtroot;
+    }
+
+    // 5. External block devices (USB / SATA / NVMe drives)
+    if (devLower.contains('/dev/sd') ||
+        RegExp(r'(^|/)sd[a-z][0-9]*').hasMatch(devLower) ||
+        devLower.contains('/dev/nvme') ||
+        RegExp(r'(^|/)nvme[0-9]').hasMatch(devLower)) {
+      return true;
+    }
+
+    // 6. External SD card slots (e.g. mmcblk1 or mmc mounted under /mnt or /media)
+    if (devLower.contains('mmcblk1') ||
+        (devLower.contains('mmcblk') &&
+            (mountLower.startsWith('/mnt') || mountLower.startsWith('/media')))) {
+      return true;
+    }
+
+    // 7. Network / remote filesystems (Samba/CIFS, NFS, SSHFS)
+    if (devLower.startsWith('//') ||
+        devLower.contains(':/') ||
+        fsLower == 'cifs' ||
+        fsLower == 'smbfs' ||
+        fsLower == 'nfs' ||
+        fsLower == 'nfs4' ||
+        fsLower == 'sshfs') {
+      return true;
+    }
+
+    // 8. Typical external mount target directories in OpenWrt (/mnt/*, /media/*, /share/*, /volume/*, /srv/*)
+    if (mountLower.startsWith('/mnt/') ||
+        mountLower == '/mnt' ||
+        mountLower.startsWith('/media/') ||
+        mountLower == '/media' ||
+        mountLower.startsWith('/share/') ||
+        mountLower.startsWith('/volume') ||
+        mountLower.startsWith('/srv/')) {
+      return true;
+    }
+
+    // 9. Typical external filesystem formats (NTFS, FAT32, exFAT, etc.)
+    if (fsLower == 'ntfs' ||
+        fsLower == 'ntfs3' ||
+        fsLower == 'exfat' ||
+        fsLower == 'vfat' ||
+        fsLower == 'fat' ||
+        fsLower == 'msdos' ||
+        fsLower == 'fuseblk') {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// True if this mount point represents the router's on-board internal flash, ROM, or system storage.
+  bool get isInbuilt => !isExternal && !isTmp;
 }
 
 /// Overview of router storage, overlay filesystem, flash, and mounted devices.
@@ -425,6 +544,12 @@ class StorageOverview {
             continue;
           }
 
+          final options = parts.length > 3 ? parts[3] : '';
+          final bool isRo =
+              options.split(',').contains('ro') ||
+              target == '/rom' ||
+              fs == 'squashfs';
+
           list.add(
             MountPointItem(
               mountPath: target,
@@ -433,6 +558,7 @@ class StorageOverview {
               sizeBytes: 0,
               usedBytes: 0,
               availableBytes: 0,
+              isReadOnly: isRo,
             ),
           );
           continue;
@@ -467,11 +593,11 @@ class StorageOverview {
               ? StorageDataSource.dfHuman
               : StorageDataSource.dfKBlocks;
 
-          int rawSize = parseNum(sizeRawStr);
-          int rawUsed = percentIdx - blockIdx >= 2
+          final int rawSize = parseNum(sizeRawStr);
+          final int rawUsed = percentIdx - blockIdx >= 2
               ? parseNum(parts[blockIdx + 1])
               : 0;
-          int rawAvail = percentIdx - blockIdx >= 3
+          final int rawAvail = percentIdx - blockIdx >= 3
               ? parseNum(parts[blockIdx + 2])
               : 0;
 
@@ -490,7 +616,7 @@ class StorageOverview {
             dataSource: lineDataSource,
           );
 
-          int sizeBytes = rawSize * multiplier;
+          final int sizeBytes = rawSize * multiplier;
           int usedBytes = rawUsed * multiplier;
           int availBytes = rawAvail * multiplier;
 
@@ -533,12 +659,25 @@ class StorageOverview {
         }
       }
     } else if (data is List) {
+      bool hasByteScale = false;
+      for (final item in data) {
+        if (item is Map) {
+          final s = parseNum(
+            item['size'] ?? item['total'] ?? item['sizeBytes'],
+          );
+          if (s > 1048576) {
+            hasByteScale = true;
+            break;
+          }
+        }
+      }
       for (final item in data) {
         if (item is Map) {
           list.add(
             MountPointItem.fromJson(
               Map<String, dynamic>.from(item),
               dataSource: StorageDataSource.rpcJson,
+              datasetHasByteScale: hasByteScale,
             ),
           );
         }
@@ -588,18 +727,37 @@ class StorageOverview {
           mapData['data'] ??
           mapData['fs'];
 
+      bool hasByteScale = false;
       if (inner is List) {
+        for (final item in inner) {
+          if (item is Map) {
+            final s = parseNum(
+              item['size'] ?? item['total'] ?? item['sizeBytes'],
+            );
+            if (s > 1048576) {
+              hasByteScale = true;
+              break;
+            }
+          }
+        }
         for (final item in inner) {
           if (item is Map) {
             list.add(
               MountPointItem.fromJson(
                 Map<String, dynamic>.from(item),
                 dataSource: StorageDataSource.rpcJson,
+                datasetHasByteScale: hasByteScale,
               ),
             );
           }
         }
       } else if (inner is Map) {
+        inner.forEach((_, val) {
+          if (val is Map) {
+            final s = parseNum(val['size'] ?? val['total'] ?? val['sizeBytes']);
+            if (s > 1048576) hasByteScale = true;
+          }
+        });
         final targetMap = Map<String, dynamic>.from(inner);
         targetMap.forEach((key, val) {
           if (val is Map) {
@@ -614,11 +772,18 @@ class StorageOverview {
               MountPointItem.fromJson(
                 copy,
                 dataSource: StorageDataSource.rpcJson,
+                datasetHasByteScale: hasByteScale,
               ),
             );
           }
         });
       } else {
+        mapData.forEach((_, val) {
+          if (val is Map) {
+            final s = parseNum(val['size'] ?? val['total'] ?? val['sizeBytes']);
+            if (s > 1048576) hasByteScale = true;
+          }
+        });
         mapData.forEach((key, val) {
           if (key == 'root' || key == 'tmp') return;
           if (val is Map) {
@@ -637,6 +802,7 @@ class StorageOverview {
               MountPointItem.fromJson(
                 copy,
                 dataSource: StorageDataSource.rpcJson,
+                datasetHasByteScale: hasByteScale,
               ),
             );
           }
@@ -765,6 +931,65 @@ class StorageOverview {
 
   List<MountPointItem> get mountedDevices {
     return mountPoints;
+  }
+
+  /// True if any external storage device (USB drive, external SSD/HDD, external SD, network share) is detected.
+  bool get hasExternalStorage => externalMounts.isNotEmpty;
+
+  /// List of mounted partitions belonging to external storage devices.
+  List<MountPointItem> get externalMounts =>
+      mountPoints.where((m) => m.isExternal).toList();
+
+  /// List of mounted partitions belonging to the router's on-board inbuilt storage.
+  List<MountPointItem> get inbuiltMounts =>
+      mountPoints.where((m) => m.isInbuilt).toList();
+
+  /// Total capacity of all connected external storage devices in bytes.
+  int get externalStorageTotalBytes =>
+      externalMounts.fold<int>(0, (sum, m) => sum + m.sizeBytes);
+
+  /// Total space used across all connected external storage devices in bytes.
+  int get externalStorageUsedBytes =>
+      externalMounts.fold<int>(0, (sum, m) => sum + m.usedBytes);
+
+  /// Total free space across all connected external storage devices in bytes.
+  int get externalStorageAvailableBytes =>
+      externalMounts.fold<int>(0, (sum, m) => sum + m.availableBytes);
+
+  /// Total capacity of the router's on-board inbuilt storage (flash/rootfs) in bytes.
+  int get inbuiltStorageTotalBytes {
+    final primary = overlayFs ?? rootFs;
+    final primarySize = primary?.sizeBytes ?? 0;
+    int extraSize = 0;
+    for (final m in mountPoints) {
+      if (!m.isTmp &&
+          !m.isExternal &&
+          m != primary &&
+          m.mountPath != '/' &&
+          m.mountPath != '/rom' &&
+          m.mountPath != '/overlay') {
+        extraSize += m.sizeBytes;
+      }
+    }
+    return primarySize + extraSize;
+  }
+
+  /// Total space used on the router's on-board inbuilt storage in bytes.
+  int get inbuiltStorageUsedBytes {
+    final primary = overlayFs ?? rootFs;
+    final primaryUsed = primary?.usedBytes ?? 0;
+    int extraUsed = 0;
+    for (final m in mountPoints) {
+      if (!m.isTmp &&
+          !m.isExternal &&
+          m != primary &&
+          m.mountPath != '/' &&
+          m.mountPath != '/rom' &&
+          m.mountPath != '/overlay') {
+        extraUsed += m.usedBytes;
+      }
+    }
+    return primaryUsed + extraUsed;
   }
 
   int get totalSizeBytes {

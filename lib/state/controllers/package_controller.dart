@@ -588,35 +588,13 @@ class PackageController {
     return res.data ?? [];
   }
 
-  /// Fetch full LuCI overview: installed, available, upgradable, and free disk space
-  Future<RpcResult<PackageManagerOverview>>
-  fetchPackageManagerOverview() async {
+  /// Query free disk space in bytes for package operations (inspecting /overlay and fallback to /)
+  Future<int?> getFreeDiskSpace() async {
     if (_isReviewerMode) {
-      final overview = PackageManagerOverview.fromDashboardData(
-        null,
-        isReviewerMode: true,
-      );
-      return RpcResult.success(overview);
+      return 1024 * 1024 * 50; // 50 MB mock in reviewer mode
     }
+    if (_ip == null || _sysauth == null) return null;
 
-    final installedRes = await fetchInstalledPackages();
-    if (!installedRes.isSuccess || installedRes.data == null) {
-      return RpcResult(
-        status: installedRes.status,
-        errorMessage:
-            installedRes.errorMessage ?? 'Failed to load installed packages',
-        errorCode: installedRes.errorCode,
-      );
-    }
-
-    final installed = installedRes.data!;
-
-    // Fetch available in parallel or sequential
-    final availableRes = await fetchAvailablePackages();
-    final available = availableRes.data ?? [];
-
-    // Query free disk space via luci.getMountPoints (matching LuCI web), falling back to system.info
-    int? freeDiskSpace;
     try {
       final api = _apiServiceRef()!;
       final ip = _ip!;
@@ -645,30 +623,61 @@ class PackageController {
         }
         final target = overlayMount ?? rootMount;
         if (target != null && target['free'] is num) {
-          freeDiskSpace = (target['free'] as num).toInt();
+          return (target['free'] as num).toInt();
         } else if (target != null && target['avail'] is num) {
-          freeDiskSpace = (target['avail'] as num).toInt();
+          return (target['avail'] as num).toInt();
         }
       }
-      if (freeDiskSpace == null) {
-        final sysInfo = await api.call(
-          ip,
-          sysauth,
-          useHttps,
-          object: 'system',
-          method: 'info',
-          params: <String, dynamic>{},
-        );
-        if (sysInfo is List && sysInfo.length > 1 && sysInfo[0] == 0) {
-          final data = sysInfo[1];
-          if (data is Map &&
-              data['root'] is Map &&
-              data['root']['avail'] is num) {
-            freeDiskSpace = (data['root']['avail'] as num).toInt() * 1024;
-          }
+
+      final sysInfo = await api.call(
+        ip,
+        sysauth,
+        useHttps,
+        object: 'system',
+        method: 'info',
+        params: <String, dynamic>{},
+      );
+      if (sysInfo is List && sysInfo.length > 1 && sysInfo[0] == 0) {
+        final data = sysInfo[1];
+        if (data is Map &&
+            data['root'] is Map &&
+            data['root']['avail'] is num) {
+          return (data['root']['avail'] as num).toInt() * 1024;
         }
       }
     } catch (_) {}
+    return null;
+  }
+
+  /// Fetch full LuCI overview: installed, available, upgradable, and free disk space
+  Future<RpcResult<PackageManagerOverview>>
+  fetchPackageManagerOverview() async {
+    if (_isReviewerMode) {
+      final overview = PackageManagerOverview.fromDashboardData(
+        null,
+        isReviewerMode: true,
+      );
+      return RpcResult.success(overview);
+    }
+
+    final installedRes = await fetchInstalledPackages();
+    if (!installedRes.isSuccess || installedRes.data == null) {
+      return RpcResult(
+        status: installedRes.status,
+        errorMessage:
+            installedRes.errorMessage ?? 'Failed to load installed packages',
+        errorCode: installedRes.errorCode,
+      );
+    }
+
+    final installed = installedRes.data!;
+
+    // Fetch available in parallel or sequential
+    final availableRes = await fetchAvailablePackages();
+    final available = availableRes.data ?? [];
+
+    // Query free disk space via luci.getMountPoints (matching LuCI web), falling back to system.info
+    final freeDiskSpace = await getFreeDiskSpace();
 
     final activeEngine =
         (installed.isNotEmpty &&

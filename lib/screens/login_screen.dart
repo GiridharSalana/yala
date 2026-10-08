@@ -20,6 +20,7 @@ import 'package:yala/widgets/luci_smooth_spinner.dart';
 import 'package:yala/screens/main_screen.dart';
 import 'package:yala/screens/manage_routers_screen.dart';
 import 'package:yala/models/router.dart' as model;
+import 'package:yala/services/router_service.dart';
 import 'package:yala/utils/os_platform_integration.dart';
 import 'package:yala/l10n/app_localizations.dart';
 import 'package:yala/widgets/language_picker_dialog.dart';
@@ -261,7 +262,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     super.initState();
 
     // 1. Pre-fill form fields synchronously from constructor arguments or selectedRouter BEFORE adding listeners
-    final currentRouter = ref.read(appStateProvider).selectedRouter;
+    final rawRouter = ref.read(appStateProvider).selectedRouter;
+    final isMock = RouterService.isMockRouter(rawRouter) ||
+        ref.read(appStateProvider).reviewerModeEnabled;
+    final currentRouter = isMock ? null : rawRouter;
     _selectedProfileId = currentRouter?.id;
     if (currentRouter?.name != null && currentRouter!.name!.isNotEmpty) {
       _profileNameController.text = currentRouter.name!;
@@ -280,6 +284,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     }
     if (user != null && user.isNotEmpty) {
       _usernameController.text = user;
+    } else {
+      _usernameController.text = 'root';
     }
     if (pass != null && pass.isNotEmpty) {
       _passwordController.text = pass;
@@ -310,6 +316,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   void _selectProfile(model.Router router) {
+    if (RouterService.isMockRouter(router)) return;
     setState(() {
       _selectedProfileId = router.id;
       _profileNameController.text = router.name ?? '';
@@ -345,8 +352,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     await appState.loadRouters();
     if (!mounted) return;
     final activeRouter =
-        appState.selectedRouter ??
-        (appState.routers.isNotEmpty ? appState.routers.first : null);
+        appState.selectedRouter != null && !RouterService.isMockRouter(appState.selectedRouter)
+            ? appState.selectedRouter
+            : appState.routers.where((r) => !RouterService.isMockRouter(r)).firstOrNull;
     if (activeRouter != null) {
       _selectProfile(activeRouter);
     } else {
@@ -367,7 +375,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           .replaceAll('/', '')
           .trim();
       final matchingRouter = appState.routers
-          .where((r) => r.ipAddress == input || r.ipAddress == cleanInput)
+          .where((r) =>
+              !RouterService.isMockRouter(r) &&
+              (r.ipAddress == input || r.ipAddress == cleanInput))
           .firstOrNull;
       if (matchingRouter != null) {
         if (_selectedProfileId != matchingRouter.id) {
@@ -635,7 +645,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _openGitHubIssues() async {
-    final url = AppConfig.githubIssuesUrl;
+    const url = AppConfig.githubIssuesUrl;
     final success = await launchUrlString(
       url,
       mode: LaunchMode.externalApplication,
@@ -1729,7 +1739,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Widget _buildRouterProfilesSelector(BuildContext context) {
     final appState = ref.watch(appStateProvider);
-    final routers = appState.routers;
+    final routers = appState.routers
+        .where((r) => !RouterService.isMockRouter(r))
+        .toList();
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final primaryColor = colorScheme.primary;

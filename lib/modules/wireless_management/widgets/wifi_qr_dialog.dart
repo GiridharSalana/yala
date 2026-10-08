@@ -72,11 +72,11 @@ class _WifiQrDialogState extends ConsumerState<WifiQrDialog> {
       return 'WIFI:S:${widget.interface.ssid};T:nopass;;';
     }
     final keyToUse = _passphrase ?? widget.interface.key ?? '';
-    final secType =
-        widget.interface.securityMode == WifiSecurityMode.saeOnly ||
-            widget.interface.securityMode == WifiSecurityMode.saeMixed
-        ? 'WPA'
-        : 'WPA';
+    final secType = switch (widget.interface.securityMode) {
+      WifiSecurityMode.saeOnly => 'SAE',
+      WifiSecurityMode.wep => 'WEP',
+      _ => 'WPA',
+    };
     final hiddenTag = widget.interface.isHidden ? 'H:true;' : '';
     return 'WIFI:S:${widget.interface.ssid};T:$secType;P:$keyToUse;$hiddenTag;';
   }

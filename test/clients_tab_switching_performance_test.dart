@@ -35,6 +35,20 @@ class MockApiService implements IApiService {
     BuildContext? context,
   }) async => {};
 
+  List<Map<String, dynamic>> dhcpLeases = [];
+
+  @override
+  Future<dynamic> callSimple(
+    String object,
+    String method,
+    Map<String, dynamic> params,
+  ) async {
+    if (method == 'getDHCPLeases') {
+      return [0, {'dhcp_leases': dhcpLeases}];
+    }
+    return [0, {}];
+  }
+
   @override
   Future<dynamic> call(
     String ipAddress,
@@ -44,7 +58,12 @@ class MockApiService implements IApiService {
     required String method,
     Map<String, dynamic>? params,
     BuildContext? context,
-  }) async => {'dhcp_leases': []};
+  }) async {
+    if (method == 'getDHCPLeases') {
+      return [0, {'dhcp_leases': dhcpLeases}];
+    }
+    return [0, {}];
+  }
 
   @override
   Future<Map<String, Map<String, dynamic>>> fetchHostHintsWithContext({
@@ -218,6 +237,106 @@ void main() {
       final clients = await controller.fetchAggregatedClients();
       expect(clients, isA<List<Client>>());
     });
+
+    testWidgets(
+      'ClientsScreen immediately clears previous router clients and displays skeleton on profile switch',
+      (WidgetTester tester) async {
+        final mockApi = MockApiService();
+        mockApi.dhcpLeases = [
+          {
+            'ipaddr': '192.168.1.50',
+            'macaddr': 'AA:11:11:11:11:11',
+            'hostname': 'Old-Router-Client',
+            'expires': 3600,
+          },
+        ];
+        final mockAuth = MockAuthService();
+        final appState = AppState.instance;
+        final routerService = appState.routerService ?? RouterService(isReviewerMode: true);
+
+        final r1 = model.Router(
+          id: 'switch_test_router_1',
+          ipAddress: '192.168.1.1',
+          username: 'root',
+          password: 'password',
+          useHttps: false,
+          name: 'Router 1',
+        );
+        final r2 = model.Router(
+          id: 'switch_test_router_2',
+          ipAddress: '10.0.0.1',
+          username: 'root',
+          password: 'password',
+          useHttps: false,
+          name: 'Router 2',
+        );
+        await routerService.addRouter(r1);
+        await routerService.addRouter(r2);
+        await routerService.selectRouter(r1.id);
+
+        final testClientController = ClientController(
+          apiServiceRef: () => mockApi,
+          authServiceRef: () => mockAuth,
+          routerServiceRef: () => routerService,
+          reviewerModeRef: () => true,
+          dashboardDataRef: () => null,
+          executeRouterCommandOutput: (cmd, args) async => '',
+          processDhcpLeases: (raw) => raw,
+        );
+        final prevController = appState.clientControllerForTesting;
+        appState.clientControllerForTesting = testClientController;
+
+        appState.clients = [
+          Client(
+            ipAddress: '192.168.1.50',
+            macAddress: 'AA:11:11:11:11:11',
+            hostname: 'Old-Router-Client',
+            isConnected: true,
+            connectionType: ConnectionType.wired,
+          ),
+        ];
+
+        await tester.pumpWidget(
+          const ProviderScope(
+            child: MaterialApp(home: ClientsScreen(isTabActive: true)),
+          ),
+        );
+        // First frame pump without waiting for network futures
+        await tester.pump();
+
+        // Initially Old-Router-Client is displayed immediately
+        expect(find.text('Old-Router-Client'), findsOneWidget);
+
+        // Set new leases for Router 2
+        mockApi.dhcpLeases = [
+          {
+            'ipaddr': '10.0.0.60',
+            'macaddr': 'BB:22:22:22:22:22',
+            'hostname': 'New-Router-Client',
+            'expires': 3600,
+          },
+        ];
+
+        // Switch router profile
+        await routerService.selectRouter(r2.id);
+        appState.notifyListeners();
+
+        // Pump frame during the switch
+        await tester.pump();
+
+        // Old-Router-Client must NOT be displayed on screen!
+        expect(find.text('Old-Router-Client'), findsNothing);
+        // Loading skeletons must be displayed during transition!
+        expect(find.byType(LuciListItemSkeleton), findsWidgets);
+        await tester.pumpAndSettle();
+
+        // Once the new router future completes, its clients appear cleanly
+        expect(find.text('New-Router-Client'), findsOneWidget);
+        expect(find.byType(LuciListItemSkeleton), findsNothing);
+
+        appState.clientControllerForTesting = prevController;
+      },
+    );
 
     test(
       'Client model caches displayName and normalizedMac with identical string references',

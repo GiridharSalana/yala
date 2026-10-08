@@ -18,6 +18,8 @@ import 'package:yala/screens/manage_routers_screen.dart';
 import 'package:yala/services/update_checker_service.dart';
 import 'package:yala/widgets/theme_router_logo.dart';
 import 'package:yala/widgets/language_picker_dialog.dart';
+import 'package:yala/widgets/rpc_permissions_dialog.dart';
+import 'package:yala/widgets/edit_hostname_dialog.dart';
 import 'package:yala/state/app_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -53,7 +55,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           FilledButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              final rootNav = Navigator.of(context, rootNavigator: true);
+              rootNav.pop();
               await appState.setReviewerMode(false);
               if (context.mounted) {
                 await Navigator.of(
@@ -122,8 +125,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildCapabilitiesTile(context, appState),
           const SizedBox(height: 24),
 
-          // App Updates (if community flavor)
-          if (AppConfig.isCommunityFlavor) ...[
+          // App Updates (if community flavor and not F-Droid build)
+          if (AppConfig.isCommunityFlavor && !AppConfig.isFdroidBuild) ...[
             _buildSectionHeader(
               context,
               l10n?.appUpdatesSection ?? 'APP UPDATES',
@@ -293,6 +296,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ],
                       ),
                     ),
+                    if (appState.hasActiveSession) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 16),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: l10n?.tooltipEditHostname ?? 'Edit hostname',
+                        onPressed: () => EditHostnameDialog.show(
+                          context,
+                          currentHostname: hostname,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -807,7 +824,97 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       caps.networkModel.name.toUpperCase(),
                       Icons.lan_outlined,
                     ),
+                    _buildCapabilityChip(
+                      context,
+                      'RPC Status',
+                      caps.isRpcComplete ? 'READY' : 'SETUP REQUIRED',
+                      caps.isRpcComplete
+                          ? Icons.verified_user_outlined
+                          : Icons.warning_amber_rounded,
+                      valueColor: caps.isRpcComplete
+                          ? Colors.teal
+                          : Colors.amber.shade800,
+                    ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () => RpcPermissionsDialog.show(
+                    context,
+                    actionName: l10n?.tileRpcPermissions ?? 'RPC & Permissions',
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          (caps.isRpcComplete
+                                  ? colorScheme.surfaceContainerHighest
+                                  : Colors.amber.shade700)
+                              .withValues(
+                                alpha: caps.isRpcComplete ? 0.35 : 0.12,
+                              ),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color:
+                            (caps.isRpcComplete
+                                    ? colorScheme.outlineVariant
+                                    : Colors.amber.shade700)
+                                .withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          caps.isRpcComplete
+                              ? Icons.admin_panel_settings_outlined
+                              : Icons.build_circle_outlined,
+                          size: 16,
+                          color: caps.isRpcComplete
+                              ? colorScheme.primary
+                              : Colors.amber.shade800,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            caps.isRpcComplete
+                                ? 'RPC permissions & execution modules verified'
+                                : 'Missing RPC permissions may restrict advanced router management features',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: caps.isRpcComplete
+                                  ? FontWeight.normal
+                                  : FontWeight.w600,
+                              color: caps.isRpcComplete
+                                  ? colorScheme.onSurfaceVariant
+                                  : Colors.amber.shade900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          caps.isRpcComplete ? 'Manage' : 'Auto-Fix',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: caps.isRpcComplete
+                                ? colorScheme.primary
+                                : Colors.amber.shade900,
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 14,
+                          color: caps.isRpcComplete
+                              ? colorScheme.primary
+                              : Colors.amber.shade900,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ],
@@ -821,8 +928,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     BuildContext context,
     String label,
     String value,
-    IconData icon,
-  ) {
+    IconData icon, {
+    Color? valueColor,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -836,7 +944,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: colorScheme.primary),
+          Icon(icon, size: 14, color: valueColor ?? colorScheme.primary),
           const SizedBox(width: 6),
           Text(
             '$label: ',
@@ -847,7 +955,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: colorScheme.onSurface,
+              color: valueColor ?? colorScheme.onSurface,
             ),
           ),
         ],
@@ -856,6 +964,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildUpdatesTile(BuildContext context) {
+    if (AppConfig.isFdroidBuild) {
+      return const SizedBox.shrink();
+    }
     final colorScheme = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context);
     return Container(
@@ -1023,9 +1134,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         '• ${l10n?.settingsPrivacyBulletAnalytics ?? "Zero Analytics, Tracking, or Telemetry"}',
                       ),
                       const SizedBox(height: 12),
-                      SelectableText(
+                      const SelectableText(
                         'Repository: ${AppConfig.githubRepositoryUrl}',
-                        style: const TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: 12),
                       ),
                     ],
                   ),

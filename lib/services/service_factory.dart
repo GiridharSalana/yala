@@ -82,6 +82,17 @@ class ReviewerModeServiceFactory implements ServiceFactory {
   @override
   ThroughputService createThroughputService() =>
       _throughputService ??= ThroughputService();
+
+  /// Resets mock service instances so no reviewer state lingers across mode switches.
+  void reset() {
+    _apiService = null;
+    _authService = null;
+    _sshService = null;
+    _secureStorageService = null;
+    _routerService = null;
+    _throughputService = null;
+    MockApiService.resetMockState();
+  }
 }
 
 class ServiceContainer {
@@ -107,6 +118,9 @@ class ServiceContainer {
   }
 
   static void configure({required bool reviewerMode}) {
+    if (!reviewerMode) {
+      instance._reviewerFactory.reset();
+    }
     instance.setFactory(
       reviewerMode ? instance._reviewerFactory : instance._productionFactory,
     );

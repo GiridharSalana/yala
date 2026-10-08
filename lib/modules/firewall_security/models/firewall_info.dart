@@ -6,21 +6,54 @@ import 'package:yala/models/router_capabilities.dart';
 
 /// Default global firewall policy.
 class FirewallDefaultPolicy {
+  final String sectionKey;
   final String input;
   final String output;
   final String forward;
   final bool synFlood;
+  final bool flowOffloading;
+  final bool flowOffloadingHw;
 
   const FirewallDefaultPolicy({
+    this.sectionKey = '@defaults[0]',
     required this.input,
     required this.output,
     required this.forward,
     required this.synFlood,
+    this.flowOffloading = false,
+    this.flowOffloadingHw = false,
   });
 
-  factory FirewallDefaultPolicy.fromJson(Map<String, dynamic>? json) {
+  /// Returns true if either software or hardware flow offloading is active.
+  bool get hasAnyFlowOffloading => flowOffloading || flowOffloadingHw;
+
+  FirewallDefaultPolicy copyWith({
+    String? sectionKey,
+    String? input,
+    String? output,
+    String? forward,
+    bool? synFlood,
+    bool? flowOffloading,
+    bool? flowOffloadingHw,
+  }) {
+    return FirewallDefaultPolicy(
+      sectionKey: sectionKey ?? this.sectionKey,
+      input: input ?? this.input,
+      output: output ?? this.output,
+      forward: forward ?? this.forward,
+      synFlood: synFlood ?? this.synFlood,
+      flowOffloading: flowOffloading ?? this.flowOffloading,
+      flowOffloadingHw: flowOffloadingHw ?? this.flowOffloadingHw,
+    );
+  }
+
+  factory FirewallDefaultPolicy.fromJson(
+    Map<String, dynamic>? json, {
+    String sectionKey = '@defaults[0]',
+  }) {
     if (json == null) {
-      return const FirewallDefaultPolicy(
+      return FirewallDefaultPolicy(
+        sectionKey: sectionKey,
         input: 'ACCEPT',
         output: 'ACCEPT',
         forward: 'REJECT',
@@ -28,11 +61,28 @@ class FirewallDefaultPolicy {
       );
     }
 
+    final secKey = json['.name']?.toString() ?? sectionKey;
+
     return FirewallDefaultPolicy(
+      sectionKey: secKey.isNotEmpty ? secKey : sectionKey,
       input: (json['input']?.toString() ?? 'ACCEPT').toUpperCase(),
       output: (json['output']?.toString() ?? 'ACCEPT').toUpperCase(),
       forward: (json['forward']?.toString() ?? 'REJECT').toUpperCase(),
-      synFlood: json['syn_flood'] == '1' || json['syn_flood'] == true,
+      synFlood:
+          json['syn_flood'] == '1' ||
+          json['syn_flood'] == true ||
+          json['synflood_protect'] == '1' ||
+          json['synflood_protect'] == true,
+      flowOffloading:
+          json['flow_offloading'] == '1' ||
+          json['flow_offloading'] == 1 ||
+          json['flow_offloading'] == true ||
+          json['flow_offloading'] == 'true',
+      flowOffloadingHw:
+          json['flow_offloading_hw'] == '1' ||
+          json['flow_offloading_hw'] == 1 ||
+          json['flow_offloading_hw'] == true ||
+          json['flow_offloading_hw'] == 'true',
     );
   }
 }
@@ -193,7 +243,10 @@ class FirewallCustomRule {
       srcZone: json['src']?.toString() ?? 'wan',
       destZone: json['dest']?.toString() ?? 'lan',
       target: rawTarget,
-      enabled: json['enabled'] != '0' && json['enabled'] != false,
+      enabled:
+          json['enabled'] != '0' &&
+          json['enabled'] != 0 &&
+          json['enabled'] != false,
       isUnrecognizedTarget: isUnknown,
     );
   }
@@ -330,6 +383,7 @@ class Fw3FirewallParser {
       }
 
       Map<String, dynamic>? defaultsMap;
+      String defaultsSecKey = '@defaults[0]';
       final zoneList = <FirewallZone>[];
       final fwdList = <FirewallForwarding>[];
       final pfList = <FirewallPortForwarding>[];
@@ -341,6 +395,7 @@ class Fw3FirewallParser {
           final type = val['.type']?.toString();
           if (type == 'defaults') {
             defaultsMap = Map<String, dynamic>.from(val);
+            defaultsSecKey = val['.name']?.toString() ?? key;
             hasDefaultsOrZone = true;
           } else if (type == 'zone') {
             zoneList.add(
@@ -374,7 +429,10 @@ class Fw3FirewallParser {
 
       return FirewallOverview(
         backend: FirewallBackend.fw3,
-        defaultPolicy: FirewallDefaultPolicy.fromJson(defaultsMap),
+        defaultPolicy: FirewallDefaultPolicy.fromJson(
+          defaultsMap,
+          sectionKey: defaultsSecKey,
+        ),
         zones: zoneList,
         forwardings: fwdList,
         portForwards: pfList,
@@ -408,6 +466,7 @@ class Fw4FirewallParser {
       }
 
       Map<String, dynamic>? defaultsMap;
+      String defaultsSecKey = '@defaults[0]';
       final zoneList = <FirewallZone>[];
       final fwdList = <FirewallForwarding>[];
       final pfList = <FirewallPortForwarding>[];
@@ -419,6 +478,7 @@ class Fw4FirewallParser {
           final type = val['.type']?.toString();
           if (type == 'defaults') {
             defaultsMap = Map<String, dynamic>.from(val);
+            defaultsSecKey = val['.name']?.toString() ?? key;
             hasDefaultsOrZone = true;
           } else if (type == 'zone') {
             zoneList.add(
@@ -452,7 +512,10 @@ class Fw4FirewallParser {
 
       return FirewallOverview(
         backend: FirewallBackend.fw4,
-        defaultPolicy: FirewallDefaultPolicy.fromJson(defaultsMap),
+        defaultPolicy: FirewallDefaultPolicy.fromJson(
+          defaultsMap,
+          sectionKey: defaultsSecKey,
+        ),
         zones: zoneList,
         forwardings: fwdList,
         portForwards: pfList,

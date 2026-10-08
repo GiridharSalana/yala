@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:yala/services/interfaces/api_service_interface.dart';
+import 'package:yala/services/api_service.dart';
 import 'package:yala/services/secure_storage_service.dart';
 import 'package:yala/services/interfaces/auth_service_interface.dart';
 import 'package:yala/utils/logger.dart';
@@ -16,7 +17,42 @@ class RealAuthService implements IAuthService {
   String? _ipAddress;
   bool _useHttps = false;
 
-  RealAuthService(this._apiService);
+  RealAuthService(this._apiService) {
+    if (_apiService is RealApiService) {
+      _apiService.onSessionRenew = _renewSession;
+    }
+  }
+
+  Future<String?> _renewSession(String ipAddress, bool useHttps) async {
+    final credentials = await _secureStorageService.getCredentials();
+    final user = credentials['username'];
+    final pass = credentials['password'];
+    final storedIp = credentials['ipAddress'];
+    final targetIp = ipAddress.isNotEmpty
+        ? ipAddress
+        : (storedIp ?? _ipAddress ?? '');
+    if (user == null || pass == null || targetIp.isEmpty) {
+      return null;
+    }
+
+    try {
+      final result = await _apiService.authenticate(
+        targetIp,
+        user,
+        pass,
+        useHttps,
+      );
+      if (result.isSuccess && result.token != null) {
+        _sysauth = result.token;
+        _ipAddress = targetIp;
+        _useHttps = result.actualUseHttps;
+        return result.token;
+      }
+    } catch (e) {
+      Logger.warning('Failed to transparently renew session: $e');
+    }
+    return null;
+  }
 
   @override
   String? get sysauth => _sysauth;

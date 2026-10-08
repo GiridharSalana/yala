@@ -280,7 +280,7 @@ class SubnetInfo {
   }
 
   static int _netmaskToInt(String mask) {
-    var m = mask.trim();
+    final m = mask.trim();
     if (m.startsWith('/')) {
       final prefix = int.tryParse(m.substring(1));
       if (prefix != null && prefix >= 0 && prefix <= 32) {
@@ -349,7 +349,7 @@ class DnsmasqConfig {
     if (json == null) {
       return const DnsmasqConfig(
         localDomain: 'lan',
-        upstreamDnsServers: ['ISP Default (Dynamic DNS)'],
+        upstreamDnsServers: ['ISP Default'],
         rebindProtection: true,
         domainNeeded: true,
         authoritative: true,
@@ -367,7 +367,7 @@ class DnsmasqConfig {
       localDomain: json['domain']?.toString() ?? 'lan',
       upstreamDnsServers: servers.isNotEmpty
           ? servers
-          : const ['ISP Default (Dynamic DNS)'],
+          : const ['ISP Default'],
       rebindProtection:
           json['rebind_protection'] == '1' || json['rebind_protection'] == true,
       domainNeeded: json['domainneeded'] == '1' || json['domainneeded'] == true,
@@ -603,7 +603,7 @@ class DhcpDnsOverview {
       if (rawUciDhcp is Map<String, dynamic>) {
         uciDhcp = rawUciDhcp;
       } else if (rawUciDhcp is Map) {
-        uciDhcp = rawUciDhcp.cast<String, dynamic>();
+        uciDhcp = Map<String, dynamic>.from(rawUciDhcp);
       }
 
       if (uciDhcp != null) {
@@ -898,9 +898,11 @@ class DhcpDnsOverview {
           ),
         );
       } else {
-        final forcePurged =
-            data?['forcePurged'] == true ||
-            (data?['forcePurgedAt'] != null && data!['forcePurgedAt'] > 0);
+        final purgedAt = data?['forcePurgedAt'];
+        final hasPurgedAt =
+            (purgedAt is num && purgedAt > 0) ||
+            ((int.tryParse(purgedAt?.toString() ?? '') ?? 0) > 0);
+        final forcePurged = data?['forcePurged'] == true || hasPurgedAt;
         final isOffline =
             offlineMacSet.contains(normMac) && !onlineMacSet.contains(normMac);
         final isDisconnectedGhostLease =

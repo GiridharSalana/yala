@@ -15,14 +15,32 @@ class RouterService {
   List<model.Router> _routers = [];
   model.Router? _selectedRouter;
 
+  static const String reviewerRouterId = 'reviewer-mock-router';
+
   static final model.Router mockRouter = model.Router(
-    id: 'http://192.168.1.1-root',
+    id: reviewerRouterId,
     ipAddress: '192.168.1.1',
     username: 'root',
     password: '',
     useHttps: false,
     lastKnownHostname: 'OpenWrt-Reviewer',
   );
+
+  static bool isMockRouter(model.Router? router) {
+    if (router == null) return false;
+    return router.id == reviewerRouterId ||
+        router.id.startsWith('reviewer://') ||
+        (router.lastKnownHostname == 'OpenWrt-Reviewer' &&
+            (router.id == 'http://192.168.1.1-root' ||
+                router.id == reviewerRouterId));
+  }
+
+  static bool isMockRouterId(String? id) {
+    if (id == null) return false;
+    return id == reviewerRouterId ||
+        id.startsWith('reviewer://') ||
+        id == 'http://192.168.1.1-root-mock';
+  }
 
   List<model.Router> get routers =>
       _routers.isEmpty && isReviewerMode ? [mockRouter] : _routers;
@@ -35,11 +53,28 @@ class RouterService {
   }
 
   Future<void> loadRouters() async {
-    _routers = await _secureStorageService.getRouters();
+    if (isReviewerMode) {
+      _routers = [mockRouter];
+      _selectedRouter = mockRouter;
+      return;
+    }
+
+    final rawRouters = await _secureStorageService.getRouters();
+    // Sanitize: filter out any mock router that may have previously leaked into persistent storage
+    _routers = rawRouters.where((r) => !isMockRouter(r)).toList();
+    if (_routers.length != rawRouters.length) {
+      await _secureStorageService.saveRouters(_routers);
+    }
 
     // Try to restore the previously selected router
     final selectedId = await _secureStorageService.getSelectedRouterId();
-    if (selectedId != null && _routers.isNotEmpty) {
+    if (selectedId != null && isMockRouterId(selectedId)) {
+      await _secureStorageService.saveSelectedRouterId(null);
+    }
+
+    if (selectedId != null &&
+        _routers.isNotEmpty &&
+        !isMockRouterId(selectedId)) {
       try {
         _selectedRouter = _routers.firstWhere((r) => r.id == selectedId);
       } catch (_) {
@@ -51,7 +86,7 @@ class RouterService {
       _selectedRouter = null;
     }
 
-    if (_selectedRouter != null) {
+    if (_selectedRouter != null && !isMockRouter(_selectedRouter)) {
       await _secureStorageService.saveSelectedRouterId(_selectedRouter!.id);
       await _secureStorageService.saveCredentials(
         ipAddress: _selectedRouter!.ipAddress,
@@ -70,7 +105,15 @@ class RouterService {
       _routers.add(router);
     }
     _selectedRouter = router;
-    await _secureStorageService.saveRouters(_routers);
+
+    // Never persist mock routers or reviewer session state to permanent storage
+    if (isReviewerMode || isMockRouter(router)) {
+      return;
+    }
+
+    await _secureStorageService.saveRouters(
+      _routers.where((r) => !isMockRouter(r)).toList(),
+    );
     await _secureStorageService.saveSelectedRouterId(router.id);
     await _secureStorageService.saveCredentials(
       ipAddress: router.ipAddress,
@@ -83,31 +126,41 @@ class RouterService {
   Future<void> clearAllRouters() async {
     _routers = [];
     _selectedRouter = null;
-    await _secureStorageService.saveRouters([]);
-    await _secureStorageService.saveSelectedRouterId(null);
-    await _secureStorageService.clearCredentials();
+    if (!isReviewerMode) {
+      await _secureStorageService.saveRouters([]);
+      await _secureStorageService.saveSelectedRouterId(null);
+      await _secureStorageService.clearCredentials();
+    }
   }
 
   Future<bool> removeRouter(String id) async {
     final wasActive = _selectedRouter?.id == id;
     _routers.removeWhere((r) => r.id == id);
-    await _secureStorageService.saveRouters(_routers);
+    if (!isReviewerMode) {
+      await _secureStorageService.saveRouters(
+        _routers.where((r) => !isMockRouter(r)).toList(),
+      );
+    }
 
     if (wasActive) {
       if (_routers.isNotEmpty) {
         _selectedRouter = _routers.first;
-        await _secureStorageService.saveSelectedRouterId(_selectedRouter!.id);
-        await _secureStorageService.saveCredentials(
-          ipAddress: _selectedRouter!.ipAddress,
-          username: _selectedRouter!.username,
-          password: _selectedRouter!.password,
-          useHttps: _selectedRouter!.useHttps,
-        );
+        if (!isReviewerMode && !isMockRouter(_selectedRouter)) {
+          await _secureStorageService.saveSelectedRouterId(_selectedRouter!.id);
+          await _secureStorageService.saveCredentials(
+            ipAddress: _selectedRouter!.ipAddress,
+            username: _selectedRouter!.username,
+            password: _selectedRouter!.password,
+            useHttps: _selectedRouter!.useHttps,
+          );
+        }
         return true; // Indicates need to switch to new router
       } else {
         _selectedRouter = null;
-        await _secureStorageService.saveSelectedRouterId(null);
-        await _secureStorageService.clearCredentials();
+        if (!isReviewerMode) {
+          await _secureStorageService.saveSelectedRouterId(null);
+          await _secureStorageService.clearCredentials();
+        }
         return false;
       }
     }
@@ -121,13 +174,15 @@ class RouterService {
       orElse: () => _routers.first,
     );
     _selectedRouter = found;
-    await _secureStorageService.saveSelectedRouterId(found.id);
-    await _secureStorageService.saveCredentials(
-      ipAddress: found.ipAddress,
-      username: found.username,
-      password: found.password,
-      useHttps: found.useHttps,
-    );
+    if (!isReviewerMode && !isMockRouter(found)) {
+      await _secureStorageService.saveSelectedRouterId(found.id);
+      await _secureStorageService.saveCredentials(
+        ipAddress: found.ipAddress,
+        username: found.username,
+        password: found.password,
+        useHttps: found.useHttps,
+      );
+    }
     return found;
   }
 
@@ -137,17 +192,27 @@ class RouterService {
       _routers[idx] = router;
       if (_selectedRouter?.id == router.id) {
         _selectedRouter = router;
-        await _secureStorageService.saveCredentials(
-          ipAddress: router.ipAddress,
-          username: router.username,
-          password: router.password,
-          useHttps: router.useHttps,
-        );
       }
-      await _secureStorageService.saveRouters(_routers);
     } else {
-      await addRouter(router);
+      _routers.add(router);
+      _selectedRouter = router;
     }
+
+    if (isReviewerMode || isMockRouter(router)) {
+      return;
+    }
+
+    if (_selectedRouter?.id == router.id) {
+      await _secureStorageService.saveCredentials(
+        ipAddress: router.ipAddress,
+        username: router.username,
+        password: router.password,
+        useHttps: router.useHttps,
+      );
+    }
+    await _secureStorageService.saveRouters(
+      _routers.where((r) => !isMockRouter(r)).toList(),
+    );
   }
 
   Future<void> updateSelectedRouterHostname(String hostname) async {
@@ -159,7 +224,11 @@ class RouterService {
       } else {
         _routers.add(_selectedRouter!);
       }
-      await _secureStorageService.saveRouters(_routers);
+      if (!isReviewerMode && !isMockRouter(_selectedRouter)) {
+        await _secureStorageService.saveRouters(
+          _routers.where((r) => !isMockRouter(r)).toList(),
+        );
+      }
     }
   }
 
@@ -174,16 +243,23 @@ class RouterService {
       if (_selectedRouter?.id == id) {
         _selectedRouter = _routers[idx];
       }
-      await _secureStorageService.saveRouters(_routers);
+      if (!isReviewerMode && !isMockRouterId(id)) {
+        await _secureStorageService.saveRouters(
+          _routers.where((r) => !isMockRouter(r)).toList(),
+        );
+      }
     }
   }
 
   String exportRoutersAsJson() {
+    if (isReviewerMode) return '';
+    final cleanRouters = _routers.where((r) => !isMockRouter(r)).toList();
+    if (cleanRouters.isEmpty) return '';
     final data = {
       'version': 1,
       'exportedAt': DateTime.now().toUtc().toIso8601String(),
       'app': 'Yala',
-      'profiles': _routers.map((r) => r.toJson()).toList(),
+      'profiles': cleanRouters.map((r) => r.toJson()).toList(),
     };
     return const JsonEncoder.withIndent('  ').convert(data);
   }
@@ -209,6 +285,12 @@ class RouterService {
   }
 
   Future<RouterImportResult> importRoutersFromJson(String jsonContent) async {
+    if (isReviewerMode) {
+      return const RouterImportResult(
+        success: false,
+        errorMessage: 'Cannot import router profiles while in Reviewer Mode.',
+      );
+    }
     var trimmed = jsonContent.trim();
     if (trimmed.startsWith('\uFEFF')) {
       trimmed = trimmed.substring(1).trim();
@@ -324,6 +406,13 @@ class RouterService {
           item['id'] is String && (item['id'] as String).trim().isNotEmpty
           ? (item['id'] as String).trim()
           : generateId(ip, username, useHttps);
+
+      if (isMockRouterId(id) || lastKnownHostname == 'OpenWrt-Reviewer') {
+        warnings.add(
+          'Profile #${i + 1} ($ip) was skipped as a reviewer mock profile.',
+        );
+        continue;
+      }
 
       validRouters.add(
         model.Router(

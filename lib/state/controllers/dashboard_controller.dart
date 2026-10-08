@@ -17,8 +17,8 @@ import 'package:yala/services/interfaces/ssh_service_interface.dart';
 import 'package:yala/services/router_service.dart';
 import 'package:yala/services/secure_storage_service.dart';
 import 'package:yala/state/controllers/throughput_controller.dart';
-import 'package:yala/utils/http_client_manager.dart';
 import 'package:yala/utils/logger.dart';
+import 'package:yala/utils/http_client_manager.dart';
 
 /// Enum matching AppState connection status for reporting connection failures.
 enum DashboardConnectionStatus { connected, reconnecting, disconnected }
@@ -44,7 +44,6 @@ class DashboardController {
     required void Function(DashboardConnectionStatus status)
     setConnectionStatus,
     required void Function() startThroughputTimer,
-    required void Function() updateThroughputOnly,
     required Map<String, dynamic> Function(Map<String, dynamic> rawDhcpData)
     processDhcpLeases,
     required VoidCallback notifyListeners,
@@ -61,7 +60,6 @@ class DashboardController {
        _setPublicIps = setPublicIps,
        _setConnectionStatus = setConnectionStatus,
        _startThroughputTimer = startThroughputTimer,
-       _updateThroughputOnly = updateThroughputOnly,
        _processDhcpLeases = processDhcpLeases,
        _notifyListeners = notifyListeners;
 
@@ -73,12 +71,12 @@ class DashboardController {
   final ThroughputController? Function() _throughputControllerRef;
   final DashboardPreferences Function() _dashboardPreferencesRef;
   final bool Function() _reviewerModeRef;
+  // ignore: unused_field
   final Future<bool> Function({bool force, bool fetchDashboard}) _tryAutoLogin;
   final Future<void> Function() _fetchPublicIps;
   final void Function(String v4, String v6) _setPublicIps;
   final void Function(DashboardConnectionStatus status) _setConnectionStatus;
   final void Function() _startThroughputTimer;
-  final void Function() _updateThroughputOnly;
   final Map<String, dynamic> Function(Map<String, dynamic> rawDhcpData)
   _processDhcpLeases;
   final VoidCallback _notifyListeners;
@@ -97,6 +95,16 @@ class DashboardController {
 
   void setDashboardDataForTesting(Map<String, dynamic>? data) {
     _dashboardData = data;
+    _notifyListeners();
+  }
+
+  void setCapabilitiesForTesting(RouterCapabilities? capabilities) {
+    _capabilities = capabilities;
+    _notifyListeners();
+  }
+
+  void setIsDashboardLoadingForTesting(bool loading) {
+    _isDashboardLoading = loading;
     _notifyListeners();
   }
 
@@ -158,6 +166,7 @@ class DashboardController {
           final Map<String, dynamic> cachedMap = jsonDecode(cachedJsonStr);
           final cachedCaps = RouterCapabilities.fromJson(cachedMap);
           if (!cachedCaps.probeFailed &&
+              cachedCaps.isRpcComplete &&
               DateTime.now().difference(cachedCaps.probedAt).inHours < 24) {
             _capabilities = cachedCaps;
             Logger.info('Loaded router capabilities from cache for $routerId');
@@ -178,13 +187,9 @@ class DashboardController {
     }
     final useHttps = _routerService!.selectedRouter!.useHttps;
 
-    // Silently ensure ACL rules exist on router in the background without prompting user
-    if (sysauth.isNotEmpty) {
-      unawaited(_apiService!.ensureSilentPermissions(ip, sysauth, useHttps));
-    }
-
     final ubusObjects = <String>{};
     final ubusMethods = <String, List<String>>{};
+    final uciPermissions = <String, List<String>>{};
     PackageManagerEngine pkgEngine = PackageManagerEngine.opkg;
     FirewallBackend fwBackend = FirewallBackend.fw4;
     NetworkModel netModel = NetworkModel.dsa;
@@ -195,69 +200,210 @@ class DashboardController {
     Map<String, dynamic> featuresData = {};
 
     try {
-      // 1. Probe available ubus objects and methods via direct lightweight RPC queries
+      // 1. Authoritative check: OpenWrt rpcd session.access returns exact effective permissions
       try {
-        final sysInfo = await _apiService!.call(
+        final accessRes = await _apiService!.call(
           ip,
           sysauth,
           useHttps,
-          object: 'system',
-          method: 'info',
+          object: 'session',
+          method: 'access',
         );
-        if (sysInfo != null) ubusObjects.add('system');
-      } catch (_) {}
-
-      try {
-        final uciRes = await _apiService!.call(
-          ip,
-          sysauth,
-          useHttps,
-          object: 'uci',
-          method: 'get',
-          params: {'config': 'system'},
-        );
-        if (uciRes != null) ubusObjects.add('uci');
-      } catch (_) {}
-
-      try {
-        final fileRes = await _apiService!.call(
-          ip,
-          sysauth,
-          useHttps,
-          object: 'file',
-          method: 'exec',
-          params: {'command': 'true'},
-        );
-        if (fileRes is List && fileRes.isNotEmpty && fileRes[0] == 0) {
-          ubusObjects.add('file');
-          ubusMethods['file'] = ['exec', 'read', 'stat'];
+        if (accessRes is List && accessRes.length > 1 && accessRes[0] == 0) {
+          final data = accessRes[1];
+          if (data is Map) {
+            final ubusMap = data['ubus'];
+            if (ubusMap is Map) {
+              for (final entry in ubusMap.entries) {
+                final objName = entry.key.toString();
+                ubusObjects.add(objName);
+                if (entry.value is List) {
+                  ubusMethods[objName] = (entry.value as List)
+                      .map((e) => e.toString())
+                      .toList();
+                }
+              }
+            }
+            final uciMap = data['uci'];
+            if (uciMap is Map) {
+              for (final entry in uciMap.entries) {
+                final configName = entry.key.toString();
+                if (entry.value is List) {
+                  uciPermissions[configName] = (entry.value as List)
+                      .map((e) => e.toString())
+                      .toList();
+                }
+              }
+            }
+          }
         }
-      } catch (_) {}
+      } catch (e) {
+        Logger.info('session.access probe skipped or failed: $e');
+      }
 
-      try {
-        final iwinfoRes = await _apiService!.call(
-          ip,
-          sysauth,
-          useHttps,
-          object: 'iwinfo',
-          method: 'devices',
-        );
-        if (iwinfoRes != null) {
-          ubusObjects.add('iwinfo');
-          ubusObjects.add('luci-rpc');
-        }
-      } catch (_) {}
+      // 2. Direct lightweight RPC queries for verification / fallback
+      if (!ubusObjects.contains('system')) {
+        try {
+          final sysInfo = await _apiService!.call(
+            ip,
+            sysauth,
+            useHttps,
+            object: 'system',
+            method: 'info',
+          );
+          if (sysInfo != null &&
+              (sysInfo is! List || (sysInfo.isNotEmpty && sysInfo[0] == 0))) {
+            ubusObjects.add('system');
+          }
+        } catch (_) {}
+      }
 
-      try {
-        final rcRes = await _apiService!.call(
-          ip,
-          sysauth,
-          useHttps,
-          object: 'rc',
-          method: 'list',
-        );
-        if (rcRes != null) ubusObjects.add('rc');
-      } catch (_) {}
+      if (!ubusObjects.contains('uci')) {
+        try {
+          final uciRes = await _apiService!.call(
+            ip,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'system'},
+          );
+          if (uciRes != null &&
+              (uciRes is! List || (uciRes.isNotEmpty && uciRes[0] == 0))) {
+            ubusObjects.add('uci');
+            ubusMethods['uci'] = ['get', 'set', 'commit'];
+          }
+        } catch (_) {}
+      }
+
+      // File module & execution capability check
+      if (!ubusObjects.contains('file') ||
+          ubusMethods['file'] == null ||
+          (!ubusMethods['file']!.contains('exec') &&
+              !ubusMethods['file']!.contains('*'))) {
+        try {
+          // Probe file.stat first with /etc/board.json (whitelisted in standard LuCI)
+          final fileStatRes = await _apiService!.call(
+            ip,
+            sysauth,
+            useHttps,
+            object: 'file',
+            method: 'stat',
+            params: {'path': '/etc/board.json'},
+          );
+          if (fileStatRes is List &&
+              fileStatRes.isNotEmpty &&
+              fileStatRes[0] == 0) {
+            ubusObjects.add('file');
+            final fm = ubusMethods.putIfAbsent('file', () => []);
+            if (!fm.contains('stat')) fm.add('stat');
+            if (!fm.contains('read')) fm.add('read');
+          }
+        } catch (_) {}
+
+        // Multi-binary candidate probing for file.exec
+        // Linux / OpenWrt installations whitelist different binaries in ACLs:
+        // Candidate 1: true
+        // Candidate 2: /bin/ping (whitelisted in standard luci-mod-network)
+        // Candidate 3: /sbin/ip
+        try {
+          var fileExecSuccess = false;
+          var fileRes = await _apiService!.call(
+            ip,
+            sysauth,
+            useHttps,
+            object: 'file',
+            method: 'exec',
+            params: {'command': 'true'},
+          );
+          if (fileRes is List && fileRes.isNotEmpty && fileRes[0] == 0) {
+            fileExecSuccess = true;
+          } else {
+            fileRes = await _apiService!.call(
+              ip,
+              sysauth,
+              useHttps,
+              object: 'file',
+              method: 'exec',
+              params: {
+                'command': '/bin/ping',
+                'params': ['-c', '1', '127.0.0.1'],
+              },
+            );
+            if (fileRes is List && fileRes.isNotEmpty && fileRes[0] == 0) {
+              fileExecSuccess = true;
+            } else {
+              fileRes = await _apiService!.call(
+                ip,
+                sysauth,
+                useHttps,
+                object: 'file',
+                method: 'exec',
+                params: {'command': '/sbin/ip'},
+              );
+              if (fileRes is List && fileRes.isNotEmpty && fileRes[0] == 0) {
+                fileExecSuccess = true;
+              }
+            }
+          }
+
+          if (fileExecSuccess) {
+            ubusObjects.add('file');
+            final fm = ubusMethods.putIfAbsent('file', () => []);
+            if (!fm.contains('exec')) fm.add('exec');
+            if (!fm.contains('read')) fm.add('read');
+            if (!fm.contains('stat')) fm.add('stat');
+          }
+        } catch (_) {}
+      }
+
+      // Check iwinfo & luci-rpc
+      if (!ubusObjects.contains('iwinfo')) {
+        try {
+          final iwinfoRes = await _apiService!.call(
+            ip,
+            sysauth,
+            useHttps,
+            object: 'iwinfo',
+            method: 'devices',
+          );
+          if (iwinfoRes is List && iwinfoRes.isNotEmpty && iwinfoRes[0] == 0) {
+            ubusObjects.add('iwinfo');
+          }
+        } catch (_) {}
+      }
+
+      if (!ubusObjects.contains('luci-rpc')) {
+        try {
+          final luciRpcRes = await _apiService!.call(
+            ip,
+            sysauth,
+            useHttps,
+            object: 'luci-rpc',
+            method: 'getBoardJSON',
+          );
+          if (luciRpcRes is List &&
+              luciRpcRes.isNotEmpty &&
+              luciRpcRes[0] == 0) {
+            ubusObjects.add('luci-rpc');
+          }
+        } catch (_) {}
+      }
+
+      if (!ubusObjects.contains('rc')) {
+        try {
+          final rcRes = await _apiService!.call(
+            ip,
+            sysauth,
+            useHttps,
+            object: 'rc',
+            method: 'list',
+          );
+          if (rcRes is List && rcRes.isNotEmpty && rcRes[0] == 0) {
+            ubusObjects.add('rc');
+          }
+        } catch (_) {}
+      }
 
       try {
         final featuresRes = await _apiService!.call(
@@ -399,6 +545,7 @@ class DashboardController {
       routerId: routerId,
       ubusObjects: ubusObjects,
       ubusMethods: ubusMethods,
+      uciPermissions: uciPermissions,
       packageEngine: pkgEngine,
       firewallBackend: fwBackend,
       networkModel: netModel,
@@ -409,17 +556,20 @@ class DashboardController {
       lastProbeError: probeError,
     );
 
-    try {
-      await _secureStorageService.writeValue(
-        cacheKey,
-        jsonEncode(_capabilities!.toJson()),
-      );
-    } catch (e) {
-      Logger.warning('Failed to cache router capabilities: $e');
+    final caps = _capabilities;
+    if (caps != null && !caps.probeFailed && caps.isRpcComplete) {
+      try {
+        await _secureStorageService.writeValue(
+          cacheKey,
+          jsonEncode(caps.toJson()),
+        );
+      } catch (e) {
+        Logger.warning('Failed to cache router capabilities: $e');
+      }
     }
 
     _notifyListeners();
-    return _capabilities!;
+    return _capabilities ?? caps ?? RouterCapabilities.conservative('unknown');
   }
 
   /// Update package engine dynamically if detected during package manager operations
@@ -622,10 +772,6 @@ class DashboardController {
 
         _startThroughputTimer();
 
-        Future.delayed(const Duration(milliseconds: 100), () {
-          _updateThroughputOnly();
-        });
-
         _isDashboardLoading = false;
         _notifyListeners();
       } catch (e) {
@@ -684,8 +830,10 @@ class DashboardController {
           final errStr = e.toString().toLowerCase();
           if (errStr.contains('unauthenticated') ||
               errStr.contains('http 401') ||
+              errStr.contains('http 403') ||
               errStr.contains('invalid sysauth') ||
               errStr.contains('session expired') ||
+              errStr.contains('access denied') ||
               errStr.contains('no active sysauth token')) {
             Logger.warning('RPC $object.$method failed with auth error: $e');
             rethrow;
@@ -853,6 +1001,12 @@ class DashboardController {
         object: 'uci',
         method: 'get',
         params: {'config': 'ddns'},
+      );
+
+      final uciSqmFuture = callOptionalRpc(
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'sqm'},
       );
 
       Future<dynamic> fetchCronData() async {
@@ -1150,6 +1304,7 @@ class DashboardController {
           );
         }
 
+        bool isHandlerInstalled = false;
         try {
           // 1. Try ubus luci.temp-status getSensors (if luci-app-temp-status is installed)
           try {
@@ -1160,6 +1315,7 @@ class DashboardController {
             );
             final data = getOptionalData(res, 'luci.temp-status.getSensors');
             if (data != null) {
+              isHandlerInstalled = true;
               final parsed = RouterTemperature.parse(data);
               if (parsed.isSupported && parsed.sensors.isNotEmpty) {
                 return parsed;
@@ -1323,9 +1479,10 @@ class DashboardController {
           if (hasPhysicalSensors) {
             return RouterTemperature.unavailable(
               hasPhysicalSensors: true,
-              isHandlerInstalled: false,
-              reason:
-                  'Hardware thermal sensors detected, but native OpenWrt RPC handler is not installed.',
+              isHandlerInstalled: isHandlerInstalled,
+              reason: isHandlerInstalled
+                  ? 'Temperature script is installed, but thermal sensors are currently offline or inactive.'
+                  : 'Hardware thermal sensors detected, but native OpenWrt RPC handler is not installed.',
             );
           }
         } catch (e) {
@@ -1334,8 +1491,10 @@ class DashboardController {
 
         return RouterTemperature.unavailable(
           hasPhysicalSensors: false,
-          isHandlerInstalled: false,
-          reason: 'Thermal sensors are not supported on this router hardware.',
+          isHandlerInstalled: isHandlerInstalled,
+          reason: isHandlerInstalled
+              ? 'Temperature script is installed, but no thermal sensors are detected on this hardware.'
+              : 'Thermal sensors are not supported on this router hardware.',
         );
       }
 
@@ -1420,6 +1579,7 @@ class DashboardController {
         temperatureFuture,
         deviceStatusFuture,
         swconfigFuture,
+        uciSqmFuture,
       ]);
       final wirelessRaw = optionalResults[0];
       final uciWirelessRaw = optionalResults[1];
@@ -1440,6 +1600,7 @@ class DashboardController {
       final temperatureRaw = optionalResults[16];
       final deviceStatusRaw = optionalResults[17];
       final swconfigRaw = optionalResults[18];
+      final uciSqmRaw = optionalResults[19];
 
       dynamic parsedNextdns = getOptionalData(uciNextdnsRaw, 'uci.get nextdns');
       dynamic parsedCloudflared = getOptionalData(
@@ -1921,7 +2082,7 @@ class DashboardController {
         initScriptsData = getOptionalData(initScriptsRaw, 'rc.list');
       }
 
-      dynamic mountPointsData = mountPointsRaw;
+      final dynamic mountPointsData = mountPointsRaw;
 
       final pkgMgrType = _capabilities?.packageEngine.name ?? 'opkg';
 
@@ -1978,36 +2139,6 @@ class DashboardController {
         liveWireGuardData: liveWireGuardData,
       );
 
-      final wanDeviceNames = <String>{};
-      if (interfaceDump != null && interfaceDump['interface'] is List) {
-        for (final interface in interfaceDump['interface']) {
-          if (interface is Map<String, dynamic>) {
-            final ifname = interface['interface'] as String?;
-            if (ifname != null && ifname != 'loopback' && ifname != 'lo') {
-              final device = interface['device'] as String?;
-              final l3Device = interface['l3_device'] as String?;
-              if (device != null) {
-                wanDeviceNames.add(device);
-              }
-              if (l3Device != null && l3Device != device) {
-                wanDeviceNames.add(l3Device);
-              }
-            }
-          }
-        }
-      }
-
-      final prefs = _dashboardPreferences;
-      final specificInterface = ThroughputController.resolveSpecificInterface(
-        prefs,
-        deviceNameResolver: (iface) => getDeviceNameForInterface(iface),
-      );
-
-      _throughputController?.updateThroughput(
-        networkData,
-        wanDeviceNames,
-        specificInterface: specificInterface,
-      );
 
       final wirelessStationsMap = <String, dynamic>{};
       final wirelessDevs =
@@ -2106,6 +2237,17 @@ class DashboardController {
         }
       }
 
+      Map<String, dynamic>? sqmData;
+      if (uciSqmRaw != null) {
+        final parsedSqm = getOptionalData(uciSqmRaw, 'uci.get sqm');
+        if (parsedSqm is Map<String, dynamic>) {
+          final values = parsedSqm['values'] is Map<String, dynamic>
+              ? parsedSqm['values'] as Map<String, dynamic>
+              : parsedSqm;
+          sqmData = Map<String, dynamic>.from(values);
+        }
+      }
+
       if (currentEpoch != _fetchEpoch ||
           targetRouterId != _routerService?.selectedRouter?.id) {
         Logger.info(
@@ -2140,6 +2282,7 @@ class DashboardController {
         'nextdns': nextdnsData,
         'cloudflared': cloudflaredData,
         'ddns': ddnsData,
+        'sqm': sqmData,
         'temperature': temperatureData,
         '_lastUpdated': DateTime.now().millisecondsSinceEpoch,
       };
@@ -2152,10 +2295,6 @@ class DashboardController {
 
       _startThroughputTimer();
       unawaited(_fetchPublicIps());
-
-      Future.delayed(const Duration(milliseconds: 100), () {
-        _updateThroughputOnly();
-      });
     } catch (e) {
       if (currentEpoch != _fetchEpoch ||
           targetRouterId != _routerService?.selectedRouter?.id) {
@@ -2166,46 +2305,6 @@ class DashboardController {
       }
 
       _activeFetchFuture = null;
-      if (!_isReviewerMode && _authService != null) {
-        _setConnectionStatus(DashboardConnectionStatus.reconnecting);
-        _notifyListeners();
-
-        // Flush stale HTTP client socket pools on connection error to ensure fresh socket connection on active network interface
-        HttpClientManager().disposeAll();
-
-        bool reconnected = false;
-        for (int attempt = 1; attempt <= 3; attempt++) {
-          await Future.delayed(Duration(milliseconds: 300 * attempt));
-          if (currentEpoch != _fetchEpoch ||
-              targetRouterId != _routerService?.selectedRouter?.id) {
-            return;
-          }
-          try {
-            final autoLoginSuccess = await _tryAutoLogin(
-              force: true,
-              fetchDashboard: false,
-            );
-            if (autoLoginSuccess) {
-              reconnected = true;
-              break;
-            }
-          } catch (_) {}
-        }
-
-        if (reconnected) {
-          if (currentEpoch != _fetchEpoch ||
-              targetRouterId != _routerService?.selectedRouter?.id) {
-            return;
-          }
-          _setConnectionStatus(DashboardConnectionStatus.connected);
-          _dashboardError = null;
-          _isDashboardLoading = false;
-          _notifyListeners();
-          unawaited(fetchDashboardData(force: true));
-          return;
-        }
-      }
-
       if (currentEpoch != _fetchEpoch ||
           targetRouterId != _routerService?.selectedRouter?.id) {
         return;
@@ -2217,6 +2316,7 @@ class DashboardController {
       } else {
         _dashboardError = 'Failed to fetch dashboard data: $e';
       }
+      _notifyListeners();
       // Preserve cached _dashboardData if present so existing UI components remain populated during temporary network interruptions
     } finally {
       if (currentEpoch == _fetchEpoch &&
@@ -2234,15 +2334,14 @@ class DashboardController {
       return match?.group(1);
     }
 
-    final interfaceDump =
-        _dashboardData?['interfaceDump'] as Map<String, dynamic>?;
-    if (interfaceDump != null && interfaceDump['interface'] is List) {
-      for (final interface in interfaceDump['interface']) {
-        if (interface is Map<String, dynamic>) {
-          final ifname = interface['interface'] as String?;
+    final rawDump = _dashboardData?['interfaceDump'];
+    if (rawDump is Map && rawDump['interface'] is List) {
+      for (final interface in (rawDump['interface'] as List)) {
+        if (interface is Map) {
+          final ifname = interface['interface']?.toString();
           if (ifname == interfaceName) {
-            final l3Dev = interface['l3_device'] as String?;
-            final dev = interface['device'] as String?;
+            final l3Dev = interface['l3_device']?.toString();
+            final dev = interface['device']?.toString();
             if (l3Dev != null && l3Dev.isNotEmpty && !l3Dev.startsWith('@')) {
               return l3Dev;
             }
@@ -2472,30 +2571,44 @@ class DashboardController {
             }
 
             final livePeers = liveVal['peers'];
-            final existingPeers = ifaceMap['peers'] as Map<String, dynamic>;
-            if (livePeers is Map<String, dynamic>) {
+            if (ifaceMap['peers'] is! Map) {
+              ifaceMap['peers'] = <String, dynamic>{};
+            }
+            final existingPeers = ifaceMap['peers'] is Map<String, dynamic>
+                ? ifaceMap['peers'] as Map<String, dynamic>
+                : (ifaceMap['peers'] = Map<String, dynamic>.from(
+                    ifaceMap['peers'] as Map,
+                  ));
+            if (livePeers is Map) {
               livePeers.forEach((pKey, pVal) {
-                if (pVal is Map<String, dynamic>) {
-                  if (existingPeers.containsKey(pKey)) {
+                if (pVal is Map) {
+                  final pValMap = Map<String, dynamic>.from(pVal);
+                  if (existingPeers.containsKey(pKey) &&
+                      existingPeers[pKey] is Map) {
                     final pExisting =
-                        existingPeers[pKey] as Map<String, dynamic>;
-                    if (pVal['endpoint'] != null && pVal['endpoint'] != 'N/A') {
-                      pExisting['endpoint'] = pVal['endpoint'];
+                        existingPeers[pKey] is Map<String, dynamic>
+                        ? existingPeers[pKey] as Map<String, dynamic>
+                        : (existingPeers[pKey] = Map<String, dynamic>.from(
+                            existingPeers[pKey] as Map,
+                          ));
+                    if (pValMap['endpoint'] != null &&
+                        pValMap['endpoint'] != 'N/A') {
+                      pExisting['endpoint'] = pValMap['endpoint'];
                     }
-                    if (pVal['last_handshake'] != null &&
-                        pVal['last_handshake'] != 0) {
-                      pExisting['last_handshake'] = pVal['last_handshake'];
+                    if (pValMap['last_handshake'] != null &&
+                        pValMap['last_handshake'] != 0) {
+                      pExisting['last_handshake'] = pValMap['last_handshake'];
                     }
                     pExisting['rx_bytes'] =
-                        pVal['rx_bytes'] ?? pExisting['rx_bytes'] ?? 0;
+                        pValMap['rx_bytes'] ?? pExisting['rx_bytes'] ?? 0;
                     pExisting['tx_bytes'] =
-                        pVal['tx_bytes'] ?? pExisting['tx_bytes'] ?? 0;
-                    if (pVal['allowed_ips'] is List &&
-                        (pVal['allowed_ips'] as List).isNotEmpty) {
-                      pExisting['allowed_ips'] = pVal['allowed_ips'];
+                        pValMap['tx_bytes'] ?? pExisting['tx_bytes'] ?? 0;
+                    if (pValMap['allowed_ips'] is List &&
+                        (pValMap['allowed_ips'] as List).isNotEmpty) {
+                      pExisting['allowed_ips'] = pValMap['allowed_ips'];
                     }
                   } else {
-                    existingPeers[pKey] = Map<String, dynamic>.from(pVal);
+                    existingPeers[pKey.toString()] = pValMap;
                   }
                 }
               });
@@ -2821,7 +2934,7 @@ class DashboardController {
       }
 
       const delimiter = '===UCI_CONFIG_DELIMITER===';
-      final cmd =
+      const cmd =
           'ubus call uci get \'{"config":"nextdns"}\' 2>/dev/null || cat /etc/config/nextdns 2>/dev/null; '
           'echo \'$delimiter\'; '
           'ubus call uci get \'{"config":"cloudflared"}\' 2>/dev/null || cat /etc/config/cloudflared 2>/dev/null; '

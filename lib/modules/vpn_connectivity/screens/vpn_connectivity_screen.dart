@@ -2,6 +2,7 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yala/main.dart';
@@ -343,7 +344,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
                             'Are you sure you want to ${wg.isUp ? "bring down" : "bring up"} the WireGuard interface "${wg.name}" on the router?',
                         action: () async {
                           final appState = ref.read(appStateProvider);
-                          await appState.toggleWireguardInterface(
+                          return await appState.toggleWireguardInterface(
                             wg.name,
                             !wg.isUp,
                           );
@@ -500,7 +501,10 @@ class VpnConnectivityScreen extends ConsumerWidget {
                         'Are you sure you want to ${val ? "start" : "stop"} the OpenVPN instance "${ovpn.name}" on the router?',
                     action: () async {
                       final appState = ref.read(appStateProvider);
-                      await appState.toggleOpenVpnInstance(ovpn.name, val);
+                      return await appState.toggleOpenVpnInstance(
+                        ovpn.name,
+                        val,
+                      );
                     },
                   ),
                 ),
@@ -584,7 +588,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
                             'Are you sure you want to ${val ? "enable" : "disable"} the Tailscale mesh daemon on the router?',
                         action: () async {
                           final appState = ref.read(appStateProvider);
-                          await appState.toggleTailscale(val);
+                          return await appState.toggleTailscale(val);
                         },
                       ),
                     ),
@@ -626,7 +630,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
                         'Restarting Tailscale will temporarily drop active mesh connections.',
                     action: () async {
                       final appState = ref.read(appStateProvider);
-                      await appState.restartVpnService('tailscale');
+                      return await appState.restartVpnService('tailscale');
                     },
                   ),
                   icon: const Icon(Icons.restart_alt, size: 16),
@@ -697,7 +701,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
                         'Are you sure you want to ${val ? "activate" : "deactivate"} encrypted NextDNS resolving on the router?',
                     action: () async {
                       final appState = ref.read(appStateProvider);
-                      await appState.toggleNextDns(val);
+                      return await appState.toggleNextDns(val);
                     },
                   ),
                 ),
@@ -735,7 +739,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
                         'Restarting NextDNS will reload DNS filtering configurations.',
                     action: () async {
                       final appState = ref.read(appStateProvider);
-                      await appState.restartVpnService('nextdns');
+                      return await appState.restartVpnService('nextdns');
                     },
                   ),
                   icon: const Icon(Icons.restart_alt, size: 16),
@@ -827,7 +831,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
                             'Are you sure you want to ${val ? "enable" : "disable"} the cloudflared zero-trust tunnel daemon on the router?',
                         action: () async {
                           final appState = ref.read(appStateProvider);
-                          await appState.toggleCloudflared(val);
+                          return await appState.toggleCloudflared(val);
                         },
                       ),
                     ),
@@ -862,7 +866,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
                         'Restarting Cloudflared will re-establish edge connection tunnels to Cloudflare Zero Trust.',
                     action: () async {
                       final appState = ref.read(appStateProvider);
-                      await appState.restartVpnService('cloudflared');
+                      return await appState.restartVpnService('cloudflared');
                     },
                   ),
                   icon: const Icon(Icons.restart_alt, size: 16),
@@ -884,7 +888,7 @@ class VpnConnectivityScreen extends ConsumerWidget {
     WidgetRef ref, {
     required String title,
     required String message,
-    required Future<void> Function() action,
+    required Future<dynamic> Function() action,
   }) async {
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
@@ -927,9 +931,18 @@ class VpnConnectivityScreen extends ConsumerWidget {
         actionKey: actionKey,
       );
       try {
-        await action();
-        final appState = ref.read(appStateProvider);
-        await appState.fetchDashboardData();
+        final result = await action();
+        if (result == false) {
+          if (context.mounted) {
+            context.showToastError(
+              'Configuration Update Failed',
+              subtitle:
+                  'The router was unable to apply the VPN configuration change.',
+              actionKey: actionKey,
+            );
+          }
+          return;
+        }
 
         if (context.mounted) {
           context.showToastSuccess(
@@ -940,6 +953,9 @@ class VpnConnectivityScreen extends ConsumerWidget {
             actionKey: actionKey,
           );
         }
+
+        final appState = ref.read(appStateProvider);
+        unawaited(appState.fetchDashboardData());
       } catch (e) {
         if (context.mounted) {
           context.showToastError(

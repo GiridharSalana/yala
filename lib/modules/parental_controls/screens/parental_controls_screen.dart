@@ -129,7 +129,11 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
           final appState = ref.read(appStateProvider);
           final res = await _controller.addProfile(profile, appState);
           if (mounted && res.message.isNotEmpty) {
-            context.showToastSuccess(res.message);
+            if (res.success) {
+              context.showToastSuccess(res.message);
+            } else {
+              context.showToastError(res.message);
+            }
           }
         },
       ),
@@ -150,7 +154,11 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
             appState,
           );
           if (mounted && res.message.isNotEmpty) {
-            context.showToastSuccess(res.message);
+            if (res.success) {
+              context.showToastSuccess(res.message);
+            } else {
+              context.showToastError(res.message);
+            }
           }
         },
       ),
@@ -182,7 +190,11 @@ class _ParentalControlsScreenState extends ConsumerState<ParentalControlsScreen>
               final appState = ref.read(appStateProvider);
               final res = await _controller.deleteProfile(profile.id, appState);
               if (mounted && res.message.isNotEmpty) {
-                context.showToastInfo(res.message);
+                if (res.success) {
+                  context.showToastInfo(res.message);
+                } else {
+                  context.showToastError(res.message);
+                }
               }
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
