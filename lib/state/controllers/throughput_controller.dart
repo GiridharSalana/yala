@@ -190,7 +190,8 @@ class ThroughputController {
 
       if (targetDev == null || targetDev == 'lo' || targetDev.isEmpty) continue;
 
-      final isWan = ifname.startsWith('wan') ||
+      final isWan =
+          ifname.startsWith('wan') ||
           proto == 'pppoe' ||
           interface['is_wan'] == true;
 
@@ -212,6 +213,86 @@ class ThroughputController {
     }
 
     return const <String>{};
+  }
+
+  /// Maps logical WAN/LAN device names from [resolveThroughputDeviceNames] to the
+  /// keys returned by `luci-rpc.getNetworkDevices`, which are often the physical
+  /// carrier (e.g. `eth1`) even when the routed interface is `pppoe-wan`.
+  static Set<String> resolveNetdevKeysForThroughput(
+    Map<String, dynamic>? networkData,
+    Map<String, dynamic>? interfaceDump,
+  ) {
+    final logical = resolveThroughputDeviceNames(interfaceDump);
+    if (networkData == null || networkData.isEmpty) {
+      return logical;
+    }
+    if (logical.isEmpty) {
+      return const <String>{};
+    }
+
+    final netdevKeys = <String>{};
+
+    void addResolvedKey(String? primary, String? secondary) {
+      for (final candidate in [primary, secondary]) {
+        if (candidate == null || candidate.isEmpty || candidate == 'lo') {
+          continue;
+        }
+        if (networkData.containsKey(candidate)) {
+          netdevKeys.add(candidate);
+          return;
+        }
+        for (final entry in networkData.entries) {
+          final devData = entry.value;
+          if (devData is! Map<String, dynamic>) continue;
+          final deviceField = devData['device'] as String?;
+          if (entry.key == candidate || deviceField == candidate) {
+            netdevKeys.add(entry.key);
+            return;
+          }
+        }
+      }
+    }
+
+    if (interfaceDump != null && interfaceDump['interface'] is List) {
+      for (final interface in interfaceDump['interface']) {
+        if (interface is! Map<String, dynamic>) continue;
+        final ifname = (interface['interface'] as String?)?.toLowerCase();
+        if (ifname == null || ifname == 'loopback' || ifname == 'lo') continue;
+
+        final proto = (interface['proto'] as String?)?.toLowerCase();
+        final device = interface['device'] as String?;
+        final l3Device = interface['l3_device'] as String?;
+        final targetDev = (l3Device != null && l3Device.isNotEmpty)
+            ? l3Device
+            : device;
+
+        if (targetDev == null ||
+            targetDev.isEmpty ||
+            !logical.contains(targetDev)) {
+          continue;
+        }
+
+        final isWan =
+            ifname.startsWith('wan') ||
+            proto == 'pppoe' ||
+            interface['is_wan'] == true;
+        final isLan =
+            ifname == 'lan' ||
+            (ifname.startsWith('lan') && logical.contains(targetDev));
+
+        if (!isWan && !isLan) continue;
+
+        addResolvedKey(targetDev, device != targetDev ? device : null);
+      }
+    }
+
+    if (netdevKeys.isEmpty) {
+      for (final name in logical) {
+        addResolvedKey(name, null);
+      }
+    }
+
+    return netdevKeys;
   }
 
   /// Cleans up all resources. Must be called from AppState.dispose().
