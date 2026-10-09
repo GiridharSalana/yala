@@ -88,17 +88,23 @@ class ThroughputService {
     return 0.0;
   }
 
+  static num _byteCounter(Map<String, dynamic> device, String key) {
+    final stats = device['stats'];
+    if (stats is Map) {
+      final value = stats[key];
+      if (value is num) return value;
+    }
+    final direct = device[key];
+    if (direct is num) return direct;
+    return 0;
+  }
+
   void updateThroughput(
     Map<String, dynamic>? networkData,
     Set<String> wanDeviceNames, {
     String? specificInterface,
   }) {
     final now = DateTime.now();
-
-    // Monotonicity guard: discard any payload whose arrival time is not strictly after the last baseline
-    if (_lastTimestamp != null && !now.isAfter(_lastTimestamp!)) {
-      return;
-    }
 
     // Always update per-interface throughput for all interfaces
     if (networkData != null) {
@@ -108,44 +114,17 @@ class ThroughputService {
     }
 
     // Update overall throughput
+    String? matchedSpecificKey;
     if (specificInterface != null && specificInterface.isNotEmpty) {
-      String? matchedKey;
-      if (networkData != null) {
-        if (networkData.containsKey(specificInterface)) {
-          matchedKey = specificInterface;
-        } else {
-          // Fallback matching: map logical interface names (e.g. lan -> br-lan, wan -> eth0)
-          for (final entry in networkData.entries) {
-            final devName = entry.key;
-            if (devName == specificInterface ||
-                (specificInterface == 'lan' && devName == 'br-lan') ||
-                (specificInterface == 'wan' && devName == 'eth0')) {
-              matchedKey = devName;
-              break;
-            }
-            final devData = entry.value;
-            if (devData is Map<String, dynamic>) {
-              if (devData['device'] == specificInterface ||
-                  devData['l3_device'] == specificInterface) {
-                matchedKey = devName;
-                break;
-              }
-            }
-          }
-        }
-      }
+      matchedSpecificKey = _resolveInterfaceKey(networkData, specificInterface);
+    }
 
-      if (matchedKey != null) {
-        _updateSpecificInterfaceThroughput(
-          matchedKey,
-          networkData![matchedKey],
-          now,
-        );
-      } else {
-        // Interface not found in data, clear current rates
-        _currentRxRate = 0;
-        _currentTxRate = 0;
-      }
+    if (matchedSpecificKey != null && networkData != null) {
+      _updateSpecificInterfaceThroughput(
+        matchedSpecificKey,
+        networkData[matchedSpecificKey],
+        now,
+      );
     } else {
       // Update combined throughput as before
       if (_lastStats == null || _lastTimestamp == null) {
@@ -174,82 +153,27 @@ class ThroughputService {
         num diffTx = 0;
 
         if (networkData != null && _lastStats != null) {
-          Set<String> effectiveDevices = wanDeviceNames;
-          if (effectiveDevices.isEmpty) {
-            if (networkData.containsKey('wan')) {
-              effectiveDevices = {'wan'};
-            } else if (networkData.containsKey('pppoe-wan')) {
-              effectiveDevices = {'pppoe-wan'};
-            } else if (networkData.containsKey('br-lan')) {
-              effectiveDevices = {'br-lan'};
-            } else if (networkData.containsKey('eth0')) {
-              effectiveDevices = {'eth0'};
-            }
+          var diffs = _sumDeviceByteDiffs(
+            networkData,
+            _lastStats!,
+            wanDeviceNames,
+            elapsedSeconds,
+          );
+          diffRx = diffs.diffRx;
+          diffTx = diffs.diffTx;
+          if (diffRx == 0 &&
+              diffTx == 0 &&
+              wanDeviceNames.isNotEmpty &&
+              !_anyWanDeviceMatched(networkData, wanDeviceNames)) {
+            diffs = _sumDeviceByteDiffs(
+              networkData,
+              _lastStats!,
+              const {},
+              elapsedSeconds,
+            );
+            diffRx = diffs.diffRx;
+            diffTx = diffs.diffTx;
           }
-
-          networkData.forEach((devName, devData) {
-            if (devName == 'lo' || devName == 'loopback') return;
-            final deviceField = devData is Map<String, dynamic>
-                ? devData['device'] as String?
-                : null;
-            final included =
-                effectiveDevices.isEmpty ||
-                effectiveDevices.contains(devName) ||
-                (deviceField != null && effectiveDevices.contains(deviceField));
-            if (included) {
-              final lastDevData = _lastStats![devName];
-              if (lastDevData is Map<String, dynamic> &&
-                  devData is Map<String, dynamic>) {
-                final lastDevRx =
-                    (lastDevData['stats']?['rx_bytes'] ??
-                            lastDevData['rx_bytes'] ??
-                            0)
-                        as num;
-                final lastDevTx =
-                    (lastDevData['stats']?['tx_bytes'] ??
-                            lastDevData['tx_bytes'] ??
-                            0)
-                        as num;
-                final currentDevRx =
-                    (devData['stats']?['rx_bytes'] ?? devData['rx_bytes'] ?? 0)
-                        as num;
-                final currentDevTx =
-                    (devData['stats']?['tx_bytes'] ?? devData['tx_bytes'] ?? 0)
-                        as num;
-
-                num dRx = currentDevRx - lastDevRx;
-                num dTx = currentDevTx - lastDevTx;
-
-                const num uint32Max = 4294967296;
-                // Legitimate 32-bit counter rollover only occurs when previous count
-                // was near 2^32 (> 3GB) and wrapped past zero to < 1GB.
-                // Any other drop is an interface reset / counter clear.
-                if (dRx < 0) {
-                  if (lastDevRx > 3221225472 &&
-                      currentDevRx < 1073741824 &&
-                      (currentDevRx + uint32Max - lastDevRx) <
-                          _maxRate * elapsedSeconds) {
-                    dRx = currentDevRx + uint32Max - lastDevRx;
-                  } else {
-                    dRx = 0;
-                  }
-                }
-                if (dTx < 0) {
-                  if (lastDevTx > 3221225472 &&
-                      currentDevTx < 1073741824 &&
-                      (currentDevTx + uint32Max - lastDevTx) <
-                          _maxRate * elapsedSeconds) {
-                    dTx = currentDevTx + uint32Max - lastDevTx;
-                  } else {
-                    dTx = 0;
-                  }
-                }
-
-                diffRx += dRx;
-                diffTx += dTx;
-              }
-            }
-          });
         }
 
         // Calculate rates with a reasonable maximum to prevent spikes
@@ -266,6 +190,130 @@ class ThroughputService {
         _lastTimestamp = now;
       }
     }
+  }
+
+  static String? _resolveInterfaceKey(
+    Map<String, dynamic>? networkData,
+    String specificInterface,
+  ) {
+    if (networkData == null || networkData.isEmpty) return null;
+    if (networkData.containsKey(specificInterface)) {
+      return specificInterface;
+    }
+    for (final entry in networkData.entries) {
+      final devName = entry.key;
+      if (devName == specificInterface ||
+          (specificInterface == 'lan' && devName == 'br-lan') ||
+          (specificInterface == 'wan' &&
+              (devName == 'eth0' || devName == 'wan'))) {
+        return devName;
+      }
+      final devData = entry.value;
+      if (devData is Map<String, dynamic>) {
+        if (devData['device'] == specificInterface ||
+            devData['l3_device'] == specificInterface) {
+          return devName;
+        }
+      }
+    }
+    for (final key in networkData.keys) {
+      if (key == specificInterface ||
+          key.startsWith('$specificInterface@') ||
+          key.startsWith('$specificInterface.')) {
+        return key;
+      }
+    }
+    return null;
+  }
+
+  static Set<String> _effectiveDevices(
+    Map<String, dynamic> networkData,
+    Set<String> wanDeviceNames,
+  ) {
+    if (wanDeviceNames.isNotEmpty) return wanDeviceNames;
+    for (final key in ['wan', 'pppoe-wan', 'br-lan', 'eth0', 'eth1', 'eth2']) {
+      if (networkData.containsKey(key)) {
+        return {key};
+      }
+    }
+    return const {};
+  }
+
+  static bool _anyWanDeviceMatched(
+    Map<String, dynamic> networkData,
+    Set<String> wanDeviceNames,
+  ) {
+    for (final devName in networkData.keys) {
+      if (devName == 'lo' || devName == 'loopback') continue;
+      final devData = networkData[devName];
+      if (devData is! Map<String, dynamic>) continue;
+      final deviceField = devData['device'] as String?;
+      if (wanDeviceNames.contains(devName) ||
+          (deviceField != null && wanDeviceNames.contains(deviceField))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static ({num diffRx, num diffTx}) _sumDeviceByteDiffs(
+    Map<String, dynamic> networkData,
+    Map<String, dynamic> lastStats,
+    Set<String> wanDeviceNames,
+    double elapsedSeconds,
+  ) {
+    num diffRx = 0;
+    num diffTx = 0;
+    final effectiveDevices = _effectiveDevices(networkData, wanDeviceNames);
+
+    networkData.forEach((devName, devData) {
+      if (devName == 'lo' || devName == 'loopback') return;
+      if (devData is! Map<String, dynamic>) return;
+      final deviceField = devData['device'] as String?;
+      final included =
+          effectiveDevices.isEmpty ||
+          effectiveDevices.contains(devName) ||
+          (deviceField != null && effectiveDevices.contains(deviceField));
+      if (!included) return;
+
+      final lastDevData = lastStats[devName];
+      if (lastDevData is! Map<String, dynamic>) return;
+
+      final lastDevRx = _byteCounter(lastDevData, 'rx_bytes');
+      final lastDevTx = _byteCounter(lastDevData, 'tx_bytes');
+      final currentDevRx = _byteCounter(devData, 'rx_bytes');
+      final currentDevTx = _byteCounter(devData, 'tx_bytes');
+
+      num dRx = currentDevRx - lastDevRx;
+      num dTx = currentDevTx - lastDevTx;
+
+      const num uint32Max = 4294967296;
+      if (dRx < 0) {
+        if (lastDevRx > 3221225472 &&
+            currentDevRx < 1073741824 &&
+            (currentDevRx + uint32Max - lastDevRx) <
+                _maxRate * elapsedSeconds) {
+          dRx = currentDevRx + uint32Max - lastDevRx;
+        } else {
+          dRx = 0;
+        }
+      }
+      if (dTx < 0) {
+        if (lastDevTx > 3221225472 &&
+            currentDevTx < 1073741824 &&
+            (currentDevTx + uint32Max - lastDevTx) <
+                _maxRate * elapsedSeconds) {
+          dTx = currentDevTx + uint32Max - lastDevTx;
+        } else {
+          dTx = 0;
+        }
+      }
+
+      diffRx += dRx;
+      diffTx += dTx;
+    });
+
+    return (diffRx: diffRx, diffTx: diffTx);
   }
 
   void _updateInterfaceThroughput(

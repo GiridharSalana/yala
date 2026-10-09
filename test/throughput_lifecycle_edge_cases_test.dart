@@ -448,6 +448,29 @@ void main() {
         expect(keys, equals({'eth1'}));
       },
     );
+
+    test(
+      'resolveNetdevKeysForThroughput maps WAN interface name to netdev key',
+      () {
+        final interfaceDump = {
+          'interface': [
+            {'interface': 'wan', 'proto': 'dhcp', 'device': 'eth0'},
+          ],
+        };
+        final networkData = {
+          'wan': {
+            'device': 'eth0',
+            'stats': {'rx_bytes': 10, 'tx_bytes': 5},
+          },
+        };
+
+        final keys = ThroughputController.resolveNetdevKeysForThroughput(
+          networkData,
+          interfaceDump,
+        );
+        expect(keys, equals({'wan'}));
+      },
+    );
   });
 
   group('ThroughputService ghost spike & loopback defense', () {

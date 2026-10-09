@@ -1252,6 +1252,44 @@ class AppState extends ChangeNotifier {
 
   bool _isUpdatingThroughput = false;
 
+  static Map<String, dynamic>? _mergeNetworkDeviceMaps(
+    Map<String, dynamic>? primary,
+    Map<String, dynamic> secondary,
+  ) {
+    if (primary == null || primary.isEmpty) {
+      return Map<String, dynamic>.from(secondary);
+    }
+    final merged = Map<String, dynamic>.from(primary);
+    secondary.forEach((key, value) {
+      if (!merged.containsKey(key)) {
+        merged[key] = value;
+      } else if (merged[key] is Map && value is Map) {
+        final existing = Map<String, dynamic>.from(merged[key] as Map);
+        final incoming = Map<String, dynamic>.from(value);
+        for (final counter in ['rx_bytes', 'tx_bytes']) {
+          if (!_hasByteCounter(existing, counter) &&
+              _hasByteCounter(incoming, counter)) {
+            if (incoming['stats'] is Map) {
+              existing['stats'] = Map<String, dynamic>.from(
+                incoming['stats'] as Map,
+              );
+            } else {
+              existing[counter] = incoming[counter];
+            }
+          }
+        }
+        merged[key] = existing;
+      }
+    });
+    return merged;
+  }
+
+  static bool _hasByteCounter(Map<String, dynamic> device, String key) {
+    final stats = device['stats'];
+    if (stats is Map && stats[key] != null) return true;
+    return device[key] != null;
+  }
+
   /// Updates only throughput data without refetching the entire dashboard
   Future<void> _updateThroughputOnly() async {
     // Don't try to update throughput during reboot, heavy tasks, or concurrent updates
@@ -1310,6 +1348,21 @@ class AppState extends ChangeNotifier {
 
       try {
         // Fetch network devices and system info in parallel for real-time charts
+        Future<dynamic> deviceStatusCall() async {
+          try {
+            return await _apiService!.call(
+              ip,
+              _authService!.sysauth!,
+              useHttps,
+              object: 'network.device',
+              method: 'status',
+              params: {},
+            );
+          } catch (_) {
+            return null;
+          }
+        }
+
         final results = await Future.wait([
           _apiService!.call(
             ip,
@@ -1327,10 +1380,12 @@ class AppState extends ChangeNotifier {
             method: 'info',
             params: {},
           ),
+          deviceStatusCall(),
         ]);
 
         final netResult = results[0];
         final sysResult = results[1];
+        final deviceStatusResult = results[2];
 
         if (sysResult is List && sysResult.length > 1 && sysResult[0] == 0) {
           final rawSys = sysResult[1];
@@ -1362,9 +1417,19 @@ class AppState extends ChangeNotifier {
             netDataResult.length > 1 &&
             netDataResult[0] == 0) {
           final rawNet = netDataResult[1];
-          final networkData = rawNet is Map
+          Map<String, dynamic>? networkData = rawNet is Map
               ? Map<String, dynamic>.from(rawNet)
               : null;
+
+          if (deviceStatusResult is List &&
+              deviceStatusResult.length > 1 &&
+              deviceStatusResult[0] == 0) {
+            final statusRaw = deviceStatusResult[1];
+            if (statusRaw is Map) {
+              final statusMap = Map<String, dynamic>.from(statusRaw);
+              networkData = _mergeNetworkDeviceMaps(networkData, statusMap);
+            }
+          }
 
           final rawDump = dashboardData?['interfaceDump'];
           final interfaceDump = rawDump is Map
