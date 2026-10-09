@@ -21,6 +21,8 @@ class ThroughputController {
 
   final ThroughputService _throughputService;
 
+  String? _lastWanDeviceKeysSignature;
+
   Timer? _throughputTimer;
   int _throughputIntervalSeconds = 4;
 
@@ -86,6 +88,7 @@ class ThroughputController {
     _isPaused = false;
     _throughputTimer?.cancel();
     _throughputTimer = null;
+    _lastWanDeviceKeysSignature = null;
     _throughputService.clear();
   }
 
@@ -125,6 +128,11 @@ class ThroughputController {
     Set<String> wanDeviceNames, {
     String? specificInterface,
   }) {
+    final signature = wanDeviceNames.join('\u0000');
+    if (_lastWanDeviceKeysSignature != signature) {
+      _lastWanDeviceKeysSignature = signature;
+      _throughputService.resetBaseline();
+    }
     _throughputService.updateThroughput(
       networkData,
       wanDeviceNames,
@@ -183,10 +191,11 @@ class ThroughputController {
       // Prefer l3_device (the layer-3 routed interface, e.g. pppoe-wan or eth1)
       // over device (the underlying carrier) to prevent double counting.
       final device = interface['device'] as String?;
-      final l3Device = interface['l3_device'] as String?;
-      final targetDev = (l3Device != null && l3Device.isNotEmpty)
-          ? l3Device
-          : device;
+      final rawL3 = interface['l3_device'];
+      final l3Device = rawL3 is String && rawL3.isNotEmpty && rawL3 != 'null'
+          ? rawL3
+          : null;
+      final targetDev = l3Device ?? device;
 
       if (targetDev == null || targetDev == 'lo' || targetDev.isEmpty) continue;
 
@@ -218,6 +227,40 @@ class ThroughputController {
   /// Maps logical WAN/LAN device names from [resolveThroughputDeviceNames] to the
   /// keys returned by `luci-rpc.getNetworkDevices`, which are often the physical
   /// carrier (e.g. `eth1`) even when the routed interface is `pppoe-wan`.
+  /// Finds the map key used by `getNetworkDevices` / `network.device` for a
+  /// logical device or interface name.
+  @visibleForTesting
+  static String? findNetdevMapKey(
+    Map<String, dynamic> networkData,
+    String candidate,
+  ) {
+    if (candidate.isEmpty || candidate == 'lo' || candidate == 'loopback') {
+      return null;
+    }
+    if (networkData.containsKey(candidate)) {
+      return candidate;
+    }
+    for (final entry in networkData.entries) {
+      final devData = entry.value;
+      if (devData is! Map<String, dynamic>) continue;
+      final deviceField = devData['device'] as String?;
+      final l3Field = devData['l3_device'] as String?;
+      if (entry.key == candidate ||
+          deviceField == candidate ||
+          l3Field == candidate) {
+        return entry.key;
+      }
+    }
+    for (final key in networkData.keys) {
+      if (key == candidate ||
+          key.startsWith('$candidate@') ||
+          key.startsWith('$candidate.')) {
+        return key;
+      }
+    }
+    return null;
+  }
+
   static Set<String> resolveNetdevKeysForThroughput(
     Map<String, dynamic>? networkData,
     Map<String, dynamic>? interfaceDump,
@@ -232,23 +275,15 @@ class ThroughputController {
 
     final netdevKeys = <String>{};
 
-    void addResolvedKey(String? primary, String? secondary) {
-      for (final candidate in [primary, secondary]) {
+    void addResolvedKey(String? primary, String? secondary, String? tertiary) {
+      for (final candidate in [primary, secondary, tertiary]) {
         if (candidate == null || candidate.isEmpty || candidate == 'lo') {
           continue;
         }
-        if (networkData.containsKey(candidate)) {
-          netdevKeys.add(candidate);
+        final key = findNetdevMapKey(networkData, candidate);
+        if (key != null) {
+          netdevKeys.add(key);
           return;
-        }
-        for (final entry in networkData.entries) {
-          final devData = entry.value;
-          if (devData is! Map<String, dynamic>) continue;
-          final deviceField = devData['device'] as String?;
-          if (entry.key == candidate || deviceField == candidate) {
-            netdevKeys.add(entry.key);
-            return;
-          }
         }
       }
     }
@@ -261,10 +296,11 @@ class ThroughputController {
 
         final proto = (interface['proto'] as String?)?.toLowerCase();
         final device = interface['device'] as String?;
-        final l3Device = interface['l3_device'] as String?;
-        final targetDev = (l3Device != null && l3Device.isNotEmpty)
-            ? l3Device
-            : device;
+        final rawL3 = interface['l3_device'];
+        final l3Device = rawL3 is String && rawL3.isNotEmpty && rawL3 != 'null'
+            ? rawL3
+            : null;
+        final targetDev = l3Device ?? device;
 
         if (targetDev == null ||
             targetDev.isEmpty ||
@@ -282,13 +318,13 @@ class ThroughputController {
 
         if (!isWan && !isLan) continue;
 
-        addResolvedKey(targetDev, device != targetDev ? device : null);
+        addResolvedKey(targetDev, device != targetDev ? device : null, ifname);
       }
     }
 
     if (netdevKeys.isEmpty) {
       for (final name in logical) {
-        addResolvedKey(name, null);
+        addResolvedKey(name, null, null);
       }
     }
 
