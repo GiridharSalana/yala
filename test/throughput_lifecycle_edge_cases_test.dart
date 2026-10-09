@@ -320,31 +320,56 @@ void main() {
   });
 
   group('ThroughputController.resolveThroughputDeviceNames', () {
-    test('Standard gateway router with WAN and LAN returns only external WAN device', () {
-      final interfaceDump = {
-        'interface': [
-          {'interface': 'loopback', 'device': 'lo', 'l3_device': 'lo'},
-          {'interface': 'lan', 'device': 'br-lan', 'l3_device': 'br-lan'},
-          {'interface': 'wan', 'proto': 'dhcp', 'device': 'eth1', 'l3_device': 'eth1'},
-          {'interface': 'wan6', 'proto': 'dhcpv6', 'device': 'eth1', 'l3_device': null},
-        ],
-      };
+    test(
+      'Standard gateway router with WAN and LAN returns only external WAN device',
+      () {
+        final interfaceDump = {
+          'interface': [
+            {'interface': 'loopback', 'device': 'lo', 'l3_device': 'lo'},
+            {'interface': 'lan', 'device': 'br-lan', 'l3_device': 'br-lan'},
+            {
+              'interface': 'wan',
+              'proto': 'dhcp',
+              'device': 'eth1',
+              'l3_device': 'eth1',
+            },
+            {
+              'interface': 'wan6',
+              'proto': 'dhcpv6',
+              'device': 'eth1',
+              'l3_device': null,
+            },
+          ],
+        };
 
-      final devices = ThroughputController.resolveThroughputDeviceNames(interfaceDump);
-      expect(devices, equals({'eth1'}));
-    });
+        final devices = ThroughputController.resolveThroughputDeviceNames(
+          interfaceDump,
+        );
+        expect(devices, equals({'eth1'}));
+      },
+    );
 
-    test('PPPoE gateway router returns routed l3_device instead of carrier device', () {
-      final interfaceDump = {
-        'interface': [
-          {'interface': 'lan', 'device': 'br-lan', 'l3_device': 'br-lan'},
-          {'interface': 'wan', 'proto': 'pppoe', 'device': 'eth1', 'l3_device': 'pppoe-wan'},
-        ],
-      };
+    test(
+      'PPPoE gateway router returns routed l3_device instead of carrier device',
+      () {
+        final interfaceDump = {
+          'interface': [
+            {'interface': 'lan', 'device': 'br-lan', 'l3_device': 'br-lan'},
+            {
+              'interface': 'wan',
+              'proto': 'pppoe',
+              'device': 'eth1',
+              'l3_device': 'pppoe-wan',
+            },
+          ],
+        };
 
-      final devices = ThroughputController.resolveThroughputDeviceNames(interfaceDump);
-      expect(devices, equals({'pppoe-wan'}));
-    });
+        final devices = ThroughputController.resolveThroughputDeviceNames(
+          interfaceDump,
+        );
+        expect(devices, equals({'pppoe-wan'}));
+      },
+    );
 
     test('Dumb AP mode with no WAN returns primary LAN bridge exclusively', () {
       final interfaceDump = {
@@ -354,7 +379,9 @@ void main() {
         ],
       };
 
-      final devices = ThroughputController.resolveThroughputDeviceNames(interfaceDump);
+      final devices = ThroughputController.resolveThroughputDeviceNames(
+        interfaceDump,
+      );
       // Must return br-lan exclusively without member slave ports
       expect(devices, equals({'br-lan'}));
     });
@@ -363,12 +390,24 @@ void main() {
       final interfaceDump = {
         'interface': [
           {'interface': 'lan', 'device': 'br-lan', 'l3_device': 'br-lan'},
-          {'interface': 'wan', 'proto': 'dhcp', 'device': 'eth1', 'l3_device': 'eth1'},
-          {'interface': 'wan_backup', 'proto': 'static', 'device': 'eth2', 'l3_device': 'eth2'},
+          {
+            'interface': 'wan',
+            'proto': 'dhcp',
+            'device': 'eth1',
+            'l3_device': 'eth1',
+          },
+          {
+            'interface': 'wan_backup',
+            'proto': 'static',
+            'device': 'eth2',
+            'l3_device': 'eth2',
+          },
         ],
       };
 
-      final devices = ThroughputController.resolveThroughputDeviceNames(interfaceDump);
+      final devices = ThroughputController.resolveThroughputDeviceNames(
+        interfaceDump,
+      );
       expect(devices, equals({'eth1', 'eth2'}));
     });
 
@@ -376,82 +415,162 @@ void main() {
       expect(ThroughputController.resolveThroughputDeviceNames(null), isEmpty);
       expect(ThroughputController.resolveThroughputDeviceNames({}), isEmpty);
     });
+
+    test(
+      'resolveNetdevKeysForThroughput maps PPPoE l3 name to physical netdev key',
+      () {
+        final interfaceDump = {
+          'interface': [
+            {'interface': 'lan', 'device': 'br-lan', 'l3_device': 'br-lan'},
+            {
+              'interface': 'wan',
+              'proto': 'pppoe',
+              'device': 'eth1',
+              'l3_device': 'pppoe-wan',
+            },
+          ],
+        };
+        final networkData = {
+          'eth1': {
+            'device': 'eth1',
+            'stats': {'rx_bytes': 100, 'tx_bytes': 50},
+          },
+          'br-lan': {
+            'device': 'br-lan',
+            'stats': {'rx_bytes': 0, 'tx_bytes': 0},
+          },
+        };
+
+        final keys = ThroughputController.resolveNetdevKeysForThroughput(
+          networkData,
+          interfaceDump,
+        );
+        expect(keys, equals({'eth1'}));
+      },
+    );
   });
 
   group('ThroughputService ghost spike & loopback defense', () {
-    test('Loopback device is never included in throughput calculations', () async {
-      final service = ThroughputService();
-      final netData1 = {
-        'lo': {
-          'device': 'lo',
-          'stats': {'rx_bytes': 1000000, 'tx_bytes': 1000000},
-        },
-        'eth0': {
-          'device': 'eth0',
-          'stats': {'rx_bytes': 100, 'tx_bytes': 100},
-        },
-      };
-      service.updateThroughput(netData1, {});
+    test(
+      'Loopback device is never included in throughput calculations',
+      () async {
+        final service = ThroughputService();
+        final netData1 = {
+          'lo': {
+            'device': 'lo',
+            'stats': {'rx_bytes': 1000000, 'tx_bytes': 1000000},
+          },
+          'eth0': {
+            'device': 'eth0',
+            'stats': {'rx_bytes': 100, 'tx_bytes': 100},
+          },
+        };
+        service.updateThroughput(netData1, {});
 
-      await Future.delayed(const Duration(milliseconds: 150));
+        await Future.delayed(const Duration(milliseconds: 150));
 
-      final netData2 = {
-        'lo': {
-          'device': 'lo',
-          'stats': {'rx_bytes': 50000000, 'tx_bytes': 50000000},
-        },
-        'eth0': {
-          'device': 'eth0',
-          'stats': {'rx_bytes': 200, 'tx_bytes': 200},
-        },
-      };
-      service.updateThroughput(netData2, {});
+        final netData2 = {
+          'lo': {
+            'device': 'lo',
+            'stats': {'rx_bytes': 50000000, 'tx_bytes': 50000000},
+          },
+          'eth0': {
+            'device': 'eth0',
+            'stats': {'rx_bytes': 200, 'tx_bytes': 200},
+          },
+        };
+        service.updateThroughput(netData2, {});
 
-      // Huge loopback jump must NOT contaminate throughput rate!
-      expect(service.currentRxRate, lessThan(10000.0));
-      expect(service.currentTxRate, lessThan(10000.0));
-    });
+        // Huge loopback jump must NOT contaminate throughput rate!
+        expect(service.currentRxRate, lessThan(10000.0));
+        expect(service.currentTxRate, lessThan(10000.0));
+      },
+    );
 
-    test('Fallback when wanDeviceNames is empty prefers single primary device over summing all', () async {
-      final service = ThroughputService();
-      // On Dumb AP, if wanDeviceNames is empty, br-lan is preferred over summing br-lan + eth0 + eth1
-      final netData1 = {
-        'br-lan': {
-          'device': 'br-lan',
-          'stats': {'rx_bytes': 1000, 'tx_bytes': 1000},
-        },
-        'eth0': {
-          'device': 'eth0',
-          'stats': {'rx_bytes': 1000, 'tx_bytes': 1000},
-        },
-        'eth1': {
-          'device': 'eth1',
-          'stats': {'rx_bytes': 1000, 'tx_bytes': 1000},
-        },
-      };
-      service.updateThroughput(netData1, {});
+    test(
+      'PPPoE WAN logical name still counts traffic on physical netdev key',
+      () async {
+        final service = ThroughputService();
+        final interfaceDump = {
+          'interface': [
+            {
+              'interface': 'wan',
+              'proto': 'pppoe',
+              'device': 'eth1',
+              'l3_device': 'pppoe-wan',
+            },
+          ],
+        };
+        final netData1 = {
+          'eth1': {
+            'device': 'eth1',
+            'stats': {'rx_bytes': 1000, 'tx_bytes': 500},
+          },
+        };
+        final wanKeys = ThroughputController.resolveNetdevKeysForThroughput(
+          netData1,
+          interfaceDump,
+        );
+        service.updateThroughput(netData1, wanKeys);
 
-      await Future.delayed(const Duration(milliseconds: 150));
+        await Future.delayed(const Duration(milliseconds: 150));
 
-      final netData2 = {
-        'br-lan': {
-          'device': 'br-lan',
-          'stats': {'rx_bytes': 2000, 'tx_bytes': 2000},
-        },
-        'eth0': {
-          'device': 'eth0',
-          'stats': {'rx_bytes': 2000, 'tx_bytes': 2000},
-        },
-        'eth1': {
-          'device': 'eth1',
-          'stats': {'rx_bytes': 2000, 'tx_bytes': 2000},
-        },
-      };
-      service.updateThroughput(netData2, {});
+        final netData2 = {
+          'eth1': {
+            'device': 'eth1',
+            'stats': {'rx_bytes': 2000, 'tx_bytes': 1000},
+          },
+        };
+        service.updateThroughput(netData2, wanKeys);
 
-      // Delta on br-lan is 1000 bytes over ~0.15s (~6666 B/s).
-      // If it summed br-lan + eth0 + eth1, it would be 3000 bytes (~20000 B/s).
-      expect(service.currentRxRate, lessThan(12000.0));
-    });
+        expect(service.currentRxRate, greaterThan(0));
+        expect(service.currentTxRate, greaterThan(0));
+      },
+    );
+
+    test(
+      'Fallback when wanDeviceNames is empty prefers single primary device over summing all',
+      () async {
+        final service = ThroughputService();
+        // On Dumb AP, if wanDeviceNames is empty, br-lan is preferred over summing br-lan + eth0 + eth1
+        final netData1 = {
+          'br-lan': {
+            'device': 'br-lan',
+            'stats': {'rx_bytes': 1000, 'tx_bytes': 1000},
+          },
+          'eth0': {
+            'device': 'eth0',
+            'stats': {'rx_bytes': 1000, 'tx_bytes': 1000},
+          },
+          'eth1': {
+            'device': 'eth1',
+            'stats': {'rx_bytes': 1000, 'tx_bytes': 1000},
+          },
+        };
+        service.updateThroughput(netData1, {});
+
+        await Future.delayed(const Duration(milliseconds: 150));
+
+        final netData2 = {
+          'br-lan': {
+            'device': 'br-lan',
+            'stats': {'rx_bytes': 2000, 'tx_bytes': 2000},
+          },
+          'eth0': {
+            'device': 'eth0',
+            'stats': {'rx_bytes': 2000, 'tx_bytes': 2000},
+          },
+          'eth1': {
+            'device': 'eth1',
+            'stats': {'rx_bytes': 2000, 'tx_bytes': 2000},
+          },
+        };
+        service.updateThroughput(netData2, {});
+
+        // Delta on br-lan is 1000 bytes over ~0.15s (~6666 B/s).
+        // If it summed br-lan + eth0 + eth1, it would be 3000 bytes (~20000 B/s).
+        expect(service.currentRxRate, lessThan(12000.0));
+      },
+    );
   });
 }

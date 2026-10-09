@@ -189,7 +189,14 @@ class ThroughputService {
 
           networkData.forEach((devName, devData) {
             if (devName == 'lo' || devName == 'loopback') return;
-            if (effectiveDevices.isEmpty || effectiveDevices.contains(devName)) {
+            final deviceField = devData is Map<String, dynamic>
+                ? devData['device'] as String?
+                : null;
+            final included =
+                effectiveDevices.isEmpty ||
+                effectiveDevices.contains(devName) ||
+                (deviceField != null && effectiveDevices.contains(deviceField));
+            if (included) {
               final lastDevData = _lastStats![devName];
               if (lastDevData is Map<String, dynamic> &&
                   devData is Map<String, dynamic>) {

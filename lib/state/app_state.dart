@@ -1268,11 +1268,13 @@ class AppState extends ChangeNotifier {
             _apiService!.callSimple('system', 'info', {}),
           ]);
           final rawNet = results[0][1];
-          final networkData =
-              rawNet is Map ? Map<String, dynamic>.from(rawNet) : null;
+          final networkData = rawNet is Map
+              ? Map<String, dynamic>.from(rawNet)
+              : null;
           final rawSys = results[1][1];
-          final sysInfoData =
-              rawSys is Map ? Map<String, dynamic>.from(rawSys) : null;
+          final sysInfoData = rawSys is Map
+              ? Map<String, dynamic>.from(rawSys)
+              : null;
           if (sysInfoData != null) {
             _dashboardController?.updateSysInfo(sysInfoData);
           }
@@ -1332,8 +1334,9 @@ class AppState extends ChangeNotifier {
 
         if (sysResult is List && sysResult.length > 1 && sysResult[0] == 0) {
           final rawSys = sysResult[1];
-          final sysInfoData =
-              rawSys is Map ? Map<String, dynamic>.from(rawSys) : null;
+          final sysInfoData = rawSys is Map
+              ? Map<String, dynamic>.from(rawSys)
+              : null;
           if (sysInfoData != null) {
             _dashboardController?.updateSysInfo(sysInfoData);
           }
@@ -1359,14 +1362,19 @@ class AppState extends ChangeNotifier {
             netDataResult.length > 1 &&
             netDataResult[0] == 0) {
           final rawNet = netDataResult[1];
-          final networkData =
-              rawNet is Map ? Map<String, dynamic>.from(rawNet) : null;
+          final networkData = rawNet is Map
+              ? Map<String, dynamic>.from(rawNet)
+              : null;
 
           final rawDump = dashboardData?['interfaceDump'];
-          final interfaceDump =
-              rawDump is Map ? Map<String, dynamic>.from(rawDump) : null;
+          final interfaceDump = rawDump is Map
+              ? Map<String, dynamic>.from(rawDump)
+              : null;
           final wanDeviceNames =
-              ThroughputController.resolveThroughputDeviceNames(interfaceDump);
+              ThroughputController.resolveNetdevKeysForThroughput(
+                networkData,
+                interfaceDump,
+              );
 
           // Resolve specific interface from preferences
           final specificInterface =
@@ -2997,10 +3005,9 @@ class AppState extends ChangeNotifier {
   /// as wireless if their MAC appears in any router's associated stations list.
   Future<List<Client>> fetchAggregatedClients({
     void Function(List<Client> clients)? onIncrementalUpdate,
-  }) =>
-      _clientController!.fetchAggregatedClients(
-        onIncrementalUpdate: onIncrementalUpdate,
-      );
+  }) => _clientController!.fetchAggregatedClients(
+    onIncrementalUpdate: onIncrementalUpdate,
+  );
 
   bool get isClientsLoading => _clientController?.isFetchingClients ?? false;
   bool get hasFetchedClients => _clientController?.hasFetchedClients ?? false;
