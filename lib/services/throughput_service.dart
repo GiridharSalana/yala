@@ -175,11 +175,22 @@ class ThroughputService {
 
         if (networkData != null && _lastStats != null) {
           Set<String> effectiveDevices = wanDeviceNames;
+          // Resolved names that don't exist in the polled data would yield a
+          // permanent zero rate; fall back to the heuristics below instead.
+          if (effectiveDevices.isNotEmpty &&
+              !effectiveDevices.any(networkData.containsKey)) {
+            effectiveDevices = const {};
+          }
           if (effectiveDevices.isEmpty) {
+            final staKey = networkData.keys
+                .where((k) => RegExp(r'-sta\d*$').hasMatch(k))
+                .firstOrNull;
             if (networkData.containsKey('wan')) {
               effectiveDevices = {'wan'};
             } else if (networkData.containsKey('pppoe-wan')) {
               effectiveDevices = {'pppoe-wan'};
+            } else if (staKey != null) {
+              effectiveDevices = {staKey};
             } else if (networkData.containsKey('br-lan')) {
               effectiveDevices = {'br-lan'};
             } else if (networkData.containsKey('eth0')) {
@@ -189,7 +200,8 @@ class ThroughputService {
 
           networkData.forEach((devName, devData) {
             if (devName == 'lo' || devName == 'loopback') return;
-            if (effectiveDevices.isEmpty || effectiveDevices.contains(devName)) {
+            if (effectiveDevices.isEmpty ||
+                effectiveDevices.contains(devName)) {
               final lastDevData = _lastStats![devName];
               if (lastDevData is Map<String, dynamic> &&
                   devData is Map<String, dynamic>) {

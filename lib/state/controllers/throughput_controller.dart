@@ -190,8 +190,21 @@ class ThroughputController {
 
       if (targetDev == null || targetDev == 'lo' || targetDev.isEmpty) continue;
 
-      final isWan = ifname.startsWith('wan') ||
+      // wwan (Wi-Fi client/STA uplink) and any interface carrying the default
+      // route are WAN too, not just names starting with "wan".
+      final routes = interface['route'];
+      final hasDefaultRoute =
+          routes is List &&
+          routes.any(
+            (r) =>
+                r is Map &&
+                (r['target'] == '0.0.0.0' || r['target'] == '::') &&
+                (r['mask'] == 0 || r['mask'] == '0'),
+          );
+      final isWan =
+          ifname.contains('wan') ||
           proto == 'pppoe' ||
+          hasDefaultRoute ||
           interface['is_wan'] == true;
 
       if (isWan) {
