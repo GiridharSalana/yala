@@ -218,7 +218,7 @@ void main() {
                 'mode': 'ap',
                 'ssid': 'SSID1',
                 'encryption': 'sae',
-                'key': 'Qwerty@1234',
+                'key': 'mock_wifi_passphrase_123',
               },
               'iwinfo': {
                 'channel': 1,
@@ -264,9 +264,9 @@ void main() {
         final iface = radio.interfaces.first;
         expect(iface.ssid, equals('SSID1'));
         expect(iface.securityMode, equals(WifiSecurityMode.saeOnly));
-        expect(iface.key, equals('Qwerty@1234'));
+        expect(iface.key, equals('mock_wifi_passphrase_123'));
         expect(iface.wifiQrUri, contains('S:SSID1;'));
-        expect(iface.wifiQrUri, contains('P:Qwerty@1234;'));
+        expect(iface.wifiQrUri, contains('P:mock_wifi_passphrase_123;'));
       },
     );
 

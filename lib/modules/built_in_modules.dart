@@ -19,6 +19,7 @@ import 'parental_controls/parental_controls_module.dart';
 import 'diagnostics/diagnostics_module.dart';
 import 'sqm/sqm_module.dart';
 import 'bandwidth_monitor/bandwidth_monitor_module.dart';
+import 'adguard_home/adguard_home_module.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/clients_screen.dart';
 import '../screens/interfaces_screen.dart';
@@ -176,6 +177,7 @@ void registerBuiltInModules() {
     DiagnosticsModule(),
     SqmModule(),
     BandwidthMonitorModule(),
+    AdGuardHomeModule(),
     ClientsModule(),
     InterfacesModule(),
     MoreModule(),

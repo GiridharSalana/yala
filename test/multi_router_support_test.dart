@@ -34,7 +34,7 @@ void main() {
           id: RouterService.generateId('192.168.1.1', 'root', false),
           ipAddress: '192.168.1.1',
           username: 'root',
-          password: 'Qwerty@1234',
+          password: 'mock_lab_password_123',
           useHttps: false,
           name: 'Lab Router',
           lastKnownHostname: 'OpenWrt-Lab',
@@ -44,7 +44,7 @@ void main() {
           id: RouterService.generateId('10.0.0.1', 'root', false),
           ipAddress: '10.0.0.1',
           username: 'root',
-          password: 'Tuhin@#2003',
+          password: 'mock_isp_password_456',
           useHttps: false,
           name: 'ISP Gateway',
           lastKnownHostname: 'OpenWrt-Live',
@@ -117,6 +117,48 @@ void main() {
       expect(r2.lastKnownHostname, 'RouterB');
       expect(r2.username, 'admin');
     });
+
+    test(
+      'updateRouter updates IP, username, password and replaces profile when ID changes',
+      () async {
+        final original = model.Router(
+          id: RouterService.generateId('192.168.1.1', 'root', false),
+          ipAddress: '192.168.1.1',
+          username: 'root',
+          password: 'oldPassword123',
+          useHttps: false,
+          name: 'Main Router',
+        );
+        await routerService.addRouter(original);
+        expect(routerService.selectedRouter?.ipAddress, '192.168.1.1');
+        expect(routerService.selectedRouter?.password, 'oldPassword123');
+
+        // Update IP address and password
+        const newIp = '192.168.1.254';
+        const newPass = 'newSecretPass456';
+        final newId = RouterService.generateId(newIp, 'root', false);
+        final updated = original.copyWith(
+          id: newId,
+          ipAddress: newIp,
+          password: newPass,
+        );
+
+        await routerService.updateRouter(updated, oldId: original.id);
+
+        expect(routerService.routers.length, 1);
+        expect(routerService.selectedRouter?.id, newId);
+        expect(routerService.selectedRouter?.ipAddress, '192.168.1.254');
+        expect(routerService.selectedRouter?.password, 'newSecretPass456');
+
+        // Verify across reload
+        final reloadedService = RouterService();
+        await reloadedService.loadRouters();
+        expect(reloadedService.routers.length, 1);
+        expect(reloadedService.selectedRouter?.id, newId);
+        expect(reloadedService.selectedRouter?.ipAddress, '192.168.1.254');
+        expect(reloadedService.selectedRouter?.password, 'newSecretPass456');
+      },
+    );
 
     test(
       'Removing a selected router falls back to another available router',
@@ -328,7 +370,7 @@ void main() {
           {
             "ipAddress": "192.168.1.1",
             "username": "root",
-            "password": "Qwerty@1234",
+            "password": "mock_main_password_123",
             "useHttps": false,
             "name": "Main Router",
             "lastKnownHostname": "OpenWrt-Main"
@@ -336,7 +378,7 @@ void main() {
           {
             "ipAddress": "10.0.0.1",
             "username": "root",
-            "password": "Tuhin@#2003",
+            "password": "mock_isp_password_456",
             "useHttps": false,
             "name": "ISP Router",
             "lastKnownHostname": "OpenWrt-Live"

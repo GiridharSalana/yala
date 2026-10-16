@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:yala/services/ssh_service.dart';
 import 'package:yala/services/mock_ssh_service.dart';
 
+import 'test_credentials.dart';
+
 void main() {
   group('MockSshService Tests', () {
     test('MockSshService returns successful result by default', () async {
@@ -50,7 +52,7 @@ void main() {
       () async {
         try {
           final socket = await Socket.connect(
-            '192.168.1.1',
+            TestCredentials.testRouterIp,
             22,
             timeout: const Duration(seconds: 2),
           );
@@ -61,12 +63,10 @@ void main() {
         }
 
         final service = RealSshService();
-        final password =
-            Platform.environment['TEST_ROUTER_PASSWORD'] ?? 'Qwerty@1234';
         final res = await service.executeCommand(
-          host: '192.168.1.1',
-          username: 'root',
-          password: password,
+          host: TestCredentials.testRouterIp,
+          username: TestCredentials.testRouterUsername,
+          password: TestCredentials.testRouterPassword,
           command: 'echo "hello from dartssh2"',
         );
 

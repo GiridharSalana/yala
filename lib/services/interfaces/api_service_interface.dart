@@ -14,6 +14,9 @@ import 'package:yala/modules/diagnostics/models/routing_neighbor_info.dart';
 import 'package:yala/modules/diagnostics/models/diagnostic_report.dart';
 import 'package:yala/modules/diagnostics/models/flush_dns_result.dart';
 import 'package:yala/modules/bandwidth_monitor/models/bandwidth_data.dart';
+import 'package:yala/models/network_access_policy.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/modules/firewall_security/models/firewall_info.dart';
 
 enum AuthStatus { success, invalidCredentials, unreachable, unknownError }
 
@@ -53,6 +56,29 @@ class AuthResult {
       AuthResult(status: AuthStatus.unknownError, errorMessage: message);
 
   bool get isSuccess => status == AuthStatus.success;
+}
+
+class SetPasswordRpcResponse {
+  final bool isSuccess;
+  final bool isRejected;
+  final bool isNetworkError;
+  final String? message;
+
+  const SetPasswordRpcResponse.success()
+      : isSuccess = true,
+        isRejected = false,
+        isNetworkError = false,
+        message = null;
+
+  const SetPasswordRpcResponse.rejected([this.message])
+      : isSuccess = false,
+        isRejected = true,
+        isNetworkError = false;
+
+  const SetPasswordRpcResponse.networkError([this.message])
+      : isSuccess = false,
+        isRejected = false,
+        isNetworkError = true;
 }
 
 /// API service interface for LuCI RPC communication.
@@ -162,6 +188,25 @@ abstract class IApiService {
     required String config,
     BuildContext? context,
   });
+  Future<bool> uciApply(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    bool rollback = true,
+    int timeout = 30,
+  });
+  Future<bool> uciConfirm(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+  );
+  Future<SetPasswordRpcResponse> setRouterPassword(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    String username = 'root',
+    required String newPassword,
+  });
   Future<dynamic> systemExec(
     String ipAddress,
     String sysauth,
@@ -184,6 +229,14 @@ abstract class IApiService {
     String sysauth,
     bool useHttps, {
     required String ifaceSection,
+    required bool enabled,
+    BuildContext? context,
+  });
+  Future<bool> toggleWirelessRadio(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String radioName,
     required bool enabled,
     BuildContext? context,
   });
@@ -228,6 +281,7 @@ abstract class IApiService {
     required String encryption,
     required String key,
     required String network,
+    Map<String, String>? extraOptions,
     BuildContext? context,
   });
   Future<bool> deleteWirelessInterface(
@@ -235,6 +289,14 @@ abstract class IApiService {
     String sysauth,
     bool useHttps, {
     required String sectionName,
+    BuildContext? context,
+  });
+  Future<bool> updateInterfaceDhcpConfig(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String interface,
+    required Map<String, dynamic> values,
     BuildContext? context,
   });
   Future<bool> provisionGuestNetwork(
@@ -315,6 +377,71 @@ abstract class IApiService {
     bool useHttps, {
     required String macAddress,
     required bool pause,
+    BuildContext? context,
+  });
+  Future<bool> addFirewallPortForward(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallPortForwarding portForward,
+    BuildContext? context,
+  });
+  Future<bool> updateFirewallPortForward(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallPortForwarding portForward,
+    BuildContext? context,
+  });
+  Future<bool> deleteFirewallPortForward(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String sectionKey,
+    BuildContext? context,
+  });
+  Future<bool> addFirewallCustomRule(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallCustomRule rule,
+    BuildContext? context,
+  });
+  Future<bool> updateFirewallCustomRule(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallCustomRule rule,
+    BuildContext? context,
+  });
+  Future<bool> deleteFirewallCustomRule(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String sectionKey,
+    BuildContext? context,
+  });
+  Future<bool> reorderFirewallCustomRules(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String targetSectionKey,
+    required String siblingSectionKey,
+    required List<String> expectedRuleOrder,
+    BuildContext? context,
+  });
+  Future<bool> applyPerDeviceNetworkAccessPolicy(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required NetworkAccessPolicy policy,
+    required RouterCapabilities capabilities,
+    BuildContext? context,
+  });
+  Future<Set<int>> discoverManagementPorts(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
     BuildContext? context,
   });
   Future<bool> banWirelessClient(
@@ -650,6 +777,38 @@ abstract class IApiService {
     String sysauth,
     bool useHttps,
     String newHostname, {
+    BuildContext? context,
+  });
+
+  /// Retrieves the list of globally blocked domains in dnsmasq via UCI (`dhcp.@dnsmasq[*].address`).
+  Future<List<String>> getDnsmasqBlockedDomains(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  });
+
+  /// Adds a domain to the global blocked list in dnsmasq via UCI (`dhcp.@dnsmasq.address`).
+  ///
+  /// Uses server-side rollback (`uciApply(rollback: true, timeout: 30)`), authenticated reachability
+  /// verification (`uci.get`), and `uciConfirm()`.
+  Future<bool> addDnsmasqBlockedDomain(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String domain, {
+    BuildContext? context,
+  });
+
+  /// Removes a domain from the global blocked list in dnsmasq via UCI (`dhcp.@dnsmasq.address`).
+  ///
+  /// Uses server-side rollback (`uciApply(rollback: true, timeout: 30)`), authenticated reachability
+  /// verification (`uci.get`), and `uciConfirm()`.
+  Future<bool> removeDnsmasqBlockedDomain(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String domain, {
     BuildContext? context,
   });
 }

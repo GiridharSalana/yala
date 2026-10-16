@@ -24,10 +24,9 @@ class SqmInstallDialog extends ConsumerStatefulWidget {
 }
 
 class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
-  String _selectedPackage = 'sqm-scripts';
-  bool _isLuciInsufficientStorage = false;
-  bool _isStorageExhaustedOrReadOnly = false;
-  int _availableBytes = 0;
+  bool _isLoadingStorage = true;
+  bool _isStorageReadOnly = false;
+  int? _availableBytes;
   String _targetMountPath = '/overlay';
   PackageManagerEngine _pkgMgr = PackageManagerEngine.none;
 
@@ -39,7 +38,7 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
     _assessStorageAndCapabilities(appState);
   }
 
-  void _assessStorageAndCapabilities(AppState appState) {
+  Future<void> _assessStorageAndCapabilities(AppState appState) async {
     _pkgMgr = appState.capabilities?.packageEngine ?? PackageManagerEngine.none;
 
     final dashboardData = appState.dashboardData;
@@ -50,32 +49,22 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
     final targetMount = storageOverview.overlayFs ?? storageOverview.rootFs;
 
     _targetMountPath = targetMount?.mountPath ?? '/overlay';
-    _availableBytes = targetMount?.availableBytes ?? 0;
-
-    // Requirement thresholds
-    const int luciMinBytes = 500 * 1024; // ~500 KB
-    const int scriptsMinBytes = 100 * 1024; // ~100 KB
-
-    if (targetMount != null &&
+    _isStorageReadOnly =
+        targetMount != null &&
         targetMount.isReadOnly &&
-        targetMount.mountPath != '/rom') {
-      _isStorageExhaustedOrReadOnly = true;
-      _isLuciInsufficientStorage = true;
-    } else if ((_availableBytes <= 0 && targetMount != null) ||
-        (_availableBytes > 0 && _availableBytes < scriptsMinBytes)) {
-      _isStorageExhaustedOrReadOnly = true;
-      _isLuciInsufficientStorage = true;
-    } else if (_availableBytes >= scriptsMinBytes &&
-        _availableBytes < luciMinBytes) {
-      _isStorageExhaustedOrReadOnly = false;
-      _isLuciInsufficientStorage = true;
-      if (_selectedPackage == 'luci-app-sqm') {
-        _selectedPackage = 'sqm-scripts';
-      }
-    } else {
-      // Sufficient storage for both
-      _isStorageExhaustedOrReadOnly = false;
-      _isLuciInsufficientStorage = false;
+        targetMount.mountPath != '/rom';
+
+    // Live on-demand disk space query
+    int? freeBytes;
+    try {
+      freeBytes = await appState.getFreeDiskSpace();
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _availableBytes = freeBytes;
+        _isLoadingStorage = false;
+      });
     }
   }
 
@@ -95,10 +84,16 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final appState = ref.watch(appStateProvider);
-    _assessStorageAndCapabilities(appState);
     final isRpcMissing = appState.isMissingRpcPackages;
 
-    final canInstall = !_isStorageExhaustedOrReadOnly && !isRpcMissing;
+    final isLowStorage =
+        _availableBytes != null &&
+        _availableBytes! > 0 &&
+        _availableBytes! < 500 * 1024;
+    final canInstall =
+        !_isStorageReadOnly &&
+        !isRpcMissing &&
+        (_availableBytes == null || _availableBytes! > 0);
 
     return AlertDialog(
       actionsOverflowButtonSpacing: 8,
@@ -149,7 +144,7 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Storage assessment indicator
+            // Live storage assessment indicator
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -166,16 +161,30 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
               child: Row(
                 children: [
                   Icon(
-                    Icons.storage_rounded,
+                    _isStorageReadOnly
+                        ? Icons.error_outline_rounded
+                        : (isLowStorage
+                            ? Icons.warning_amber_rounded
+                            : (_availableBytes == null
+                                ? Icons.help_outline_rounded
+                                : Icons.storage_rounded)),
                     size: 16,
-                    color: _isLuciInsufficientStorage
-                        ? LuciStatusColors.warning
-                        : LuciStatusColors.connected,
+                    color: _isStorageReadOnly
+                        ? LuciColors.error
+                        : (isLowStorage
+                            ? LuciStatusColors.warning
+                            : (_availableBytes == null
+                                ? theme.colorScheme.onSurfaceVariant
+                                : LuciStatusColors.connected)),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Free space in $_targetMountPath: ${_formatBytes(_availableBytes)}',
+                      _isLoadingStorage
+                          ? 'Checking storage in $_targetMountPath...'
+                          : (_availableBytes != null
+                              ? 'Free space in $_targetMountPath: ${_formatBytes(_availableBytes!)}'
+                              : 'Free space in $_targetMountPath: Unavailable'),
                       style: theme.textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -220,76 +229,7 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
               const SizedBox(height: LuciSpacing.sm),
             ],
 
-            Text(
-              l10n?.modSqmInstallChooseMethod ?? 'Select Installation Package:',
-              style: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: LuciSpacing.xs),
-
-            // Option 1: sqm-scripts
-            _buildOptionCard(
-              context: context,
-              value: 'sqm-scripts',
-              title: 'sqm-scripts',
-              tag: l10n?.modSqmOptionBackendOnlyTag ?? 'Backend Only (~150 KB)',
-              description:
-                  l10n?.modSqmOptionScriptsDesc ??
-                  'Installs core traffic shaping scripts. Ideal for storage-constrained routers.',
-              warningNotice: isRpcMissing
-                  ? 'Router RPC permissions missing. Installing packages requires RPC execution permissions.'
-                  : (_isStorageExhaustedOrReadOnly
-                        ? 'Insufficient storage: requires ~100 KB free in $_targetMountPath, but only ${_formatBytes(_availableBytes)} is available.'
-                        : (l10n?.modSqmNoticeNoLuciWeb ??
-                              'SQM controls will be fully accessible within YALA, but will NOT appear in the LuCI browser web interface.')),
-              warningColor: isRpcMissing
-                  ? Colors.amber.shade800
-                  : (_isStorageExhaustedOrReadOnly
-                        ? LuciStatusColors.error
-                        : LuciStatusColors.info),
-              warningIcon: isRpcMissing
-                  ? Icons.lock_outline_rounded
-                  : (_isStorageExhaustedOrReadOnly
-                        ? Icons.warning_amber_rounded
-                        : Icons.info_outline_rounded),
-              isEnabled: !isRpcMissing && !_isStorageExhaustedOrReadOnly,
-            ),
-
-            const SizedBox(height: LuciSpacing.sm),
-
-            // Option 2: luci-app-sqm
-            _buildOptionCard(
-              context: context,
-              value: 'luci-app-sqm',
-              title: 'luci-app-sqm',
-              tag: l10n?.modSqmOptionFullTag ?? 'Web UI + Scripts (~500 KB)',
-              description:
-                  l10n?.modSqmOptionLuciDesc ??
-                  'Full package providing both backend shaping scripts and the browser LuCI web interface.',
-              warningNotice: isRpcMissing
-                  ? 'Router RPC permissions missing. Installing packages requires RPC execution permissions.'
-                  : (_isLuciInsufficientStorage
-                        ? (l10n?.modSqmNoticeInsufficientStorage(
-                                _targetMountPath,
-                                _formatBytes(_availableBytes),
-                              ) ??
-                              'Insufficient storage: requires ~500 KB free in $_targetMountPath, but only ${_formatBytes(_availableBytes)} is available.')
-                        : null),
-              warningColor: isRpcMissing
-                  ? Colors.amber.shade800
-                  : LuciStatusColors.error,
-              warningIcon: isRpcMissing
-                  ? Icons.lock_outline_rounded
-                  : Icons.warning_amber_rounded,
-              isEnabled:
-                  !isRpcMissing &&
-                  !_isLuciInsufficientStorage &&
-                  !_isStorageExhaustedOrReadOnly,
-            ),
-
-            if (_isStorageExhaustedOrReadOnly) ...[
-              const SizedBox(height: LuciSpacing.sm),
+            if (_isStorageReadOnly) ...[
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -319,7 +259,139 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
                   ],
                 ),
               ),
+              const SizedBox(height: LuciSpacing.sm),
+            ] else if (isLowStorage) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade900.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.amber.shade700.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.amber.shade800,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Storage is limited (${_formatBytes(_availableBytes!)} free). Package installation requires sufficient flash space for scripts and kernel dependencies.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: LuciSpacing.sm),
             ],
+
+            Text(
+              'Package to Install:',
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: LuciSpacing.xs),
+
+            // sqm-scripts primary card
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: LuciColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: LuciColors.primary, width: 2),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: LuciColors.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'sqm-scripts',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          l10n?.modSqmOptionBackendOnlyTag ?? 'Core Service',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l10n?.modSqmOptionScriptsDesc ??
+                        'Installs core traffic shaping scripts. Ideal for storage-constrained routers.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: LuciColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: LuciColors.primary.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          size: 14,
+                          color: LuciColors.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            l10n?.modSqmNoticeNoLuciWeb ??
+                                'SQM controls will be fully accessible within YALA, but will NOT appear in the LuCI browser web interface.',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -346,7 +418,7 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
         else
           FilledButton.icon(
             onPressed: canInstall
-                ? () => Navigator.of(context).pop(_selectedPackage)
+                ? () => Navigator.of(context).pop('sqm-scripts')
                 : null,
             icon: const Icon(Icons.download_rounded, size: 18),
             label: Text(l10n?.actionInstallNow ?? 'Install Now'),
@@ -354,172 +426,5 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
       ],
     );
   }
-
-  Widget _buildOptionCard({
-    required BuildContext context,
-    required String value,
-    required String title,
-    required String tag,
-    required String description,
-    required bool isEnabled,
-    String? warningNotice,
-    Color? warningColor,
-    IconData? warningIcon,
-  }) {
-    final theme = Theme.of(context);
-    final isSelected = _selectedPackage == value && isEnabled;
-
-    final cardBorder = isSelected
-        ? Border.all(color: LuciColors.primary, width: 2)
-        : Border.all(
-            color: isEnabled
-                ? theme.colorScheme.outlineVariant.withValues(alpha: 0.5)
-                : theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
-          );
-
-    return Opacity(
-      opacity: isEnabled ? 1.0 : 0.45,
-      child: InkWell(
-        onTap: isEnabled
-            ? () {
-                setState(() {
-                  _selectedPackage = value;
-                });
-              }
-            : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? LuciColors.primary.withValues(alpha: 0.08)
-                : theme.colorScheme.surfaceContainerHighest.withValues(
-                    alpha: isEnabled ? 0.35 : 0.15,
-                  ),
-            borderRadius: BorderRadius.circular(12),
-            border: cardBorder,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isSelected
-                            ? LuciColors.primary
-                            : (isEnabled
-                                  ? theme.colorScheme.outline
-                                  : theme.colorScheme.outlineVariant),
-                        width: 2,
-                      ),
-                      color: isSelected
-                          ? LuciColors.primary
-                          : Colors.transparent,
-                    ),
-                    child: isSelected
-                        ? const Center(
-                            child: Icon(
-                              Icons.circle,
-                              size: 10,
-                              color: Colors.white,
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Text(
-                          title,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            tag,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 30, top: 4),
-                child: Text(
-                  description,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              if (warningNotice != null) ...[
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.only(left: 30),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: (warningColor ?? LuciColors.primary).withValues(
-                        alpha: 0.1,
-                      ),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: (warningColor ?? LuciColors.primary).withValues(
-                          alpha: 0.3,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          warningIcon ?? Icons.info_outline_rounded,
-                          size: 14,
-                          color: warningColor ?? LuciColors.primary,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            warningNotice,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color:
-                                  warningColor ?? theme.colorScheme.onSurface,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
+

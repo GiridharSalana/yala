@@ -47,7 +47,7 @@ void main() {
   // Register YALA's GPLv3 copyleft license and copyright attributions in Flutter LicenseRegistry
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks(
-      ['yet_another_luci_app (yala)'],
+      ['yala (yala)'],
       '''Yala (yala)
 ${AppConfig.copyrightNotice.replaceAll('–', '-')}
 

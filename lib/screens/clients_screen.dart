@@ -16,7 +16,6 @@ import 'package:yala/widgets/luci_loading_states.dart';
 import 'package:yala/widgets/luci_refresh_components.dart';
 
 import 'package:yala/utils/client_naming_helper.dart';
-import 'package:yala/utils/self_device_guard.dart';
 import 'package:yala/utils/os_platform_integration.dart';
 import 'package:yala/widgets/luci_toast.dart';
 import 'package:yala/widgets/add_static_lease_dialog.dart';
@@ -25,6 +24,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yala/modules/dhcp_dns/models/dhcp_dns_info.dart';
 import 'package:yala/modules/wireless_management/models/wireless_info.dart';
 import 'package:yala/widgets/rpc_permissions_dialog.dart';
+import 'package:yala/widgets/device_network_access_card.dart';
 import 'package:yala/l10n/app_localizations.dart';
 
 class ClientsScreen extends ConsumerStatefulWidget {
@@ -54,6 +54,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
   dynamic _lastDashboardUpdated;
   DateTime? _lastFetchTime;
   bool _showOnlyActiveConnected = false;
+  bool _showDumbApClients = true;
   ClientCategoryFilter _categoryFilter = ClientCategoryFilter.all;
   bool _hasSeenRestrictedTooltip = true;
   Widget? _lastRenderedScaffold;
@@ -78,6 +79,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
     if (widget.isTabActive) {
       _startAutoRefreshTimer();
     }
+    unawaited(initState.checkExpiredDevicePolicies());
     _checkRestrictedTooltipState();
   }
 
@@ -143,7 +145,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                 }
                 setState(() {
                   _cachedClientsRouterId = currentRouterId;
-                  _cachedClients = incrementalList;
+                  if (incrementalList.isNotEmpty || _cachedClients.isEmpty) {
+                    _cachedClients = incrementalList;
+                  }
                 });
               }
             },
@@ -159,8 +163,14 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
         }
         setState(() {
           _cachedClientsRouterId = currentRouterId;
-          _cachedClients = list;
+          if (list.isNotEmpty || _cachedClients.isEmpty) {
+            _cachedClients = list;
+          }
         });
+      }
+    }).catchError((error) {
+      if (mounted) {
+        setState(() {});
       }
     });
     return future;
@@ -183,7 +193,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
             now.difference(_lastFetchTime!) > const Duration(seconds: 15) ||
             _cachedClients.isEmpty;
         if (shouldFetch) {
-          _computeClientsFuture(forRouterId: currentRouterId);
+          setState(() {
+            _computeClientsFuture(forRouterId: currentRouterId);
+          });
         }
         _startAutoRefreshTimer();
       } else {
@@ -204,16 +216,45 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      if (widget.isTabActive &&
-          (_autoRefreshTimer == null || !_autoRefreshTimer!.isActive)) {
+      unawaited(AppState.instance.checkExpiredDevicePolicies());
+      _lastRenderedScaffold = null;
+      if (widget.isTabActive) {
         _startAutoRefreshTimer();
-        _computeClientsFuture();
+        setState(() {
+          _computeClientsFuture();
+        });
       }
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden) {
       _autoRefreshTimer?.cancel();
     }
+  }
+
+  void _onClientStaticLeaseRemoved(String macAddress) {
+    final norm = normalizeMac(macAddress);
+    setState(() {
+      _cachedClients = _cachedClients
+          .map((c) {
+            if (normalizeMac(c.macAddress) == norm) {
+              return c.copyWith(
+                isStaticLease: false,
+                staticLeaseName: '',
+                staticLeaseTime: '',
+              );
+            }
+            return c;
+          })
+          .where((c) {
+            if (normalizeMac(c.macAddress) == norm &&
+                !c.isConnected &&
+                (c.leaseTime == 0 || c.leaseTime == null)) {
+              return false;
+            }
+            return true;
+          })
+          .toList();
+    });
   }
 
   @override
@@ -227,7 +268,12 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
-            _categoryFilter = reqFilter;
+            if (reqFilter == ClientCategoryFilter.dumbAp) {
+              _categoryFilter = ClientCategoryFilter.all;
+              _showDumbApClients = true;
+            } else {
+              _categoryFilter = reqFilter;
+            }
           });
         }
         watchedAppState.requestedClientCategoryFilter = null;
@@ -268,11 +314,13 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
       future: future,
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data != null) {
-          _cachedClients = snapshot.data!;
+          if (snapshot.data!.isNotEmpty || _cachedClients.isEmpty) {
+            _cachedClients = snapshot.data!;
+          }
           _cachedClientsRouterId = currentId;
         }
         final isMatchingRouter = _cachedClientsRouterId == currentId;
-        final aggregatedClients = (snapshot.hasData && snapshot.data != null)
+        final aggregatedClients = (snapshot.hasData && snapshot.data != null && (snapshot.data!.isNotEmpty || _cachedClients.isEmpty))
             ? snapshot.data!
             : (isMatchingRouter ? _cachedClients : <Client>[]);
         final l10n = AppLocalizations.of(context);
@@ -431,7 +479,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                       );
                     }
 
-                    if (dashboardError != null && aggregatedClients.isEmpty) {
+                    final hasError =
+                        dashboardError != null || snapshot.hasError;
+                    if (hasError && aggregatedClients.isEmpty) {
                       return LuciErrorDisplay(
                         title:
                             l10n?.clientsFailedToLoad ??
@@ -440,8 +490,14 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                             l10n?.clientsFailedToLoadMessage ??
                             'Could not connect to the router. Please check your network connection and the router\'s IP address.',
                         actionLabel: l10n?.actionRetry ?? 'Retry',
-                        onAction: () =>
-                            ref.read(appStateProvider).fetchDashboardData(),
+                        onAction: () async {
+                          await ref.read(appStateProvider).fetchDashboardData();
+                          if (mounted) {
+                            setState(() {
+                              _computeClientsFuture(forRouterId: currentId);
+                            });
+                          }
+                        },
                         icon: Icons.wifi_off_rounded,
                       );
                     }
@@ -519,22 +575,22 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                       if (_categoryFilter == ClientCategoryFilter.banned) {
                         if (!isBannedOrPaused) return false;
                       } else {
-                        // Exclude banned/paused clients from Total, Wired, Wireless, Dumb AP options
+                        // Exclude banned/paused clients from Total, Wired, Wireless options
                         if (isBannedOrPaused) return false;
 
                         if (_showOnlyActiveConnected && !client.isConnected) {
                           return false;
                         }
-                        if (_categoryFilter == ClientCategoryFilter.wired &&
-                            (!client.isConnected ||
-                                client.connectionType !=
-                                    ConnectionType.wired)) {
+                        if (!_showDumbApClients && client.isDumbApClient) {
                           return false;
                         }
+                        if (_categoryFilter == ClientCategoryFilter.wired) {
+                          if (!clientHasActiveWiredBadge(client)) {
+                            return false;
+                          }
+                        }
                         if (_categoryFilter == ClientCategoryFilter.wireless &&
-                            (!client.isConnected ||
-                                client.connectionType !=
-                                    ConnectionType.wireless)) {
+                            client.connectionType != ConnectionType.wireless) {
                           return false;
                         }
                         if (_categoryFilter == ClientCategoryFilter.dumbAp &&
@@ -563,6 +619,17 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                       for (int i = 0; i < filteredClients.length; i++)
                         filteredClients[i].macAddress: i,
                     };
+
+                    final dumbApCount = clients.where((c) {
+                      final isBannedOrPaused =
+                          hasBannedOrPaused &&
+                          allBannedMacs.contains(c.normalizedMac);
+                      if (isBannedOrPaused) return false;
+                      if (_showOnlyActiveConnected && !c.isConnected) {
+                        return false;
+                      }
+                      return c.isDumbApClient;
+                    }).length;
 
                     return Column(
                       children: [
@@ -737,16 +804,11 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                   label:
                                       l10n?.filterShowDumbApClients ??
                                       'Show Dumb AP Clients',
-                                  isSelected:
-                                      _categoryFilter ==
-                                      ClientCategoryFilter.dumbAp,
+                                  isSelected: _showDumbApClients,
+                                  countBadge: dumbApCount,
                                   onTap: () {
                                     setState(() {
-                                      _categoryFilter =
-                                          _categoryFilter ==
-                                              ClientCategoryFilter.dumbAp
-                                          ? ClientCategoryFilter.all
-                                          : ClientCategoryFilter.dumbAp;
+                                      _showDumbApClients = !_showDumbApClients;
                                     });
                                   },
                                   colorScheme: colorScheme,
@@ -841,6 +903,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                           guestSsids: guestSsids,
                                           guestIfaces: guestIfaces,
                                           allClients: clients,
+                                          onLeaseRemoved:
+                                              _onClientStaticLeaseRemoved,
                                           onRefreshNeeded: () {
                                             setState(() {
                                               _computeClientsFuture();
@@ -898,6 +962,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
     required bool isSelected,
     required VoidCallback onTap,
     required ColorScheme colorScheme,
+    int? countBadge,
   }) {
     final activeColor = isSelected
         ? colorScheme.primary
@@ -908,11 +973,12 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
     final borderColor = isSelected
         ? colorScheme.primary.withValues(alpha: 0.4)
         : colorScheme.outlineVariant.withValues(alpha: 0.25);
+    final hasBadge = countBadge != null && countBadge > 0;
 
     return Semantics(
       button: true,
       toggled: isSelected,
-      label: label,
+      label: hasBadge ? '$label ($countBadge)' : label,
       child: Material(
         color: bgColor,
         shape: RoundedRectangleBorder(
@@ -924,13 +990,13 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
           borderRadius: BorderRadius.circular(10),
           child: Container(
             height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: EdgeInsets.symmetric(horizontal: hasBadge ? 8.0 : 10.0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icon, size: 14, color: activeColor),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 Flexible(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
@@ -947,6 +1013,37 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                     ),
                   ),
                 ),
+                if (hasBadge) ...[
+                  const SizedBox(width: 5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4.5,
+                      vertical: 1.0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? colorScheme.primary
+                          : colorScheme.secondary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 15,
+                      minHeight: 14,
+                    ),
+                    child: Text(
+                      countBadge > 99 ? '99+' : '$countBadge',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected
+                            ? colorScheme.onPrimary
+                            : colorScheme.onSecondary,
+                        height: 1.1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -967,42 +1064,36 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
     int totalCount = 0;
     int wiredCount = 0;
     int wirelessCount = 0;
-    int dumbApCount = 0;
-    bool hasAnyDumbApClient = false;
+
+    final allBannedMacs = <String>{
+      ...appState.pausedInternetMacs.map(normalizeMac),
+      ...appState.bannedWirelessMacs.map(normalizeMac),
+    };
 
     for (final c in clients) {
-      if (c.isDumbApClient) {
-        hasAnyDumbApClient = true;
-      }
-      final normMac = c.macAddress.toUpperCase().replaceAll('-', ':');
-      if (appState.isWirelessBanned(normMac) ||
-          appState.isInternetPaused(normMac)) {
+      final normMac = normalizeMac(c.macAddress);
+      if (allBannedMacs.contains(normMac)) {
         continue;
       }
 
-      if (!_showOnlyActiveConnected || c.isConnected) {
-        totalCount++;
+      if (_showOnlyActiveConnected && !c.isConnected) {
+        continue;
       }
-      if (c.isConnected) {
-        if (c.connectionType == ConnectionType.wired) {
-          wiredCount++;
-        } else if (c.connectionType == ConnectionType.wireless) {
-          wirelessCount++;
-        }
+
+      if (!_showDumbApClients && c.isDumbApClient) {
+        continue;
       }
-      if (c.isDumbApClient && (!_showOnlyActiveConnected || c.isConnected)) {
-        dumbApCount++;
+
+      totalCount++;
+
+      if (clientHasActiveWiredBadge(c)) {
+        wiredCount++;
+      } else if (c.connectionType == ConnectionType.wireless) {
+        wirelessCount++;
       }
     }
 
-    final bannedCount =
-        appState.pausedInternetMacs.length + appState.bannedWirelessMacs.length;
-
-    final hasDumbAp =
-        appState.hasDumbAp ||
-        appState.routers.length > 1 ||
-        hasAnyDumbApClient ||
-        _categoryFilter == ClientCategoryFilter.dumbAp;
+    final bannedCount = allBannedMacs.length;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
@@ -1064,23 +1155,6 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
               colorScheme: colorScheme,
               isLoading: isLoading,
             );
-            final dumbApItem = hasDumbAp
-                ? _buildSummaryItem(
-                    icon: Icons.settings_input_antenna_rounded,
-                    label: l10n?.summaryDumbAp ?? 'Dumb AP',
-                    count: dumbApCount,
-                    color: Colors.indigo,
-                    category: ClientCategoryFilter.dumbAp,
-                    isSelected: _categoryFilter == ClientCategoryFilter.dumbAp,
-                    onTap: () {
-                      setState(() {
-                        _categoryFilter = ClientCategoryFilter.dumbAp;
-                      });
-                    },
-                    colorScheme: colorScheme,
-                    isLoading: isLoading,
-                  )
-                : null;
             final bannedItem = _buildSummaryItem(
               icon: Icons.block_rounded,
               label: l10n?.summaryBanned ?? 'Banned',
@@ -1118,7 +1192,6 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                     wiredItem,
                     divider(),
                     wirelessItem,
-                    if (dumbApItem != null) ...[divider(), dumbApItem],
                     divider(),
                     bannedItem,
                   ],
@@ -1134,10 +1207,6 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                 Expanded(child: wiredItem),
                 divider(),
                 Expanded(child: wirelessItem),
-                if (dumbApItem != null) ...[
-                  divider(),
-                  Expanded(child: dumbApItem),
-                ],
                 divider(),
                 Expanded(child: bannedItem),
               ],
@@ -1248,6 +1317,17 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
   String normalizeMac(String mac) => mac.toUpperCase().replaceAll('-', ':');
 }
 
+/// Returns whether a client displays the active "Wired" badge.
+/// Dumb AP clients that are stale or failed do not display the active Wired badge.
+bool clientHasActiveWiredBadge(Client client) {
+  final isStaleDumbApWired = client.isDumbApClient &&
+      (client.neighState == NeighborReachability.stale ||
+          client.neighState == NeighborReachability.failed);
+  return client.isConnected &&
+      client.connectionType == ConnectionType.wired &&
+      !isStaleDumbApWired;
+}
+
 class _UnifiedClientCard extends StatefulWidget {
   final Client client;
   final bool isExpanded;
@@ -1258,6 +1338,7 @@ class _UnifiedClientCard extends StatefulWidget {
   final Set<String> guestIfaces;
   final List<Client> allClients;
   final VoidCallback onRefreshNeeded;
+  final void Function(String macAddress)? onLeaseRemoved;
 
   const _UnifiedClientCard({
     required this.client,
@@ -1269,6 +1350,7 @@ class _UnifiedClientCard extends StatefulWidget {
     this.guestIfaces = const {},
     this.allClients = const [],
     required this.onRefreshNeeded,
+    this.onLeaseRemoved,
   });
 
   @override
@@ -1578,8 +1660,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
           fg: colorScheme.onPrimaryContainer,
         ),
       );
-    } else if (client.isConnected &&
-        client.connectionType == ConnectionType.wired) {
+    } else if (clientHasActiveWiredBadge(client)) {
       pills.add(
         buildPill(
           label: l10n?.clientMediumWired ?? (l10n?.summaryWired ?? 'Wired'),
@@ -1965,7 +2046,6 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                     '${l10n?.clientConnectedDuration ?? "Connection Time"}: ${client.formattedConnectedTime}',
               ),
           ],
-          const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: 14.0,
@@ -1978,14 +2058,15 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                 final isRpcMissing = appState.isMissingRpcPackages;
                 final isDarkMode = theme.brightness == Brightness.dark;
                 final colorScheme = theme.colorScheme;
-                final isPaused = appState.isInternetPaused(client.macAddress);
+                final policy =
+                    appState.getDeviceNetworkAccessPolicy(client.macAddress);
                 final isBanned = appState.isWirelessBanned(client.macAddress);
-                final canPause = client.isConnected || isPaused;
+                final canPause = client.isConnected || policy.hasAnyRestriction;
 
                 final actionButtons = <Widget>[];
 
                 // 0. Unban & Edit Ban Controls (if currently banned)
-                if (isBanned) {
+                if (isBanned && !client.isDumbApClient) {
                   actionButtons.add(
                     _buildRestrictedClientActionButton(
                       context: context,
@@ -2068,37 +2149,40 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                   );
                 }
 
-                // 1. Pause / Resume Internet Switch
+                // 1. Pause / Resume / Manage Internet Access
                 if (canPause && !isBanned) {
-                  final pauseResumeColor = isPaused
-                      ? LuciStatusColors.connected
-                      : colorScheme.error;
-                  final pauseLabel = isPaused
-                      ? (l10n?.btnResumeAccess ?? 'Resume Access')
-                      : (l10n?.btnPauseAccess ?? 'Pause Access');
+                  final Color buttonColor;
+                  final IconData buttonIcon;
+                  final String buttonLabel;
+                  String? badgeText;
+
+                  if (policy.isEffectivelyBlocked) {
+                    buttonColor = LuciStatusColors.connected;
+                    buttonIcon = Icons.play_arrow_rounded;
+                    buttonLabel = l10n?.btnResumeAccess ?? 'Resume Access';
+                  } else if (policy.hasAnyRestriction) {
+                    buttonColor = LuciStatusColors.warning;
+                    buttonIcon = Icons.shield_outlined;
+                    buttonLabel = 'Manage Access';
+                    if (policy.isIpv4OnlyBlocked) {
+                      badgeText = 'IPv4';
+                    } else if (policy.isIpv6OnlyBlocked) {
+                      badgeText = 'IPv6';
+                    }
+                  } else {
+                    buttonColor = colorScheme.error;
+                    buttonIcon = Icons.pause_rounded;
+                    buttonLabel = l10n?.btnPauseAccess ?? 'Pause Access';
+                  }
+
                   actionButtons.add(
                     _buildRestrictedClientActionButton(
                       context: context,
                       isRestricted: isRpcMissing,
-                      actionName: pauseLabel,
-                      child: OutlinedButton.icon(
+                      actionName: buttonLabel,
+                      child: OutlinedButton(
                         onPressed: () =>
-                            _toggleInternetPause(context, client, !isPaused),
-                        icon: Icon(
-                          isPaused
-                              ? Icons.play_arrow_rounded
-                              : Icons.pause_rounded,
-                          size: 15,
-                          color: pauseResumeColor,
-                        ),
-                        label: Text(
-                          pauseLabel,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: pauseResumeColor,
-                          ),
-                        ),
+                            _showAccessControlSheet(context, client),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -2107,7 +2191,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                           minimumSize: const Size(0, 32),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           side: BorderSide(
-                            color: pauseResumeColor.withValues(
+                            color: buttonColor.withValues(
                               alpha: isDarkMode ? 0.6 : 0.4,
                             ),
                             width: 0.9,
@@ -2116,13 +2200,57 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              buttonIcon,
+                              size: 15,
+                              color: buttonColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              buttonLabel,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: buttonColor,
+                              ),
+                            ),
+                            if (badgeText != null) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: buttonColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: buttonColor.withValues(alpha: 0.5),
+                                    width: 0.6,
+                                  ),
+                                ),
+                                child: Text(
+                                  badgeText,
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: buttonColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   );
                 }
 
                 // 2. Ban Client (Available for all active & DHCP clients)
-                if (!isBanned) {
+                if (!isBanned && !client.isDumbApClient) {
                   actionButtons.add(
                     _buildRestrictedClientActionButton(
                       context: context,
@@ -2166,143 +2294,145 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                 }
 
                 // 3. Static Lease Controls (Add / Edit / Remove)
-                final normMac = client.macAddress.toUpperCase().replaceAll(
-                  '-',
-                  ':',
-                );
-                final isStatic =
-                    client.isStatic ||
-                    appState.configuredStaticLeaseMacs.contains(normMac);
+                if (!client.isDumbApClient) {
+                  final normMac = client.macAddress.toUpperCase().replaceAll(
+                    '-',
+                    ':',
+                  );
+                  final isStatic =
+                      client.isStatic ||
+                      appState.configuredStaticLeaseMacs.contains(normMac);
 
-                if (!isStatic && !_isIpv6Only(client)) {
-                  actionButtons.add(
-                    _buildRestrictedClientActionButton(
-                      context: context,
-                      isRestricted: isRpcMissing,
-                      actionName: l10n?.btnStaticLease ?? 'Static Lease',
-                      child: OutlinedButton.icon(
-                        onPressed: () =>
-                            _showAddStaticLeaseDialog(context, client),
-                        icon: Icon(
-                          Icons.push_pin_outlined,
-                          size: 14,
-                          color: colorScheme.primary,
-                        ),
-                        label: Text(
-                          l10n?.btnStaticLease ?? 'Static Lease',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                  if (!isStatic && !_isIpv6Only(client)) {
+                    actionButtons.add(
+                      _buildRestrictedClientActionButton(
+                        context: context,
+                        isRestricted: isRpcMissing,
+                        actionName: l10n?.btnStaticLease ?? 'Static Lease',
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              _showAddStaticLeaseDialog(context, client),
+                          icon: Icon(
+                            Icons.push_pin_outlined,
+                            size: 14,
                             color: colorScheme.primary,
                           ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          minimumSize: const Size(0, 32),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          side: BorderSide(
-                            color: colorScheme.primary.withValues(
-                              alpha: isDarkMode ? 0.6 : 0.4,
+                          label: Text(
+                            l10n?.btnStaticLease ?? 'Static Lease',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
                             ),
-                            width: 0.9,
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            minimumSize: const Size(0, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            side: BorderSide(
+                              color: colorScheme.primary.withValues(
+                                alpha: isDarkMode ? 0.6 : 0.4,
+                              ),
+                              width: 0.9,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }
+                    );
+                  }
 
-                if (isStatic) {
-                  actionButtons.add(
-                    _buildRestrictedClientActionButton(
-                      context: context,
-                      isRestricted: isRpcMissing,
-                      actionName:
-                          l10n?.btnEditStaticLease ?? 'Edit Static Lease',
-                      child: OutlinedButton.icon(
-                        onPressed: () =>
-                            _showAddStaticLeaseDialog(context, client),
-                        icon: Icon(
-                          Icons.edit_outlined,
-                          size: 14,
-                          color: colorScheme.primary,
-                        ),
-                        label: Text(
-                          l10n?.btnEditStaticLease ?? 'Edit Static Lease',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                  if (isStatic) {
+                    actionButtons.add(
+                      _buildRestrictedClientActionButton(
+                        context: context,
+                        isRestricted: isRpcMissing,
+                        actionName:
+                            l10n?.btnEditStaticLease ?? 'Edit Static Lease',
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              _showAddStaticLeaseDialog(context, client),
+                          icon: Icon(
+                            Icons.edit_outlined,
+                            size: 14,
                             color: colorScheme.primary,
                           ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          minimumSize: const Size(0, 32),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          side: BorderSide(
-                            color: colorScheme.primary.withValues(
-                              alpha: isDarkMode ? 0.6 : 0.4,
+                          label: Text(
+                            l10n?.btnEditStaticLease ?? 'Edit Static Lease',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
                             ),
-                            width: 0.9,
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            minimumSize: const Size(0, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            side: BorderSide(
+                              color: colorScheme.primary.withValues(
+                                alpha: isDarkMode ? 0.6 : 0.4,
+                              ),
+                              width: 0.9,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
+                    );
 
-                  actionButtons.add(
-                    _buildRestrictedClientActionButton(
-                      context: context,
-                      isRestricted: isRpcMissing,
-                      actionName: l10n?.btnRemoveLease ?? 'Remove Lease',
-                      child: OutlinedButton.icon(
-                        onPressed: () =>
-                            _confirmRemoveStaticLease(context, client),
-                        icon: Icon(
-                          Icons.delete_outline,
-                          size: 14,
-                          color: colorScheme.error,
-                        ),
-                        label: Text(
-                          l10n?.btnRemoveLease ?? 'Remove Lease',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
+                    actionButtons.add(
+                      _buildRestrictedClientActionButton(
+                        context: context,
+                        isRestricted: isRpcMissing,
+                        actionName: l10n?.btnRemoveLease ?? 'Remove Lease',
+                        child: OutlinedButton.icon(
+                          onPressed: () =>
+                              _confirmRemoveStaticLease(context, client),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            size: 14,
                             color: colorScheme.error,
                           ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          minimumSize: const Size(0, 32),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          side: BorderSide(
-                            color: colorScheme.error.withValues(
-                              alpha: isDarkMode ? 0.6 : 0.4,
+                          label: Text(
+                            l10n?.btnRemoveLease ?? 'Remove Lease',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.error,
                             ),
-                            width: 0.9,
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            minimumSize: const Size(0, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            side: BorderSide(
+                              color: colorScheme.error.withValues(
+                                alpha: isDarkMode ? 0.6 : 0.4,
+                              ),
+                              width: 0.9,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 }
 
                 return _buildJustifiedActionButtons(actionButtons);
@@ -2372,6 +2502,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
       return;
     }
 
+    final parentContext = Navigator.of(context).context;
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -2434,106 +2565,93 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
       ),
     );
 
-    if (confirmed == true && context.mounted) {
+    if (confirmed == true) {
       final actionKey = 'remove_lease_${client.macAddress}';
-      context.showToastLoading(
-        'Removing static lease for ${client.displayName}...',
-        actionKey: actionKey,
-      );
+      if (parentContext.mounted) {
+        parentContext.showToastLoading(
+          'Removing static lease for ${client.displayName}...',
+          actionKey: actionKey,
+        );
+      }
 
       final appState = AppState.instance;
+
+      // Find the static mapping record to get exact IP, DUID, and hostname configured on the router
+      final normMac = client.macAddress.toUpperCase().replaceAll('-', ':');
+      DhcpStaticMapping? existingMapping =
+          appState.findStaticLeaseByMac(client.macAddress);
+      if (existingMapping == null && appState.dashboardData != null) {
+        final dhcpOverview = DhcpDnsOverview.fromDashboardData(
+          appState.dashboardData,
+          isReviewerMode: appState.reviewerModeEnabled,
+        );
+        for (final s in dhcpOverview.staticMappings) {
+          if (s.macAddress.toUpperCase().replaceAll('-', ':') == normMac) {
+            existingMapping = s;
+            break;
+          }
+        }
+      }
+
+      final targetIp = (existingMapping != null &&
+              existingMapping.ipAddress.isNotEmpty &&
+              existingMapping.ipAddress != 'N/A')
+          ? existingMapping.ipAddress
+          : (client.ipAddress != 'N/A' && client.ipAddress.isNotEmpty
+              ? client.ipAddress
+              : null);
+
+      final hostname = (existingMapping != null &&
+              existingMapping.hostname.isNotEmpty &&
+              existingMapping.hostname != 'Unnamed Host')
+          ? existingMapping.hostname
+          : (client.staticLeaseName ??
+              (client.hostname != 'Unknown' ? client.hostname : null));
+
+      final duid = (existingMapping != null &&
+              existingMapping.duid.isNotEmpty &&
+              existingMapping.duid != 'N/A')
+          ? existingMapping.duid
+          : null;
+
       final success = await appState.deleteStaticLease(
         macAddress: client.macAddress,
-        targetIp: client.ipAddress != 'N/A' ? client.ipAddress : null,
-        hostname:
-            client.staticLeaseName ??
-            (client.hostname != 'Unknown' ? client.hostname : null),
-        context: context,
+        targetIp: targetIp,
+        hostname: hostname,
+        duid: duid,
+        context: parentContext.mounted ? parentContext : null,
       );
-
-      if (!context.mounted) return;
 
       if (success) {
         appState.invalidateStaticLeasesCache();
-        context.showToastSuccess(
-          'Static lease removed for ${client.displayName}.',
-          actionKey: actionKey,
-        );
+        widget.onLeaseRemoved?.call(client.macAddress);
+        if (mounted) setState(() {});
+        if (parentContext.mounted) {
+          parentContext.showToastSuccess(
+            'Static lease removed for ${client.displayName}.',
+            actionKey: actionKey,
+          );
+        }
         widget.onRefreshNeeded();
       } else {
-        context.showToastError(
-          'Failed to remove static lease for ${client.displayName}.',
-          actionKey: actionKey,
-        );
+        if (parentContext.mounted) {
+          parentContext.showToastError(
+            'Failed to remove static lease for ${client.displayName}.',
+            actionKey: actionKey,
+          );
+        }
       }
     }
   }
 
-  Future<void> _toggleInternetPause(
+  Future<void> _showAccessControlSheet(
     BuildContext context,
     Client client,
-    bool pause,
   ) async {
-    if (pause) {
-      final safe = await SelfDeviceGuard.checkSelfActionGuardrail(
-        context,
-        actionName: 'Pause Internet Access',
-        targetMac: client.macAddress,
-        targetIp: client.ipAddress,
-        targetHostname: client.displayName,
-      );
-      if (!safe) return;
-      if (!context.mounted) return;
-    }
-
-    final actionKey = 'pause_internet_${client.macAddress}';
-    if (ActionRateLimiter.isRateLimited(
-      actionKey,
-      cooldown: const Duration(seconds: 2),
-    )) {
-      final remaining = ActionRateLimiter.getRemainingCooldown(
-        actionKey,
-        cooldown: const Duration(seconds: 2),
-      );
-      context.showToastRateLimited(
-        '${pause ? "Pause" : "Resume"} Internet (${client.displayName})',
-        remaining,
-      );
-      return;
-    }
-
-    final appState = AppState.instance;
-    context.showToastLoading(
-      '${pause ? "Pausing" : "Resuming"} internet access...',
-      subtitle: 'Target: ${client.displayName}',
-      actionKey: actionKey,
+    await DeviceNetworkAccessCard.showAsBottomSheet(
+      context,
+      client: client,
     );
-
-    final success = await appState.pauseClientInternet(
-      client.macAddress,
-      pause: pause,
-      context: context,
-    );
-
-    if (success) {
-      if (context.mounted) {
-        LuciToastManager.safeShowSuccess(
-          context,
-          'Internet ${pause ? "Paused" : "Restored"}',
-          subtitle: 'Target: ${client.displayName}',
-          actionKey: actionKey,
-        );
-      }
-    } else {
-      if (context.mounted) {
-        LuciToastManager.safeShowError(
-          context,
-          'Failed to ${pause ? "pause" : "resume"} internet',
-          subtitle: 'Target: ${client.displayName}',
-          actionKey: actionKey,
-        );
-      }
-    }
     if (mounted) setState(() {});
   }
 

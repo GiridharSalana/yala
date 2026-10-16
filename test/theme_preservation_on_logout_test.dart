@@ -11,8 +11,9 @@ import 'package:yala/state/app_state.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
+  setUp(() async {
     FlutterSecureStorage.setMockInitialValues({});
+    await AppState.instance.initializationFuture;
   });
 
   test('Theme mode and theme palette are preserved across logout', () async {

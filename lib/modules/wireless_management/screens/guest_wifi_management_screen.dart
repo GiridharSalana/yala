@@ -1227,13 +1227,11 @@ class _GuestMasterControlSwitch extends ConsumerStatefulWidget {
 class _GuestMasterControlSwitchState
     extends ConsumerState<_GuestMasterControlSwitch> {
   bool _isToggling = false;
-  bool? _optimisticEnabled;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
-    final effectiveValue = _optimisticEnabled ?? widget.allEnabled;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1250,74 +1248,76 @@ class _GuestMasterControlSwitchState
               ),
             ),
           ),
-        Switch(
-          value: effectiveValue,
-          onChanged: (!widget.hasWriteAccess)
-              ? (val) {
-                  context.showToastError(
-                    l10n?.readOnlyUciWriteRequired ??
-                        'Read-only session: UCI write permission required.',
-                  );
-                }
-              : _isToggling
-              ? null
-              : (enable) async {
-                  if (_isToggling) return;
-                  setState(() {
-                    _isToggling = true;
-                    _optimisticEnabled = enable;
-                  });
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: _isToggling ? 0.55 : 1.0,
+          child: Switch(
+            value: widget.allEnabled,
+            onChanged: (!widget.hasWriteAccess)
+                ? (val) {
+                    context.showToastError(
+                      l10n?.readOnlyUciWriteRequired ??
+                          'Read-only session: UCI write permission required.',
+                    );
+                  }
+                : _isToggling
+                ? null
+                : (enable) async {
+                    if (_isToggling) return;
+                    setState(() {
+                      _isToggling = true;
+                    });
 
-                  const actionKey = 'toggle_all_guest_screen';
-                  context.showToastLoading(
-                    enable
-                        ? (l10n?.toastEnablingAllGuest ??
-                              'Enabling all Guest networks...')
-                        : (l10n?.toastDisablingAllGuest ??
-                              'Disabling all Guest networks...'),
-                    actionKey: actionKey,
-                  );
-                  int count = 0;
-                  try {
-                    for (final iface in widget.guestIfaces) {
-                      if (iface.isEnabled != enable) {
-                        final res = await appState.setSsidEnabled(
-                          iface.sectionName,
-                          enable,
-                          context: context,
+                    const actionKey = 'toggle_all_guest_screen';
+                    context.showToastLoading(
+                      enable
+                          ? (l10n?.toastEnablingAllGuest ??
+                                'Enabling all Guest networks...')
+                          : (l10n?.toastDisablingAllGuest ??
+                                'Disabling all Guest networks...'),
+                      actionKey: actionKey,
+                    );
+                    int count = 0;
+                    try {
+                      for (final iface in widget.guestIfaces) {
+                        if (iface.isEnabled != enable) {
+                          final res = await appState.setSsidEnabled(
+                            iface.sectionName,
+                            enable,
+                            context: context,
+                          );
+                          if (res) count++;
+                        }
+                      }
+                      if (context.mounted) {
+                        context.showToastSuccess(
+                          enable
+                              ? (l10n?.toastEnabledGuestCount(count) ??
+                                    'Enabled $count Guest network interface${count == 1 ? '' : 's'}.')
+                              : (l10n?.toastDisabledGuestCount(count) ??
+                                    'Disabled $count Guest network interface${count == 1 ? '' : 's'}.'),
+                          actionKey: actionKey,
                         );
-                        if (res) count++;
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        context.showToastError(
+                          enable
+                              ? 'Failed to enable guest networks'
+                              : 'Failed to disable guest networks',
+                          subtitle: e.toString().replaceAll('Exception: ', ''),
+                          actionKey: actionKey,
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isToggling = false;
+                        });
                       }
                     }
-                    if (context.mounted) {
-                      context.showToastSuccess(
-                        enable
-                            ? (l10n?.toastEnabledGuestCount(count) ??
-                                  'Enabled $count Guest network interface${count == 1 ? '' : 's'}.')
-                            : (l10n?.toastDisabledGuestCount(count) ??
-                                  'Disabled $count Guest network interface${count == 1 ? '' : 's'}.'),
-                        actionKey: actionKey,
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      context.showToastError(
-                        enable
-                            ? 'Failed to enable guest networks'
-                            : 'Failed to disable guest networks',
-                        subtitle: e.toString().replaceAll('Exception: ', ''),
-                        actionKey: actionKey,
-                      );
-                    }
-                  } finally {
-                    if (mounted) {
-                      setState(() {
-                        _isToggling = false;
-                        _optimisticEnabled = null;
-                      });
-                    }
-                  }
-                },
+                  },
+          ),
         ),
       ],
     );

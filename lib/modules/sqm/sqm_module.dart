@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import '../core/luci_module.dart';
 import 'screens/sqm_screen.dart';
+import 'widgets/sqm_dashboard_card.dart';
 
 /// Module descriptor for Smart Queue Management (SQM) / Bufferbloat mitigation.
 class SqmModule extends LuciModule {
@@ -31,11 +32,12 @@ class SqmModule extends LuciModule {
 
   @override
   Widget buildScreen(BuildContext context, {Map<String, dynamic>? params}) {
-    return const SqmScreen();
+    final routerId = params?['routerId'] as String?;
+    return SqmScreen(routerId: routerId);
   }
 
   @override
   Widget? buildDashboardWidget(BuildContext context) {
-    return null;
+    return const SqmDashboardCard();
   }
 }

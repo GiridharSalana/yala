@@ -89,10 +89,14 @@ class ThroughputService {
   }
 
   static num _byteCounter(Map<String, dynamic> device, String key) {
-    final stats = device['stats'];
-    if (stats is Map) {
-      final value = stats[key];
-      if (value is num) return value;
+    // luci-rpc getNetworkDevices uses `stats`; ubus network.device status
+    // uses `statistics`.
+    for (final statsKey in const ['stats', 'statistics']) {
+      final stats = device[statsKey];
+      if (stats is Map) {
+        final value = stats[key];
+        if (value is num) return value;
+      }
     }
     final direct = device[key];
     if (direct is num) return direct;
@@ -361,17 +365,10 @@ class ThroughputService {
     }
 
     if (elapsedSeconds >= _minElapsedSeconds) {
-      // Handle both formats: stats.rx_bytes and direct rx_bytes
-      final lastRx =
-          (lastStats['stats']?['rx_bytes'] ?? lastStats['rx_bytes'] ?? 0)
-              as num;
-      final lastTx =
-          (lastStats['stats']?['tx_bytes'] ?? lastStats['tx_bytes'] ?? 0)
-              as num;
-      final currentRx =
-          (devData['stats']?['rx_bytes'] ?? devData['rx_bytes'] ?? 0) as num;
-      final currentTx =
-          (devData['stats']?['tx_bytes'] ?? devData['tx_bytes'] ?? 0) as num;
+      final lastRx = _byteCounter(lastStats, 'rx_bytes');
+      final lastTx = _byteCounter(lastStats, 'tx_bytes');
+      final currentRx = _byteCounter(devData, 'rx_bytes');
+      final currentTx = _byteCounter(devData, 'tx_bytes');
 
       num diffRx = currentRx - lastRx;
       num diffTx = currentTx - lastTx;

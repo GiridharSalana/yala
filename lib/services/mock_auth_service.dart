@@ -10,6 +10,39 @@ class MockAuthService implements IAuthService {
   String? _ipAddress = '192.168.1.1';
   bool _useHttps = false;
   bool _isAuthenticated = true;
+  int _authEpoch = 0;
+
+  @override
+  int get authEpoch => _authEpoch;
+
+  @override
+  int startPasswordTransition() {
+    _authEpoch++;
+    return _authEpoch;
+  }
+
+  @override
+  void completePasswordTransition({
+    required String newToken,
+    required String newPassword,
+    required String ipAddress,
+    required bool useHttps,
+  }) {
+    _authEpoch++;
+    _sysauth = newToken;
+    _ipAddress = ipAddress;
+    _useHttps = useHttps;
+  }
+
+  @override
+  void cancelPasswordTransition() {
+    _authEpoch++;
+  }
+
+  @override
+  void updateSessionToken(String? token) {
+    _sysauth = token;
+  }
 
   @override
   String? get sysauth => _sysauth;

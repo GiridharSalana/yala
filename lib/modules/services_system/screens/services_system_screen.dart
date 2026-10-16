@@ -30,9 +30,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
 
   /// In-flight state tracking for DDNS service and instance toggles
   bool _isTogglingGlobalDdns = false;
-  bool? _optimisticGlobalDdns;
   final Set<String> _pendingDdnsInstanceToggles = {};
-  final Map<String, bool> _optimisticDdnsInstanceStates = {};
 
   bool get _hasUnsavedChanges => _stagedInitScriptStates.isNotEmpty;
 
@@ -395,7 +393,11 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
               if (!ddnsOverview.isInstalled)
                 _buildDdnsUninstalledBanner(context)
               else
-                _buildDdnsInstancesCard(context, ddnsOverview),
+                _buildDdnsInstancesCard(
+                  context,
+                  ddnsOverview,
+                  isGlobalEnabled: ddnsOverview.isGlobalEnabled,
+                ),
               const SizedBox(height: 80),
             ],
           ),
@@ -1231,26 +1233,17 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     );
 
     final isGlobalPending = _isTogglingGlobalDdns;
-    final effectiveGlobalValue = _optimisticGlobalDdns ?? ddns.isGlobalEnabled;
+    final effectiveGlobalValue = ddns.isGlobalEnabled;
 
     Widget buildGlobalSwitch() => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (isGlobalPending)
-          Padding(
-            padding: const EdgeInsets.only(right: 6.0),
-            child: SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
-        Transform.scale(
-          scale: 0.8,
-          child: Switch(
+        AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: isGlobalPending ? 0.55 : 1.0,
+          child: Transform.scale(
+            scale: 0.8,
+            child: Switch(
             value: effectiveGlobalValue,
             onChanged: isGlobalPending
                 ? null
@@ -1260,7 +1253,6 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                     }
                     setState(() {
                       _isTogglingGlobalDdns = true;
-                      _optimisticGlobalDdns = val;
                     });
                     const actionKey = 'toggle_global_ddns';
                     context.showToastLoading(
@@ -1304,15 +1296,27 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                       if (mounted) {
                         setState(() {
                           _isTogglingGlobalDdns = false;
-                          _optimisticGlobalDdns = null;
                         });
                       }
                     }
                   },
+              ),
+            ),
           ),
-        ),
-      ],
-    );
+          if (isGlobalPending)
+            Padding(
+              padding: const EdgeInsets.only(left: 6.0),
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+        ],
+      );
 
     Widget buildAddButton() => FilledButton.icon(
       onPressed: () => _showAddEditDdnsDialog(context, existingInstance: null),
@@ -1358,7 +1362,7 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          ddns.isGlobalEnabled
+                          effectiveGlobalValue
                               ? (l10n?.statusActive ?? 'ACTIVE')
                               : (l10n?.statusDisabled ?? 'DISABLED'),
                           style: theme.textTheme.labelSmall?.copyWith(
@@ -1471,14 +1475,22 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
     );
   }
 
-  Widget _buildDdnsInstancesCard(BuildContext context, DdnsOverview ddns) {
+  Widget _buildDdnsInstancesCard(
+    BuildContext context,
+    DdnsOverview ddns, {
+    required bool isGlobalEnabled,
+  }) {
     final l10n = AppLocalizations.of(context);
     if (ddns.instances.isEmpty) {
       return Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Theme.of(context).dividerColor),
+          side: BorderSide(
+            color: isGlobalEnabled
+                ? Theme.of(context).dividerColor
+                : Theme.of(context).dividerColor.withValues(alpha: 0.5),
+          ),
         ),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -1515,303 +1527,333 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Theme.of(context).dividerColor),
+        side: BorderSide(
+          color: isGlobalEnabled
+              ? Theme.of(context).dividerColor
+              : Theme.of(context).dividerColor.withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         children: ddns.instances
-            .map((instance) => _buildDdnsInstanceTile(context, instance))
+            .map((instance) => _buildDdnsInstanceTile(
+                  context,
+                  instance,
+                  isGlobalEnabled: isGlobalEnabled,
+                ))
             .toList(),
       ),
     );
   }
 
-  Widget _buildDdnsInstanceTile(BuildContext context, DdnsInstance instance) {
+  Widget _buildDdnsInstanceTile(
+    BuildContext context,
+    DdnsInstance instance, {
+    required bool isGlobalEnabled,
+  }) {
     final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
+    final theme = Theme.of(context);
     final preset = kDdnsProviderPresets.firstWhere(
       (p) => p.serviceName == instance.serviceName,
       orElse: () => kDdnsProviderPresets.last,
     );
 
-    return AnimatedContainer(
+    final isInstancePending =
+        _pendingDdnsInstanceToggles.contains(instance.name);
+    final effectiveInstanceValue = instance.enabled;
+
+    return AnimatedOpacity(
       duration: const Duration(milliseconds: 250),
-      decoration: BoxDecoration(
-        color: instance.enabled
-            ? Theme.of(context).cardColor
-            : Theme.of(context).cardColor.withAlpha(180),
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor.withAlpha(50),
+      opacity: isGlobalEnabled ? (instance.enabled ? 1.0 : 0.75) : 0.45,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        decoration: BoxDecoration(
+          color: !isGlobalEnabled
+              ? theme.cardColor.withValues(alpha: 0.5)
+              : (instance.enabled
+                  ? theme.cardColor
+                  : theme.cardColor.withAlpha(180)),
+          border: Border(
+            bottom: BorderSide(
+              color: theme.dividerColor.withAlpha(50),
+            ),
           ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: instance.enabled
-                        ? LuciStatusColors.successBg(context)
-                        : LuciStatusColors.infoBg(context),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: instance.enabled
-                          ? LuciStatusColors.successBorder(context)
-                          : LuciStatusColors.infoBorder(context),
-                    ),
-                  ),
-                  child: Text(
-                    preset.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: instance.enabled
-                          ? LuciStatusColors.successText(context)
-                          : LuciStatusColors.infoText(context),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    instance.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Builder(
-                  builder: (context) {
-                    final isInstancePending = _pendingDdnsInstanceToggles
-                        .contains(instance.name);
-                    final effectiveInstanceValue =
-                        _optimisticDdnsInstanceStates[instance.name] ??
-                        instance.enabled;
-
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isInstancePending)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6.0),
-                            child: SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                        Transform.scale(
-                          scale: 0.8,
-                          child: Switch(
-                            value: effectiveInstanceValue,
-                            onChanged: isInstancePending
-                                ? null
-                                : (val) async {
-                                    if (_pendingDdnsInstanceToggles.contains(
-                                      instance.name,
-                                    )) {
-                                      return;
-                                    }
-                                    setState(() {
-                                      _pendingDdnsInstanceToggles.add(
-                                        instance.name,
-                                      );
-                                      _optimisticDdnsInstanceStates[instance
-                                              .name] =
-                                          val;
-                                    });
-                                    final actionKey =
-                                        'toggle_ddns_instance_${instance.name}';
-                                    context.showToastLoading(
-                                      val
-                                          ? (l10n?.servicesSysDdnsInstanceEnablingToast(
-                                                  instance.name,
-                                                ) ??
-                                                'Enabling DDNS instance "${instance.name}"...')
-                                          : (l10n?.servicesSysDdnsInstanceDisablingToast(
-                                                  instance.name,
-                                                ) ??
-                                                'Disabling DDNS instance "${instance.name}"...'),
-                                      actionKey: actionKey,
-                                    );
-                                    try {
-                                      final updated = instance.copyWith(
-                                        enabled: val,
-                                      );
-                                      final ok = await appState
-                                          .saveDdnsInstance(updated);
-                                      if (context.mounted) {
-                                        if (ok) {
-                                          final statusStr = val
-                                              ? (l10n?.statusActive ??
-                                                    'enabled')
-                                              : (l10n?.statusDisabled ??
-                                                    'disabled');
-                                          context.showToastSuccess(
-                                            l10n?.servicesSysDdnsInstanceToggleToast(
-                                                  instance.name,
-                                                  statusStr,
-                                                ) ??
-                                                '${instance.name} $statusStr',
-                                            actionKey: actionKey,
-                                          );
-                                        } else {
-                                          context.showToastError(
-                                            l10n?.servicesSysDdnsUpdateFailedToast ??
-                                                'Failed to update instance',
-                                            actionKey: actionKey,
-                                          );
-                                        }
-                                      }
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        context.showToastError(
-                                          l10n?.servicesSysDdnsUpdateFailedToast ??
-                                              'Failed to update instance',
-                                          subtitle: e.toString().replaceAll(
-                                            'Exception: ',
-                                            '',
-                                          ),
-                                          actionKey: actionKey,
-                                        );
-                                      }
-                                    } finally {
-                                      if (mounted) {
-                                        setState(() {
-                                          _pendingDdnsInstanceToggles.remove(
-                                            instance.name,
-                                          );
-                                          _optimisticDdnsInstanceStates.remove(
-                                            instance.name,
-                                          );
-                                        });
-                                      }
-                                    }
-                                  },
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(Icons.language, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    'Lookup: ${instance.lookupHost.isNotEmpty ? instance.lookupHost : (instance.domain.isNotEmpty ? instance.domain : "N/A")}',
-                    style: const TextStyle(fontSize: 12),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.swap_horiz, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    'Interface: ${instance.interface.toUpperCase()} • Interval: ${instance.checkInterval} ${instance.checkUnit}',
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (instance.statusStr != null) ...[
-                  const SizedBox(width: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
+                      horizontal: 8,
+                      vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: instance.statusStr!.contains('Synced')
-                          ? LuciStatusColors.successBg(context)
-                          : LuciStatusColors.warningBg(context),
-                      borderRadius: BorderRadius.circular(4),
+                      color: !isGlobalEnabled
+                          ? theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.5)
+                          : (instance.enabled
+                              ? LuciStatusColors.successBg(context)
+                              : LuciStatusColors.infoBg(context)),
+                      borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                        color: instance.statusStr!.contains('Synced')
-                            ? LuciStatusColors.successBorder(context)
-                            : LuciStatusColors.warningBorder(context),
+                        color: !isGlobalEnabled
+                            ? theme.dividerColor.withValues(alpha: 0.3)
+                            : (instance.enabled
+                                ? LuciStatusColors.successBorder(context)
+                                : LuciStatusColors.infoBorder(context)),
                       ),
                     ),
                     child: Text(
-                      instance.statusStr!,
+                      preset.label,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: instance.statusStr!.contains('Synced')
-                            ? LuciStatusColors.successText(context)
-                            : LuciStatusColors.warningText(context),
+                        fontWeight: FontWeight.bold,
+                        color: !isGlobalEnabled
+                            ? theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.6)
+                            : (instance.enabled
+                                ? LuciStatusColors.successText(context)
+                                : LuciStatusColors.infoText(context)),
                       ),
                     ),
                   ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _testDdnsConfiguration(instance),
-                  icon: const Icon(Icons.published_with_changes, size: 14),
-                  label: Text(
-                    l10n?.servicesSysBtnTestConfig ?? 'Test Config',
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      instance.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: isInstancePending ? 0.55 : 1.0,
+                        child: Transform.scale(
+                          scale: 0.8,
+                          child: Switch(
+                          value: effectiveInstanceValue,
+                          onChanged: (isGlobalEnabled && !isInstancePending)
+                              ? (val) async {
+                                  if (_pendingDdnsInstanceToggles.contains(
+                                    instance.name,
+                                  )) {
+                                    return;
+                                  }
+                                  setState(() {
+                                    _pendingDdnsInstanceToggles.add(
+                                      instance.name,
+                                    );
+                                  });
+                                  final actionKey =
+                                      'toggle_ddns_instance_${instance.name}';
+                                  context.showToastLoading(
+                                    val
+                                        ? (l10n?.servicesSysDdnsInstanceEnablingToast(
+                                                instance.name,
+                                              ) ??
+                                              'Enabling DDNS instance "${instance.name}"...')
+                                        : (l10n?.servicesSysDdnsInstanceDisablingToast(
+                                                instance.name,
+                                              ) ??
+                                              'Disabling DDNS instance "${instance.name}"...'),
+                                    actionKey: actionKey,
+                                  );
+                                  try {
+                                    final updated = instance.copyWith(
+                                      enabled: val,
+                                    );
+                                    final ok = await appState
+                                        .saveDdnsInstance(updated);
+                                    if (context.mounted) {
+                                      if (ok) {
+                                        final statusStr = val
+                                            ? (l10n?.statusActive ?? 'enabled')
+                                            : (l10n?.statusDisabled ??
+                                                'disabled');
+                                        context.showToastSuccess(
+                                          l10n?.servicesSysDdnsInstanceToggleToast(
+                                                instance.name,
+                                                statusStr,
+                                              ) ??
+                                              '${instance.name} $statusStr',
+                                          actionKey: actionKey,
+                                        );
+                                      } else {
+                                        context.showToastError(
+                                          l10n?.servicesSysDdnsUpdateFailedToast ??
+                                              'Failed to update instance',
+                                          actionKey: actionKey,
+                                        );
+                                      }
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      context.showToastError(
+                                        l10n?.servicesSysDdnsUpdateFailedToast ??
+                                            'Failed to update instance',
+                                        subtitle: e.toString().replaceAll(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                        actionKey: actionKey,
+                                      );
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() {
+                                        _pendingDdnsInstanceToggles.remove(
+                                          instance.name,
+                                        );
+                                      });
+                                    }
+                                  }
+                                }
+                              : null,
+                        ),
+                      ),
+                    ),
+                    if (isInstancePending)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6.0),
+                        child: SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  tooltip: l10n?.actionEdit ?? 'Edit',
-                  onPressed: () => _showAddEditDdnsDialog(
-                    context,
-                    existingInstance: instance,
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.language, size: 14, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Lookup: ${instance.lookupHost.isNotEmpty ? instance.lookupHost : (instance.domain.isNotEmpty ? instance.domain : "N/A")}',
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: LuciColors.error,
-                    size: 18,
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.swap_horiz, size: 14, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Interface: ${instance.interface.toUpperCase()} • Interval: ${instance.checkInterval} ${instance.checkUnit}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  tooltip: l10n?.actionDelete ?? 'Delete',
-                  onPressed: () =>
-                      _confirmDeleteDdnsInstance(context, instance.name),
-                ),
-              ],
-            ),
-          ],
+                  if (instance.statusStr != null) ...[
+                    const SizedBox(width: 8),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: !isGlobalEnabled
+                            ? theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.4)
+                            : (instance.statusStr!.contains('Synced')
+                                ? LuciStatusColors.successBg(context)
+                                : LuciStatusColors.warningBg(context)),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: !isGlobalEnabled
+                              ? theme.dividerColor.withValues(alpha: 0.2)
+                              : (instance.statusStr!.contains('Synced')
+                                  ? LuciStatusColors.successBorder(context)
+                                  : LuciStatusColors.warningBorder(context)),
+                        ),
+                      ),
+                      child: Text(
+                        !isGlobalEnabled
+                            ? (l10n?.statusDisabled ?? 'Inactive')
+                            : instance.statusStr!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: !isGlobalEnabled
+                              ? theme.colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.6)
+                              : (instance.statusStr!.contains('Synced')
+                                  ? LuciStatusColors.successText(context)
+                                  : LuciStatusColors.warningText(context)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: isGlobalEnabled
+                        ? () => _testDdnsConfiguration(instance)
+                        : null,
+                    icon: const Icon(Icons.published_with_changes, size: 14),
+                    label: Text(
+                      l10n?.servicesSysBtnTestConfig ?? 'Test Config',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    tooltip: l10n?.actionEdit ?? 'Edit',
+                    onPressed: () => _showAddEditDdnsDialog(
+                      context,
+                      existingInstance: instance,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: LuciColors.error,
+                      size: 18,
+                    ),
+                    tooltip: l10n?.actionDelete ?? 'Delete',
+                    onPressed: () =>
+                        _confirmDeleteDdnsInstance(context, instance.name),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

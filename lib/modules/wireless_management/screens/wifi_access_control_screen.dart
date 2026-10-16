@@ -44,6 +44,14 @@ class _WifiAccessControlScreenState
   @override
   void initState() {
     super.initState();
+    // Consume already-available cached client state immediately to eliminate loading lag
+    final appState = ref.read(appStateProvider);
+    final cachedClients = appState.clients;
+    if (cachedClients.isNotEmpty) {
+      _availableClients = cachedClients;
+      _isLoadingClients = false;
+      _detectPhoneMac(cachedClients);
+    }
     _loadClients();
   }
 
@@ -55,36 +63,80 @@ class _WifiAccessControlScreenState
 
   // ... (keeping internal state methods)
 
+  void _detectPhoneMac(List<Client> clients, [List<String>? localAddresses]) {
+    for (final c in clients) {
+      final normMac = _normalizeMac(c.macAddress);
+      final normIp = c.ipAddress.toLowerCase().trim();
+      if (localAddresses != null &&
+          (localAddresses.contains(normIp) ||
+              localAddresses.any(
+                (a) => SelfDeviceGuard.normalizeMac(a) == normMac,
+              ))) {
+        _phoneMac = normMac;
+        return;
+      }
+      if (c.isConnected && c.connectionType == ConnectionType.wireless) {
+        _phoneMac ??= normMac;
+      }
+    }
+  }
+
   Future<void> _loadClients() async {
     final appState = ref.read(appStateProvider);
     try {
-      final localAddresses = await SelfDeviceGuard.getLocalDeviceAddresses();
-      final clients = await appState.fetchAggregatedClients();
-      if (!mounted) return;
-      setState(() {
-        _availableClients = clients;
-        _isLoadingClients = false;
-        // Attempt to auto-detect phone MAC by matching local network interface addresses
-        for (final c in clients) {
-          final normMac = _normalizeMac(c.macAddress);
-          final normIp = c.ipAddress.toLowerCase().trim();
-          if (localAddresses.contains(normIp) ||
-              localAddresses.any(
-                (a) => SelfDeviceGuard.normalizeMac(a) == normMac,
-              )) {
-            _phoneMac = normMac;
-            break;
+      final localAddressesFuture = SelfDeviceGuard.getLocalDeviceAddresses();
+      final clientsFuture = appState.fetchAggregatedClients(
+        onIncrementalUpdate: (incremental) {
+          if (!mounted) return;
+          if (incremental.isNotEmpty) {
+            setState(() {
+              _availableClients = incremental;
+              if (_selectedClient != null) {
+                final norm = _normalizeMac(_selectedClient!.macAddress);
+                for (final c in incremental) {
+                  if (_normalizeMac(c.macAddress) == norm) {
+                    _selectedClient = c;
+                    break;
+                  }
+                }
+              }
+              _isLoadingClients = false;
+            });
           }
-          if (c.isConnected && c.connectionType == ConnectionType.wireless) {
-            _phoneMac ??= normMac;
+        },
+      );
+      final results = await Future.wait([
+        localAddressesFuture,
+        clientsFuture,
+      ]);
+      if (!mounted) return;
+      final localAddresses = results[0] as List<String>;
+      final clients = results[1] as List<Client>;
+      final effectiveClients =
+          clients.isNotEmpty ? clients : _availableClients;
+      setState(() {
+        if (effectiveClients.isNotEmpty) {
+          _availableClients = effectiveClients;
+          if (_selectedClient != null) {
+            final norm = _normalizeMac(_selectedClient!.macAddress);
+            for (final c in effectiveClients) {
+              if (_normalizeMac(c.macAddress) == norm) {
+                _selectedClient = c;
+                break;
+              }
+            }
           }
         }
+        _isLoadingClients = false;
+        _detectPhoneMac(_availableClients, localAddresses);
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _isLoadingClients = false;
-      });
+      if (_availableClients.isEmpty) {
+        setState(() {
+          _isLoadingClients = false;
+        });
+      }
     }
   }
 

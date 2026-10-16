@@ -123,13 +123,51 @@ class RouterService {
     );
   }
 
+  /// Updates router details in memory immediately without persisting.
+  void updateRouterInMemory(model.Router router) {
+    final idx = _routers.indexWhere((r) => r.id == router.id);
+    if (idx != -1) {
+      _routers[idx] = router;
+    } else {
+      _routers.add(router);
+    }
+    if (_selectedRouter?.id == router.id || _selectedRouter == null) {
+      _selectedRouter = router;
+    }
+  }
+
+  /// Persists router credentials to secure storage.
+  /// First updates in memory to ensure consistent active state.
+  Future<void> persistRouterCredentials(model.Router router) async {
+    updateRouterInMemory(router);
+    if (isReviewerMode || isMockRouter(router)) {
+      return;
+    }
+    await _secureStorageService.saveRouters(
+      _routers.where((r) => !isMockRouter(r)).toList(),
+    );
+    await _secureStorageService.saveSelectedRouterId(router.id);
+    await _secureStorageService.saveCredentials(
+      ipAddress: router.ipAddress,
+      username: router.username,
+      password: router.password,
+      useHttps: router.useHttps,
+    );
+  }
+
   Future<void> clearAllRouters() async {
+    final knownRouters = List<model.Router>.from(_routers);
     _routers = [];
     _selectedRouter = null;
     if (!isReviewerMode) {
       await _secureStorageService.saveRouters([]);
       await _secureStorageService.saveSelectedRouterId(null);
       await _secureStorageService.clearCredentials();
+      for (final r in knownRouters) {
+        if (!isMockRouter(r)) {
+          await _secureStorageService.deleteAdGuardCredentials(r.id);
+        }
+      }
     }
   }
 
@@ -140,6 +178,7 @@ class RouterService {
       await _secureStorageService.saveRouters(
         _routers.where((r) => !isMockRouter(r)).toList(),
       );
+      await _secureStorageService.deleteAdGuardCredentials(id);
     }
 
     if (wasActive) {
@@ -186,11 +225,12 @@ class RouterService {
     return found;
   }
 
-  Future<void> updateRouter(model.Router router) async {
-    final idx = _routers.indexWhere((r) => r.id == router.id);
+  Future<void> updateRouter(model.Router router, {String? oldId}) async {
+    final targetId = oldId ?? router.id;
+    final idx = _routers.indexWhere((r) => r.id == targetId);
     if (idx != -1) {
       _routers[idx] = router;
-      if (_selectedRouter?.id == router.id) {
+      if (_selectedRouter?.id == targetId) {
         _selectedRouter = router;
       }
     } else {
@@ -203,6 +243,7 @@ class RouterService {
     }
 
     if (_selectedRouter?.id == router.id) {
+      await _secureStorageService.saveSelectedRouterId(router.id);
       await _secureStorageService.saveCredentials(
         ipAddress: router.ipAddress,
         username: router.username,
@@ -210,9 +251,7 @@ class RouterService {
         useHttps: router.useHttps,
       );
     }
-    await _secureStorageService.saveRouters(
-      _routers.where((r) => !isMockRouter(r)).toList(),
-    );
+    await _secureStorageService.updateRouter(router, oldId: oldId);
   }
 
   Future<void> updateSelectedRouterHostname(String hostname) async {

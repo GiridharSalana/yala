@@ -73,20 +73,34 @@ The codebase still includes iOS targets from upstream, but **this fork does not 
 
 ## Key Features
 
+| Feature | Highlights |
+|---|---|
+| **Dashboard & Real-Time Vitals** | Live CPU/RAM/Swap gauges, Rx/Tx throughput graph, interface status cards |
+| **Multi-Router Management** | Multiple router profiles, hardware-backed credential vault, resilient auth fallback |
+| **Connected Clients** | Unified DHCP + ARP + wireless view, OUI vendor lookup, static lease management, IPv6 |
+| **Wireless & Guest Wi-Fi** | 2.4/5/6 GHz multi-band, station metrics, MAC ACL, guest isolation, QR code sharing |
+| **AdGuard Home** | DNS sinkhole management, filter lists, top lists, topology card, multi-instance profiles |
+| **VPN & Connectivity** | WireGuard, OpenVPN, Tailscale, NextDNS, Cloudflare Tunnels |
+| **Firewall & Port Forwarding** | Zone rules, NAT, traffic rules, DNAT port forwarding |
+| **Package Manager** | Dual OPKG/APK engine, package search & install, LuCI app finder |
+| **SQM / QoS** | Bufferbloat control with Cake & FQ-CoDel, per-interface shaping |
+| **Bandwidth Monitor** | Per-client real-time Rx/Tx traffic rates |
+| **Parental Controls** | Device profiles, timed access windows, domain filtering |
+| **Services & Cron** | procd service control, crontab editor, DDNS management, SSH |
+| **Storage & Backup** | Flash/USB storage, config backup/restore, MTD dumper, sysupgrade |
+| **Network Diagnostics** | Router-side ping, traceroute, DNS lookup, ARP, conntrack, routes |
+| **Design & Localization** | Material 3 / Material You, tablet & foldable layouts, 9 languages |
+
+<details>
+<summary><b>Show Full Feature Details</b></summary>
+<br>
+
 ### Multi-Router Management & Secure Vault
 
 - **Multiple Router Profiles:** Save and switch between multiple OpenWrt routers with isolated credentials.
 - **Hardware-Backed Vault:** Router IP addresses, credentials, and session tokens are encrypted locally using native secure storage (`flutter_secure_storage` with Android KeyStore and iOS Keychain).
 - **Resilient Authentication Stack:** Automatic fallback chain supporting LuCI JSON-RPC (`/cgi-bin/luci/rpc/auth`), ubus JSON-RPC (`session.login`), and redirect-aware CGI form authentication (`sysauth` cookies and `stok` tokens).
 - **HTTPS & Custom Ports:** Connect over HTTP or HTTPS with custom port configurations and optional self-signed SSL certificate acceptance for local home networks.
-
-### Network Diagnostics Suite
-
-- **Router-Side Ping:** Send ICMP ECHO_REQUEST packets directly from the router to any target IP or hostname with packet count selection, IPv6 toggle, and live min/avg/max latency calculation.
-- **Visual Traceroute:** Trace network hops from the router with customizable hop limits and IPv6 support.
-- **DNS Lookup / NSLookup:** Test domain name resolution against default upstream resolvers or custom DNS servers.
-- **Routes, ARP & Conntrack:** Inspect kernel routing tables, active ARP neighbor caches, and live network connection tracking entries.
-- **One-Tap Diagnostic Export:** Generate and copy clean, formatted diagnostic summaries for easy troubleshooting and sharing.
 
 ### Dashboard & Real-Time Vitals
 
@@ -109,6 +123,38 @@ The codebase still includes iOS targets from upstream, but **this fork does not 
 - **Wi-Fi Access Control:** Enforce MAC address allowlists or denylists with direct router UCI synchronization.
 - **One-Click Guest Wi-Fi:** Provision guest Wi-Fi SSIDs with automatic AP client isolation (`ap_isolate=1`) and dedicated firewall zone isolation.
 - **Wi-Fi QR Code Sharing:** Generate on-screen QR codes to help family and visitors connect without typing passwords.
+
+### AdGuard Home DNS Sinkhole Management
+
+- **Network-Wide Ad & Tracker Blocking:** Manage AdGuard Home instances running locally on the router or hosted externally with full service lifecycle control.
+- **Multi-Instance Profiles:** Switch between multiple AdGuard Home instances (local router or external host) with isolated credential vaults per profile.
+- **DNS Topology Awareness:** Visual DNS pipeline card showing the flow from clients → AdGuard Home → upstream resolvers, with router DNS redirect status and one-tap auto-configure / revert for `/etc/config/dhcp`.
+- **Statistics & Top Lists:** Live query statistics, blocked request counters, top blocked domains, and top queried domains with per-client breakdown.
+- **Filtering Rules:** Manage blocklists and allowlists, add custom filtering rules and exceptions directly from the app.
+- **Protection Controls:** Toggle global protection on/off, pause blocking with a configurable timer, and inspect real-time blocking status.
+- **Process Telemetry (Local Only):** Monitor AdGuard Home memory, CPU usage, and uptime when running as a router-local `procd` service.
+
+### VPN & Connectivity
+
+- **WireGuard Tunnels:** Monitor interface status, endpoint details, last handshake times, peer-level data transfer counters, and allowed IP routes for all WireGuard interfaces.
+- **OpenVPN:** View active OpenVPN client and server instance status, connection state, and basic configuration details.
+- **Tailscale Mesh VPN:** Inspect Tailscale node status, assigned Tailscale IP, connected peers, and exit node configuration.
+- **NextDNS:** Monitor NextDNS integration status, profile linkage, and DNS-over-HTTPS/TLS configuration.
+- **Cloudflare Tunnels (cloudflared):** View `cloudflared` tunnel service status and connectivity state.
+- **Smart Sorting:** Active and configured VPN connections are automatically sorted and surfaced above unconfigured stubs.
+
+### Smart Queue Management (SQM / QoS)
+
+- **Bufferbloat Mitigation:** Configure and monitor SQM queue disciplines to eliminate bufferbloat and improve latency under load.
+- **Queue Disciplines:** Supports `cake` and `fq_codel` schedulers with link-layer adaptation options (`ethernet`, `atm`, `overhead`).
+- **Per-Interface QoS:** Apply SQM rules independently to WAN and internal interfaces with customizable download/upload shaping rates.
+- **Live Telemetry:** Real-time queue status polling with load indicators and applied configuration summaries.
+- **SQM Install Helper:** Detects whether `luci-app-sqm` and `sqm-scripts` are installed and guides one-tap installation via the package manager.
+
+### Client Bandwidth Monitor
+
+- **Per-Client Traffic Rates:** Real-time ingress and egress throughput per connected device, updated on configurable polling intervals.
+- **Live Traffic Dashboard:** See which devices are actively consuming bandwidth at a glance with live Rx/Tx speed indicators.
 
 ### Dual Package Managers (OPKG & APK)
 
@@ -137,6 +183,14 @@ The codebase still includes iOS targets from upstream, but **this fork does not 
 - **MTD Partition Dumper:** Save binary `mtdblock` partition images directly from `/proc/mtd`.
 - **System Maintenance:** Trigger remote system reboot or clean factory reset (`firstboot -y`).
 
+### Network Diagnostics Suite
+
+- **Router-Side Ping:** Send ICMP ECHO_REQUEST packets directly from the router to any target IP or hostname with packet count selection, IPv6 toggle, and live min/avg/max latency calculation.
+- **Visual Traceroute:** Trace network hops from the router with customizable hop limits and IPv6 support.
+- **DNS Lookup / NSLookup:** Test domain name resolution against default upstream resolvers or custom DNS servers.
+- **Routes, ARP & Conntrack:** Inspect kernel routing tables, active ARP neighbor caches, and live network connection tracking entries.
+- **One-Tap Diagnostic Export:** Generate and copy clean, formatted diagnostic summaries for easy troubleshooting and sharing.
+
 ### Safety Guardrails & Atomic Rollbacks
 
 - **Self-Device Guard:** Automatically detects the managing phone's local IP and MAC address to prevent accidental self-lockouts during access rule changes.
@@ -149,9 +203,12 @@ The codebase still includes iOS targets from upstream, but **this fork does not 
 - **Localization:** Available in English, German, Spanish, French, Indonesian, Portuguese, Brazilian Portuguese, Russian, and Chinese.
 - **Tablet & Foldable Optimization:** Responsive two-column and three-column layouts designed for tablets, foldables, and Chromebooks.
 
+</details>
+
 ---
 
 ## Screenshots
+
 
 <div align="center">
   <p><b>Explore full resolution screenshots of Yala features:</b></p>
@@ -330,11 +387,16 @@ The codebase still includes iOS targets from upstream, but **this fork does not 
 
 ## Repository Structure
 
+<details>
+<summary><b>Show Directory Layout</b></summary>
+<br>
+
 ```
 yala/
 ├── .github/                   # CI & Release workflow (validate + tag releases)
 ├── android/                   # Android native platform code & signing configs
 ├── assets/                    # Static app assets
+│   ├── fonts/                 # Bundled Geist & Geist Mono font families (FOSS)
 │   ├── icons/                 # App launcher icons
 │   ├── images/                # Brand graphics & logos
 │   ├── mock/                  # Mock diagnostic data for review modes
@@ -347,7 +409,23 @@ yala/
 │   ├── design/                # LuciTheme, breakpoints, responsive layouts & typography
 │   ├── l10n/                  # Multi-language localization resources
 │   ├── models/                # Data models (Client, Interface, Router, etc.)
-│   ├── modules/               # Feature modules (Diagnostics, Package Manager, Parental Controls, etc.)
+│   ├── modules/               # Feature modules
+│   │   ├── adguard_home/      # AdGuard Home DNS sinkhole management & telemetry
+│   │   ├── bandwidth_monitor/ # Per-client real-time traffic rate monitoring
+│   │   ├── charting/          # Real-time throughput charts & graph widgets
+│   │   ├── dhcp_dns/          # DHCP leases, static reservations & DNS settings
+│   │   ├── diagnostics/       # Ping, traceroute, DNS lookup, routes, ARP, conntrack
+│   │   ├── domain_blocking/   # Domain-level blocking rules & per-profile overrides
+│   │   ├── firewall_security/ # Firewall zones, rules, NAT & port forwarding
+│   │   ├── package_manager/   # OPKG/APK dual-engine package management
+│   │   ├── parental_controls/ # Device profiles, timed access & domain filtering
+│   │   ├── services_system/   # Init scripts, cron scheduler & Dynamic DNS
+│   │   ├── sqm/               # Smart Queue Management (SQM/QoS) bufferbloat control
+│   │   ├── storage_monitoring/# Root/overlay flash & external USB storage tracking
+│   │   ├── system_backup_upgrade/ # Config backup, sysupgrade & MTD partition tools
+│   │   ├── system_monitoring/ # CPU, RAM, swap gauges & system info
+│   │   ├── vpn_connectivity/  # WireGuard, OpenVPN, Tailscale, NextDNS & Cloudflare
+│   │   └── wireless_management/ # Wireless radios, stations, QR share & MAC ACL
 │   ├── screens/               # Core screens (Dashboard, Clients, Interfaces, Login, Settings, More)
 │   ├── services/              # API communication layer, JSON-RPC client, SSH service, secure vault
 │   ├── state/                 # State management engine (Riverpod controllers)
@@ -363,6 +441,8 @@ yala/
 ├── PRIVACY_POLICY.md          # Privacy policy disclosure
 └── README.md                  # Project documentation
 ```
+
+</details>
 
 ---
 
@@ -406,6 +486,10 @@ apk add rpcd-mod-luci rpcd-mod-iwinfo luci-mod-status
 ---
 
 ## Building & Running
+
+<details>
+<summary><b>Prerequisites, Quick Run & Release Package Instructions</b></summary>
+<br>
 
 ### Prerequisites
 
@@ -491,6 +575,8 @@ gh secret set ANDROID_KEY_PROPERTIES_BASE64 -R GiridharSalana/yala < <(base64 -i
 
 After a release finishes, download **`app-arm64-v8a-release.apk`** (most phones) or **`app-universal-release.apk`** from the release page.
 
+</details>
+
 ---
 
 ## Contributing
@@ -498,6 +584,24 @@ After a release finishes, download **`app-arm64-v8a-release.apk`** (most phones)
 This repository is a **personal fork**, not a second upstream. For changes to Yala features, please contribute to [nightcodex7/yala](https://github.com/nightcodex7/yala) (see their [CONTRIBUTING.md](https://github.com/nightcodex7/yala/blob/main/CONTRIBUTING.md)).
 
 Fork-specific notes (syncing upstream, local builds) are in [CONTRIBUTING.md](CONTRIBUTING.md). Open an [issue](https://github.com/GiridharSalana/yala/issues) here only for problems with **this fork’s** builds, package ID, or CI.
+
+---
+
+## Disclaimer & Trademarks
+
+> [!NOTE]
+> **YALA is an independent, community-developed open-source project. It is not affiliated with, endorsed by, or sponsored by any of the following organizations or projects:**
+>
+> - **OpenWrt Project** — YALA communicates with OpenWrt-based routers via their published LuCI JSON-RPC and ubus APIs. "OpenWrt" is a registered trademark of the OpenWrt Project.
+> - **AdGuard Ltd.** — The AdGuard Home module manages AdGuard Home instances via their published REST API. "AdGuard" and "AdGuard Home" are trademarks of AdGuard Ltd.
+> - **WireGuard LLC** — YALA reads WireGuard interface status from the kernel. "WireGuard" is a registered trademark of Jason A. Donenfeld.
+> - **Tailscale Inc.** — YALA reads Tailscale status output exposed through the router. "Tailscale" is a trademark of Tailscale Inc.
+> - **Cloudflare, Inc.** — YALA reads `cloudflared` tunnel service status. "Cloudflare" is a trademark of Cloudflare, Inc.
+> - **NextDNS Inc.** — YALA reads NextDNS integration status from the router. "NextDNS" is a trademark of NextDNS Inc.
+> - **Apple Inc.** — iOS, iPadOS, iPhone, iPad are trademarks of Apple Inc.
+> - **Google LLC** — Android, Google Play are trademarks of Google LLC.
+>
+> All product names, logos, brands, trademarks, and registered trademarks are the property of their respective owners and are used here for identification purposes only.
 
 ---
 

@@ -19,9 +19,48 @@ import 'package:yala/services/router_service.dart';
 import 'package:yala/services/secure_storage_service.dart';
 import 'package:yala/services/service_factory.dart';
 import 'package:yala/state/controllers/dashboard_controller.dart';
+import 'package:yala/services/operation_queue.dart';
 import 'package:yala/utils/http_client_manager.dart';
 import 'package:yala/utils/logger.dart';
 import 'package:yala/utils/os_platform_integration.dart';
+
+/// Progress states during router password modification.
+enum ChangePasswordStatus {
+  idle,
+  validating,
+  requesting,
+  reauthenticating,
+  verifying,
+  savingStorage,
+  success,
+  storageWarning,
+  ambiguous,
+  failed,
+}
+
+/// Result returned from [SessionController.changeRouterPassword].
+class ChangePasswordResult {
+  final ChangePasswordStatus status;
+  final String? errorMessage;
+  final bool isSuccess;
+
+  const ChangePasswordResult.success()
+      : status = ChangePasswordStatus.success,
+        errorMessage = null,
+        isSuccess = true;
+
+  const ChangePasswordResult.storageWarning(this.errorMessage)
+      : status = ChangePasswordStatus.storageWarning,
+        isSuccess = true;
+
+  const ChangePasswordResult.ambiguous(this.errorMessage)
+      : status = ChangePasswordStatus.ambiguous,
+        isSuccess = false;
+
+  const ChangePasswordResult.failed(this.errorMessage)
+      : status = ChangePasswordStatus.failed,
+        isSuccess = false;
+}
 
 /// Encapsulates authentication session lifecycle, router profile selection,
 /// preference storage, theme persistence, and reviewer mode configuration.
@@ -183,7 +222,7 @@ class SessionController {
     _notifyListeners();
   }
 
-  Future<void> loadThemeMode() async {
+  Future<void> loadThemeMode({bool notify = true}) async {
     final stored = await _secureStorageService.readValue(_themeModeKey);
     if (stored == 'dark') {
       _themeMode = ThemeMode.dark;
@@ -192,7 +231,9 @@ class SessionController {
     } else if (stored == 'system') {
       _themeMode = ThemeMode.system;
     }
-    _notifyListeners();
+    if (notify) {
+      _notifyListeners();
+    }
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -201,7 +242,7 @@ class SessionController {
     _notifyListeners();
   }
 
-  Future<void> loadDynamicTheme() async {
+  Future<void> loadDynamicTheme({bool notify = true}) async {
     final storedPalette = await _secureStorageService.readValue(
       _themePaletteKey,
     );
@@ -226,7 +267,9 @@ class SessionController {
         _themePalette = AppThemePalette.amber;
       }
     }
-    _notifyListeners();
+    if (notify) {
+      _notifyListeners();
+    }
   }
 
   Future<void> setThemePalette(AppThemePalette palette) async {
@@ -249,7 +292,7 @@ class SessionController {
     }
   }
 
-  Future<void> loadLocale() async {
+  Future<void> loadLocale({bool notify = true}) async {
     final stored = await _secureStorageService.readValue(_localeKey);
     if (stored == null || stored.isEmpty || stored == 'system') {
       _locale = null;
@@ -259,7 +302,9 @@ class SessionController {
     } else {
       _locale = Locale(stored);
     }
-    _notifyListeners();
+    if (notify) {
+      _notifyListeners();
+    }
   }
 
   Future<void> setLocale(Locale? locale) async {
@@ -419,9 +464,11 @@ class SessionController {
     }
   }
 
-  Future<void> loadRouters() async {
+  Future<void> loadRouters({bool notify = true}) async {
     await _routerService?.loadRouters();
-    _notifyListeners();
+    if (notify) {
+      _notifyListeners();
+    }
   }
 
   Future<void> addRouter(model.Router router) async {
@@ -524,8 +571,8 @@ class SessionController {
     }
   }
 
-  Future<void> updateRouter(model.Router router) async {
-    await _routerService?.updateRouter(router);
+  Future<void> updateRouter(model.Router router, {String? oldId}) async {
+    await _routerService?.updateRouter(router, oldId: oldId);
     _notifyListeners();
   }
 
@@ -813,9 +860,234 @@ class SessionController {
       return;
     }
 
+    // Flush stale HTTP client sockets from memory on app resume to ensure immediate fresh TCP connections
+    _httpClientManager.disposeAll(forceCloseAdapter: false);
+
     // Refresh dashboard data upon resuming from background if authenticated
     if (selectedRouter != null && _authService?.isAuthenticated == true) {
       unawaited(_fetchDashboardData());
+    }
+  }
+
+  /// Changes the active router root/admin password following the 10-state transactional flow.
+  Future<ChangePasswordResult> changeRouterPassword({
+    required String currentPassword,
+    required String newPassword,
+    void Function(ChangePasswordStatus status)? onProgress,
+  }) async {
+    final router = selectedRouter;
+    if (router == null) {
+      return const ChangePasswordResult.failed('No router selected');
+    }
+
+    if (currentPassword != router.password) {
+      return const ChangePasswordResult.failed(
+        'Current password does not match saved password',
+      );
+    }
+
+    if (newPassword.isEmpty) {
+      return const ChangePasswordResult.failed(
+        'New password cannot be empty',
+      );
+    }
+
+    if (newPassword == currentPassword) {
+      return const ChangePasswordResult.failed(
+        'New password must be different from current password',
+      );
+    }
+
+    final apiService = _apiService;
+    final authService = _authService;
+    if (apiService == null || authService == null) {
+      return const ChangePasswordResult.failed(
+        'Authentication service is unavailable',
+      );
+    }
+
+    final routerId = router.id;
+
+    // Acquire router-exclusive '*' queue lock
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: '*',
+      timeout: const Duration(seconds: 60),
+      action: () async {
+        // State 4: Advance auth epoch & engage renewal barrier
+        authService.startPasswordTransition();
+
+        try {
+          // State 5: Execute password change RPC
+          onProgress?.call(ChangePasswordStatus.requesting);
+          final oldSysauth = authService.sysauth ?? '';
+          final rpcRes = await apiService.setRouterPassword(
+            router.ipAddress,
+            oldSysauth,
+            router.useHttps,
+            username: router.username,
+            newPassword: newPassword,
+          );
+
+          if (rpcRes.isRejected) {
+            authService.cancelPasswordTransition();
+            return ChangePasswordResult.failed(
+              rpcRes.message ?? 'Password change was rejected by router',
+            );
+          }
+
+          // State 6: Destroy old session (best effort)
+          onProgress?.call(ChangePasswordStatus.reauthenticating);
+          try {
+            await apiService.call(
+              router.ipAddress,
+              oldSysauth,
+              router.useHttps,
+              object: 'session',
+              method: 'destroy',
+            );
+          } catch (_) {}
+          authService.updateSessionToken(null);
+
+          // State 7: Reauthenticate with new password
+          final newAuthResult = await apiService.authenticate(
+            router.ipAddress,
+            router.username,
+            newPassword,
+            router.useHttps,
+          );
+
+          if (!newAuthResult.isSuccess || newAuthResult.token == null) {
+            // New password authentication failed. Disambiguate by testing old password.
+            final oldAuthResult = await apiService.authenticate(
+              router.ipAddress,
+              router.username,
+              currentPassword,
+              router.useHttps,
+            );
+
+            if (oldAuthResult.isSuccess && oldAuthResult.token != null) {
+              // Old password still works: change was rejected router-side
+              authService.completePasswordTransition(
+                newToken: oldAuthResult.token!,
+                newPassword: currentPassword,
+                ipAddress: router.ipAddress,
+                useHttps: oldAuthResult.actualUseHttps,
+              );
+              return const ChangePasswordResult.failed(
+                'Password change was not applied by router',
+              );
+            } else {
+              // Both failed or network dropped: ambiguous recovery
+              authService.cancelPasswordTransition();
+              return const ChangePasswordResult.ambiguous(
+                'Unable to verify password change. Credentials unchanged.',
+              );
+            }
+          }
+
+          // State 8: Harmless RPC verification (system.board)
+          onProgress?.call(ChangePasswordStatus.verifying);
+          final newToken = newAuthResult.token!;
+          bool boardVerified = false;
+          try {
+            final boardRes = await apiService.call(
+              router.ipAddress,
+              newToken,
+              newAuthResult.actualUseHttps,
+              object: 'system',
+              method: 'board',
+            );
+            boardVerified = (boardRes is List &&
+                    boardRes.isNotEmpty &&
+                    boardRes[0] == 0) ||
+                (boardRes is Map && boardRes['result'] != null);
+          } catch (_) {
+            boardVerified = false;
+          }
+
+          if (!boardVerified) {
+            // Verification with new token failed. Disambiguate with old password.
+            final oldAuthResult = await apiService.authenticate(
+              router.ipAddress,
+              router.username,
+              currentPassword,
+              router.useHttps,
+            );
+
+            if (oldAuthResult.isSuccess && oldAuthResult.token != null) {
+              authService.completePasswordTransition(
+                newToken: oldAuthResult.token!,
+                newPassword: currentPassword,
+                ipAddress: router.ipAddress,
+                useHttps: oldAuthResult.actualUseHttps,
+              );
+              return const ChangePasswordResult.failed(
+                'Password change verification failed',
+              );
+            } else {
+              authService.cancelPasswordTransition();
+              return const ChangePasswordResult.ambiguous(
+                'Password change verification inconclusive',
+              );
+            }
+          }
+
+          // State 9: Update secure storage (dual-write)
+          onProgress?.call(ChangePasswordStatus.savingStorage);
+          final updatedRouter = router.copyWith(
+            password: newPassword,
+            useHttps: newAuthResult.actualUseHttps,
+          );
+
+          // Update in-memory state first so any follow-up actions use new credentials
+          _routerService?.updateRouterInMemory(updatedRouter);
+          authService.completePasswordTransition(
+            newToken: newToken,
+            newPassword: newPassword,
+            ipAddress: router.ipAddress,
+            useHttps: newAuthResult.actualUseHttps,
+          );
+
+          bool storageSaved = false;
+          try {
+            await _routerService?.persistRouterCredentials(updatedRouter);
+            storageSaved = true;
+          } catch (storageErr) {
+            Logger.error('Failed to persist router credentials: $storageErr');
+          }
+
+          // State 10: Complete transition
+          _notifyListeners();
+
+          if (!storageSaved) {
+            return const ChangePasswordResult.storageWarning(
+              'Password changed on router, but saving to device secure storage failed.',
+            );
+          }
+
+          return const ChangePasswordResult.success();
+        } catch (e, stack) {
+          Logger.exception('Unexpected error during password change', e, stack);
+          authService.cancelPasswordTransition();
+          return ChangePasswordResult.failed(
+            'Unexpected error occurred: ${e.toString()}',
+          );
+        }
+      },
+    );
+  }
+
+  /// Retries persisting newly set router credentials to secure storage
+  /// without re-invoking router password change RPC.
+  Future<bool> retrySaveRouterPassword(model.Router router) async {
+    try {
+      await _routerService?.persistRouterCredentials(router);
+      _notifyListeners();
+      return true;
+    } catch (e) {
+      Logger.error('retrySaveRouterPassword failed: $e');
+      return false;
     }
   }
 }

@@ -2,6 +2,7 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:yala/state/app_state.dart';
 import 'package:yala/widgets/luci_toast.dart';
@@ -31,8 +32,7 @@ class LuciGuardrail {
         'You have staged high-risk wireless configuration changes counting down '
             '(${remaining}s remaining).\n\nWhat would you like to do before leaving this screen?';
 
-    await OsPlatformIntegration.triggerHaptic(OsHapticType.heavy);
-    if (!context.mounted) return false;
+    unawaited(OsPlatformIntegration.triggerHaptic(OsHapticType.heavy));
 
     final action = await showDialog<String>(
       context: context,
@@ -89,9 +89,7 @@ class LuciGuardrail {
     bool barrierDismissible = true,
   }) async {
     if (!context.mounted) return false;
-
-    await OsPlatformIntegration.triggerHaptic(hapticType);
-    if (!context.mounted) return false;
+    unawaited(OsPlatformIntegration.triggerHaptic(hapticType));
 
     final theme = Theme.of(context);
     final effectiveIconColor =
@@ -227,8 +225,7 @@ class LuciGuardrail {
   }) async {
     if (!context.mounted) return null;
 
-    await OsPlatformIntegration.triggerHaptic(OsHapticType.medium);
-    if (!context.mounted) return null;
+    unawaited(OsPlatformIntegration.triggerHaptic(OsHapticType.medium));
 
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
@@ -272,5 +269,138 @@ class LuciGuardrail {
         ],
       ),
     );
+  }
+
+  /// Displays a standardized modal confirmation for high-risk/critical operations
+  /// (e.g. self-lockout risk, credential change, firewall disruption, network restructuring).
+  ///
+  /// If [requireAcknowledgement] is true, an explicit confirmation checkbox must be checked
+  /// by the user before the confirm button becomes enabled.
+  static Future<bool> confirmCriticalOperation(
+    BuildContext context, {
+    required String title,
+    required String description,
+    List<String>? hazardDetails,
+    String confirmLabel = 'Confirm & Proceed',
+    String cancelLabel = 'Cancel',
+    String acknowledgementLabel = 'I understand the risks and want to proceed',
+    bool isDestructive = true,
+    bool requireAcknowledgement = false,
+    IconData icon = Icons.warning_rounded,
+    Color? iconColor,
+    OsHapticType hapticType = OsHapticType.heavy,
+  }) async {
+    if (!context.mounted) return false;
+
+    unawaited(OsPlatformIntegration.triggerHaptic(hapticType));
+    if (!context.mounted) return false;
+
+    final theme = Theme.of(context);
+    final effectiveIconColor = iconColor ??
+        (isDestructive ? theme.colorScheme.error : theme.colorScheme.primary);
+
+    bool acknowledged = !requireAcknowledgement;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          icon: Icon(icon, color: effectiveIconColor, size: 36),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(description, style: const TextStyle(fontSize: 13.5)),
+                if (hazardDetails != null && hazardDetails.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  ...hazardDetails.map(
+                    (detail) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '• ',
+                            style: TextStyle(
+                              color: effectiveIconColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              detail,
+                              style: const TextStyle(fontSize: 13.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (requireAcknowledgement) ...[
+                  const SizedBox(height: 12),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        acknowledged = !acknowledged;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        children: [
+                          Checkbox(
+                            value: acknowledged,
+                            onChanged: (val) {
+                              setState(() {
+                                acknowledged = val ?? false;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              acknowledgementLabel,
+                              style: const TextStyle(fontSize: 12.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
+          actions: [
+            OutlinedButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(cancelLabel),
+            ),
+            FilledButton(
+              style: isDestructive
+                  ? FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.error,
+                      foregroundColor: theme.colorScheme.onError,
+                    )
+                  : null,
+              onPressed: acknowledged ? () => Navigator.pop(ctx, true) : null,
+              child: Text(confirmLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return result ?? false;
   }
 }

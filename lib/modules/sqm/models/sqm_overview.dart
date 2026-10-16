@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import 'sqm_queue.dart';
+import 'sqm_telemetry.dart';
 
 /// Aggregated overview of Smart Queue Management state on the connected router.
 class SqmOverview {
@@ -342,6 +343,20 @@ class SqmOverview {
       primaryWanInterface: detectedWan,
       isFlowOffloadingEnabled: flowOffload,
       isHardwareFlowOffloadingEnabled: hwFlowOffload,
+    );
+  }
+
+  /// Creates a SqmOverview bridge representation from immutable [SqmState].
+  factory SqmOverview.fromSqmState(SqmState state) {
+    return SqmOverview(
+      isInstalled: state.isInstalled,
+      isServiceRunning: state.isServiceRunning,
+      isServiceEnabled: state.isServiceEnabled,
+      queues: state.queues,
+      networkInterfaces: state.networkInterfaces,
+      primaryWanInterface: state.primaryWanInterface,
+      isFlowOffloadingEnabled: state.hasSoftwareFlowOffload,
+      isHardwareFlowOffloadingEnabled: state.hasHardwareFlowOffload,
     );
   }
 }

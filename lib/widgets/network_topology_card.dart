@@ -388,6 +388,7 @@ class NetworkTopologyCard extends StatelessWidget {
 
     final isUp = port.isUp;
     final isWan = port.isWan;
+    final isCpu = port.isCpu;
     final isTagged = port.isTagged;
 
     final Color badgeColor;
@@ -395,82 +396,100 @@ class NetworkTopologyCard extends StatelessWidget {
       badgeColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.45);
     } else if (isWan) {
       badgeColor = Colors.amber.shade700;
+    } else if (isCpu) {
+      badgeColor = colorScheme.tertiary;
     } else if (isTagged) {
       badgeColor = colorScheme.primary;
     } else {
       badgeColor = colorScheme.secondary;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: !isUp
-            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
-            : badgeColor.withValues(alpha: 0.12),
-        border: Border.all(
+    final IconData portIcon;
+    if (isWan) {
+      portIcon = Icons.public;
+    } else if (isCpu) {
+      portIcon = Icons.memory;
+    } else {
+      portIcon = Icons.settings_ethernet;
+    }
+
+    final tooltipMessage = isCpu
+        ? 'Internal CPU / SoC Interconnect'
+        : (isWan ? 'WAN Interface' : 'Switch Port');
+
+    return Tooltip(
+      message: tooltipMessage,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
           color: !isUp
-              ? colorScheme.outlineVariant.withValues(alpha: 0.4)
-              : badgeColor.withValues(alpha: 0.45),
-        ),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isWan ? Icons.public : Icons.settings_ethernet,
-            size: 14,
-            color: badgeColor,
+              ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.2)
+              : badgeColor.withValues(alpha: 0.12),
+          border: Border.all(
+            color: !isUp
+                ? colorScheme.outlineVariant.withValues(alpha: 0.4)
+                : badgeColor.withValues(alpha: 0.45),
           ),
-          const SizedBox(width: 5),
-          Text(
-            port.name,
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: isUp ? FontWeight.bold : FontWeight.normal,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              portIcon,
+              size: 14,
               color: badgeColor,
             ),
-          ),
-          if (port.linkSpeed != null && isUp) ...[
-            const SizedBox(width: 4),
+            const SizedBox(width: 5),
             Text(
-              '(${port.linkSpeed})',
+              port.name,
               style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: badgeColor.withValues(alpha: 0.85),
-              ),
-            ),
-          ],
-          if (!isUp) ...[
-            const SizedBox(width: 4),
-            Text(
-              '(Down)',
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontSize: 10,
-                fontStyle: FontStyle.italic,
+                fontWeight: isUp ? FontWeight.bold : FontWeight.normal,
                 color: badgeColor,
               ),
             ),
-          ],
-          if (isTagged) ...[
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-              decoration: BoxDecoration(
-                color: badgeColor,
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: Text(
-                'T',
-                style: TextStyle(
-                  color: isUp ? Colors.white : colorScheme.surface,
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
+            if (port.linkSpeed != null && isUp) ...[
+              const SizedBox(width: 4),
+              Text(
+                '(${port.linkSpeed})',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: badgeColor.withValues(alpha: 0.85),
                 ),
               ),
-            ),
+            ],
+            if (!isUp) ...[
+              const SizedBox(width: 4),
+              Text(
+                '(Down)',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontSize: 10,
+                  fontStyle: FontStyle.italic,
+                  color: badgeColor,
+                ),
+              ),
+            ],
+            if (isTagged) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text(
+                  'T',
+                  style: TextStyle(
+                    color: isUp ? Colors.white : colorScheme.surface,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

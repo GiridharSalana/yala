@@ -21,6 +21,7 @@ import 'package:yala/widgets/luci_guardrail.dart';
 import '../widgets/wireless_rollback_banner.dart';
 import 'wifi_access_control_screen.dart';
 import 'guest_wifi_management_screen.dart';
+import 'package:yala/utils/logger.dart';
 import 'package:yala/l10n/app_localizations.dart';
 
 class WirelessManagementScreen extends ConsumerStatefulWidget {
@@ -44,6 +45,7 @@ class _WirelessManagementScreenState
   Timer? _refreshTimer;
   bool _isStationsExpanded = false;
   bool _migrationChecked = false;
+  final Set<String> _pendingSsidToggles = {};
   Widget? _lastRenderedWidget;
   String? _lastSelectedRouterId;
 
@@ -152,10 +154,16 @@ class _WirelessManagementScreenState
       return _lastRenderedWidget!;
     }
 
-    final overview = WirelessOverview.fromDashboardData(
-      appState.dashboardData,
-      isReviewerMode: appState.reviewerModeEnabled,
-    );
+    WirelessOverview overview;
+    try {
+      overview = WirelessOverview.fromDashboardData(
+        appState.dashboardData,
+        isReviewerMode: appState.reviewerModeEnabled,
+      );
+    } catch (e, stack) {
+      Logger.exception('Error parsing WirelessOverview in build', e, stack);
+      overview = const WirelessOverview(radios: []);
+    }
 
     int totalStationCount = 0;
     for (final radio in overview.radios) {
@@ -452,7 +460,10 @@ class _WirelessManagementScreenState
         .toList();
 
     final l10n = AppLocalizations.of(context);
-    final minimalSummary = radio.isUp
+    final isRadioEnabled = !radio.isDisabled;
+    final isRadioActive = isRadioEnabled && radio.isUp;
+
+    final minimalSummary = isRadioActive
         ? (l10n != null
               ? l10n.wirelessRadioSummary(
                   radio.bandLabel,
@@ -507,17 +518,17 @@ class _WirelessManagementScreenState
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: radio.isUp
+                  color: isRadioActive
                       ? LuciStatusColors.connected.withValues(alpha: 0.15)
                       : Colors.red.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  radio.isUp
+                  isRadioActive
                       ? (l10n?.statusActive ?? 'ACTIVE')
                       : (l10n?.statusDisabled ?? 'DISABLED'),
                   style: TextStyle(
-                    color: radio.isUp ? LuciStatusColors.connected : Colors.red,
+                    color: isRadioActive ? LuciStatusColors.connected : Colors.red,
                     fontWeight: FontWeight.bold,
                     fontSize: 10,
                   ),
@@ -649,6 +660,8 @@ class _WirelessManagementScreenState
                 (iface) => WirelessInterfaceCard(
                   radio: radio,
                   interface: iface,
+                  isRadioEnabled: isRadioEnabled,
+                  isPending: _pendingSsidToggles.contains(iface.sectionName),
                   onToggleEnabled: (val) =>
                       _handleToggleSsid(context, radio, iface, val, appState),
                 ),
@@ -698,6 +711,8 @@ class _WirelessManagementScreenState
                 (iface) => WirelessInterfaceCard(
                   radio: radio,
                   interface: iface,
+                  isRadioEnabled: isRadioEnabled,
+                  isPending: _pendingSsidToggles.contains(iface.sectionName),
                   onToggleEnabled: (val) =>
                       _handleToggleSsid(context, radio, iface, val, appState),
                 ),
@@ -776,47 +791,9 @@ class _WirelessManagementScreenState
       }
     }
 
+
+
     final l10n = AppLocalizations.of(context);
-    // Guard rail: Prevent disabling the last enabled SSID on a radio (would lose all wireless access)
-    if (!enable) {
-      final enabledInterfacesOnRadio = radio.interfaces
-          .where((i) => i.mode.toLowerCase() == 'ap' && i.isEnabled)
-          .toList();
-
-      if (enabledInterfacesOnRadio.length == 1 &&
-          enabledInterfacesOnRadio.first.sectionName == iface.sectionName) {
-        if (!context.mounted) return;
-        await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            actionsOverflowButtonSpacing: 8,
-            actionsOverflowDirection: VerticalDirection.down,
-            icon: const Icon(Icons.block_rounded, color: Colors.red, size: 36),
-            title: Text(
-              l10n?.cannotDisableLastSsidTitle ?? 'Cannot Disable Last SSID',
-            ),
-            content: SingleChildScrollView(
-              child: Text(
-                l10n?.cannotDisableLastSsidMessage(
-                      iface.ssid,
-                      radio.name,
-                      radio.bandLabel,
-                    ) ??
-                    'Disabling "${iface.ssid}" would leave no active wireless networks on ${radio.name} (${radio.bandLabel}). You would lose all wireless connectivity. Please enable another SSID first or keep this one enabled.',
-              ),
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(l10n?.btnOk ?? 'OK'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-    }
-
     if (!enable && isConnectedToThisSsid) {
       final proceed = await showDialog<bool>(
         context: context,
@@ -896,6 +873,10 @@ class _WirelessManagementScreenState
     }
 
     final actionKey = 'toggle_ssid_${iface.sectionName}';
+    setState(() {
+      _pendingSsidToggles.add(iface.sectionName);
+    });
+
     if (!context.mounted) return;
     context.showToastLoading(
       enable
@@ -942,8 +923,18 @@ class _WirelessManagementScreenState
           actionKey: actionKey,
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _pendingSsidToggles.remove(iface.sectionName);
+        });
+      } else {
+        _pendingSsidToggles.remove(iface.sectionName);
+      }
     }
   }
+
+
 
   Widget _buildStationsList(
     BuildContext context,

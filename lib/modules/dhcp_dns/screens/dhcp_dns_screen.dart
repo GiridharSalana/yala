@@ -8,7 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yala/main.dart';
 import 'package:yala/widgets/add_static_lease_dialog.dart';
 import 'package:yala/models/client.dart';
+import 'package:yala/modules/adguard_home/controllers/adguard_controller.dart';
 import '../models/dhcp_dns_info.dart';
+import '../widgets/adguard_dns_status_card.dart';
 
 import 'package:yala/widgets/luci_collapsible_card.dart';
 import 'package:yala/widgets/luci_toast.dart';
@@ -27,6 +29,11 @@ class DhcpDnsScreen extends ConsumerWidget {
     final isReviewerMode = ref.watch(
       appStateProvider.select((s) => s.reviewerModeEnabled),
     );
+    final selectedRouter = ref.watch(
+      appStateProvider.select((s) => s.selectedRouter),
+    );
+    final routerId = selectedRouter?.id ??
+        (isReviewerMode ? 'reviewer-mock-router' : '');
     final l10n = AppLocalizations.of(context);
     final dashboardData = Map<String, dynamic>.from(dashboardDataRaw ?? {});
     dashboardData['clients'] = clients
@@ -52,12 +59,22 @@ class DhcpDnsScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           final state = ref.read(appStateProvider);
-          await state.fetchDashboardData();
-          await state.fetchClientsForSelectedRouter();
+          final futures = <Future>[
+            state.fetchDashboardData(),
+            state.fetchClientsForSelectedRouter(),
+          ];
+          if (routerId.isNotEmpty) {
+            futures.add(
+              ref.read(adguardControllerProvider(routerId).notifier).refresh(),
+            );
+          }
+          await Future.wait(futures);
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
           children: [
+            if (routerId.isNotEmpty)
+              AdGuardDnsStatusCard(routerId: routerId),
             _buildSectionHeader(
               context,
               l10n?.dhcpDnsForwardersSectionTitle ??

@@ -2,6 +2,7 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:yala/screens/dashboard_screen.dart';
 import 'package:yala/screens/clients_screen.dart';
@@ -305,16 +306,38 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final showConnectivityBanner =
         connectionStatus != RouterConnectionStatus.connected && !isRebooting;
 
-    final contentWithBanner = Column(
+    final topOffset = MediaQuery.paddingOf(context).top + kToolbarHeight;
+
+    final contentWithBanner = Stack(
       children: [
-        AnimatedSize(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          child: showConnectivityBanner
-              ? _buildConnectivityBanner(context, connectionStatus)
-              : const SizedBox.shrink(),
+        Positioned.fill(child: body),
+        Positioned(
+          top: topOffset,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            ignoring: !showConnectivityBanner,
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              offset: showConnectivityBanner
+                  ? Offset.zero
+                  : const Offset(0, -0.6),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                opacity: showConnectivityBanner ? 1.0 : 0.0,
+                child: showConnectivityBanner
+                    ? _buildConnectivityBanner(
+                        context,
+                        connectionStatus,
+                        isDynamic: appState.useDynamicTheme,
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ),
         ),
-        Expanded(child: body),
       ],
     );
 
@@ -962,72 +985,163 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
   Widget _buildConnectivityBanner(
     BuildContext context,
-    RouterConnectionStatus status,
-  ) {
+    RouterConnectionStatus status, {
+    bool isDynamic = false,
+  }) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final isReconnecting = status == RouterConnectionStatus.reconnecting;
-    final bgColor = isReconnecting
-        ? Colors.amber.shade900.withValues(alpha: 0.9)
-        : theme.colorScheme.error.withValues(alpha: 0.9);
-    final icon = isReconnecting
-        ? Icons.sync_problem_rounded
-        : Icons.wifi_off_rounded;
+
+    final Color bgColor;
+    final Color borderColor;
+    final Color textColor;
+    final Color accentColor;
+
+    if (isReconnecting) {
+      if (isDynamic) {
+        // Dynamic Theme: follow dynamic primary branding (e.g. Material You Blue)
+        bgColor = colorScheme.primaryContainer.withValues(
+          alpha: isDark ? 0.90 : 0.95,
+        );
+        borderColor = colorScheme.primary.withValues(alpha: 0.35);
+        textColor = colorScheme.onPrimaryContainer;
+        accentColor = colorScheme.primary;
+      } else {
+        // Amber Theme: follow signature warm amber tertiary branding
+        bgColor = colorScheme.tertiaryContainer.withValues(
+          alpha: isDark ? 0.90 : 0.95,
+        );
+        borderColor = colorScheme.tertiary.withValues(alpha: 0.35);
+        textColor = colorScheme.onTertiaryContainer;
+        accentColor = colorScheme.tertiary;
+      }
+    } else {
+      // Disconnected: Error state
+      bgColor = isDark && isDynamic
+          ? Color.alphaBlend(
+              colorScheme.error.withValues(alpha: 0.20),
+              colorScheme.surfaceContainerHigh,
+            ).withValues(alpha: 0.95)
+          : colorScheme.errorContainer.withValues(
+              alpha: isDark ? 0.90 : 0.95,
+            );
+      borderColor = colorScheme.error.withValues(alpha: 0.35);
+      textColor = colorScheme.onErrorContainer;
+      accentColor = colorScheme.error;
+    }
+
     final label = isReconnecting
         ? 'Reconnecting to router...'
         : 'Router disconnected';
 
-    return Material(
-      color: bgColor,
-      elevation: 2,
-      child: SafeArea(
-        top: false,
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-          child: Row(
-            children: [
-              Icon(icon, size: 16, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20.0),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 460),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14.0,
+                vertical: 7.0,
               ),
-              if (!isReconnecting)
-                InkWell(
-                  onTap: () {
-                    ref.read(appStateProvider).fetchDashboardData(force: true);
-                  },
-                  borderRadius: BorderRadius.circular(4),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 8.0,
-                      vertical: 2.0,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(20.0),
+                border: Border.all(color: borderColor, width: 1.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadow.withValues(alpha: 0.10),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isReconnecting
+                        ? Icons.sync_rounded
+                        : Icons.wifi_off_rounded,
+                    size: 16,
+                    color: accentColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.1,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.refresh, size: 14, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text(
-                          'Retry',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
+                  ),
+                  if (!isReconnecting) ...[
+                    const SizedBox(width: 10),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          if (ActionRateLimiter.isRateLimited(
+                            'retry_connection',
+                            cooldown: const Duration(seconds: 1),
+                          )) {
+                            return;
+                          }
+                          ref
+                              .read(appStateProvider)
+                              .fetchDashboardData(force: true);
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9.0,
+                            vertical: 3.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface.withValues(
+                              alpha: isDark ? 0.35 : 0.85,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: colorScheme.outline.withValues(
+                                alpha: 0.30,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.refresh_rounded,
+                                size: 13,
+                                color: textColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Retry',
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-            ],
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),

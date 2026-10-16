@@ -3,7 +3,13 @@
 *.log
 *.pyc
 *.swp
+*~
 .DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 .atom/
 .build/
 .buildlog/
@@ -16,16 +22,14 @@ AGENTS.md
 .agents
 *.prompt
 
-# IntelliJ related
+# IDEs and Editors
 *.iml
 *.ipr
 *.iws
 .idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
 .vscode/
+.fleet/
+.zed/
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -33,9 +37,12 @@ AGENTS.md
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
-/build/
+build/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
 
 # Symbolication related
 app.*.symbols
@@ -92,8 +99,8 @@ tool/
 
 # Environment files
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
 
 # Generated files
 *.g.dart
@@ -114,10 +121,34 @@ lib/l10n/app_localizations_*.dart
 google-services.json
 GoogleService-Info.plist
 
-# Keystore files
+# Keystore & Credential files
 *.keystore
 *.jks
 .private/
+.test_credentials.json
+test_credentials.json
+test_credentials.local.json
+credentials.json
+secrets.json
+*.credentials.json
+test/config/local_credentials.json
+!test_credentials.example.json
+
+# Router Exports & Backups (contain passwords & connection profiles)
+yala_router_profiles_*.json
+*router_profiles*.json
+*router_backup*.json
+*routers_backup*.json
+
+# Private Keys & Certificates
+*.pem
+*.key
+*.crt
+*.der
+*.p8
+*.p12
+*.cer
+*.mobileprovision
 
 # Gradle files
 .gradle/

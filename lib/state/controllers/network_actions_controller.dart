@@ -150,6 +150,16 @@ class NetworkActionsController {
     _notifyListeners();
   }
 
+  void setInternetPausedLocally(String mac, bool paused) {
+    final macUpper = mac.toUpperCase().replaceAll('-', ':');
+    if (paused) {
+      _pausedInternetMacs.add(macUpper);
+    } else {
+      _pausedInternetMacs.remove(macUpper);
+    }
+    _notifyListeners();
+  }
+
   // ── Private Accessors ────────────────────────────────────────────
   String? get _ip => _routerServiceRef()?.selectedRouter?.ipAddress;
   String? get _sysauth => _authServiceRef()?.sysauth;
@@ -919,6 +929,7 @@ heal_dns() {
     required String encryption,
     required String key,
     required String network,
+    Map<String, String>? extraOptions,
     BuildContext? context,
   }) async {
     bool success = true;
@@ -936,6 +947,7 @@ heal_dns() {
         encryption: encryption,
         key: key,
         network: network,
+        extraOptions: extraOptions,
         context: (context != null && context.mounted) ? context : null,
       );
     }
@@ -962,6 +974,34 @@ heal_dns() {
         sysauth,
         _useHttps,
         sectionName: sectionName,
+        context: (context != null && context.mounted) ? context : null,
+      );
+    }
+
+    if (success) {
+      startAccessControlAutoRevertTimer(initialSeconds: 25);
+    }
+    unawaited(_refreshDashboard());
+    return success;
+  }
+
+  Future<bool> updateInterfaceDhcpConfig({
+    required String interface,
+    required Map<String, dynamic> values,
+    BuildContext? context,
+  }) async {
+    bool success = true;
+    if (!_isReviewerMode) {
+      final ip = _ip;
+      final sysauth = _sysauth;
+      if (ip == null || sysauth == null || _apiService == null) return false;
+
+      success = await _apiService!.updateInterfaceDhcpConfig(
+        ip,
+        sysauth,
+        _useHttps,
+        interface: interface,
+        values: values,
         context: (context != null && context.mounted) ? context : null,
       );
     }

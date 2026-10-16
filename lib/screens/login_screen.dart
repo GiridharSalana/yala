@@ -291,6 +291,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       _passwordController.text = pass;
     }
 
+    // Resolve profile ID from allRouters if not already matched
+    if (_selectedProfileId == null && ip != null) {
+      final cleanIp = ip
+          .replaceFirst('https://', '')
+          .replaceFirst('http://', '')
+          .replaceAll('/', '')
+          .trim();
+      final allRouters = ref.read(appStateProvider).routers;
+      final match = allRouters
+          .where((r) =>
+              !RouterService.isMockRouter(r) &&
+              (r.ipAddress == ip || r.ipAddress == cleanIp))
+          .firstOrNull;
+      if (match != null) {
+        _selectedProfileId = match.id;
+        if (_profileNameController.text.isEmpty && match.name != null) {
+          _profileNameController.text = match.name!;
+        }
+      }
+    }
+
     // 2. Attach focus & controller listeners after initial controller text assignment
     _ipController.addListener(_onIpChanged);
     _ipFocusNode.addListener(() => _handleFieldFocus(_ipFocusNode));
@@ -1738,8 +1759,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Widget _buildRouterProfilesSelector(BuildContext context) {
-    final appState = ref.watch(appStateProvider);
-    final routers = appState.routers
+    final allRouters = ref.watch(appStateProvider.select((s) => s.routers));
+    final routers = allRouters
         .where((r) => !RouterService.isMockRouter(r))
         .toList();
     final theme = Theme.of(context);

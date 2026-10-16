@@ -32,6 +32,12 @@ class RouterCapabilities {
   final DateTime probedAt;
   final bool probeFailed;
   final String? lastProbeError;
+  final bool hasAdGuardHome;
+  final bool hasOdhcpd;
+  final bool hasCron;
+  final bool hasDropbear;
+  final bool supportsIpv6InternetFirewall;
+  final Map<String, dynamic>? boardJson;
 
   const RouterCapabilities({
     required this.routerId,
@@ -46,6 +52,12 @@ class RouterCapabilities {
     required this.probedAt,
     this.probeFailed = false,
     this.lastProbeError,
+    this.hasAdGuardHome = false,
+    this.hasOdhcpd = false,
+    this.hasCron = false,
+    this.hasDropbear = false,
+    this.supportsIpv6InternetFirewall = false,
+    this.boardJson,
   });
 
   /// Default conservative fallback capability set when probing fails
@@ -63,6 +75,11 @@ class RouterCapabilities {
       probedAt: DateTime.now(),
       probeFailed: true,
       lastProbeError: error ?? 'Failed to probe router capabilities',
+      hasAdGuardHome: false,
+      hasOdhcpd: false,
+      hasCron: false,
+      hasDropbear: false,
+      supportsIpv6InternetFirewall: false,
     );
   }
 
@@ -82,10 +99,12 @@ class RouterCapabilities {
         'opkg',
         'apk',
         'fw4',
+        'luci',
       },
       ubusMethods: const {
         'system': ['info', 'board'],
         'luci-rpc': ['getInitList', 'getWirelessDevices'],
+        'luci': ['setPassword'],
         'file': ['read', 'stat', 'exec'],
       },
       uciPermissions: const {
@@ -98,6 +117,11 @@ class RouterCapabilities {
       boardName: 'x86/64',
       probedAt: DateTime.now(),
       probeFailed: false,
+      hasAdGuardHome: true,
+      hasOdhcpd: true,
+      hasCron: true,
+      hasDropbear: true,
+      supportsIpv6InternetFirewall: true,
     );
   }
 
@@ -172,11 +196,33 @@ class RouterCapabilities {
             methods.contains('*'));
   }
 
+  /// Helper to check if ubus session has write authorization for firewall UCI config
+  bool get canModifyFirewall {
+    if (!hasUciWriteAccess) return false;
+    if (uciPermissions.containsKey('firewall')) {
+      final perms = uciPermissions['firewall'] ?? [];
+      return perms.contains('write') || perms.contains('*');
+    }
+    return hasUciWriteAccess;
+  }
+
   /// Helper to check if active package manager engine is Alpine Package Keeper (apk)
   bool get isApk => packageEngine == PackageManagerEngine.apk;
 
   /// Helper to check if active package manager engine is OPKG (ipk)
   bool get isOpkg => packageEngine == PackageManagerEngine.opkg;
+
+  /// Helper to check if uci.apply ubus method is available
+  bool get hasUciApply => hasMethod('uci', 'apply');
+
+  /// Helper to check if uci.confirm ubus method is available
+  bool get hasUciConfirm => hasMethod('uci', 'confirm');
+
+  /// Helper to check if luci.setPassword method is explicitly available
+  /// Method-level capability verification: does not rely solely on luci object presence.
+  bool get hasSetPasswordRpc {
+    return ubusMethods['luci']?.contains('setPassword') ?? false;
+  }
 
   /// Serialize for secure storage cache
   Map<String, dynamic> toJson() {
@@ -195,6 +241,12 @@ class RouterCapabilities {
       'probedAt': probedAt.toIso8601String(),
       'probeFailed': probeFailed,
       'lastProbeError': lastProbeError,
+      'hasAdGuardHome': hasAdGuardHome,
+      'hasOdhcpd': hasOdhcpd,
+      'hasCron': hasCron,
+      'hasDropbear': hasDropbear,
+      'supportsIpv6InternetFirewall': supportsIpv6InternetFirewall,
+      'boardJson': boardJson,
     };
   }
 
@@ -236,6 +288,15 @@ class RouterCapabilities {
             : DateTime.now(),
         probeFailed: json['probeFailed'] as bool? ?? false,
         lastProbeError: json['lastProbeError'] as String?,
+        hasAdGuardHome: json['hasAdGuardHome'] as bool? ?? false,
+        hasOdhcpd: json['hasOdhcpd'] as bool? ?? false,
+        hasCron: json['hasCron'] as bool? ?? false,
+        hasDropbear: json['hasDropbear'] as bool? ?? false,
+        supportsIpv6InternetFirewall:
+            json['supportsIpv6InternetFirewall'] as bool? ?? false,
+        boardJson: json['boardJson'] is Map
+            ? Map<String, dynamic>.from(json['boardJson'] as Map)
+            : null,
       );
     } catch (_) {
       return RouterCapabilities.conservative(
@@ -257,6 +318,12 @@ class RouterCapabilities {
     DateTime? probedAt,
     bool? probeFailed,
     String? lastProbeError,
+    bool? hasAdGuardHome,
+    bool? hasOdhcpd,
+    bool? hasCron,
+    bool? hasDropbear,
+    bool? supportsIpv6InternetFirewall,
+    Map<String, dynamic>? boardJson,
   }) {
     return RouterCapabilities(
       routerId: routerId ?? this.routerId,
@@ -271,6 +338,13 @@ class RouterCapabilities {
       probedAt: probedAt ?? this.probedAt,
       probeFailed: probeFailed ?? this.probeFailed,
       lastProbeError: lastProbeError ?? this.lastProbeError,
+      hasAdGuardHome: hasAdGuardHome ?? this.hasAdGuardHome,
+      hasOdhcpd: hasOdhcpd ?? this.hasOdhcpd,
+      hasCron: hasCron ?? this.hasCron,
+      hasDropbear: hasDropbear ?? this.hasDropbear,
+      supportsIpv6InternetFirewall:
+          supportsIpv6InternetFirewall ?? this.supportsIpv6InternetFirewall,
+      boardJson: boardJson ?? this.boardJson,
     );
   }
 }

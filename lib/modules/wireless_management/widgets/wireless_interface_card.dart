@@ -18,12 +18,16 @@ class WirelessInterfaceCard extends ConsumerStatefulWidget {
   final WirelessRadio radio;
   final WirelessInterface interface;
   final ValueChanged<bool>? onToggleEnabled;
+  final bool isRadioEnabled;
+  final bool isPending;
 
   const WirelessInterfaceCard({
     super.key,
     required this.radio,
     required this.interface,
     this.onToggleEnabled,
+    this.isRadioEnabled = true,
+    this.isPending = false,
   });
 
   @override
@@ -135,7 +139,9 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
       alpha: isDarkMode ? 0.4 : 0.3,
     );
 
-    return Card(
+    final effectiveEnabled = iface.isEnabled;
+
+    final cardContent = Card(
       elevation: 0,
       color: cardBg,
       shape: RoundedRectangleBorder(
@@ -255,19 +261,44 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Transform.scale(
-                      scale: 0.85,
-                      child: Switch(
-                        value: iface.isEnabled,
-                        onChanged: hasWriteAccess
-                            ? widget.onToggleEnabled
-                            : (val) {
-                                context.showToastError(
-                                  l10n?.readOnlyWirelessToggle ??
-                                      'Read-only session: wireless interface toggle is disabled.',
-                                );
-                              },
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.isPending)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6.0),
+                            child: SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        AnimatedOpacity(
+                          duration: const Duration(milliseconds: 200),
+                          opacity: widget.isPending ? 0.55 : 1.0,
+                          child: Transform.scale(
+                            scale: 0.85,
+                            child: Switch(
+                              value: effectiveEnabled,
+                              onChanged: (hasWriteAccess &&
+                                      widget.isRadioEnabled &&
+                                      !widget.isPending)
+                                  ? widget.onToggleEnabled
+                                  : (!hasWriteAccess
+                                      ? (val) {
+                                          context.showToastError(
+                                            l10n?.readOnlyWirelessToggle ??
+                                                'Read-only session: wireless interface toggle is disabled.',
+                                          );
+                                        }
+                                      : null),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -457,16 +488,18 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.all(3),
                           constraints: const BoxConstraints(),
-                          onPressed: () {
-                            if (!hasWriteAccess) {
-                              context.showToastError(
-                                l10n?.readOnlyUciWrite ??
-                                    'Read-only session: UCI write permission required.',
-                              );
-                              return;
-                            }
-                            _showEditSsidDialog(context);
-                          },
+                          onPressed: (widget.isRadioEnabled && !widget.isPending)
+                              ? () {
+                                  if (!hasWriteAccess) {
+                                    context.showToastError(
+                                      l10n?.readOnlyUciWrite ??
+                                          'Read-only session: UCI write permission required.',
+                                    );
+                                    return;
+                                  }
+                                  _showEditSsidDialog(context);
+                                }
+                              : null,
                         ),
                         const SizedBox(width: 2),
                         // Quick QR Code Button
@@ -476,7 +509,9 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.all(3),
                           constraints: const BoxConstraints(),
-                          onPressed: () => _showQrCodeDialog(context),
+                          onPressed: (widget.isRadioEnabled && !widget.isPending)
+                              ? () => _showQrCodeDialog(context)
+                              : null,
                         ),
                         const SizedBox(width: 2),
                         // Delete Interface Button
@@ -494,20 +529,23 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.all(3),
                           constraints: const BoxConstraints(),
-                          onPressed: () {
-                            if (!hasWriteAccess) {
-                              context.showToastError(
-                                l10n?.readOnlyDeleteInterface ??
-                                    'Read-only session: UCI write permission required to delete interface.',
-                              );
-                              return;
-                            }
-                            _confirmDeleteInterface();
-                          },
+                          onPressed: (widget.isRadioEnabled && !widget.isPending)
+                              ? () {
+                                  if (!hasWriteAccess) {
+                                    context.showToastError(
+                                      l10n?.readOnlyDeleteInterface ??
+                                          'Read-only session: UCI write permission required to delete interface.',
+                                    );
+                                    return;
+                                  }
+                                  _confirmDeleteInterface();
+                                }
+                              : null,
                         ),
                         const SizedBox(width: 2),
                         // Tagging & Override Popup Menu
                         PopupMenuButton<String>(
+                          enabled: widget.isRadioEnabled && !widget.isPending,
                           icon: Icon(
                             (isCustomTagged || isExcluded)
                                 ? Icons.bookmark_rounded
@@ -647,6 +685,12 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
           ],
         ],
       ),
+    );
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 250),
+      opacity: widget.isRadioEnabled ? (effectiveEnabled ? 1.0 : 0.70) : 0.45,
+      child: cardContent,
     );
   }
 

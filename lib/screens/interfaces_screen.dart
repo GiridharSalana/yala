@@ -397,6 +397,7 @@ class _InterfacesScreenState extends ConsumerState<InterfacesScreen> {
     if (!mounted) return;
 
     if (success) {
+      appState.invalidateInFlightDashboardFetches();
       context.showToastSuccess(
         'Interface Restarted',
         subtitle: 'Interface "${iface.name}" restarted successfully.',
@@ -455,6 +456,7 @@ class _InterfacesScreenState extends ConsumerState<InterfacesScreen> {
     if (!mounted) return;
 
     if (success) {
+      appState.invalidateInFlightDashboardFetches();
       context.showToastSuccess(
         'Wireless Restarted',
         subtitle: 'Wireless interface "$displayName" restarted successfully.',
@@ -573,6 +575,7 @@ class _InterfacesScreenState extends ConsumerState<InterfacesScreen> {
         'Changes Applied',
         subtitle: 'Interface state changes applied successfully.',
       );
+      appState.invalidateInFlightDashboardFetches();
       unawaited(appState.fetchDashboardData());
     } else if (!caughtError) {
       context.showToastError(
@@ -1237,6 +1240,9 @@ class _InterfacesScreenState extends ConsumerState<InterfacesScreen> {
       return SwconfigTopologyParser.parse(
         uciMap,
         appState.dashboardData?['networkDevices'] as Map<String, dynamic>?,
+        boardJson:
+            appState.dashboardData?['boardJson'] as Map<String, dynamic>? ??
+            appState.capabilities?.boardJson,
       );
     }
   }
@@ -2422,7 +2428,9 @@ class LuciSectionHeader extends StatelessWidget {
   }
 }
 
-class _UnifiedNetworkCard extends StatefulWidget {
+typedef _UnifiedNetworkCard = UnifiedNetworkCard;
+
+class UnifiedNetworkCard extends StatefulWidget {
   final String name;
   final String subtitle;
   final bool isUp;
@@ -2439,7 +2447,7 @@ class _UnifiedNetworkCard extends StatefulWidget {
   final VoidCallback? onRestart;
   final bool isSaving;
 
-  const _UnifiedNetworkCard({
+  const UnifiedNetworkCard({
     required this.name,
     required this.subtitle,
     required this.isUp,
@@ -2458,10 +2466,10 @@ class _UnifiedNetworkCard extends StatefulWidget {
   });
 
   @override
-  State<_UnifiedNetworkCard> createState() => _UnifiedNetworkCardState();
+  State<UnifiedNetworkCard> createState() => _UnifiedNetworkCardState();
 }
 
-class _UnifiedNetworkCardState extends State<_UnifiedNetworkCard>
+class _UnifiedNetworkCardState extends State<UnifiedNetworkCard>
     with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
   late AnimationController _controller;
@@ -2775,11 +2783,27 @@ class _UnifiedNetworkCardState extends State<_UnifiedNetworkCard>
                       const SizedBox(width: 4),
                     ],
                     if (widget.onToggle != null) ...[
-                      Transform.scale(
-                        scale: 0.82,
-                        child: Switch(
-                          value: effectiveEnabled,
-                          onChanged: widget.isSaving ? null : widget.onToggle,
+                      if (widget.isSaving)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6.0),
+                          child: SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: widget.isSaving ? 0.55 : 1.0,
+                        child: Transform.scale(
+                          scale: 0.82,
+                          child: Switch(
+                            value: effectiveEnabled,
+                            onChanged: widget.isSaving ? null : widget.onToggle,
+                          ),
                         ),
                       ),
                     ],
@@ -2810,9 +2834,10 @@ class _UnifiedNetworkCardState extends State<_UnifiedNetworkCard>
       ),
     );
 
-    if (!effectiveEnabled && !widget.isStaged) {
-      return Opacity(opacity: 0.60, child: card);
-    }
-    return card;
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 250),
+      opacity: (!effectiveEnabled && !widget.isStaged) ? 0.55 : 1.0,
+      child: card,
+    );
   }
 }

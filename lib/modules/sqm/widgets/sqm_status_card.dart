@@ -7,17 +7,24 @@ import 'package:yala/design/luci_design_system.dart';
 import 'package:yala/l10n/app_localizations.dart';
 import 'package:yala/main.dart';
 import 'package:yala/widgets/luci_toast.dart';
+import '../controllers/sqm_controller.dart';
 import '../models/sqm_overview.dart';
+import '../models/sqm_telemetry.dart';
 import 'sqm_flow_offloading_dialog.dart';
 
-/// Card showing the SQM daemon service running/enabled status and service controls.
+/// Card showing the SQM daemon service running/enabled status, service controls,
+/// operating state badges, and live telemetry polling indicator.
 class SqmStatusCard extends ConsumerStatefulWidget {
-  final SqmOverview overview;
+  final String? routerId;
+  final SqmOverview? overview;
+  final SqmState? sqmState;
   final VoidCallback onRefresh;
 
   const SqmStatusCard({
     super.key,
-    required this.overview,
+    this.routerId,
+    this.overview,
+    this.sqmState,
     required this.onRefresh,
   });
 
@@ -28,10 +35,17 @@ class SqmStatusCard extends ConsumerStatefulWidget {
 class _SqmStatusCardState extends ConsumerState<SqmStatusCard> {
   bool _isToggling = false;
 
+  SqmOverview get _effectiveOverview {
+    if (widget.overview != null) return widget.overview!;
+    if (widget.sqmState != null) return SqmOverview.fromSqmState(widget.sqmState!);
+    return const SqmOverview(isInstalled: false);
+  }
+
   Future<void> _toggleService(bool enable) async {
     if (_isToggling) return;
 
-    if (enable && widget.overview.hasAnyFlowOffloading) {
+    final overview = _effectiveOverview;
+    if (enable && overview.hasAnyFlowOffloading) {
       final proceed = await showFlowOffloadingWarningDialog(context, ref: ref);
       if (proceed != true || !mounted) {
         return;
@@ -43,7 +57,6 @@ class _SqmStatusCardState extends ConsumerState<SqmStatusCard> {
     setState(() => _isToggling = true);
 
     final l10n = AppLocalizations.of(context);
-    final appState = ref.read(appStateProvider);
     const actionKey = 'sqm_service_toggle';
 
     if (mounted) {
@@ -55,7 +68,15 @@ class _SqmStatusCardState extends ConsumerState<SqmStatusCard> {
       );
     }
 
-    final success = await appState.toggleSqmService(enable);
+    final bool success;
+    if (widget.routerId != null) {
+      success = await ref
+          .read(sqmControllerProvider(widget.routerId!).notifier)
+          .toggleService(enable, context: mounted ? context : null);
+    } else {
+      final appState = ref.read(appStateProvider);
+      success = await appState.toggleSqmService(enable);
+    }
 
     if (mounted) {
       setState(() => _isToggling = false);
@@ -82,7 +103,6 @@ class _SqmStatusCardState extends ConsumerState<SqmStatusCard> {
     setState(() => _isToggling = true);
 
     final l10n = AppLocalizations.of(context);
-    final appState = ref.read(appStateProvider);
     const actionKey = 'sqm_service_restart';
 
     if (mounted) {
@@ -92,11 +112,19 @@ class _SqmStatusCardState extends ConsumerState<SqmStatusCard> {
       );
     }
 
-    final success = await appState.manageServiceAction(
-      'sqm',
-      'restart',
-      context: mounted ? context : null,
-    );
+    final bool success;
+    if (widget.routerId != null) {
+      success = await ref
+          .read(sqmControllerProvider(widget.routerId!).notifier)
+          .restartService(context: mounted ? context : null);
+    } else {
+      final appState = ref.read(appStateProvider);
+      success = await appState.manageServiceAction(
+        'sqm',
+        'restart',
+        context: mounted ? context : null,
+      );
+    }
 
     if (mounted) {
       setState(() => _isToggling = false);
@@ -115,12 +143,70 @@ class _SqmStatusCardState extends ConsumerState<SqmStatusCard> {
     }
   }
 
+  Widget _buildOperatingStateChip(
+    SqmOperatingState state,
+    AppLocalizations? l10n,
+    ThemeData theme,
+  ) {
+    final (Color color, String label, IconData icon) = switch (state) {
+      SqmOperatingState.active => (
+        LuciStatusColors.connected,
+        l10n?.modSqmOperatingStateActive ?? 'Active',
+        Icons.check_circle_outline_rounded,
+      ),
+      SqmOperatingState.flowOffloadingConflict => (
+        LuciStatusColors.warning,
+        l10n?.modSqmOperatingStateConflict ?? 'Offloading Conflict',
+        Icons.warning_amber_rounded,
+      ),
+      SqmOperatingState.telemetryUnavailable ||
+      SqmOperatingState.tcCommandUnavailable => (
+        theme.colorScheme.tertiary,
+        l10n?.modSqmOperatingStateTelemetryUnavailable ?? 'Telemetry N/A',
+        Icons.info_outline_rounded,
+      ),
+      SqmOperatingState.inactive ||
+      SqmOperatingState.notInstalled => (
+        LuciStatusColors.inactive,
+        l10n?.modSqmOperatingStateInactive ?? 'Inactive',
+        Icons.pause_circle_outline_rounded,
+      ),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final isRunning = widget.overview.isServiceRunning;
-    final isEnabled = widget.overview.isServiceEnabled;
+    final overview = _effectiveOverview;
+    final isRunning = overview.isServiceRunning;
+    final isEnabled = overview.isServiceEnabled;
+    final isLive = widget.sqmState?.isTelemetryPolling ?? false;
+    final opState = widget.sqmState?.operatingState;
 
     final statusColor = isRunning
         ? LuciStatusColors.connected
@@ -156,12 +242,67 @@ class _SqmStatusCardState extends ConsumerState<SqmStatusCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        l10n?.modSqmServiceControlTitle ?? 'SQM Daemon Service',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              l10n?.modSqmServiceControlTitle ??
+                                  'SQM Daemon Service',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (isLive) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: LuciStatusColors.connected.withValues(
+                                  alpha: 0.12,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: LuciStatusColors.connected.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 5,
+                                    height: 5,
+                                    decoration: const BoxDecoration(
+                                      color: LuciStatusColors.connected,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    l10n?.modSqmTelemetryLiveBadge ??
+                                        'Live (3s)',
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: LuciStatusColors.connected,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          if (opState != null)
+                            _buildOperatingStateChip(opState, l10n, theme),
+                        ],
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         statusText,
                         style: theme.textTheme.bodySmall?.copyWith(

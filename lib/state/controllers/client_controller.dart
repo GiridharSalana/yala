@@ -53,18 +53,18 @@ class ClientController {
   _processDhcpLeases;
   final void Function()? _onClientsUpdated;
 
-  final Set<String> _knownWirelessMacs = {};
+  final Map<String, DateTime> _knownWirelessMacs = {};
   final Map<String, DateTime> _recentWiredActiveTime = {};
   final Map<String, ({int rxBytes, int txBytes, DateTime timestamp})>
   _previousStationTraffic = {};
-  final Map<String, ({String token, bool useHttps})> _secondaryRouterTokens =
-      {};
-  DateTime? _lastNeighborProbeTime;
+  final Map<String, ({String token, bool useHttps, DateTime cachedAt})>
+  _secondaryRouterTokens = {};
+  final Map<String, DateTime> _lastNeighborProbeTime = {};
   List<Client>? lastFetchedClients;
   bool _isFetchingClients = false;
   int _fetchEpoch = 0;
 
-  Set<String> get knownWirelessMacs => _knownWirelessMacs;
+  Map<String, DateTime> get knownWirelessMacs => _knownWirelessMacs;
   bool get isFetchingClients => _isFetchingClients;
   bool get hasFetchedClients => lastFetchedClients != null;
 
@@ -75,7 +75,7 @@ class ClientController {
     _recentWiredActiveTime.clear();
     _previousStationTraffic.clear();
     _secondaryRouterTokens.clear();
-    _lastNeighborProbeTime = null;
+    _lastNeighborProbeTime.clear();
     lastFetchedClients = null;
     _isFetchingClients = false;
   }
@@ -392,10 +392,13 @@ class ClientController {
 
         if (clientActiveOnSecondaryAp &&
             existing.connectionType != ConnectionType.wireless) {
-          // Client is actively connected wirelessly to the secondary Dumb AP
+          // Client is actively connected to the secondary Dumb AP (wireless or wired)
           isDumb = true;
           apName = c.apName;
-          preferredConnType = ConnectionType.wireless;
+          preferredConnType = (c.connectionType == ConnectionType.wireless ||
+                  existing.connectionType == ConnectionType.wireless)
+              ? ConnectionType.wireless
+              : ConnectionType.wired;
           preferredSsid = c.ssid ?? existing.ssid;
           preferredIface = c.wirelessIface ?? existing.wirelessIface;
           signalDbm = c.signalDbm ?? existing.signalDbm;
@@ -766,10 +769,14 @@ class ClientController {
       actualUseHttps = _authService?.useHttps ?? router.useHttps;
     } else {
       final cached = _secondaryRouterTokens[router.id];
-      if (cached != null) {
+      if (cached != null &&
+          DateTime.now().difference(cached.cachedAt) <
+              const Duration(minutes: 50)) {
         routerSysauth = cached.token;
         actualUseHttps = cached.useHttps;
       } else if (_apiService != null) {
+        // Evict expired/missing token before re-authenticating
+        _secondaryRouterTokens.remove(router.id);
         try {
           final authRes = await _apiService!.authenticate(
             router.ipAddress,
@@ -784,6 +791,7 @@ class ClientController {
             _secondaryRouterTokens[router.id] = (
               token: token,
               useHttps: actualUseHttps,
+              cachedAt: DateTime.now(),
             );
           }
         } catch (_) {}
@@ -953,28 +961,42 @@ class ClientController {
             'ra0',
           ]);
         }
-        for (final iface in ifaces) {
-          final iwDump =
-              await execRouterCmd('iw', [
-                'dev',
-                iface,
-                'station',
-                'dump',
-              ]) ??
-              await execRouterCmd('iwinfo', [iface, 'assoclist']);
-          if (iwDump != null && iwDump.isNotEmpty) {
-            final macRegex = RegExp(r'([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})');
-            for (final match in macRegex.allMatches(iwDump)) {
-              final m = match.group(0);
-              if (m != null) {
-                wireless.add(normMac(m));
+        await Future.wait(
+          ifaces.map((iface) async {
+            final iwDump =
+                await execRouterCmd('iw', [
+                  'dev',
+                  iface,
+                  'station',
+                  'dump',
+                ]) ??
+                await execRouterCmd('iwinfo', [iface, 'assoclist']);
+            if (iwDump != null && iwDump.isNotEmpty) {
+              final macRegex =
+                  RegExp(r'([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})');
+              for (final match in macRegex.allMatches(iwDump)) {
+                final m = match.group(0);
+                if (m != null) {
+                  wireless.add(normMac(m));
+                }
               }
             }
-          }
-        }
+          }),
+        );
       }
       final normalizedWireless = wireless.map(normMac).toSet();
-      _knownWirelessMacs.addAll(normalizedWireless);
+      final nowStamp = DateTime.now();
+      // Stamp each freshly-seen wireless MAC with the current time.
+      // Entries older than 20 min are considered stale and evicted at
+      // the start of the classification pass below.
+      for (final mac in normalizedWireless) {
+        _knownWirelessMacs[mac] = nowStamp;
+      }
+      // Evict wired-active cache entries older than 5 minutes (well beyond the
+      // 90-second recency window) to prevent unbounded map growth.
+      _recentWiredActiveTime.removeWhere(
+        (_, ts) => nowStamp.difference(ts) > const Duration(minutes: 5),
+      );
 
       // 2. Fetch getDHCPLeases from luci-rpc
       final callRes = await _apiService!.call(
@@ -1193,6 +1215,24 @@ class ClientController {
             }
           }
         }
+        if (fdbMacs.isEmpty) {
+          // Fallback: BusyBox brctl showmacs for standard OpenWrt without iproute2-bridge
+          final brctlStr =
+              await execRouterCmd('/usr/sbin/brctl', ['showmacs', 'br-lan']) ??
+              await execRouterCmd('brctl', ['showmacs', 'br-lan']);
+          if (brctlStr != null && brctlStr.trim().isNotEmpty) {
+            final macRegex = RegExp(r'([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})');
+            for (final line in brctlStr.split('\n')) {
+              final lower = line.toLowerCase();
+              if (lower.contains('yes')) continue; // Skip router's own bridge ports (is local? yes)
+              final match = macRegex.firstMatch(line);
+              if (match != null) {
+                final m = match.group(0);
+                if (m != null) fdbMacs.add(normMac(m));
+              }
+            }
+          }
+        }
       } catch (_) {}
 
       // Active Probing for Absent/Incomplete Wired Clients
@@ -1207,9 +1247,10 @@ class ClientController {
           );
 
           final now = DateTime.now();
+          final lastProbe = _lastNeighborProbeTime[router.id];
           final shouldProbe =
-              _lastNeighborProbeTime == null ||
-              now.difference(_lastNeighborProbeTime!) >= kNeighborProbeInterval;
+              lastProbe == null ||
+              now.difference(lastProbe) >= kNeighborProbeInterval;
 
           if (shouldProbe && probeIps.isNotEmpty) {
             final cmd =
@@ -1222,7 +1263,7 @@ class ClientController {
               neighClients.clear();
               neighClients.addAll(parseIpNeighOutput(probedNeighStr));
             }
-            _lastNeighborProbeTime = now;
+            _lastNeighborProbeTime[router.id] = now;
           }
         } catch (e) {
           Logger.warning('Active neighbor probing failed: $e');
@@ -1446,18 +1487,68 @@ class ClientController {
           v6Addrs = [l['ip6addr'].toString()];
         }
 
-        if (macN.isNotEmpty && clientMap.containsKey(macN)) {
-          final existing = clientMap[macN]!;
-          final mergedV6 = <String>{
-            ...?(existing.ipv6Addresses),
-            ...v6Addrs,
-          }.toList();
-          clientMap[macN] = existing.copyWith(ipv6Addresses: mergedV6);
+        final cleanV6Addrs = v6Addrs
+            .map((a) => a.split('/')[0].trim().toLowerCase())
+            .where((a) => a.isNotEmpty)
+            .toSet();
+
+        String? matchedMac;
+        if (macN.isNotEmpty) {
+          matchedMac = macN;
         } else {
-          String? matchedMac;
-          if (macN.isNotEmpty) {
-            matchedMac = macN;
-          } else {
+          // 1. Correlate with L3 neighbor table (neighClients) by IPv6 address
+          if (cleanV6Addrs.isNotEmpty) {
+            for (final n in neighClients) {
+              final nIp = (n['ipaddr']?.toString() ?? '')
+                  .split('/')[0]
+                  .trim()
+                  .toLowerCase();
+              if (nIp.isNotEmpty && cleanV6Addrs.contains(nIp)) {
+                final m = normMac(n['macaddr']?.toString() ?? '');
+                if (m.isNotEmpty && m != 'N/A' && m != '00:00:00:00:00:00') {
+                  matchedMac = m;
+                  break;
+                }
+              }
+            }
+          }
+
+          // 2. Correlate with hostHints['ip6addrs']
+          if (matchedMac == null && cleanV6Addrs.isNotEmpty) {
+            hostHints.forEach((hMac, info) {
+              if (matchedMac != null) return;
+              final hintV6 = info['ip6addrs'] as List?;
+              if (hintV6 != null) {
+                for (final v in hintV6) {
+                  final cleanV =
+                      v.toString().split('/')[0].trim().toLowerCase();
+                  if (cleanV6Addrs.contains(cleanV)) {
+                    matchedMac = normMac(hMac);
+                    break;
+                  }
+                }
+              }
+            });
+          }
+
+          // 3. Correlate with existing clientMap entries' ipv6Addresses
+          if (matchedMac == null && cleanV6Addrs.isNotEmpty) {
+            for (final c in clientMap.values) {
+              if (c.ipv6Addresses != null) {
+                for (final v in c.ipv6Addresses!) {
+                  final cleanV = v.split('/')[0].trim().toLowerCase();
+                  if (cleanV6Addrs.contains(cleanV)) {
+                    matchedMac = normMac(c.macAddress);
+                    break;
+                  }
+                }
+              }
+              if (matchedMac != null) break;
+            }
+          }
+
+          // 4. Fallback: match by hostname against hostHints
+          if (matchedMac == null) {
             hostHints.forEach((hMac, info) {
               if (matchedMac != null) return;
               final hName = info['name']?.toString();
@@ -1469,52 +1560,71 @@ class ClientController {
               }
             });
           }
+        }
 
-          if (matchedMac != null && matchedMac!.isNotEmpty) {
-            if (clientMap.containsKey(matchedMac)) {
-              final existing = clientMap[matchedMac]!;
-              final mergedV6 = <String>{
-                ...?(existing.ipv6Addresses),
-                ...v6Addrs,
-              }.toList();
-              clientMap[matchedMac!] = existing.copyWith(
-                ipv6Addresses: mergedV6,
-              );
-            } else {
-              final isWireless = normalizedWireless.contains(matchedMac!);
-              final staticName = hostHints[matchedMac]?['staticLeaseName']
-                  ?.toString();
-              final isStaticEntry =
-                  hostHints[matchedMac]?['isStaticLease'] == true;
-              final vitals = vitalsMap[matchedMac!];
-              clientMap[matchedMac!] = Client(
-                ipAddress: 'N/A',
-                macAddress: matchedMac!,
-                hostname: (hostname != null && hostname.isNotEmpty)
-                    ? hostname
-                    : matchedMac!,
-                connectionType: isWireless
-                    ? ConnectionType.wireless
-                    : ConnectionType.wired,
-                ssid: macToSsidMap[matchedMac],
-                wirelessIface: macToIfaceMap[matchedMac],
-                staticLeaseName: staticName,
-                isStaticLease: isStaticEntry,
-                ipv6Addresses: v6Addrs,
-                rxBytes: vitals?.rxBytes,
-                txBytes: vitals?.txBytes,
-                rxPackets: vitals?.rxPackets,
-                txPackets: vitals?.txPackets,
-                rxRate: vitals?.rxRate,
-                txRate: vitals?.txRate,
-                signalDbm: vitals?.signalDbm,
-                noiseDbm: vitals?.noiseDbm,
-                throughput: vitals?.throughput,
-                rxSpeed: vitals?.rxSpeed,
-                txSpeed: vitals?.txSpeed,
-                connectedTime: vitals?.connectedTime,
-              );
-            }
+        final finalMac = matchedMac;
+        if (finalMac != null && finalMac.isNotEmpty) {
+          if (clientMap.containsKey(finalMac)) {
+            final existing = clientMap[finalMac]!;
+            final mergedV6 = <String>{
+              ...?(existing.ipv6Addresses),
+              ...v6Addrs,
+            }.toList();
+            final shouldUpdateName =
+                hostname != null &&
+                hostname.isNotEmpty &&
+                hostname != '*' &&
+                (existing.hostname.isEmpty ||
+                    existing.hostname == 'Unknown' ||
+                    existing.hostname == existing.macAddress ||
+                    existing.hostname == normMac(existing.macAddress));
+            clientMap[finalMac] = existing.copyWith(
+              ipv6Addresses: mergedV6,
+              hostname: shouldUpdateName ? hostname : existing.hostname,
+            );
+          } else {
+            final isWireless = normalizedWireless.contains(finalMac);
+            final staticName = hostHints[finalMac]?['staticLeaseName']
+                ?.toString();
+            final isStaticEntry =
+                hostHints[finalMac]?['isStaticLease'] == true;
+            final vitals = vitalsMap[finalMac];
+            final resolvedNeighIp = neighClients.firstWhere(
+              (n) =>
+                  normMac(n['macaddr'] as String? ?? '') == finalMac &&
+                  !(n['ipaddr'] as String? ?? '').contains(':'),
+              orElse: () => <String, dynamic>{},
+            )['ipaddr']?.toString();
+            clientMap[finalMac] = Client(
+              ipAddress: resolvedNeighIp ?? 'N/A',
+              macAddress: finalMac,
+              hostname:
+                  (hostname != null &&
+                      hostname.isNotEmpty &&
+                      hostname != '*')
+                  ? hostname
+                  : finalMac,
+              connectionType: isWireless
+                  ? ConnectionType.wireless
+                  : ConnectionType.wired,
+              ssid: macToSsidMap[finalMac],
+              wirelessIface: macToIfaceMap[finalMac],
+              staticLeaseName: staticName,
+              isStaticLease: isStaticEntry,
+              ipv6Addresses: v6Addrs,
+              rxBytes: vitals?.rxBytes,
+              txBytes: vitals?.txBytes,
+              rxPackets: vitals?.rxPackets,
+              txPackets: vitals?.txPackets,
+              rxRate: vitals?.rxRate,
+              txRate: vitals?.txRate,
+              signalDbm: vitals?.signalDbm,
+              noiseDbm: vitals?.noiseDbm,
+              throughput: vitals?.throughput,
+              rxSpeed: vitals?.rxSpeed,
+              txSpeed: vitals?.txSpeed,
+              connectedTime: vitals?.connectedTime,
+            );
           }
         }
       }
@@ -1714,7 +1824,7 @@ class ClientController {
         final resolvedIface = c.wirelessIface ?? macToIfaceMap[macN];
         final isWirelessClient =
             isWirelessActive ||
-            _knownWirelessMacs.contains(macN) ||
+            _knownWirelessMacs.containsKey(macN) ||
             macToSsidMap.containsKey(macN) ||
             macToIfaceMap.containsKey(macN) ||
             normalizedWireless.contains(macN) ||
@@ -1723,7 +1833,7 @@ class ClientController {
             resolvedIface != null;
 
         if (isWirelessClient) {
-          _knownWirelessMacs.add(macN);
+          _knownWirelessMacs[macN] = DateTime.now();
         }
 
         final isFdbActive = fdbMacs.contains(macN);
@@ -1779,7 +1889,9 @@ class ClientController {
             _recentWiredActiveTime[macN] = now;
           } else {
             final lastSeen = _recentWiredActiveTime[macN];
-            if ((hasActiveLease || isStaticLease) &&
+            final hasKnownIp = (resolvedIp != 'N/A' && resolvedIp.isNotEmpty) ||
+                (c.ipv6Addresses != null && c.ipv6Addresses!.isNotEmpty);
+            if ((hasActiveLease || isStaticLease || hasKnownIp) &&
                 lastSeen != null &&
                 now.difference(lastSeen) < const Duration(seconds: 90)) {
               isCurrentlyActive = true;
@@ -1809,14 +1921,8 @@ class ClientController {
           continue;
         }
 
-        if (isRouterDumbAp && !isWirelessActive) {
-          // A secondary Dumb AP only serves clients via its wireless interfaces.
-          // Non-wireless entries on a secondary Dumb AP are uplink network neighbors.
-          continue;
-        }
-
         if (isConnected || hasActiveLease || isStaticLease) {
-          final isClientDumbAp = isWirelessActive && isRouterDumbAp;
+          final isClientDumbAp = isRouterDumbAp;
           final clientApName =
               isClientDumbAp ? router.displayName : null;
           final vitals = vitalsMap[macN];

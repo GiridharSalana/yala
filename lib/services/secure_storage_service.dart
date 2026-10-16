@@ -5,6 +5,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import 'package:yala/models/router.dart';
+import 'package:yala/modules/adguard_home/models/adguard_models.dart';
 import '../utils/logger.dart';
 
 class SecureStorageService {
@@ -12,6 +13,7 @@ class SecureStorageService {
 
   static const String _routersKey = 'routers';
   static const String _selectedRouterKey = 'selectedRouterId';
+  static const String _adGuardProfilesKey = 'agh_instance_profiles';
 
   Future<void> saveCredentials({
     required String ipAddress,
@@ -150,6 +152,152 @@ class SecureStorageService {
     }
   }
 
+  /// Purges stored AdGuard credentials for a specific router ID.
+  Future<void> deleteAdGuardCredentials(String routerId) async {
+    try {
+      await _storage.delete(key: 'agh_creds_$routerId');
+      await _storage.delete(key: 'agh_creds_local_$routerId');
+    } catch (e, stack) {
+      Logger.exception(
+        'Failed to delete AdGuard credentials for router: $routerId',
+        e,
+        stack,
+      );
+    }
+  }
+
+  /// Retrieves stored AdGuard instance profiles.
+  Future<List<AdGuardInstanceProfile>> getAdGuardProfiles() async {
+    try {
+      final jsonString = await _storage.read(key: _adGuardProfilesKey);
+      if (jsonString == null || jsonString.isEmpty) return [];
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      return jsonList
+          .whereType<Map>()
+          .map((e) => AdGuardInstanceProfile.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (e, stack) {
+      Logger.exception('Failed to get AdGuard instance profiles', e, stack);
+      return [];
+    }
+  }
+
+  /// Saves a list of AdGuard instance profiles.
+  Future<void> saveAdGuardProfiles(List<AdGuardInstanceProfile> profiles) async {
+    try {
+      final jsonList = profiles.map((p) => p.toJson()).toList();
+      await _storage.write(key: _adGuardProfilesKey, value: jsonEncode(jsonList));
+    } catch (e, stack) {
+      Logger.exception('Failed to save AdGuard instance profiles', e, stack);
+      rethrow;
+    }
+  }
+
+  /// Saves or updates a single AdGuard instance profile.
+  Future<void> saveAdGuardProfile(AdGuardInstanceProfile profile) async {
+    try {
+      final profiles = await getAdGuardProfiles();
+      final updated = [
+        for (final p in profiles)
+          if (p.id != profile.id) p,
+        profile,
+      ];
+      await saveAdGuardProfiles(updated);
+    } catch (e, stack) {
+      Logger.exception(
+        'Failed to save AdGuard instance profile: ${profile.id}',
+        e,
+        stack,
+      );
+      rethrow;
+    }
+  }
+
+  /// Deletes an AdGuard instance profile and its credentials.
+  Future<void> deleteAdGuardProfile(String profileId) async {
+    try {
+      final profiles = await getAdGuardProfiles();
+      final updated = profiles.where((p) => p.id != profileId).toList();
+      await saveAdGuardProfiles(updated);
+      await _storage.delete(key: 'agh_creds_$profileId');
+    } catch (e, stack) {
+      Logger.exception(
+        'Failed to delete AdGuard instance profile: $profileId',
+        e,
+        stack,
+      );
+      rethrow;
+    }
+  }
+
+  /// Saves instance-scoped AdGuard credentials.
+  Future<void> saveAdGuardCredentialsForInstance(
+    String instanceId,
+    String username,
+    String password,
+  ) async {
+    try {
+      await _storage.write(
+        key: 'agh_creds_$instanceId',
+        value: jsonEncode({'username': username, 'password': password}),
+      );
+    } catch (e, stack) {
+      Logger.exception(
+        'Failed to save AdGuard credentials for instance: $instanceId',
+        e,
+        stack,
+      );
+      rethrow;
+    }
+  }
+
+  /// Retrieves the active AdGuard profile ID for the specified router context.
+  Future<String?> getActiveAdGuardProfileId(String routerId) async {
+    try {
+      return await _storage.read(key: 'agh_active_profile_$routerId');
+    } catch (e, stack) {
+      Logger.exception(
+        'Failed to get active AdGuard profile ID for router: $routerId',
+        e,
+        stack,
+      );
+      return null;
+    }
+  }
+
+  /// Persists the active AdGuard profile ID for the specified router context.
+  Future<void> saveActiveAdGuardProfileId(
+    String routerId,
+    String profileId,
+  ) async {
+    try {
+      await _storage.write(
+        key: 'agh_active_profile_$routerId',
+        value: profileId,
+      );
+    } catch (e, stack) {
+      Logger.exception(
+        'Failed to save active AdGuard profile ID for router: $routerId',
+        e,
+        stack,
+      );
+      rethrow;
+    }
+  }
+
+  /// Clears the active AdGuard profile ID for the specified router context.
+  Future<void> clearActiveAdGuardProfileId(String routerId) async {
+    try {
+      await _storage.delete(key: 'agh_active_profile_$routerId');
+    } catch (e, stack) {
+      Logger.exception(
+        'Failed to clear active AdGuard profile ID for router: $routerId',
+        e,
+        stack,
+      );
+    }
+  }
+
   Future<void> saveRouters(List<Router> routers) async {
     try {
       final cleanList = routers.where((r) => !_isMockRouter(r)).toList();
@@ -187,20 +335,42 @@ class SecureStorageService {
       final routers = await getRouters();
       final updated = routers.where((r) => r.id != id).toList();
       await saveRouters(updated);
+      await deleteAdGuardCredentials(id);
+      await clearActiveAdGuardProfileId(id);
+      // Remove local AdGuard profiles associated with this router; preserve external profiles!
+      final profiles = await getAdGuardProfiles();
+      final keptProfiles = profiles.where((p) => p.routerId != id).toList();
+      if (keptProfiles.length != profiles.length) {
+        await saveAdGuardProfiles(keptProfiles);
+      }
     } catch (e, stack) {
       Logger.exception('Failed to delete router: $id', e, stack);
       rethrow;
     }
   }
 
-  Future<void> updateRouter(Router router) async {
+  Future<void> updateRouter(Router router, {String? oldId}) async {
     try {
+      final targetId = oldId ?? router.id;
       final routers = await getRouters();
       final updated = [
         for (final r in routers)
-          if (r.id == router.id) router else r,
+          if (r.id == targetId) router else r,
       ];
       await saveRouters(updated);
+
+      if (oldId != null && oldId != router.id) {
+        final profiles = await getAdGuardProfiles();
+        final updatedProfiles = profiles.map((p) {
+          if (p.routerId == oldId) {
+            return p.copyWith(routerId: router.id);
+          }
+          return p;
+        }).toList();
+        if (updatedProfiles != profiles) {
+          await saveAdGuardProfiles(updatedProfiles);
+        }
+      }
     } catch (e, stack) {
       Logger.exception('Failed to update router: ${router.id}', e, stack);
       rethrow;

@@ -820,9 +820,9 @@
   "@addRouterButton": {
     "description": "Add router button label"
   },
-  "renameRouterDialogTitle": "Rename Router Profile",
+  "renameRouterDialogTitle": "Edit Router Profile",
   "@renameRouterDialogTitle": {
-    "description": "Title for rename router profile dialog"
+    "description": "Title for edit router profile dialog"
   },
   "deleteRouterDialogTitle": "Delete Router Profile",
   "@deleteRouterDialogTitle": {
@@ -6488,5 +6488,880 @@
   "tooltipEditHostname": "Edit hostname",
   "@tooltipEditHostname": {
     "description": "Tooltip for edit hostname button"
+  },
+  "changePasswordTitle": "Change Router Password",
+  "@changePasswordTitle": {
+    "description": "Title for Change Router Password dialog and settings tile"
+  },
+  "changePasswordCurrentLabel": "Current Password",
+  "@changePasswordCurrentLabel": {
+    "description": "Label for current password input field"
+  },
+  "changePasswordNewLabel": "New Password",
+  "@changePasswordNewLabel": {
+    "description": "Label for new password input field"
+  },
+  "changePasswordConfirmLabel": "Confirm New Password",
+  "@changePasswordConfirmLabel": {
+    "description": "Label for confirm new password input field"
+  },
+  "changePasswordMismatch": "Passwords do not match",
+  "@changePasswordMismatch": {
+    "description": "Validation error when new password does not match confirm field"
+  },
+  "changePasswordSameAsCurrent": "New password must be different from current password",
+  "@changePasswordSameAsCurrent": {
+    "description": "Validation error when new password is the same as current password"
+  },
+  "changePasswordWeakWarning": "This password is short or weak. A password of at least 8 characters is recommended.",
+  "@changePasswordWeakWarning": {
+    "description": "Warning message when new password is under 8 characters"
+  },
+  "changePasswordWeakAcknowledge": "Proceed with weak password anyway",
+  "@changePasswordWeakAcknowledge": {
+    "description": "Checkbox label to allow weak password"
+  },
+  "changePasswordSuccess": "Router password updated successfully",
+  "@changePasswordSuccess": {
+    "description": "Toast or message when password change completes successfully"
+  },
+  "changePasswordStorageWarningTitle": "Router Password Changed (Storage Warning)",
+  "@changePasswordStorageWarningTitle": {
+    "description": "Dialog title when router password updated but local storage failed"
+  },
+  "changePasswordStorageWarningDesc": "The router's password was changed successfully, but saving it to device storage failed. Take note of your new password.",
+  "@changePasswordStorageWarningDesc": {
+    "description": "Dialog description when router password updated but local storage failed"
+  },
+  "changePasswordRetryStorage": "Retry Saving to Storage",
+  "@changePasswordRetryStorage": {
+    "description": "Button label to retry writing credentials to secure storage"
+  },
+  "changePasswordAmbiguousTitle": "Password Verification Inconclusive",
+  "@changePasswordAmbiguousTitle": {
+    "description": "Dialog title when password change result is ambiguous"
+  },
+  "changePasswordAmbiguousDesc": "The password change request was sent, but YALA could not verify whether it took effect. Stored credentials were not modified.",
+  "@changePasswordAmbiguousDesc": {
+    "description": "Dialog description when password change result is ambiguous"
+  },
+  "changePasswordUnsupported": "Router does not expose luci.setPassword via rpcd-mod-luci.",
+  "@changePasswordUnsupported": {
+    "description": "Tooltip or warning when router lacks luci.setPassword"
+  },
+  "changePasswordStatusRequesting": "Updating password on router...",
+  "@changePasswordStatusRequesting": {
+    "description": "Progress message during password update RPC"
+  },
+  "changePasswordStatusReauth": "Re-authenticating with new password...",
+  "@changePasswordStatusReauth": {
+    "description": "Progress message during re-authentication"
+  },
+  "changePasswordStatusVerifying": "Verifying router access...",
+  "@changePasswordStatusVerifying": {
+    "description": "Progress message during post-reauth verification"
+  },
+  "changePasswordStatusSaving": "Saving credentials to secure storage...",
+  "@changePasswordStatusSaving": {
+    "description": "Progress message while saving to secure storage"
+  },
+  "changePasswordCriticalDialogTitle": "Critical: Change Router Password",
+  "@changePasswordCriticalDialogTitle": {
+    "description": "Title for critical confirmation guardrail before password change"
+  },
+  "changePasswordCriticalDialogDesc": "Changing the router's root/admin password will terminate active sessions. If you lose or forget the new password, a physical router factory reset will be required.",
+  "@changePasswordCriticalDialogDesc": {
+    "description": "Description for critical confirmation guardrail before password change"
+  },
+  "changePasswordCriticalDialogAcknowledge": "I understand the risks and want to proceed",
+  "@changePasswordCriticalDialogAcknowledge": {
+    "description": "Acknowledgement checkbox for critical confirmation guardrail"
+  },
+  "modAdGuardHomeName": "AdGuard Home",
+  "modAdGuardHomeDesc": "DNS sinkhole & network-wide ad-blocking management",
+  "aghStatusRunning": "Running",
+  "aghStatusStopped": "Stopped",
+  "aghVersion": "Version",
+  "aghDnsAddresses": "DNS Addresses",
+  "aghDnsPort": "DNS Port",
+  "aghHttpPort": "Web Port",
+  "aghWebInterface": "Open Web Interface",
+  "aghWebInterfaceDisabledReviewer": "Web interface launch disabled in Reviewer Mode",
+  "aghProtectionTitle": "Protection",
+  "aghProtectionEnabled": "Protection Enabled",
+  "aghProtectionPaused": "Protection Paused",
+  "aghProtectionDisabled": "Protection Disabled",
+  "aghActionEnable": "Enable",
+  "aghActionDisable": "Disable",
+  "aghActionPause": "Pause...",
+  "aghRemainingTime": "Remaining: {time}",
+  "@aghRemainingTime": {
+    "description": "Remaining pause duration for AdGuard Home protection",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "aghPauseTitle": "Pause Protection",
+  "aghPause15Min": "Pause for 15 minutes",
+  "aghPause30Min": "Pause for 30 minutes",
+  "aghPause1Hour": "Pause for 1 hour",
+  "aghPause24Hours": "Pause for 24 hours",
+  "aghPauseCustom": "Custom date & time...",
+  "aghPauseCustomSelectDate": "Select pause end date",
+  "aghPauseCustomSelectTime": "Select pause end time",
+  "aghPauseCustomFutureError": "Pause end time must be in the future",
+  "aghStatistics": "Statistics",
+  "aghTotalQueries": "Total Queries",
+  "aghBlockedQueries": "Blocked Queries",
+  "aghBlockRate": "Block Rate",
+  "aghAvgLatency": "Average Processing",
+  "aghStatsDegraded": "Statistics unavailable from AdGuard Home",
+  "aghTopLists": "Top Activity",
+  "aghTopBlocked": "Top Blocked Domains",
+  "aghTopQueried": "Top Queried Domains",
+  "aghTopClients": "Top Clients",
+  "aghNoData": "No data available",
+  "aghViewAllWithCount": "View all ({count})",
+  "@aghViewAllWithCount": {
+    "description": "Button label to view all items with total count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aghSearchDomainsOrClients": "Search domains or clients...",
+  "aghTopology": "DNS Topology",
+  "aghTopologyDisclaimer": "Inferred from configuration and ports; not live traffic inspection",
+  "aghTopologyModeDirect": "Direct Port 53",
+  "aghTopologyModeDnsmasqUpstream": "Dnsmasq -> AdGuard (Upstream)",
+  "aghTopologyModeRedirect": "Port Forward / Redirect",
+  "aghTopologyModeCustom": "Custom / Non-Standard",
+  "aghTopologyModeUnknown": "Unknown",
+  "aghTopologyIpv6Supported": "IPv6 Supported",
+  "aghTopologyIpv6NotDetected": "IPv6 Not Detected",
+  "aghProcessTelemetry": "Process Telemetry",
+  "aghPid": "PID",
+  "aghCpuUsage": "CPU Usage",
+  "aghVsz": "VSZ",
+  "aghEstimatedRam": "Estimated RAM",
+  "aghEstimatedRamTooltip": "Calculated from process memory percentage; not kernel RSS",
+  "aghProcessUnavailable": "Process telemetry unavailable via LuCI RPC",
+  "aghServiceManagement": "Service Management",
+  "aghServiceStatus": "Service Status",
+  "aghActionStart": "Start",
+  "aghActionStop": "Stop",
+  "aghActionRestart": "Restart",
+  "aghServiceConfirmStopTitle": "Stop AdGuard Home Service?",
+  "aghServiceConfirmStopMessage": "Stopping the service will disable DNS resolution if AdGuard Home is your primary DNS listener. Continue?",
+  "aghServiceConfirmRestartTitle": "Restart AdGuard Home Service?",
+  "aghServiceConfirmRestartMessage": "Restarting the service will temporarily interrupt DNS queries. Continue?",
+  "aghServiceNotManageable": "Service is not manageable on this router",
+  "aghAuthRequired": "AdGuard Home Authentication Required",
+  "aghEnterCredentials": "Enter Credentials",
+  "aghCredentialsTitle": "AdGuard Home Credentials",
+  "aghCredentialsSubtitle": "Enter HTTP credentials for AdGuard Home",
+  "aghUsername": "Username",
+  "aghPassword": "Password",
+  "aghSaveCredentials": "Save & Connect",
+  "aghPollingInterval": "Polling Interval",
+  "aghPollingOff": "Off",
+  "aghPolling5s": "5 seconds",
+  "aghPolling10s": "10 seconds",
+  "aghPolling30s": "30 seconds",
+  "aghPollingManual": "Manual only",
+  "aghInvalidEndpoint": "The configured HTTP port returned a response that is not AdGuard Home.",
+  "aghApiUnreachable": "Unable to reach AdGuard Home API.",
+  "aghDegradedState": "Some AdGuard Home telemetry is degraded.",
+  "aghDashboardCardTitle": "AdGuard Home",
+  "aghDashboardCardSubtitle": "Protection & DNS Filter",
+  "aghManageAdGuardHome": "Manage AdGuard Home",
+  "aghDnsCardApiUnreachableDesc": "AdGuard Home detected, but management API is unauthenticated or unreachable.",
+  "aghAuthRequiredBadge": "Authentication Required",
+  "aghApiUnreachableBadge": "API Unreachable",
+  "aghDnsCardStoppedBadge": "Stopped / Inactive",
+  "aghDnsCardStoppedDesc": "AdGuard Home DNS engine is stopped. Standard router DNS is active.",
+  "aghDnsEngineNotOperationalBadge": "DNS Not Operational",
+  "aghDnsEngineNotOperationalDesc": "AdGuard Home API is connected, but DNS engine is not operational.",
+  "aghDnsCardTitle": "AdGuard Home DNS",
+  "aghDnsCardInferredDisclaimer": "Inferred from router configuration",
+  "modSqmTelemetryTitle": "Queue Telemetry",
+  "@modSqmTelemetryTitle": {
+    "description": "Title for queue telemetry section"
+  },
+  "modSqmTelemetryLiveBadge": "Live (3s)",
+  "@modSqmTelemetryLiveBadge": {
+    "description": "Badge indicating 3-second live telemetry polling"
+  },
+  "modSqmOperatingStateActive": "Active",
+  "@modSqmOperatingStateActive": {
+    "description": "Operating state badge for active SQM shaping"
+  },
+  "modSqmOperatingStateConflict": "Offloading Conflict",
+  "@modSqmOperatingStateConflict": {
+    "description": "Operating state badge for flow offloading conflict"
+  },
+  "modSqmOperatingStateInactive": "Inactive",
+  "@modSqmOperatingStateInactive": {
+    "description": "Operating state badge for inactive SQM"
+  },
+  "modSqmOperatingStateTelemetryUnavailable": "Telemetry N/A",
+  "@modSqmOperatingStateTelemetryUnavailable": {
+    "description": "Operating state badge when tc telemetry is unavailable"
+  },
+  "modSqmTelemetryBacklogLabel": "Instantaneous Backlog",
+  "@modSqmTelemetryBacklogLabel": {
+    "description": "Label for instantaneous backlog"
+  },
+  "modSqmTelemetryBacklogClean": "0 pkts (Clean)",
+  "@modSqmTelemetryBacklogClean": {
+    "description": "Status text when queue backlog is zero"
+  },
+  "modSqmTelemetryBacklogActive": "{packets} pkts ({bytes})",
+  "@modSqmTelemetryBacklogActive": {
+    "description": "Status text for active queue backlog",
+    "placeholders": {
+      "packets": {
+        "type": "String",
+        "example": "12"
+      },
+      "bytes": {
+        "type": "String",
+        "example": "18.4 KB"
+      }
+    }
+  },
+  "modSqmTelemetryCumulativeDropsLabel": "Cumulative Drops",
+  "@modSqmTelemetryCumulativeDropsLabel": {
+    "description": "Label for cumulative dropped packets counter"
+  },
+  "modSqmTelemetryCumulativeOverlimitsLabel": "Cumulative Overlimits",
+  "@modSqmTelemetryCumulativeOverlimitsLabel": {
+    "description": "Label for cumulative overlimits counter"
+  },
+  "modSqmTelemetryCumulativeRequeuesLabel": "Cumulative Requeues",
+  "@modSqmTelemetryCumulativeRequeuesLabel": {
+    "description": "Label for cumulative requeues counter"
+  },
+  "modSqmTelemetrySentLabel": "Sent Traffic",
+  "@modSqmTelemetrySentLabel": {
+    "description": "Label for sent traffic"
+  },
+  "modSqmTelemetryRecentDropsBadge": "Recent Drop Activity",
+  "@modSqmTelemetryRecentDropsBadge": {
+    "description": "Badge when active drop activity is detected across telemetry samples"
+  },
+  "modSqmTelemetryMemoryLabel": "Memory Used",
+  "@modSqmTelemetryMemoryLabel": {
+    "description": "Label for CAKE memory usage"
+  },
+  "modSqmTelemetryCapacityLabel": "Capacity Estimate",
+  "@modSqmTelemetryCapacityLabel": {
+    "description": "Label for CAKE capacity estimate"
+  },
+  "modSqmTelemetryTinsTitle": "CAKE Priority Tins",
+  "@modSqmTelemetryTinsTitle": {
+    "description": "Title for CAKE priority tins list"
+  },
+  "modSqmTelemetryEcnLabel": "ECN Marks",
+  "@modSqmTelemetryEcnLabel": {
+    "description": "Label for FQ-CoDel ECN marks"
+  },
+  "modSqmTelemetryNewFlowsLabel": "New Flows",
+  "@modSqmTelemetryNewFlowsLabel": {
+    "description": "Label for FQ-CoDel new flows"
+  },
+  "modSqmTelemetryWaitingForData": "Waiting for queue traffic on {interface}...",
+  "@modSqmTelemetryWaitingForData": {
+    "description": "Placeholder when waiting for telemetry data",
+    "placeholders": {
+      "interface": {
+        "type": "String",
+        "example": "eth1"
+      }
+    }
+  },
+  "modSqmTelemetryInterfaceUnavailable": "Telemetry unavailable on interface {interface}",
+  "@modSqmTelemetryInterfaceUnavailable": {
+    "description": "Notice when telemetry is unavailable on an interface",
+    "placeholders": {
+      "interface": {
+        "type": "String",
+        "example": "eth1"
+      }
+    }
+  },
+  "modSqmTelemetryCumulativeNote": "Drops and overlimits are cumulative Linux Traffic Control counters since queue start. Instantaneous backlog shows current queue state.",
+  "@modSqmTelemetryCumulativeNote": {
+    "description": "Clarification note that drops and overlimits are cumulative counters, not instantaneous"
+  },
+  "modSqmDashboardRateLimits": "Rate Limits",
+  "@modSqmDashboardRateLimits": {
+    "description": "Label for configured shaping rate limits on dashboard card"
+  },
+  "firewallShieldActive": "Firewall Shield",
+  "@firewallShieldActive": {
+    "description": "Status title for firewall shield card"
+  },
+  "firewallShieldActiveSubtitle": "Defending your home network against unauthorized incoming traffic.",
+  "@firewallShieldActiveSubtitle": {
+    "description": "Status subtitle explaining firewall protection"
+  },
+  "firewallQuickActionsTitle": "Quick Actions",
+  "@firewallQuickActionsTitle": {
+    "description": "Title for firewall quick actions section"
+  },
+  "firewallOpenPortTitle": "Open a Port",
+  "@firewallOpenPortTitle": {
+    "description": "Title for open a port wizard"
+  },
+  "firewallOpenPortSubtitle": "Allow external devices to reach a specific app or service on your home network.",
+  "@firewallOpenPortSubtitle": {
+    "description": "Subtitle explaining port opening intent"
+  },
+  "firewallBlockIncomingTitle": "Block an Incoming Connection",
+  "@firewallBlockIncomingTitle": {
+    "description": "Title for blocking incoming traffic flow"
+  },
+  "firewallBlockIncomingSubtitle": "Prevent an external address or connection from reaching your network.",
+  "@firewallBlockIncomingSubtitle": {
+    "description": "Subtitle explaining incoming traffic blocking"
+  },
+  "firewallActivePortForwardsTitle": "Active Port Forwards",
+  "@firewallActivePortForwardsTitle": {
+    "description": "Title for simple active port forwards section"
+  },
+  "firewallNoActivePortForwards": "No ports are currently open to the Internet.",
+  "@firewallNoActivePortForwards": {
+    "description": "Empty state when no port forwards exist"
+  },
+  "firewallActiveSecurityRulesTitle": "Active Security Rules",
+  "@firewallActiveSecurityRulesTitle": {
+    "description": "Title for simple active security rules section"
+  },
+  "firewallNoActiveSecurityRules": "No custom security rules active.",
+  "@firewallNoActiveSecurityRules": {
+    "description": "Empty state when no custom security rules exist"
+  },
+  "firewallWizardChoosePreset": "Select a Service",
+  "@firewallWizardChoosePreset": {
+    "description": "Label for choosing service in port forward wizard"
+  },
+  "firewallWizardPresetPlex": "Plex Media Server",
+  "@firewallWizardPresetPlex": {
+    "description": "Preset name for Plex Media Server"
+  },
+  "firewallWizardPresetMinecraft": "Minecraft Server",
+  "@firewallWizardPresetMinecraft": {
+    "description": "Preset name for Minecraft Server"
+  },
+  "firewallWizardPresetWebServer": "Web Server (HTTP/HTTPS)",
+  "@firewallWizardPresetWebServer": {
+    "description": "Preset name for Web Server"
+  },
+  "firewallWizardPresetCustom": "Custom Service",
+  "@firewallWizardPresetCustom": {
+    "description": "Preset name for custom service"
+  },
+  "firewallWizardWebServerWarning": "This will make your web server accessible to anyone on the Internet.",
+  "@firewallWizardWebServerWarning": {
+    "description": "Security warning when opening web server ports"
+  },
+  "firewallWizardServiceName": "Service Name",
+  "@firewallWizardServiceName": {
+    "description": "Input label for service name"
+  },
+  "firewallWizardExternalPort": "External Port",
+  "@firewallWizardExternalPort": {
+    "description": "Input label for external port"
+  },
+  "firewallWizardInternalPort": "Internal Port",
+  "@firewallWizardInternalPort": {
+    "description": "Input label for internal port"
+  },
+  "firewallWizardInternalDevice": "Internal Device",
+  "@firewallWizardInternalDevice": {
+    "description": "Section label for internal device selection"
+  },
+  "firewallWizardSelectDevice": "Select from connected devices",
+  "@firewallWizardSelectDevice": {
+    "description": "Option label to select connected device"
+  },
+  "firewallWizardManualIp": "Enter IP address manually",
+  "@firewallWizardManualIp": {
+    "description": "Option label to manually enter IP"
+  },
+  "firewallWizardManualIpLabel": "Internal Device IP",
+  "@firewallWizardManualIpLabel": {
+    "description": "Input label for manual device IP"
+  },
+  "firewallWizardProtocol": "Protocol",
+  "@firewallWizardProtocol": {
+    "description": "Label for protocol selection"
+  },
+  "firewallConflictPortInUse": "This port is already being used by another rule.",
+  "@firewallConflictPortInUse": {
+    "description": "Human-friendly conflict error when port is already forwarded"
+  },
+  "firewallConflictManagementPort": "This port is reserved for router administration. Exposing it externally is not permitted.",
+  "@firewallConflictManagementPort": {
+    "description": "Safety warning when port targets router management"
+  },
+  "firewallSuccessPortOpened": "Port {port} is now open for {service} on {device}.",
+  "@firewallSuccessPortOpened": {
+    "description": "Success message when port forward is created",
+    "placeholders": {
+      "port": {
+        "type": "String",
+        "example": "32400"
+      },
+      "service": {
+        "type": "String",
+        "example": "Plex"
+      },
+      "device": {
+        "type": "String",
+        "example": "Living Room PC"
+      }
+    }
+  },
+  "firewallBlockWhatToBlock": "What do you want to block?",
+  "@firewallBlockWhatToBlock": {
+    "description": "Prompt asking what to block"
+  },
+  "firewallBlockExternalIp": "External IP Address",
+  "@firewallBlockExternalIp": {
+    "description": "Option to block an external IP"
+  },
+  "firewallBlockPortOrService": "Port or Service",
+  "@firewallBlockPortOrService": {
+    "description": "Option to block a port or service"
+  },
+  "firewallBlockCommonApp": "Common Threat / Service",
+  "@firewallBlockCommonApp": {
+    "description": "Option to block common threat or application"
+  },
+  "firewallBlockAlreadyBlockedTitle": "Already Blocked",
+  "@firewallBlockAlreadyBlockedTitle": {
+    "description": "Title when connection is already blocked by router"
+  },
+  "firewallBlockAlreadyBlockedDesc": "This connection is already blocked by your router's default firewall protection.",
+  "@firewallBlockAlreadyBlockedDesc": {
+    "description": "Description explaining connection is already blocked"
+  },
+  "firewallBlockCurrentlyAllowedTitle": "Currently Allowed",
+  "@firewallBlockCurrentlyAllowedTitle": {
+    "description": "Title when connection is currently permitted"
+  },
+  "firewallBlockCurrentlyAllowedDesc": "This connection is currently permitted through your router by an active rule or port forward. Blocking it will override existing access.",
+  "@firewallBlockCurrentlyAllowedDesc": {
+    "description": "Description explaining connection is permitted and will override"
+  },
+  "firewallBlockUnableToDetermineTitle": "Unable to Determine",
+  "@firewallBlockUnableToDetermineTitle": {
+    "description": "Title when firewall accessibility cannot be safely determined"
+  },
+  "firewallBlockUnableToDetermineDesc": "The firewall protection status for this connection could not be safely verified. To avoid creating unintended rules, please verify your router configuration.",
+  "@firewallBlockUnableToDetermineDesc": {
+    "description": "Description when firewall status cannot be determined"
+  },
+  "firewallBlockButton": "Block Connection",
+  "@firewallBlockButton": {
+    "description": "Button to create block rule"
+  },
+  "firewallBlockCreateAnyway": "Create Explicit Rule Anyway",
+  "@firewallBlockCreateAnyway": {
+    "description": "Button to create block rule even if already blocked"
+  },
+  "firewallReadOnlyNotice": "Read-only access: Changes cannot be applied on this router account.",
+  "@firewallReadOnlyNotice": {
+    "description": "Notice when account lacks UCI write permissions"
+  },
+  "firewallDeletePortForwardTitle": "Delete Port Forward",
+  "@firewallDeletePortForwardTitle": {
+    "description": "Title for delete port forward dialog"
+  },
+  "firewallDeletePortForwardConfirm": "Are you sure you want to remove the port forward for \"{name}\" (Port {port})?",
+  "@firewallDeletePortForwardConfirm": {
+    "description": "Confirmation message for deleting a port forward",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Plex Server"
+      },
+      "port": {
+        "type": "String",
+        "example": "32400"
+      }
+    }
+  },
+  "firewallDeleteCustomRuleTitle": "Delete Security Rule",
+  "@firewallDeleteCustomRuleTitle": {
+    "description": "Title for delete custom rule dialog"
+  },
+  "firewallDeleteCustomRuleConfirm": "Are you sure you want to remove the rule \"{name}\"?",
+  "@firewallDeleteCustomRuleConfirm": {
+    "description": "Confirmation message for deleting a security rule",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Block Guest"
+      }
+    }
+  },
+  "firewallOpensTcpBothPorts": "Opens TCP ports 80 and 443",
+  "@firewallOpensTcpBothPorts": {
+    "description": "Clarification that web server opens both port 80 and 443"
+  },
+  "clientNetworkAccessTitle": "Network Access",
+  "@clientNetworkAccessTitle": {
+    "description": "Title for per-device network access controls"
+  },
+  "clientInternetAccess": "Internet Access",
+  "@clientInternetAccess": {
+    "description": "Master switch label for client internet access"
+  },
+  "clientIpv4Internet": "IPv4 Internet",
+  "@clientIpv4Internet": {
+    "description": "Switch label for client IPv4 internet access"
+  },
+  "clientIpv6Internet": "IPv6 Internet",
+  "@clientIpv6Internet": {
+    "description": "Switch label for client IPv6 internet access"
+  },
+  "clientIpv6InternetDesc": "Blocking IPv6 Internet stops public IPv6 web access. Local communication on your home network remains active.",
+  "@clientIpv6InternetDesc": {
+    "description": "Explanatory notice for IPv6 internet blocking"
+  },
+  "clientGlobalBlockedDesc": "Global internet access is blocked. IPv4 and IPv6 traffic are both blocked.",
+  "@clientGlobalBlockedDesc": {
+    "description": "Explanatory notice when master internet access is blocked"
+  },
+  "clientIpv6NotSupportedDesc": "IPv6 Internet is not configured on this router.",
+  "@clientIpv6NotSupportedDesc": {
+    "description": "Notice shown when router lacks IPv6 internet capability"
+  },
+  "clientAccessScheduleTitle": "Access Duration",
+  "@clientAccessScheduleTitle": {
+    "description": "Section title for access duration or scheduling"
+  },
+  "clientScheduleAlways": "Always",
+  "@clientScheduleAlways": {
+    "description": "Label for indefinite access policy"
+  },
+  "clientScheduleUntil": "Until Date/Time",
+  "@clientScheduleUntil": {
+    "description": "Label for scheduled expiry access policy"
+  },
+  "clientScheduleExpiresIn": "Expires in {time}",
+  "@clientScheduleExpiresIn": {
+    "description": "Time remaining until access policy expires",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "1h 30m"
+      }
+    }
+  },
+  "clientScheduleExpired": "Schedule expired",
+  "@clientScheduleExpired": {
+    "description": "Label indicating schedule has expired"
+  },
+  "clientScheduleCustom": "Custom",
+  "@clientScheduleCustom": {
+    "description": "Label for custom duration picker"
+  },
+  "clientScheduleSelectExpiry": "Select Expiry Date & Time",
+  "@clientScheduleSelectExpiry": {
+    "description": "Title for custom expiry date and time picker dialog"
+  },
+  "createWifiNetwork": "Create Wi-Fi Network",
+  "@createWifiNetwork": {
+    "description": "Primary button action in Add SSID dialog"
+  },
+  "createWifiNetworkNonRoot": "Create Wi-Fi Network (Non-Root)",
+  "@createWifiNetworkNonRoot": {
+    "description": "Button label in Add SSID dialog when user lacks root write privileges"
+  },
+  "openNetworkWarningTitle": "Public & Unencrypted Network",
+  "@openNetworkWarningTitle": {
+    "description": "Title of security warning for open networks"
+  },
+  "openNetworkWarningBody": "An open Wi-Fi network transmits data without encryption. Anyone within range can connect and monitor unencrypted traffic.",
+  "@openNetworkWarningBody": {
+    "description": "Warning body explaining security risks of open Wi-Fi networks"
+  },
+  "openNetworkConfirmCheckbox": "I understand this network will be public and unencrypted",
+  "@openNetworkConfirmCheckbox": {
+    "description": "Confirmation checkbox label required to create an open network"
+  },
+  "advancedSettingsTitle": "Advanced Settings",
+  "@advancedSettingsTitle": {
+    "description": "Title of expandable advanced settings section in SSID dialogs"
+  },
+  "secGroupSecurityPrivacy": "Security & Privacy",
+  "@secGroupSecurityPrivacy": {
+    "description": "Header for security and privacy advanced settings"
+  },
+  "secGroupNetworkAssignment": "Network Assignment",
+  "@secGroupNetworkAssignment": {
+    "description": "Header for network assignment advanced settings"
+  },
+  "secGroupFastRoaming": "Fast Roaming & Performance",
+  "@secGroupFastRoaming": {
+    "description": "Header for fast roaming and performance advanced settings"
+  },
+  "secGroupIpDhcp": "IP & DHCP Settings",
+  "@secGroupIpDhcp": {
+    "description": "Header for IP and DHCP advanced settings"
+  },
+  "networkWideWarning": "These settings apply to all devices connected to the {network} network, not only this Wi-Fi network.",
+  "@networkWideWarning": {
+    "description": "Warning displayed when editing subnet-level DHCP or IP configuration",
+    "placeholders": {
+      "network": {
+        "type": "String",
+        "example": "lan"
+      }
+    }
+  },
+  "setupSummaryTitle": "Setup Summary",
+  "@setupSummaryTitle": {
+    "description": "Title for the setup summary card"
+  },
+  "setupSummarySsid": "SSID Name",
+  "@setupSummarySsid": {
+    "description": "Label for SSID in setup summary"
+  },
+  "setupSummaryRadio": "Radio & Band",
+  "@setupSummaryRadio": {
+    "description": "Label for radio and band in setup summary"
+  },
+  "setupSummarySecurity": "Security Protocol",
+  "@setupSummarySecurity": {
+    "description": "Label for security protocol in setup summary"
+  },
+  "setupSummaryNetwork": "Attached Network",
+  "@setupSummaryNetwork": {
+    "description": "Label for attached network in setup summary"
+  },
+  "netHomeDesc": "Home Network (lan) — Primary local network bridged with Ethernet ports",
+  "@netHomeDesc": {
+    "description": "Description for standard LAN network attachment"
+  },
+  "netGuestDesc": "Guest Network (guest) — Isolated network for visitors",
+  "@netGuestDesc": {
+    "description": "Description for guest network attachment"
+  },
+  "netWanDesc": "WAN (wan) — Internet uplink interface",
+  "@netWanDesc": {
+    "description": "Description for WAN network attachment"
+  },
+  "dhcpPoolStartLabel": "DHCP Pool Start",
+  "@dhcpPoolStartLabel": {
+    "description": "Label for DHCP pool starting address offset"
+  },
+  "dhcpPoolLimitLabel": "DHCP Pool Limit",
+  "@dhcpPoolLimitLabel": {
+    "description": "Label for DHCP pool maximum addresses limit"
+  },
+  "dhcpLeaseDurationLabel": "DHCP Lease Duration",
+  "@dhcpLeaseDurationLabel": {
+    "description": "Label for DHCP lease duration"
+  },
+  "dnsServersLabel": "Custom DNS Servers",
+  "@dnsServersLabel": {
+    "description": "Label for custom DNS servers on network interface"
+  },
+  "ipv6RaLabel": "IPv6 Router Advertisement (RA)",
+  "@ipv6RaLabel": {
+    "description": "Label for IPv6 router advertisement mode"
+  },
+  "dhcpv6ModeLabel": "DHCPv6 Mode",
+  "@dhcpv6ModeLabel": {
+    "description": "Label for DHCPv6 server mode"
+  },
+  "fastTransition80211kLabel": "802.11k Radio Resource Management",
+  "@fastTransition80211kLabel": {
+    "description": "Toggle label for 802.11k radio resource management"
+  },
+  "fastTransition80211vLabel": "802.11v BSS Transition Management",
+  "@fastTransition80211vLabel": {
+    "description": "Toggle label for 802.11v BSS transition management"
+  },
+  "loadingCaption1": "Checking if Earth is flat or round…",
+  "@loadingCaption1": {
+    "description": "Humorous general loading message 1"
+  },
+  "loadingCaption2": "Asking the router nicely…",
+  "@loadingCaption2": {
+    "description": "Humorous general loading message 2"
+  },
+  "loadingCaption3": "Negotiating with packets…",
+  "@loadingCaption3": {
+    "description": "Humorous general loading message 3"
+  },
+  "loadingCaption4": "Counting queues. No, not the supermarket kind…",
+  "@loadingCaption4": {
+    "description": "Humorous general loading message 4"
+  },
+  "loadingCaption5": "Convincing latency to calm down…",
+  "@loadingCaption5": {
+    "description": "Humorous general loading message 5"
+  },
+  "loadingCaption6": "Checking whether everything is where it should be…",
+  "@loadingCaption6": {
+    "description": "Humorous general loading message 6"
+  },
+  "loadingCaption7": "Waiting for the router to finish thinking…",
+  "@loadingCaption7": {
+    "description": "Humorous general loading message 7"
+  },
+  "loadingCaption8": "Consulting the packet gods…",
+  "@loadingCaption8": {
+    "description": "Humorous general loading message 8"
+  },
+  "sqmDiscoveryErrorTitle": "Unable to check SQM status",
+  "@sqmDiscoveryErrorTitle": {
+    "description": "Title shown when SQM discovery RPC probe fails"
+  },
+  "sqmDiscoveryErrorDesc": "Router communication failed or returned an incomplete response.",
+  "@sqmDiscoveryErrorDesc": {
+    "description": "Description shown when SQM discovery RPC probe fails"
+  },
+  "sqmRetryDiscovery": "Retry Discovery",
+  "@sqmRetryDiscovery": {
+    "description": "Button label to retry discovering SQM installation status"
+  },
+  "aghRoutingApiOnly": "API Reachable Only",
+  "aghRoutingServiceRunning": "Service Running Only",
+  "aghRoutingForwardingUnverified": "Forwarding Unverified",
+  "aghRoutingForwardingVerified": "Router Forwarding Verified",
+  "aghRoutingClientVerified": "Client Queries Verified",
+  "aghRoutingExternalStandalone": "External Standalone",
+  "aghRoutingMisconfigured": "Routing Misconfigured",
+  "aghRoutingUnknown": "Routing Unknown",
+  "aghIpv6NoBypass": "Aligned / No Bypass Detected",
+  "aghIpv6ExternalBypass": "External IPv6 DNS Advertised",
+  "aghIpv6UnsupportedListener": "No IPv6 Listener in AdGuard",
+  "aghIpv6UnableToVerify": "Unable to verify IPv6 advertisement",
+  "aghConfigureRouterDns": "Configure Router DNS",
+  "aghReconfigureRouterDns": "Reconfigure Router DNS",
+  "aghConfigureDnsTitle": "Configure Router DNS Forwarding",
+  "aghConfigureDnsDescription": "Route router upstream DNS queries through AdGuard Home.",
+  "aghConfigureDnsTarget": "DNS Destination",
+  "aghConfigureDnsChecking": "Checking DNS configuration…",
+  "aghConfigureDnsModeExclusive": "Exclusive Forwarding",
+  "aghConfigureDnsModeExclusiveDesc": "Route all router DNS queries exclusively to AdGuard Home. (Replaces current upstreams)",
+  "aghConfigureDnsModeExclusiveWarning": "Outage Risk: If AdGuard Home becomes unreachable, internet DNS resolution will stop working across your router and network until restored.",
+  "aghConfigureDnsModeFallback": "Fallback Retention",
+  "aghConfigureDnsModeFallbackDesc": "Keep existing resolvers as secondary fallbacks alongside AdGuard Home.",
+  "aghConfigureDnsModeFallbackWarning": "Bypass Risk: Dnsmasq may query fallbacks concurrently or on slow queries, allowing some traffic to bypass AdGuard Home filtering.",
+  "aghConfigureDnsRollbackNotice": "Protected by 30-second automatic router rollback watchdog.",
+  "aghConfigureDnsApplying": "Applying configuration…",
+  "aghConfigureDnsVerifying": "Verifying router reachability…",
+  "aghConfigureDnsConfirming": "Confirming changes…",
+  "aghConfigureDnsSuccess": "Router DNS forwarding configured successfully.",
+  "aghConfigureDnsRolledBack": "Router reachability check failed. 30-second rollback watchdog restored previous configuration.",
+  "aghConfigureDnsAmbiguous": "Configuration was applied, but confirmation response was ambiguous. Please check router status.",
+  "aghConfigureDnsHostnameWarning": "Warning: Destination is a hostname. Using a static IP is recommended to prevent bootstrap resolution failures.",
+  "aghConfigureDnsLoopError": "Cannot configure: Forwarding loop detected where AdGuard upstream points back to router.",
+  "aghConfigureDnsConflictError": "Cannot configure: Port collision between AdGuard and dnsmasq.",
+  "aghConfigureDnsActionApply": "Apply Configuration",
+  "aghConfigureDnsCurrentUpstreams": "Current Upstreams",
+  "aghConfigureDnsNewUpstreams": "New Upstreams",
+  "aghRoutingStatus": "Routing Status",
+  "aghFilteringTitle": "Filtering & Rules",
+  "aghFilteringActive": "Filtering Active",
+  "aghFilteringDisabled": "Filtering Disabled",
+  "aghFilterLists": "Filter Lists",
+  "aghFilterListsTotal": "Active / Total lists",
+  "aghUserRules": "Custom Rules",
+  "aghTotalRules": "Total Rules",
+  "aghFilteringDegraded": "Filtering status unavailable from AdGuard Home",
+  "aghNoFilterLists": "No filter lists configured",
+  "aghRevertRouterDns": "Remove Forwarding",
+  "aghRevertDnsTitle": "Remove Router DNS Forwarding",
+  "aghRevertDnsDescription": "Remove AdGuard Home forwarding rule from router dnsmasq. Dnsmasq will stop routing queries to AdGuard Home.",
+  "aghRevertDnsRuleToRemove": "Rule to Remove",
+  "aghRevertDnsRemainingUpstreams": "Remaining Upstreams",
+  "aghRevertDnsNoRemainingWarning": "No remaining upstream resolvers configured. Dnsmasq will fall back to ISP-assigned DNS from WAN interface.",
+  "aghRevertDnsActionRemove": "Remove Forwarding",
+  "aghRevertDnsRemoving": "Removing DNS forwarding…",
+  "aghRevertDnsSuccess": "Router DNS forwarding removed successfully.",
+  "aghRevertDnsSuccessTitle": "DNS Forwarding Removed",
+  "aghRevertDnsFailedTitle": "Failed to Remove Forwarding",
+  "aghRevertDnsMissingError": "No active dnsmasq forwarder rule targeting this AdGuard Home instance was found.",
+  "aghRevertDnsAmbiguousError": "Multiple ambiguous forwarding rules targeting AdGuard Home were found. Please verify router settings in LuCI.",
+  "aghStatsPeriod": "Time Period",
+  "aghPeriodAll": "All Time",
+  "aghPeriod24Hours": "24 Hours",
+  "aghPeriod7Days": "7 Days",
+  "aghPeriod30Days": "30 Days",
+  "aghServiceAutostart": "Autostart on boot",
+  "aghServiceAutostartSubtitle": "Automatically start AdGuard Home on router boot",
+  "aghManageRules": "Manage Rules",
+  "aghCustomRulesTitle": "Custom Filtering Rules",
+  "aghCustomRulesHint": "Add custom blocking rules, exceptions, or host overrides (one per line).",
+  "aghRulesCount": "rules",
+  "aghSaveRulesSuccess": "Custom rules saved successfully",
+  "aghSaveRulesError": "Failed to save custom rules",
+  "aghManageFilterLists": "Manage Filter Lists",
+  "aghFilterListsTitle": "Filter Lists",
+  "aghBlocklistsTab": "Blocklists",
+  "aghAllowlistsTab": "Allowlists",
+  "aghAddFilterList": "Add Filter List",
+  "aghEditFilterList": "Edit Filter List",
+  "aghRemoveFilterList": "Remove Filter List",
+  "aghRemoveFilterListConfirm": "Are you sure you want to remove \"{name}\"?",
+  "aghFilterListName": "List Name",
+  "aghFilterListUrl": "List URL",
+  "aghFilterListType": "List Type",
+  "aghFilterListBlocklist": "Blocklist",
+  "aghFilterListAllowlist": "Allowlist",
+  "aghFilterListRules": "{count} rules",
+  "aghFilterListUpdated": "Updated: {time}",
+  "aghFilterListNeverUpdated": "Never updated",
+  "aghRefreshFilterLists": "Check for Updates",
+  "aghRefreshingFilterLists": "Updating lists…",
+  "aghFilterListsEmpty": "No filter lists configured",
+  "aghFilterListsSearch": "Search filter lists…",
+  "aghFilterListUrlDuplicate": "A filter list with this URL is already configured",
+  "aghFilterListInvalidUrl": "Please enter a valid HTTP or HTTPS URL",
+  "aghFilterListNameRequired": "Please enter a list name",
+  "aghFilterListUrlRequired": "Please enter a list URL",
+  "aghFilterListPresets": "Curated Presets",
+  "aghFilterListAddSuccess": "Filter list added successfully",
+  "aghFilterListUpdateSuccess": "Filter list updated successfully",
+  "aghFilterListRemoveSuccess": "Filter list removed successfully",
+  "aghFilterListRefreshSuccess": "Filter lists updated successfully",
+  "@aghRemoveFilterListConfirm": {
+    "description": "Confirmation message before removing a filter list",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "AdGuard DNS filter"
+      }
+    }
+  },
+  "@aghFilterListRules": {
+    "description": "Rules count label for filter list",
+    "placeholders": {
+      "count": {
+        "type": "String",
+        "example": "65,000"
+      }
+    }
+  },
+  "@aghFilterListUpdated": {
+    "description": "Last updated timestamp for filter list",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "2026-10-07 12:00"
+      }
+    }
   }
 }

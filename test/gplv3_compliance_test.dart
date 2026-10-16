@@ -45,11 +45,11 @@ void main() {
     );
 
     test(
-      'LicenseRegistry includes yet_another_luci_app entry with full GPL copyleft text',
+      'LicenseRegistry includes yala entry with full GPL copyleft text',
       () async {
         LicenseRegistry.addLicense(() async* {
           yield const LicenseEntryWithLineBreaks(
-            ['yet_another_luci_app (yala)'],
+            ['yala (yala)'],
             '''Yala (yala)
 Original work Copyright (C) 2025-2026 cogwheel0
 Modifications Copyright (C) 2026 GiridharSalana
@@ -71,7 +71,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.''',
 
         final entries = await LicenseRegistry.licenses.toList();
         final yalaEntry = entries.firstWhere(
-          (e) => e.packages.any((p) => p.contains('yet_another_luci_app')),
+          (e) => e.packages.any((p) => p.contains('yala')),
         );
 
         expect(yalaEntry, isNotNull);

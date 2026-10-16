@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:yala/design/luci_theme.dart';
 import 'package:yala/screens/main_screen.dart';
 import 'package:yala/state/app_state.dart';
 import 'package:yala/widgets/luci_toast.dart';
@@ -130,6 +131,50 @@ void main() {
         // Banner should disappear
         expect(find.text('Router disconnected'), findsNothing);
         expect(find.text('Reconnecting to router...'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'MainScreen connectivity banner uses dynamic primary tokens in dynamic dark theme',
+      (WidgetTester tester) async {
+        final appState = AppState.instance;
+        await appState.setThemePalette(AppThemePalette.dynamicTheme);
+        appState.setConnectionStatusForTesting(
+          RouterConnectionStatus.reconnecting,
+        );
+
+        final dynamicDarkTheme = LuciTheme.buildDarkTheme(
+          dynamicColorScheme: LuciTheme.fallbackDynamicDark,
+          palette: AppThemePalette.dynamicTheme,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              theme: dynamicDarkTheme,
+              darkTheme: dynamicDarkTheme,
+              themeMode: ThemeMode.dark,
+              home: const MainScreen(initialTab: 0),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Banner should be visible with reconnecting text
+        expect(find.text('Reconnecting to router...'), findsOneWidget);
+
+        // Text color should match onPrimaryContainer (dynamic blue), NOT onTertiaryContainer (pink)
+        final textWidget = tester.widget<Text>(
+          find.text('Reconnecting to router...'),
+        );
+        expect(
+          textWidget.style?.color,
+          equals(dynamicDarkTheme.colorScheme.onPrimaryContainer),
+        );
+
+        // Reset palette and connection status
+        await appState.setThemePalette(AppThemePalette.amber);
+        appState.setConnectionStatusForTesting(RouterConnectionStatus.connected);
       },
     );
   });

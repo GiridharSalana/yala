@@ -70,6 +70,36 @@ class StubAuthService implements IAuthService {
   }) async {
     return false;
   }
+
+  int _authEpoch = 0;
+  @override
+  int get authEpoch => _authEpoch;
+
+  @override
+  int startPasswordTransition() => ++_authEpoch;
+
+  @override
+  void completePasswordTransition({
+    required String newToken,
+    required String newPassword,
+    required String ipAddress,
+    required bool useHttps,
+  }) {
+    _sysauth = newToken;
+    _isAuthenticated = true;
+    _ipAddress = ipAddress;
+    _useHttps = useHttps;
+  }
+
+  @override
+  void cancelPasswordTransition() {
+    _authEpoch++;
+  }
+
+  @override
+  void updateSessionToken(String? token) {
+    _sysauth = token;
+  }
 }
 
 void main() {

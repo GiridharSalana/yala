@@ -31,4 +31,24 @@ abstract class IAuthService {
   String? get ipAddress;
   bool get useHttps;
   bool get isAuthenticated;
+
+  /// Authoritative generation counter for active session invalidation.
+  int get authEpoch;
+
+  /// Starts a password transition critical section: advances authEpoch and suppresses transparent renewal.
+  int startPasswordTransition();
+
+  /// Completes a password transition: sets verified new session token and advances authEpoch.
+  void completePasswordTransition({
+    required String newToken,
+    required String newPassword,
+    required String ipAddress,
+    required bool useHttps,
+  });
+
+  /// Cancels a password transition critical section: advances authEpoch and unblocks renewal.
+  void cancelPasswordTransition();
+
+  /// Directly updates the in-memory session token without clearing saved router credentials.
+  void updateSessionToken(String? token);
 }

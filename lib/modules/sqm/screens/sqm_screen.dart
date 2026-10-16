@@ -6,7 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yala/design/luci_design_system.dart';
 import 'package:yala/l10n/app_localizations.dart';
 import 'package:yala/main.dart';
+import 'package:yala/widgets/luci_loading_states.dart';
+import 'package:yala/widgets/luci_loading_view.dart';
 import 'package:yala/widgets/luci_toast.dart';
+import '../controllers/sqm_controller.dart';
 import '../models/sqm_overview.dart';
 import '../models/sqm_queue.dart';
 import '../widgets/sqm_install_card.dart';
@@ -17,7 +20,8 @@ import '../widgets/sqm_flow_offloading_dialog.dart';
 
 /// Screen for Smart Queue Management (SQM) / Bufferbloat mitigation.
 class SqmScreen extends ConsumerStatefulWidget {
-  const SqmScreen({super.key});
+  final String? routerId;
+  const SqmScreen({super.key, this.routerId});
 
   @override
   ConsumerState<SqmScreen> createState() => _SqmScreenState();
@@ -26,12 +30,58 @@ class SqmScreen extends ConsumerStatefulWidget {
 class _SqmScreenState extends ConsumerState<SqmScreen> {
   bool _isInstalling = false;
   bool _isRefreshing = false;
+  String? _activeRouterId;
+  SqmController? _controller;
+
+  String _resolveRouterId() {
+    return widget.routerId ??
+        ref.read(appStateProvider).selectedRouter?.id ??
+        'default';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _activeRouterId = _resolveRouterId();
+      _controller =
+          ref.read(sqmControllerProvider(_activeRouterId!).notifier);
+      _controller?.refresh(forceTelemetry: true);
+      _controller?.startLiveTelemetry();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant SqmScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.routerId != widget.routerId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _controller?.stopLiveTelemetry();
+        _activeRouterId = _resolveRouterId();
+        _controller =
+            ref.read(sqmControllerProvider(_activeRouterId!).notifier);
+        _controller?.refresh(forceTelemetry: true);
+        _controller?.startLiveTelemetry();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.stopLiveTelemetry();
+    super.dispose();
+  }
 
   Future<void> _refresh() async {
     if (_isRefreshing) return;
     setState(() => _isRefreshing = true);
     try {
-      await ref.read(appStateProvider).fetchDashboardData();
+      final routerId = _activeRouterId ?? _resolveRouterId();
+      await ref
+          .read(sqmControllerProvider(routerId).notifier)
+          .refresh(forceTelemetry: true);
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
     }
@@ -40,6 +90,10 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
   Future<void> _openInstallDialog(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
+    final SqmController controller = _controller ??
+        ref.read(
+          sqmControllerProvider(_activeRouterId ?? _resolveRouterId()).notifier,
+        );
 
     final selectedPkg = await showDialog<String>(
       context: context,
@@ -58,7 +112,7 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
       );
     }
 
-    final res = await appState.installPackage(selectedPkg);
+    final res = await controller.installSqmPackage();
 
     if (mounted && context.mounted) {
       setState(() => _isInstalling = false);
@@ -73,7 +127,7 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
       } else {
         context.showToastError(
           l10n?.modSqmInstallFailedTitle ?? 'Installation Failed',
-          subtitle: res.errorMessage ?? 'Command failed',
+          subtitle: res.userFriendlyPackageError,
           actionKey: actionKey,
         );
 
@@ -83,6 +137,8 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
         final isReadOnlyError = errorText.toLowerCase().contains(
           'read-only file system',
         );
+        final isStorageError = res.isInsufficientStorage || isReadOnlyError;
+        final isOomError = res.isMemoryExhausted;
 
         // Show detailed output dialog for diagnosis
         await showDialog<void>(
@@ -97,10 +153,14 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    isReadOnlyError
-                        ? 'Filesystem is Read-Only'
-                        : (l10n?.pkgExecutionOutputTitle ??
-                              'Installation Output'),
+                    isStorageError
+                        ? (isReadOnlyError
+                            ? 'Filesystem is Read-Only'
+                            : 'Insufficient Storage Space')
+                        : (isOomError
+                            ? 'Memory Exhaustion (OOM)'
+                            : (l10n?.pkgExecutionOutputTitle ??
+                                  'Installation Output')),
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),
@@ -111,7 +171,41 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isReadOnlyError) ...[
+                  if (isOomError) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade900.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.amber.shade700.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.memory_rounded,
+                            color: Colors.amber.shade800,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'The router ran out of RAM while resolving package dependencies and terminated the package manager.\n\nTo resolve this:\n• Enable zram-swap or configure external swap space\n• Stop memory-intensive background services temporarily\n• Install packages individually or use an image with pre-baked packages',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.amber.shade900,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (isStorageError) ...[
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -132,7 +226,9 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'The router\'s root filesystem is mounted read-only because there is no space left in the flash overlay partition (/overlay).\n\nTo resolve this:\n• Free up flash space or remove unused packages\n• Run "firstboot" via SSH to reset the overlay\n• Use Extroot (USB drive) for expanded storage',
+                              isReadOnlyError
+                                  ? 'The router\'s root filesystem is mounted read-only because there is no space left in the flash overlay partition (/overlay).\n\nTo resolve this:\n• Free up flash space or remove unused packages\n• Run "firstboot" via SSH to reset the overlay\n• Use Extroot (USB drive) for expanded storage'
+                                  : 'The router does not have enough storage space on the flash partition to install this package.\n\nTo resolve this:\n• Free up flash space or remove unused packages\n• Use Extroot (USB drive) for expanded storage',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.amber.shade900,
@@ -228,6 +324,9 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
           l10n?.modSqmUninstallSuccessToast ?? 'SQM removed successfully.',
           actionKey: actionKey,
         );
+        final routerId = _activeRouterId ?? _resolveRouterId();
+        SqmController.clearSessionCache(routerId);
+        await ref.read(sqmControllerProvider(routerId).notifier).refresh();
       } else {
         context.showToastError(
           l10n?.modSqmUninstallFailedToast ?? 'Failed to remove SQM packages.',
@@ -240,7 +339,6 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
 
   Future<void> _addNewQueue(SqmOverview overview) async {
     final l10n = AppLocalizations.of(context);
-    final appState = ref.read(appStateProvider);
 
     if (overview.hasAnyFlowOffloading) {
       final proceed = await showFlowOffloadingWarningDialog(context, ref: ref);
@@ -333,7 +431,10 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
       script: 'piece_of_cake.qos',
     );
 
-    final success = await appState.saveSqmQueue(newQueue);
+    final routerId = _activeRouterId ?? _resolveRouterId();
+    final success = await ref
+        .read(sqmControllerProvider(routerId).notifier)
+        .saveQueue(newQueue, context: mounted ? context : null);
     if (mounted && context.mounted) {
       if (success) {
         context.showToastSuccess(
@@ -353,11 +454,15 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final appState = ref.watch(appStateProvider);
-    final overview = SqmOverview.fromDashboardData(
-      appState.dashboardData,
-      isReviewerMode: appState.reviewerModeEnabled,
-    );
+    final routerId = _resolveRouterId();
+    final sqmState = ref.watch(sqmControllerProvider(routerId));
+    final overview = SqmOverview.fromSqmState(sqmState);
+
+    final isInitialLoading =
+        sqmState.isLoading && sqmState.lastUpdated == null;
+    final isDiscoveryFailed = !sqmState.isLoading &&
+        !overview.isInstalled &&
+        sqmState.errorMessage != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -408,14 +513,37 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            if (!overview.isInstalled)
+            if (isInitialLoading)
+              const LuciLoadingView(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                skeleton: Column(
+                  children: [
+                    LuciCardSkeleton(),
+                    SizedBox(height: LuciSpacing.md),
+                    LuciCardSkeleton(),
+                  ],
+                ),
+              )
+            else if (isDiscoveryFailed)
+              _buildDiscoveryErrorView(
+                context,
+                l10n,
+                theme,
+                sqmState.errorMessage!,
+              )
+            else if (!overview.isInstalled)
               SqmInstallCard(
                 onInstallTap: () => _openInstallDialog(context),
                 isInstalling: _isInstalling,
               )
             else ...[
               // Status Card
-              SqmStatusCard(overview: overview, onRefresh: _refresh),
+              SqmStatusCard(
+                routerId: routerId,
+                sqmState: sqmState,
+                overview: overview,
+                onRefresh: _refresh,
+              ),
 
               if (overview.hasAnyFlowOffloading) ...[
                 const SizedBox(height: LuciSpacing.sm),
@@ -525,7 +653,10 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
                   (q) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: SqmQueueCard(
+                      key: ValueKey(q.name),
                       queue: q,
+                      routerId: routerId,
+                      sqmState: sqmState,
                       overview: overview,
                       availableInterfaces: overview.networkInterfaces,
                       availableQdiscs: overview.availableQdiscs,
@@ -537,6 +668,59 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
                   ),
                 ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDiscoveryErrorView(
+    BuildContext context,
+    AppLocalizations? l10n,
+    ThemeData theme,
+    String errorMessage,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.cloud_off_rounded,
+                size: 40,
+                color: theme.colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: LuciSpacing.md),
+            Text(
+              l10n?.sqmDiscoveryErrorTitle ?? 'Unable to check SQM status',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: LuciSpacing.xs),
+            Text(
+              l10n?.sqmDiscoveryErrorDesc ??
+                  'Router communication failed or returned an incomplete response.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: LuciSpacing.lg),
+            FilledButton.icon(
+              onPressed: _refresh,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(l10n?.sqmRetryDiscovery ?? 'Retry Discovery'),
+            ),
           ],
         ),
       ),

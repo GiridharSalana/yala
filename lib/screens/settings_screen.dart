@@ -20,6 +20,7 @@ import 'package:yala/widgets/theme_router_logo.dart';
 import 'package:yala/widgets/language_picker_dialog.dart';
 import 'package:yala/widgets/rpc_permissions_dialog.dart';
 import 'package:yala/widgets/edit_hostname_dialog.dart';
+import 'package:yala/widgets/change_router_password_dialog.dart';
 import 'package:yala/state/app_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -124,6 +125,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 8),
           _buildCapabilitiesTile(context, appState),
           const SizedBox(height: 24),
+
+          // Router Security & Access Section
+          if (activeRouter != null) ...[
+            _buildSectionHeader(
+              context,
+              'ROUTER SECURITY & ACCESS',
+              Icons.security_outlined,
+            ),
+            const SizedBox(height: 8),
+            _buildChangePasswordTile(context, appState),
+            const SizedBox(height: 24),
+          ],
 
           // App Updates (if community flavor and not F-Droid build)
           if (AppConfig.isCommunityFlavor && !AppConfig.isFdroidBuild) ...[
@@ -924,6 +937,84 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Widget _buildChangePasswordTile(BuildContext context, AppState appState) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+    final caps = appState.capabilities;
+    final isSupported = caps?.hasSetPasswordRpc ?? false;
+
+    return Container(
+      decoration: LuciCardStyles.standardCard(context),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: LuciCardStyles.standardRadius,
+        child: InkWell(
+          borderRadius: LuciCardStyles.standardRadius,
+          onTap: isSupported
+              ? () => ChangeRouterPasswordDialog.show(context)
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isSupported
+                        ? colorScheme.primaryContainer
+                        : colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.password_rounded,
+                    color: isSupported
+                        ? colorScheme.onPrimaryContainer
+                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n?.changePasswordTitle ?? 'Change Router Password',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: isSupported
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        isSupported
+                            ? 'Update root/admin password on active router'
+                            : (l10n?.changePasswordUnsupported ??
+                                'Router does not expose luci.setPassword via rpcd-mod-luci.'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isSupported)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCapabilityChip(
     BuildContext context,
     String label,
@@ -1288,7 +1379,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   applicationVersion: '1.0.3',
                   applicationLegalese:
                       '${AppConfig.copyrightNotice}\n'
-                      'Licensed under GNU General Public License v3.0 or later.',
+                      'Licensed under GNU General Public License v3.0 or later.\n\n'
+                      'DISCLAIMER: Yala is an independent open-source project and is not '
+                      'affiliated with, endorsed by, or sponsored by the OpenWrt Project, '
+                      'AdGuard Ltd., WireGuard LLC, Tailscale Inc., Cloudflare Inc., '
+                      'or any other third-party service or trademark referenced herein. '
+                      'All product names, trademarks, and registered trademarks are the '
+                      'property of their respective owners.',
                 ),
               ),
             ],

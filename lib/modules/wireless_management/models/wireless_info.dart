@@ -118,7 +118,12 @@ enum WifiSecurityMode {
     final configEnc = (rawConfigEnc ?? '').toLowerCase().trim();
     final description = (iwinfoEnc?['description']?.toString() ?? '')
         .toUpperCase();
-    final enabled = iwinfoEnc?['enabled'] as bool? ?? true;
+    final rawEnabled = iwinfoEnc?['enabled'];
+    final enabled = rawEnabled == null ||
+        rawEnabled == true ||
+        rawEnabled == 1 ||
+        rawEnabled == '1' ||
+        rawEnabled == 'true';
 
     final authSuitesRaw = iwinfoEnc?['auth_suites'];
     final authSuites = <String>[];
@@ -664,8 +669,12 @@ class WirelessInterface {
     Map<String, dynamic> json,
     Map<String, dynamic>? assocData,
   ) {
-    final config = json['config'] as Map<String, dynamic>? ?? {};
-    final iwinfo = json['iwinfo'] as Map<String, dynamic>? ?? {};
+    final config = json['config'] is Map
+        ? Map<String, dynamic>.from(json['config'] as Map)
+        : <String, dynamic>{};
+    final iwinfo = json['iwinfo'] is Map
+        ? Map<String, dynamic>.from(json['iwinfo'] as Map)
+        : <String, dynamic>{};
 
     final name =
         json['ifname']?.toString() ?? config['ifname']?.toString() ?? 'wlan';
@@ -679,11 +688,19 @@ class WirelessInterface {
         config['encryption']?.toString() ??
         'WPA2-PSK';
     final chStr = (iwinfo['channel'] ?? config['channel'] ?? 'Auto').toString();
-    final enabled =
-        !(config['disabled'] as bool? ?? (json['disabled'] as bool? ?? false));
 
-    final iwEncMap = iwinfo['encryption'] is Map<String, dynamic>
-        ? iwinfo['encryption'] as Map<String, dynamic>
+    bool parseDisabledVal(dynamic val) {
+      if (val == null) return false;
+      if (val is bool) return val;
+      final s = val.toString().trim().toLowerCase();
+      return s == '1' || s == 'true' || s == 'yes' || s == 'on';
+    }
+
+    final isDisabled = parseDisabledVal(config['disabled'] ?? json['disabled']);
+    final enabled = !isDisabled;
+
+    final iwEncMap = iwinfo['encryption'] is Map
+        ? Map<String, dynamic>.from(iwinfo['encryption'] as Map)
         : null;
     final rawConfigEnc = config['encryption']?.toString();
 
@@ -880,9 +897,18 @@ class WirelessRadio {
     Map<String, dynamic> json,
     Map<String, dynamic>? assocData,
   ) {
-    final config = json['config'] as Map<String, dynamic>? ?? {};
-    final iwinfo = json['iwinfo'] as Map<String, dynamic>? ?? {};
-    final up = json['up'] as bool? ?? true;
+    final config = json['config'] is Map
+        ? Map<String, dynamic>.from(json['config'] as Map)
+        : <String, dynamic>{};
+    final iwinfo = json['iwinfo'] is Map
+        ? Map<String, dynamic>.from(json['iwinfo'] as Map)
+        : <String, dynamic>{};
+    final rawUp = json['up'];
+    final up = rawUp == null ||
+        rawUp == true ||
+        rawUp == 1 ||
+        rawUp == '1' ||
+        rawUp == 'true';
     final ch =
         (json['channel'] ?? config['channel'] ?? iwinfo['channel'] ?? 'Auto')
             .toString();
@@ -1052,18 +1078,25 @@ class WirelessOverview {
     if (data != null) {
       assocData = data['wirelessStations'] as Map<String, dynamic>?;
 
-      final wirelessMap =
-          (data['wireless'] ?? data['wirelessInterfaces'])
-              as Map<String, dynamic>?;
+      final wirelessMap = (data['wireless'] is Map
+              ? data['wireless'] as Map
+              : (data['wirelessInterfaces'] is Map
+                  ? data['wirelessInterfaces'] as Map
+                  : null));
       if (wirelessMap != null && wirelessMap.isNotEmpty) {
         wirelessMap.forEach((radioName, radioData) {
-          if (radioData is Map<String, dynamic>) {
+          if (radioData is Map) {
+            final radioMap = Map<String, dynamic>.from(radioData);
             // Check if radioData contains valid radio structure (e.g. interfaces or config)
-            if (radioData.containsKey('interfaces') ||
-                radioData.containsKey('up') ||
-                radioData.containsKey('channel')) {
+            if (radioMap.containsKey('interfaces') ||
+                radioMap.containsKey('up') ||
+                radioMap.containsKey('channel')) {
               radioList.add(
-                WirelessRadio.fromJson(radioName, radioData, assocData),
+                WirelessRadio.fromJson(
+                  radioName.toString(),
+                  radioMap,
+                  assocData,
+                ),
               );
             }
           }
@@ -1157,7 +1190,7 @@ class WirelessOverview {
               if (existingIdx >= 0) {
                 final existing = updatedIfaces[existingIdx];
                 updatedIfaces[existingIdx] = existing.copyWith(
-                  isEnabled: isDisabled ? false : existing.isEnabled,
+                  isEnabled: !isDisabled,
                   sectionName: existing.sectionName.isNotEmpty
                       ? existing.sectionName
                       : sectionName,

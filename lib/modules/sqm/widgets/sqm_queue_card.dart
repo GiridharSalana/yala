@@ -7,16 +7,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yala/design/luci_design_system.dart';
 import 'package:yala/l10n/app_localizations.dart';
 import 'package:yala/main.dart';
+import 'package:yala/models/client.dart';
 import 'package:yala/widgets/luci_toast.dart';
+import '../controllers/sqm_controller.dart';
 import '../models/sqm_overview.dart';
 import '../models/sqm_preset.dart';
 import '../models/sqm_queue.dart';
+import '../models/sqm_telemetry.dart';
 import 'sqm_flow_offloading_dialog.dart';
 
-/// Card for editing and managing a specific SQM queue instance.
+/// Card for editing and managing a specific SQM queue instance with live telemetry.
 class SqmQueueCard extends ConsumerStatefulWidget {
   final SqmQueue queue;
   final SqmOverview? overview;
+  final SqmState? sqmState;
+  final String? routerId;
   final List<String> availableInterfaces;
   final List<String> availableQdiscs;
   final List<String> availableScripts;
@@ -28,6 +33,8 @@ class SqmQueueCard extends ConsumerStatefulWidget {
     super.key,
     required this.queue,
     this.overview,
+    this.sqmState,
+    this.routerId,
     required this.availableInterfaces,
     required this.availableQdiscs,
     required this.availableScripts,
@@ -173,7 +180,6 @@ class _SqmQueueCardState extends ConsumerState<SqmQueueCard> {
     setState(() => _isSaving = true);
 
     final l10n = AppLocalizations.of(context);
-    final appState = ref.read(appStateProvider);
     final actionKey = 'save_sqm_${widget.queue.name}';
 
     if (mounted) {
@@ -203,7 +209,15 @@ class _SqmQueueCardState extends ConsumerState<SqmQueueCard> {
       verbosity: _verbosity,
     );
 
-    final success = await appState.saveSqmQueue(updatedQueue);
+    final bool success;
+    if (widget.routerId != null) {
+      success = await ref
+          .read(sqmControllerProvider(widget.routerId!).notifier)
+          .saveQueue(updatedQueue, context: mounted ? context : null);
+    } else {
+      final appState = ref.read(appStateProvider);
+      success = await appState.saveSqmQueue(updatedQueue);
+    }
 
     if (mounted) {
       setState(() => _isSaving = false);
@@ -257,7 +271,6 @@ class _SqmQueueCardState extends ConsumerState<SqmQueueCard> {
     if (confirm != true || !mounted) return;
 
     setState(() => _isDeleting = true);
-    final appState = ref.read(appStateProvider);
     final actionKey = 'delete_sqm_${widget.queue.name}';
 
     if (mounted) {
@@ -267,7 +280,15 @@ class _SqmQueueCardState extends ConsumerState<SqmQueueCard> {
       );
     }
 
-    final success = await appState.deleteSqmQueue(widget.queue.name);
+    final bool success;
+    if (widget.routerId != null) {
+      success = await ref
+          .read(sqmControllerProvider(widget.routerId!).notifier)
+          .deleteQueue(widget.queue.name, context: mounted ? context : null);
+    } else {
+      final appState = ref.read(appStateProvider);
+      success = await appState.deleteSqmQueue(widget.queue.name);
+    }
 
     if (mounted) {
       setState(() => _isDeleting = false);
@@ -1011,6 +1032,11 @@ class _SqmQueueCardState extends ConsumerState<SqmQueueCard> {
 
             const SizedBox(height: LuciSpacing.md),
 
+            // Live Queue Telemetry Section
+            _buildTelemetrySection(context),
+
+            const SizedBox(height: LuciSpacing.md),
+
             // Collapsible Advanced Settings
             InkWell(
               onTap: () => setState(() => _showAdvanced = !_showAdvanced),
@@ -1194,6 +1220,409 @@ class _SqmQueueCardState extends ConsumerState<SqmQueueCard> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTelemetrySection(BuildContext context) {
+    if (widget.sqmState == null) return const SizedBox.shrink();
+
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final iface = _selectedInterface.isNotEmpty
+        ? _selectedInterface
+        : widget.queue.interface;
+    final telemetry = widget.sqmState!.telemetryByInterface[iface];
+    final prevTelemetry = widget.sqmState!.previousTelemetryByInterface[iface];
+    final memBytes = telemetry?.memoryUsedBytes;
+    final capBps = telemetry?.capacityEstimateBps;
+    final ecnMarks = telemetry?.ecnMarked;
+    final newFlows = telemetry?.newFlowCount;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 1),
+        const SizedBox(height: LuciSpacing.md),
+
+        // Telemetry header
+        Row(
+          children: [
+            Icon(
+              Icons.insights_rounded,
+              size: 18,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${l10n?.modSqmTelemetryTitle ?? "Queue Telemetry"} ($iface)',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (telemetry != null) ...[
+              if (telemetry.hasRecentDropActivity(prevTelemetry))
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: LuciStatusColors.warning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: LuciStatusColors.warning.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.trending_down_rounded,
+                        size: 13,
+                        color: LuciStatusColors.warning,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        l10n?.modSqmTelemetryRecentDropsBadge ??
+                            'Recent Drop Activity',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: LuciStatusColors.warning,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (telemetry.hasBacklog)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: LuciStatusColors.warning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    l10n?.modSqmTelemetryBacklogActive(
+                          telemetry.backlogPackets.toString(),
+                          Client.formatBytes(telemetry.backlogBytes),
+                        ) ??
+                        '${telemetry.backlogPackets} pkts (${Client.formatBytes(telemetry.backlogBytes)})',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: LuciStatusColors.warning,
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: LuciStatusColors.connected.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    l10n?.modSqmTelemetryBacklogClean ?? '0 pkts (Clean)',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: LuciStatusColors.connected,
+                    ),
+                  ),
+                ),
+            ],
+          ],
+        ),
+
+        const SizedBox(height: 10),
+
+        if (telemetry == null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.5,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _enabled
+                        ? (l10n?.modSqmTelemetryWaitingForData(iface) ??
+                              'Waiting for queue traffic on $iface...')
+                        : (l10n?.modSqmOperatingStateInactive ?? 'Inactive'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          // Metrics 2x2 grid
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.35,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTelemetryMetric(
+                        label: l10n?.modSqmTelemetrySentLabel ?? 'Sent Traffic',
+                        value: Client.formatBytes(telemetry.sentBytes),
+                        subtitle: '${telemetry.sentPackets} pkts',
+                        theme: theme,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildTelemetryMetric(
+                        label:
+                            l10n?.modSqmTelemetryBacklogLabel ??
+                            'Instantaneous Backlog',
+                        value: telemetry.hasBacklog
+                            ? '${telemetry.backlogPackets} pkts'
+                            : '0 pkts',
+                        subtitle: telemetry.hasBacklog
+                            ? Client.formatBytes(telemetry.backlogBytes)
+                            : (l10n?.modSqmTelemetryBacklogClean ?? 'Clean'),
+                        valueColor: telemetry.hasBacklog
+                            ? LuciStatusColors.warning
+                            : LuciStatusColors.connected,
+                        theme: theme,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTelemetryMetric(
+                        label:
+                            l10n?.modSqmTelemetryCumulativeDropsLabel ??
+                            'Cumulative Drops',
+                        value: '${telemetry.droppedPackets}',
+                        subtitle:
+                            '${telemetry.dropRatePercent.toStringAsFixed(2)}% rate',
+                        valueColor: telemetry.hasCumulativeDrops
+                            ? LuciStatusColors.warning
+                            : null,
+                        theme: theme,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildTelemetryMetric(
+                        label:
+                            l10n?.modSqmTelemetryCumulativeOverlimitsLabel ??
+                            'Cumulative Overlimits',
+                        value: '${telemetry.overlimits}',
+                        subtitle: telemetry.requeues > 0
+                            ? '${telemetry.requeues} requeues'
+                            : 'Cumulative total',
+                        valueColor: telemetry.hasCumulativeOverlimits
+                            ? LuciStatusColors.warning
+                            : null,
+                        theme: theme,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // CAKE specifics: memory & capacity estimate
+                if ((memBytes != null && memBytes > 0) ||
+                    (capBps != null && capBps > 0)) ...[
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      if (memBytes != null && memBytes > 0)
+                        Expanded(
+                          child: _buildTelemetryMetric(
+                            label:
+                                l10n?.modSqmTelemetryMemoryLabel ??
+                                'Memory Used',
+                            value: Client.formatBytes(memBytes),
+                            theme: theme,
+                          ),
+                        ),
+                      if (capBps != null && capBps > 0) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildTelemetryMetric(
+                            label:
+                                l10n?.modSqmTelemetryCapacityLabel ??
+                                'Capacity Estimate',
+                            value:
+                                '${(capBps / 1000000).toStringAsFixed(1)} Mbps',
+                            theme: theme,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+
+                // FQ-CoDel specifics: ECN marks & new flows
+                if ((ecnMarks != null && ecnMarks > 0) ||
+                    (newFlows != null && newFlows > 0)) ...[
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      if (ecnMarks != null && ecnMarks > 0)
+                        Expanded(
+                          child: _buildTelemetryMetric(
+                            label:
+                                l10n?.modSqmTelemetryEcnLabel ?? 'ECN Marks',
+                            value: '$ecnMarks',
+                            theme: theme,
+                          ),
+                        ),
+                      if (newFlows != null && newFlows > 0) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildTelemetryMetric(
+                            label:
+                                l10n?.modSqmTelemetryNewFlowsLabel ??
+                                'New Flows',
+                            value: '$newFlows',
+                            theme: theme,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+
+                // CAKE Tins list if present
+                if (telemetry.tinStats.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    l10n?.modSqmTelemetryTinsTitle ?? 'CAKE Priority Tins',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ...telemetry.tinStats.map(
+                    (tin) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            tin.name,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${tin.sentPackets ?? 0} pkts | ${tin.droppedPackets} drop | ${tin.backlogPackets} backlog',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 10),
+                Text(
+                  l10n?.modSqmTelemetryCumulativeNote ??
+                      'Drops and overlimits are cumulative Linux Traffic Control counters since queue start. Instantaneous backlog shows current queue state.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.8,
+                    ),
+                    fontSize: 10,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTelemetryMetric({
+    required String label,
+    required String value,
+    String? subtitle,
+    Color? valueColor,
+    required ThemeData theme,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontSize: 11,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 1),
+          Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 10,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ],
     );
   }
 }

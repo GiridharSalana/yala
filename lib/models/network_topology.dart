@@ -91,6 +91,7 @@ class TopologyPort {
   final String name;
   final bool isTagged;
   final bool isWan;
+  final bool isCpu;
   final int? portIndex;
   final bool isUp;
   final String? linkSpeed;
@@ -99,6 +100,7 @@ class TopologyPort {
     required this.name,
     this.isTagged = false,
     this.isWan = false,
+    this.isCpu = false,
     this.portIndex,
     this.isUp = true,
     this.linkSpeed,
@@ -108,6 +110,7 @@ class TopologyPort {
     'name': name,
     'isTagged': isTagged,
     'isWan': isWan,
+    'isCpu': isCpu,
     'portIndex': portIndex,
     'isUp': isUp,
     'linkSpeed': linkSpeed,
@@ -219,6 +222,7 @@ class DsaTopologyParser {
       }) {
         final cleanName = rawName.split(':').first.trim();
         final isWan = isWanOverride ?? cleanName.toLowerCase().contains('wan');
+        final isCpu = cleanName.toLowerCase().contains('cpu');
 
         bool isUp = false;
         String? linkSpeed;
@@ -245,6 +249,7 @@ class DsaTopologyParser {
           name: cleanName,
           isTagged: isTagged,
           isWan: isWan,
+          isCpu: isCpu,
           portIndex: portIndex,
           isUp: isUp,
           linkSpeed: linkSpeed,
@@ -367,26 +372,26 @@ class DsaTopologyParser {
             ),
           );
         });
+      }
 
-        // Also detect standalone WAN device if present and not already listed
-        if (wanPortNames.isEmpty &&
-            networkDevices != null &&
-            networkDevices.containsKey('wan')) {
-          wanPortNames.add('wan');
-        }
-        for (final wanName in wanPortNames) {
-          if (!allPorts.any((ap) => ap.name == wanName)) {
-            final wanPort = buildDsaPort(wanName, isWanOverride: true);
-            allPorts.add(wanPort);
-            vlans.add(
-              VlanConfig(
-                vid: 0,
-                name: 'WAN Interface ($wanName)',
-                ports: [wanPort],
-                device: wanName,
-              ),
-            );
-          }
+      // Also detect standalone WAN device if present and not already listed
+      if (wanPortNames.isEmpty &&
+          networkDevices != null &&
+          networkDevices.containsKey('wan')) {
+        wanPortNames.add('wan');
+      }
+      for (final wanName in wanPortNames) {
+        if (!allPorts.any((ap) => ap.name == wanName || (ap.isWan && !ap.isCpu))) {
+          final wanPort = buildDsaPort(wanName, isWanOverride: true);
+          allPorts.add(wanPort);
+          vlans.add(
+            VlanConfig(
+              vid: 0,
+              name: 'WAN Interface ($wanName)',
+              ports: [wanPort],
+              device: wanName,
+            ),
+          );
         }
       }
 
@@ -419,8 +424,9 @@ class DsaTopologyParser {
 class SwconfigTopologyParser {
   static NetworkTopology parse(
     Map<String, dynamic> uciNetworkConfig,
-    Map<String, dynamic>? networkDevices,
-  ) {
+    Map<String, dynamic>? networkDevices, {
+    Map<String, dynamic>? boardJson,
+  }) {
     try {
       final rawValues = uciNetworkConfig['values'];
       final Map<String, dynamic> uciValues = (rawValues is Map)
@@ -450,6 +456,96 @@ class SwconfigTopologyParser {
         }
       }
 
+      // Build hardware-to-chassis port label mapping from board.json if available
+      final boardPortLabels = <String, Map<int, String>>{};
+      final boardWanPorts = <String, Set<int>>{};
+      final boardCpuPorts = <String, Set<int>>{};
+      final boardPortOrder = <String, Map<int, int>>{};
+      final cpuDeviceNames = <String>{};
+
+      if (boardJson != null && boardJson['switch'] is Map) {
+        final switchSection = boardJson['switch'] as Map;
+        switchSection.forEach((swName, swLayout) {
+          if (swLayout is Map && swLayout['ports'] is List) {
+            final portsList = swLayout['ports'] as List;
+            final specs =
+                <({int num, String role, int index, String? device})>[];
+            for (final p in portsList) {
+              if (p is Map) {
+                final numVal = p['num'] is int
+                    ? p['num'] as int
+                    : int.tryParse(p['num']?.toString() ?? '');
+                if (numVal == null) continue;
+                final roleVal = p['role']?.toString();
+                final devVal = p['device']?.toString();
+                final role = roleVal ?? (devVal != null ? 'cpu' : 'lan');
+                final idxVal = p['index'] is int
+                    ? p['index'] as int
+                    : int.tryParse(p['index']?.toString() ?? '') ?? numVal;
+                specs.add(
+                  (num: numVal, role: role, index: idxVal, device: devVal),
+                );
+              }
+            }
+
+            final roleCounts = <String, int>{};
+            for (final s in specs) {
+              roleCounts[s.role] = (roleCounts[s.role] ?? 0) + 1;
+            }
+
+            // Sort by role then chassis index ascending (exact LuCI algorithm)
+            specs.sort((a, b) {
+              final rc = a.role.compareTo(b.role);
+              if (rc != 0) return rc;
+              return a.index.compareTo(b.index);
+            });
+
+            final labels = <int, String>{};
+            final wanSet = <int>{};
+            final cpuSet = <int>{};
+            final orderMap = <int, int>{};
+            int pnum = 1;
+            String? currentRole;
+
+            for (final s in specs) {
+              if (s.role != currentRole) {
+                currentRole = s.role;
+                pnum = 1;
+              }
+
+              if (s.role == 'cpu') {
+                cpuSet.add(s.num);
+                orderMap[s.num] = 900 + s.index; // CPU ports at the end
+                final devStr =
+                    s.device != null && s.device!.isNotEmpty ? s.device! : 'eth0';
+                cpuDeviceNames.add(devStr);
+                labels[s.num] = 'CPU ($devStr)';
+              } else if (s.role == 'wan') {
+                wanSet.add(s.num);
+                orderMap[s.num] = s.index;
+                labels[s.num] =
+                    (roleCounts['wan'] ?? 0) > 1 ? 'WAN $pnum' : 'WAN';
+                pnum++;
+              } else {
+                // LAN or other
+                final upper = s.role.toUpperCase();
+                orderMap[s.num] = s.index;
+                labels[s.num] = (roleCounts[s.role] ?? 0) > 1
+                    ? '$upper Port ${s.index}'
+                    : upper;
+                pnum++;
+              }
+            }
+
+            final swKey = swName.toString();
+            boardPortLabels[swKey] = labels;
+            boardWanPorts[swKey] = wanSet;
+            boardCpuPorts[swKey] = cpuSet;
+            boardPortOrder[swKey] = orderMap;
+          }
+        });
+      }
+
       uciValues.forEach((key, val) {
         if (val is Map) {
           final type = val['.type']?.toString();
@@ -472,17 +568,42 @@ class SwconfigTopologyParser {
             final vid = int.tryParse(vlanIdStr) ?? 1;
             final rawPorts = val['ports']?.toString() ?? '';
 
+            final swLabels = boardPortLabels[switchDev] ??
+                (boardPortLabels.isNotEmpty
+                    ? boardPortLabels.values.first
+                    : null);
+            final swWan = boardWanPorts[switchDev] ??
+                (boardWanPorts.isNotEmpty ? boardWanPorts.values.first : null);
+            final swCpu = boardCpuPorts[switchDev] ??
+                (boardCpuPorts.isNotEmpty ? boardCpuPorts.values.first : null);
+            final swOrder = boardPortOrder[switchDev] ??
+                (boardPortOrder.isNotEmpty ? boardPortOrder.values.first : null);
+
             final portsList = <TopologyPort>[];
             for (final portToken in rawPorts.split(' ')) {
               if (portToken.trim().isEmpty) continue;
               final isTagged = portToken.endsWith('t');
               final rawNum = portToken.replaceAll(RegExp(r'[^\d]'), '');
               final pIndex = int.tryParse(rawNum);
-              final portName = pIndex == 0
-                  ? 'WAN (Port 0)'
-                  : 'LAN Port $rawNum';
-              final isWan =
-                  pIndex == 0 || portName.toLowerCase().contains('wan');
+
+              final String portName;
+              final bool isWan;
+              final bool isCpu;
+              if (pIndex != null &&
+                  swLabels != null &&
+                  swLabels.containsKey(pIndex)) {
+                portName = swLabels[pIndex]!;
+                isWan = swWan?.contains(pIndex) ?? false;
+                isCpu = swCpu?.contains(pIndex) ??
+                    portName.toLowerCase().contains('cpu');
+              } else {
+                isCpu = (pIndex != null && swCpu != null && swCpu.contains(pIndex)) ||
+                    (pIndex == 0 && isTagged);
+                isWan = !isCpu && (pIndex == 0);
+                portName = isCpu
+                    ? (pIndex == 0 ? 'CPU (eth0)' : 'CPU (Port $rawNum)')
+                    : (isWan ? 'WAN (Port $rawNum)' : 'LAN Port $rawNum');
+              }
 
               bool isUp = false;
               String? linkSpeed;
@@ -496,26 +617,44 @@ class SwconfigTopologyParser {
                         isUp = true;
                         final spd = item['speed'];
                         if (spd != null && spd != 0 && spd != '0') {
-                          linkSpeed = '${spd}M';
+                          final spdStr = spd.toString().trim();
+                          linkSpeed = RegExp(r'^\d+$').hasMatch(spdStr)
+                              ? '${spdStr}M'
+                              : spdStr;
                         }
                         break;
                       }
                     }
                   }
                 }
-              } else if (networkDevices != null &&
-                  networkDevices.containsKey(portName)) {
-                final devInfo = networkDevices[portName];
-                if (devInfo is Map) {
-                  final carrier = devInfo['carrier'];
-                  final up = devInfo['up'];
-                  if (carrier != null) {
-                    isUp = carrier == true || carrier == 1 || carrier == '1';
-                  } else if (up != null) {
-                    isUp = up == true || up == 1 || up == '1';
+              } else if (networkDevices != null) {
+                String? devKey;
+                if (networkDevices.containsKey(portName)) {
+                  devKey = portName;
+                } else if (isCpu) {
+                  final m = RegExp(r'\(([^)]+)\)').firstMatch(portName);
+                  if (m != null && networkDevices.containsKey(m.group(1))) {
+                    devKey = m.group(1);
                   }
-                  if (devInfo['speed'] != null) {
-                    linkSpeed = devInfo['speed'].toString();
+                }
+                if (devKey != null) {
+                  final devInfo = networkDevices[devKey];
+                  if (devInfo is Map) {
+                    final carrier = devInfo['carrier'];
+                    final up = devInfo['up'];
+                    if (carrier != null) {
+                      isUp = carrier == true || carrier == 1 || carrier == '1';
+                    } else if (up != null) {
+                      isUp = up == true || up == 1 || up == '1';
+                    }
+                    if (devInfo['speed'] != null) {
+                      final spd = devInfo['speed'].toString().trim();
+                      if (RegExp(r'^\d+$').hasMatch(spd)) {
+                        linkSpeed = '${spd}M';
+                      } else {
+                        linkSpeed = spd;
+                      }
+                    }
                   }
                 }
               } else if (networkDevices == null) {
@@ -527,6 +666,7 @@ class SwconfigTopologyParser {
                 name: portName,
                 isTagged: isTagged,
                 isWan: isWan,
+                isCpu: isCpu,
                 portIndex: pIndex,
                 isUp: isUp,
                 linkSpeed: linkSpeed,
@@ -535,6 +675,18 @@ class SwconfigTopologyParser {
               if (!allPorts.any((ap) => ap.name == portName)) {
                 allPorts.add(port);
               }
+            }
+
+            if (swOrder != null) {
+              portsList.sort((a, b) {
+                final orderA = a.portIndex != null
+                    ? (swOrder[a.portIndex!] ?? 999)
+                    : 999;
+                final orderB = b.portIndex != null
+                    ? (swOrder[b.portIndex!] ?? 999)
+                    : 999;
+                return orderA.compareTo(orderB);
+              });
             }
 
             vlans.add(
@@ -548,6 +700,154 @@ class SwconfigTopologyParser {
           }
         }
       });
+
+      // Standalone WAN interface detection (e.g. eth1 on routers where WAN is not part of switch0)
+      final wanCandidates = <String>{};
+
+      if (boardJson != null && boardJson['network'] is Map) {
+        final netSection = boardJson['network'] as Map;
+        for (final wanKey in ['wan', 'wan6']) {
+          final wanNet = netSection[wanKey];
+          if (wanNet is Map) {
+            final dev =
+                wanNet['device']?.toString() ?? wanNet['ifname']?.toString();
+            if (dev != null && dev.isNotEmpty) {
+              for (final d in dev.split(' ')) {
+                if (d.trim().isNotEmpty) wanCandidates.add(d.trim());
+              }
+            }
+            final ports = wanNet['ports'];
+            if (ports is List) {
+              for (final p in ports) {
+                if (p != null && p.toString().trim().isNotEmpty) {
+                  wanCandidates.add(p.toString().trim());
+                }
+              }
+            }
+          }
+        }
+      }
+
+      uciValues.forEach((key, val) {
+        if (val is Map) {
+          final type = val['.type']?.toString();
+          if (type == 'interface') {
+            final ifName = key.toLowerCase();
+            if (ifName == 'wan' ||
+                ifName == 'wan6' ||
+                ifName.startsWith('wan')) {
+              final dev =
+                  val['device']?.toString() ?? val['ifname']?.toString();
+              if (dev != null && dev.isNotEmpty) {
+                for (final d in dev.split(' ')) {
+                  if (d.trim().isNotEmpty) wanCandidates.add(d.trim());
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (wanCandidates.isEmpty && networkDevices != null) {
+        if (networkDevices.containsKey('wan')) {
+          wanCandidates.add('wan');
+        } else if (networkDevices.containsKey('eth1')) {
+          wanCandidates.add('eth1');
+        }
+      }
+
+      bool isPhysicalNetdev(String name) {
+        final lower = name.toLowerCase();
+        if (lower.startsWith('lo') ||
+            lower.startsWith('wg') ||
+            lower.startsWith('tun') ||
+            lower.startsWith('tap') ||
+            lower.startsWith('br-') ||
+            lower.startsWith('wlan') ||
+            lower.startsWith('phy') ||
+            lower.startsWith('/dev/')) {
+          return false;
+        }
+        return true;
+      }
+
+      for (final rawWanDev in wanCandidates) {
+        if (!isPhysicalNetdev(rawWanDev)) continue;
+
+        final baseDev =
+            rawWanDev.contains('.') ? rawWanDev.split('.').first : rawWanDev;
+
+        // If baseDev is the CPU interconnect of the switch (e.g. eth0 in eth0.2), WAN is switch-integrated
+        if (cpuDeviceNames.contains(baseDev)) continue;
+
+        // Avoid adding standalone WAN if a physical WAN port is already present
+        if (allPorts.any(
+          (ap) =>
+              ap.name == baseDev ||
+              ap.name == 'WAN ($baseDev)' ||
+              (ap.isWan && !ap.isCpu),
+        )) {
+          continue;
+        }
+
+        bool isUp = false;
+        String? linkSpeed;
+        if (networkDevices != null) {
+          Map? devInfo;
+          if (networkDevices.containsKey(baseDev) &&
+              networkDevices[baseDev] is Map) {
+            devInfo = networkDevices[baseDev] as Map;
+          } else if (networkDevices.containsKey(rawWanDev) &&
+              networkDevices[rawWanDev] is Map) {
+            devInfo = networkDevices[rawWanDev] as Map;
+          } else if (networkDevices.containsKey('wan') &&
+              networkDevices['wan'] is Map) {
+            devInfo = networkDevices['wan'] as Map;
+          }
+
+          if (devInfo != null) {
+            final carrier = devInfo['carrier'];
+            final up = devInfo['up'];
+            if (carrier != null) {
+              isUp = carrier == true || carrier == 1 || carrier == '1';
+            } else if (up != null) {
+              isUp = up == true || up == 1 || up == '1';
+            }
+            if (devInfo['speed'] != null) {
+              final spd = devInfo['speed'].toString().trim();
+              if (RegExp(r'^\d+$').hasMatch(spd)) {
+                linkSpeed = '${spd}M';
+              } else {
+                linkSpeed = spd;
+              }
+            }
+          }
+        } else {
+          isUp = true;
+        }
+
+        final portDisplayName =
+            baseDev.toLowerCase() == 'wan' ? 'WAN' : 'WAN ($baseDev)';
+        final wanPort = TopologyPort(
+          name: portDisplayName,
+          isTagged: false,
+          isWan: true,
+          isCpu: false,
+          portIndex: 0,
+          isUp: isUp,
+          linkSpeed: linkSpeed,
+        );
+
+        allPorts.add(wanPort);
+        vlans.add(
+          VlanConfig(
+            vid: 0,
+            name: 'WAN Interface ($baseDev)',
+            ports: [wanPort],
+            device: baseDev,
+          ),
+        );
+      }
 
       if (!hasValidNetworkSections) {
         return NetworkTopology.unavailable(

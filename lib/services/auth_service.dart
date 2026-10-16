@@ -17,6 +17,47 @@ class RealAuthService implements IAuthService {
   String? _ipAddress;
   bool _useHttps = false;
 
+  int _authEpoch = 0;
+  bool _isPasswordTransitionActive = false;
+
+  @override
+  int get authEpoch => _authEpoch;
+
+  @override
+  int startPasswordTransition() {
+    _authEpoch++;
+    _isPasswordTransitionActive = true;
+    Logger.info('Auth epoch advanced to $_authEpoch: Password transition started');
+    return _authEpoch;
+  }
+
+  @override
+  void completePasswordTransition({
+    required String newToken,
+    required String newPassword,
+    required String ipAddress,
+    required bool useHttps,
+  }) {
+    _authEpoch++;
+    _isPasswordTransitionActive = false;
+    _sysauth = newToken;
+    _ipAddress = ipAddress;
+    _useHttps = useHttps;
+    Logger.info('Auth epoch advanced to $_authEpoch: Password transition completed');
+  }
+
+  @override
+  void cancelPasswordTransition() {
+    _authEpoch++;
+    _isPasswordTransitionActive = false;
+    Logger.info('Auth epoch advanced to $_authEpoch: Password transition cancelled');
+  }
+
+  @override
+  void updateSessionToken(String? token) {
+    _sysauth = token;
+  }
+
   RealAuthService(this._apiService) {
     if (_apiService is RealApiService) {
       _apiService.onSessionRenew = _renewSession;
@@ -24,6 +65,12 @@ class RealAuthService implements IAuthService {
   }
 
   Future<String?> _renewSession(String ipAddress, bool useHttps) async {
+    if (_isPasswordTransitionActive) {
+      Logger.info('Session renewal rejected: password transition active in epoch $_authEpoch');
+      return null;
+    }
+    final capturedEpoch = _authEpoch;
+
     final credentials = await _secureStorageService.getCredentials();
     final user = credentials['username'];
     final pass = credentials['password'];
@@ -42,6 +89,12 @@ class RealAuthService implements IAuthService {
         pass,
         useHttps,
       );
+      if (capturedEpoch != _authEpoch || _isPasswordTransitionActive) {
+        Logger.info(
+          'Discarding stale session renewal result from expired auth epoch $capturedEpoch (current: $_authEpoch)',
+        );
+        return null;
+      }
       if (result.isSuccess && result.token != null) {
         _sysauth = result.token;
         _ipAddress = targetIp;

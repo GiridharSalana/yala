@@ -158,9 +158,16 @@ void main() {
 
         await pumpFrames(tester);
 
-        final createBtnFinder = find.widgetWithText(
-          ElevatedButton,
-          'Create New SSID',
+        final createBtnFinder = find.byWidgetPredicate(
+          (w) =>
+              w is ElevatedButton &&
+              find
+                  .descendant(
+                    of: find.byWidget(w),
+                    matching: find.textContaining('Create'),
+                  )
+                  .evaluate()
+                  .isNotEmpty,
         );
         expect(createBtnFinder, findsOneWidget);
 

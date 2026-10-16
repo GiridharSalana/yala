@@ -64,29 +64,26 @@ class _SplashScreenState extends State<SplashScreen>
       });
     }
 
-    // Concurrently read minimum signals (reviewer mode preference & saved credentials & local fingerprints)
+    final appState = AppState.instance;
+
+    // Concurrently await AppState startup hydration alongside credentials and fingerprints
     final reviewerStorageFuture = SecureStorageService().readValue(
       AppConfig.reviewerModeKey,
     );
     final credsFuture = SecureStorageService().getCredentials();
     final fingerprintsFuture = ClientFingerprintService.instance.initialize();
+    final appStateInitFuture = appState.initializationFuture;
 
     final results = await Future.wait([
       reviewerStorageFuture,
       credsFuture,
       fingerprintsFuture,
+      appStateInitFuture,
     ]);
 
     final reviewerModeEnabled = results[0] as String?;
     final creds = results[1] as Map<String, String?>;
 
-    if (!mounted) {
-      _sessionInitInFlight = false;
-      return;
-    }
-
-    final appState = AppState.instance;
-    await appState.ensureInitialized();
     if (!mounted) {
       _sessionInitInFlight = false;
       return;

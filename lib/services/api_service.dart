@@ -5,6 +5,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
@@ -19,6 +20,13 @@ import 'package:yala/modules/diagnostics/models/routing_neighbor_info.dart';
 import 'package:yala/modules/diagnostics/models/diagnostic_report.dart';
 import 'package:yala/modules/diagnostics/models/flush_dns_result.dart';
 import 'package:yala/modules/bandwidth_monitor/models/bandwidth_data.dart';
+import 'package:yala/models/network_access_policy.dart';
+import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/modules/firewall_security/models/firewall_info.dart';
+import 'package:yala/modules/firewall_security/services/firewall_policy_translator.dart';
+import 'package:yala/services/operation_queue.dart';
+import 'package:yala/utils/self_device_guard.dart';
+import 'package:yala/modules/domain_blocking/models/domain_block_rule.dart';
 import 'package:yala/services/interfaces/api_service_interface.dart';
 import '../utils/http_client_manager.dart';
 import '../utils/logger.dart';
@@ -630,6 +638,68 @@ class RealApiService implements IApiService {
     }
 
     throw Exception('Failed to reach RPC endpoint');
+  }
+
+  /// Discovers available ubus object namespaces matching an optional pattern via JSON-RPC list method.
+  Future<List<String>> listUbusObjects(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    String? pattern,
+    BuildContext? context,
+  }) async {
+    final client = _createHttpClient(useHttps, ipAddress, context: context);
+    final rpcPayload = {
+      'jsonrpc': '2.0',
+      'id': 1,
+      'method': 'list',
+      'params': (pattern != null && pattern.isNotEmpty)
+          ? [sysauth, pattern]
+          : [sysauth, '*'],
+    };
+
+    final endpoints = ['/ubus', '/cgi-bin/luci/admin/ubus'];
+
+    for (int i = 0; i < endpoints.length; i++) {
+      final endpointPath = endpoints[i];
+      final url = _buildUrl(ipAddress, useHttps, endpointPath);
+
+      try {
+        final response = await client.post(
+          url.toString(),
+          data: jsonEncode(rpcPayload),
+          options: Options(
+            headers: {
+              'Content-Type': 'application/json',
+              if (sysauth.isNotEmpty)
+                'Cookie':
+                    'sysauth=$sysauth; sysauth_http=$sysauth; sysauth_https=$sysauth',
+            },
+            responseDecoder: (responseBytes, options, responseBody) =>
+                utf8.decode(responseBytes, allowMalformed: true),
+            validateStatus: (status) => status != null && status < 500,
+          ),
+        );
+
+        if (response.statusCode == 200) {
+          final decoded = response.data is String
+              ? jsonDecode(response.data as String)
+              : response.data;
+
+          if (decoded is Map && decoded['result'] != null) {
+            final res = decoded['result'];
+            if (res is Map) {
+              return res.keys.map((k) => k.toString()).toList();
+            } else if (res is List) {
+              return res.map((k) => k.toString()).toList();
+            }
+          }
+        }
+      } catch (e) {
+        Logger.warning('listUbusObjects error on $endpointPath: $e');
+      }
+    }
+    return [];
   }
 
   @override
@@ -1359,6 +1429,124 @@ class RealApiService implements IApiService {
   }
 
   @override
+  Future<bool> uciApply(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    bool rollback = true,
+    int timeout = 30,
+  }) async {
+    try {
+      final res = await call(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'apply',
+        params: {'rollback': rollback, 'timeout': timeout},
+      );
+      if (res is List && res.isNotEmpty) {
+        // 0 = UBUS_STATUS_OK
+        // 5 = UBUS_STATUS_NO_DATA (no staged changes pending to apply)
+        return res[0] == 0 || res[0] == 5;
+      }
+      return false;
+    } catch (e, stack) {
+      Logger.exception('uciApply failed', e, stack);
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> uciConfirm(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+  ) async {
+    try {
+      final res = await call(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'confirm',
+        params: {},
+      );
+      if (res is List && res.isNotEmpty) {
+        // 0 = UBUS_STATUS_OK
+        // 5 = UBUS_STATUS_NO_DATA (no rollback timer actively waiting)
+        return res[0] == 0 || res[0] == 5;
+      }
+      return false;
+    } catch (e, stack) {
+      Logger.exception('uciConfirm failed', e, stack);
+      return false;
+    }
+  }
+
+  @override
+  Future<SetPasswordRpcResponse> setRouterPassword(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    String username = 'root',
+    required String newPassword,
+  }) async {
+    try {
+      final res = await call(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'luci',
+        method: 'setPassword',
+        params: {'username': username, 'password': newPassword},
+      );
+      if (res is List && res.isNotEmpty) {
+        if (res[0] == 0) {
+          if (res.length > 1 && res[1] is Map) {
+            final map = res[1] as Map;
+            if (map['result'] == true) {
+              return const SetPasswordRpcResponse.success();
+            } else {
+              return const SetPasswordRpcResponse.rejected(
+                'Router rejected password update',
+              );
+            }
+          }
+          return const SetPasswordRpcResponse.success();
+        } else if (res[0] == 6) {
+          return const SetPasswordRpcResponse.rejected(
+            'Access denied (permission error)',
+          );
+        } else {
+          return SetPasswordRpcResponse.rejected(
+            'ubus error code: ${res[0]}',
+          );
+        }
+      } else if (res is Map) {
+        if (res['result'] == true) {
+          return const SetPasswordRpcResponse.success();
+        } else if (res['error'] != null) {
+          return SetPasswordRpcResponse.rejected(res['error'].toString());
+        }
+      }
+      return const SetPasswordRpcResponse.rejected(
+        'Unexpected response format from setPassword',
+      );
+    } on DioException catch (e) {
+      Logger.info('setRouterPassword DioException: ${e.type} ${e.message}');
+      return SetPasswordRpcResponse.networkError(e.message);
+    } catch (e, stack) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('access denied') || errStr.contains('permission')) {
+        return const SetPasswordRpcResponse.rejected('Access denied');
+      }
+      Logger.exception('setRouterPassword network/transport failure', e, stack);
+      return SetPasswordRpcResponse.networkError(e.toString());
+    }
+  }
+
+  @override
   Future<List<String>> fetchNetworkInterfaces({
     required String ipAddress,
     required String sysauth,
@@ -1597,6 +1785,115 @@ class RealApiService implements IApiService {
         useHttps,
         config: 'wireless',
         context: mountedContext(context),
+      );
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> toggleWirelessRadio(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String radioName,
+    required bool enabled,
+    BuildContext? context,
+  }) async {
+    final mCtx = mountedContext(context);
+    try {
+      final setRes = await uciSet(
+        ipAddress,
+        sysauth,
+        useHttps,
+        config: 'wireless',
+        section: radioName,
+        values: {'disabled': enabled ? '0' : '1'},
+        context: mCtx,
+      );
+      if (setRes is List && setRes.isNotEmpty && setRes[0] != 0) {
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'wireless',
+          context: mCtx,
+        );
+        return false;
+      }
+
+      final commitRes = await uciCommit(
+        ipAddress,
+        sysauth,
+        useHttps,
+        config: 'wireless',
+        context: mCtx,
+      );
+      if (commitRes is List && commitRes.isNotEmpty && commitRes[0] != 0) {
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'wireless',
+          context: mCtx,
+        );
+        return false;
+      }
+
+      // Reload wifi subsystem
+      final reloadRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'file',
+        method: 'exec',
+        params: {
+          'command': '/sbin/wifi',
+          'params': ['reload'],
+        },
+        context: mCtx,
+      );
+      final reloadOk = _execSucceeded(reloadRes);
+      if (!reloadOk) {
+        Logger.debug('toggleWirelessRadio: wifi reload returned non-zero code for $radioName');
+      }
+
+      // Authoritative verification query against router UCI
+      try {
+        final verifyRes = await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'uci',
+          method: 'get',
+          params: {'config': 'wireless', 'section': radioName},
+          context: mCtx,
+        );
+        if (verifyRes is Map) {
+          final values = verifyRes['values'] ?? verifyRes;
+          if (values is Map) {
+            final verifiedDisabled = values['disabled']?.toString();
+            final expectedDisabled = enabled ? '0' : '1';
+            if (verifiedDisabled != null && verifiedDisabled != expectedDisabled) {
+              Logger.warning(
+                'toggleWirelessRadio: validation mismatch for $radioName. Expected disabled=$expectedDisabled, got $verifiedDisabled',
+              );
+              return false;
+            }
+          }
+        }
+      } catch (e) {
+        Logger.debug('toggleWirelessRadio: verification query warning: $e');
+      }
+
+      return true;
+    } catch (e, stack) {
+      Logger.exception('toggleWirelessRadio failed for $radioName', e, stack);
+      await uciRevert(
+        ipAddress,
+        sysauth,
+        useHttps,
+        config: 'wireless',
+        context: mCtx,
       );
       return false;
     }
@@ -2619,6 +2916,7 @@ uci commit parental
     required String encryption,
     required String key,
     required String network,
+    Map<String, String>? extraOptions,
     BuildContext? context,
   }) async {
     try {
@@ -2682,6 +2980,9 @@ uci commit parental
       if (encryption == 'sae' || encryption == 'sae-mixed') {
         values['ieee80211w'] = encryption == 'sae' ? '2' : '1';
       }
+      if (extraOptions != null) {
+        values.addAll(extraOptions);
+      }
 
       final setRes = await callWithContext(
         ipAddress,
@@ -2714,10 +3015,12 @@ uci commit parental
         useHttps,
         object: 'uci',
         method: 'apply',
-        params: {'rollback': false},
+        params: {'rollback': true, 'timeout': 30},
         context: mountedContext(context),
       );
-      if (applyRes is List && applyRes.isNotEmpty && applyRes[0] == 0) {
+      if (applyRes is List &&
+          applyRes.isNotEmpty &&
+          (applyRes[0] == 0 || applyRes[0] == 5)) {
         await callWithContext(
           ipAddress,
           sysauth,
@@ -2822,6 +3125,133 @@ uci commit parental
         sysauth,
         useHttps,
         config: 'wireless',
+        context: mountedContext(context),
+      );
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> updateInterfaceDhcpConfig(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String interface,
+    required Map<String, dynamic> values,
+    BuildContext? context,
+  }) async {
+    try {
+      final getRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'dhcp'},
+        context: mountedContext(context),
+      );
+      String? matchedSection;
+      if (getRes is List && getRes.length > 1 && getRes[0] == 0) {
+        final uciData = getRes[1];
+        final valuesMap = (uciData is Map && uciData['values'] is Map)
+            ? uciData['values'] as Map
+            : (uciData is Map ? uciData : {});
+        for (final entry in valuesMap.entries) {
+          final val = entry.value;
+          if (val is Map &&
+              val['.type'] == 'dhcp' &&
+              (val['interface'] == interface || entry.key == interface)) {
+            matchedSection = entry.key.toString();
+            break;
+          }
+        }
+      }
+      final String sectionName =
+          (matchedSection != null && matchedSection.isNotEmpty)
+              ? matchedSection
+              : interface;
+      if (matchedSection == null || matchedSection.isEmpty) {
+        await _ensureUciSection(
+          ipAddress,
+          sysauth,
+          useHttps,
+          'dhcp',
+          sectionName,
+          'dhcp',
+          {'interface': interface},
+          context: mountedContext(context),
+        );
+      }
+      final strValues = <String, dynamic>{};
+      values.forEach((k, v) {
+        if (v != null) {
+          strValues[k] = v is String ? v : v.toString();
+        }
+      });
+      final setRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'set',
+        params: {
+          'config': 'dhcp',
+          'section': sectionName,
+          'values': strValues,
+        },
+        context: mountedContext(context),
+      );
+      if (setRes is List && setRes.isNotEmpty && setRes[0] != 0) {
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mountedContext(context),
+        );
+        return false;
+      }
+      final applyRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'apply',
+        params: {'rollback': true, 'timeout': 30},
+        context: mountedContext(context),
+      );
+      if (applyRes is List &&
+          applyRes.isNotEmpty &&
+          (applyRes[0] == 0 || applyRes[0] == 5)) {
+        await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'uci',
+          method: 'confirm',
+          context: mountedContext(context),
+        );
+        return true;
+      }
+      await uciRevert(
+        ipAddress,
+        sysauth,
+        useHttps,
+        config: 'dhcp',
+        context: mountedContext(context),
+      );
+      return false;
+    } catch (e, stack) {
+      Logger.exception(
+        'updateInterfaceDhcpConfig failed for $interface',
+        e,
+        stack,
+      );
+      await uciRevert(
+        ipAddress,
+        sysauth,
+        useHttps,
+        config: 'dhcp',
         context: mountedContext(context),
       );
       return false;
@@ -3794,6 +4224,226 @@ fi
     }
   }
 
+  /// Enforces a client ban at the firewall level (UCI firewall rule + nftables/iptables/ebtables).
+  /// Aggregates multiple banned clients into a single 'Ban_Client_List' rule in UCI firewall.
+  Future<bool> _enforceFirewallBan({
+    required String ipAddress,
+    required String sysauth,
+    required bool useHttps,
+    required String macAddress,
+    BuildContext? context,
+  }) async {
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: 'firewall',
+      action: () async {
+        final macUpper = macAddress.toUpperCase().replaceAll('-', ':');
+        final macLower = macAddress.toLowerCase();
+        const ruleName = "Ban_Client_List";
+
+        bool ruleExisted = false;
+        bool ubusSucceeded = false;
+
+        // 1. Check existing uci firewall rules via native ubus call
+        try {
+          final getRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mountedContext(context),
+          );
+
+          if (getRes is List && getRes.length > 1 && getRes[0] == 0) {
+            final values =
+                (getRes[1] as Map<String, dynamic>?)?['values']
+                    as Map<String, dynamic>? ??
+                {};
+            String? targetSecKey;
+            List<String> currentMacs = [];
+
+            for (final entry in values.entries) {
+              final sec = entry.value;
+              if (sec is Map<String, dynamic>) {
+                final name = sec['name']?.toString() ?? '';
+                if (name == ruleName ||
+                    (targetSecKey == null && name.startsWith('Ban_Client_'))) {
+                  ruleExisted = true;
+                  targetSecKey = entry.key;
+                  final srcMac = sec['src_mac'];
+                  if (srcMac is List) {
+                    currentMacs = srcMac
+                        .map(
+                          (e) =>
+                              e.toString().toUpperCase().replaceAll('-', ':'),
+                        )
+                        .toList();
+                  } else if (srcMac != null) {
+                    currentMacs = [
+                      srcMac.toString().toUpperCase().replaceAll('-', ':'),
+                    ];
+                  }
+                  if (name == ruleName) break;
+                }
+              }
+            }
+
+            if (!ruleExisted) {
+              await callWithContext(
+                ipAddress,
+                sysauth,
+                useHttps,
+                object: 'uci',
+                method: 'add',
+                params: {
+                  'config': 'firewall',
+                  'type': 'rule',
+                  'values': {
+                    'name': ruleName,
+                    'src': '*',
+                    'dest': '*',
+                    'src_mac': [macUpper],
+                    'target': 'DROP',
+                    'enabled': '1',
+                  },
+                },
+                context: mountedContext(context),
+              );
+            } else if (targetSecKey != null && !currentMacs.contains(macUpper)) {
+              currentMacs.add(macUpper);
+              await callWithContext(
+                ipAddress,
+                sysauth,
+                useHttps,
+                object: 'uci',
+                method: 'set',
+                params: {
+                  'config': 'firewall',
+                  'section': targetSecKey,
+                  'values': {
+                    'name': ruleName,
+                    'src': '*',
+                    'dest': '*',
+                    'src_mac': currentMacs,
+                    'target': 'DROP',
+                    'enabled': '1',
+                  },
+                },
+                context: mountedContext(context),
+              );
+            }
+
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'uci',
+              method: 'commit',
+              params: {'config': 'firewall'},
+              context: mountedContext(context),
+            );
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'rc',
+              method: 'init',
+              params: {'name': 'firewall', 'action': 'reload'},
+              context: mountedContext(context),
+            );
+            ubusSucceeded = true;
+          }
+        } catch (e) {
+          Logger.warning(
+            'Native ubus firewall ban check/add encountered issue: $e',
+          );
+        }
+
+        // 2. Shell fallback and runtime packet dropping (non-blocking)
+        final shellScript = ubusSucceeded
+            ? '''
+MAC_U="$macUpper"
+MAC_L="$macLower"
+(
+  nft add rule inet fw4 input ether saddr "\$MAC_U" drop 2>/dev/null || true
+  nft add rule inet fw4 forward ether saddr "\$MAC_U" drop 2>/dev/null || true
+  nft add rule inet fw4 input ether saddr "\$MAC_L" drop 2>/dev/null || true
+  nft add rule inet fw4 forward ether saddr "\$MAC_L" drop 2>/dev/null || true
+  iptables -I INPUT -m mac --mac-source "\$MAC_U" -j DROP 2>/dev/null || true
+  iptables -I FORWARD -m mac --mac-source "\$MAC_U" -j DROP 2>/dev/null || true
+  iptables -I INPUT -m mac --mac-source "\$MAC_L" -j DROP 2>/dev/null || true
+  iptables -I FORWARD -m mac --mac-source "\$MAC_L" -j DROP 2>/dev/null || true
+  ebtables -I INPUT -s "\$MAC_U" -j DROP 2>/dev/null || true
+  ebtables -I FORWARD -s "\$MAC_U" -j DROP 2>/dev/null || true
+) >/dev/null 2>&1 &
+exit 0
+'''
+            : '''
+MAC_U="$macUpper"
+MAC_L="$macLower"
+RULE_NAME="$ruleName"
+
+SEC=\$(uci show firewall 2>/dev/null | grep -i "name=['"]*\${RULE_NAME}['"]*" | head -n 1 | cut -d. -f2)
+if [ -z "\$SEC" ]; then
+  uci add firewall rule >/dev/null
+  uci set firewall.@rule[-1].name="\$RULE_NAME"
+  uci set firewall.@rule[-1].src='*'
+  uci set firewall.@rule[-1].dest='*'
+  uci add_list firewall.@rule[-1].src_mac="\$MAC_U"
+  uci set firewall.@rule[-1].target='DROP'
+  uci set firewall.@rule[-1].enabled='1'
+else
+  MAC_EXISTS=\$(uci get firewall.\${SEC}.src_mac 2>/dev/null | grep -i "\$MAC_U")
+  if [ -z "\$MAC_EXISTS" ]; then
+    uci add_list firewall.\${SEC}.src_mac="\$MAC_U"
+  fi
+  uci set firewall.\${SEC}.src='*' 2>/dev/null || true
+  uci set firewall.\${SEC}.dest='*' 2>/dev/null || true
+  uci set firewall.\${SEC}.target='DROP' 2>/dev/null || true
+  uci set firewall.\${SEC}.enabled='1' 2>/dev/null || true
+fi
+uci commit firewall
+/etc/init.d/firewall reload >/dev/null 2>&1 &
+
+(
+  nft add rule inet fw4 input ether saddr "\$MAC_U" drop 2>/dev/null || true
+  nft add rule inet fw4 forward ether saddr "\$MAC_U" drop 2>/dev/null || true
+  nft add rule inet fw4 input ether saddr "\$MAC_L" drop 2>/dev/null || true
+  nft add rule inet fw4 forward ether saddr "\$MAC_L" drop 2>/dev/null || true
+  iptables -I INPUT -m mac --mac-source "\$MAC_U" -j DROP 2>/dev/null || true
+  iptables -I FORWARD -m mac --mac-source "\$MAC_U" -j DROP 2>/dev/null || true
+  iptables -I INPUT -m mac --mac-source "\$MAC_L" -j DROP 2>/dev/null || true
+  iptables -I FORWARD -m mac --mac-source "\$MAC_L" -j DROP 2>/dev/null || true
+  ebtables -I INPUT -s "\$MAC_U" -j DROP 2>/dev/null || true
+  ebtables -I FORWARD -s "\$MAC_U" -j DROP 2>/dev/null || true
+) >/dev/null 2>&1 &
+exit 0
+''';
+
+        bool shellSucceeded = false;
+        try {
+          final shellRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'file',
+            method: 'exec',
+            params: fileExecParams('/bin/sh', ['-c', shellScript]),
+            context: mountedContext(context),
+          );
+          shellSucceeded = _execSucceeded(shellRes);
+        } catch (e) {
+          Logger.warning('_enforceFirewallBan shell script error: $e');
+        }
+
+        return ubusSucceeded || shellSucceeded;
+      },
+    );
+  }
+
   /// Enforces client restriction via firewall rules (UCI firewall + nftables/iptables)
   /// and notifies user if the firewall rule was created for the first time.
   Future<bool> _enforceFirewallBlock({
@@ -3999,6 +4649,7 @@ exit 0
     const ruleName = "nointernet_wireless_clients";
     bool modified = false;
     bool ubusSucceeded = false;
+    bool ubusQuerySucceeded = false;
 
     try {
       final getRes = await callWithContext(
@@ -4012,6 +4663,7 @@ exit 0
       );
 
       if (getRes is List && getRes.length > 1 && getRes[0] == 0) {
+        ubusQuerySucceeded = true;
         final values =
             (getRes[1] as Map<String, dynamic>?)?['values']
                 as Map<String, dynamic>? ??
@@ -4128,21 +4780,43 @@ exit 0
       Logger.warning('Native ubus firewall remove encountered issue: $e');
     }
 
-    final script = ubusSucceeded
-        ? '''
+    // Fast path: if ubus query succeeded and no block rule was found, nothing to remove
+    if (ubusQuerySucceeded && !modified) {
+      return true;
+    }
+
+    if (ubusSucceeded) {
+      final liveCleanup = '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
-nft delete rule inet fw4 forward ether saddr "\$MAC_U" >/dev/null 2>&1 || true
-nft delete rule inet fw4 forward ether saddr "\$MAC_L" >/dev/null 2>&1 || true
-iptables -D FORWARD -m mac --mac-source "\$MAC_U" -j DROP >/dev/null 2>&1 || true
-iptables -D FORWARD -m mac --mac-source "\$MAC_L" -j DROP >/dev/null 2>&1 || true
+(
+  nft delete rule inet fw4 forward ether saddr "\$MAC_U" >/dev/null 2>&1 || true
+  nft delete rule inet fw4 forward ether saddr "\$MAC_L" >/dev/null 2>&1 || true
+  iptables -D FORWARD -m mac --mac-source "\$MAC_U" -j DROP >/dev/null 2>&1 || true
+  iptables -D FORWARD -m mac --mac-source "\$MAC_L" -j DROP >/dev/null 2>&1 || true
+) >/dev/null 2>&1 &
 exit 0
-'''
-        : '''
+''';
+      try {
+        await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'file',
+          method: 'exec',
+          params: fileExecParams('/bin/sh', ['-c', liveCleanup]),
+          context: mountedContext(context),
+        );
+      } catch (_) {}
+      return true;
+    }
+
+    final script = '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
 CLEAN="$macClean"
 RULE_NAME="$ruleName"
+MODIFIED=0
 
 for sec in \$(uci show firewall 2>/dev/null | grep -iE "src_mac|dest_mac" | grep -i "\$MAC_U" | cut -d. -f2); do
   uci del_list firewall.\${sec}.src_mac="\$MAC_U" 2>/dev/null || true
@@ -4153,19 +4827,25 @@ for sec in \$(uci show firewall 2>/dev/null | grep -iE "src_mac|dest_mac" | grep
   if [ "\$REMAINING" -eq 0 ]; then
     uci delete firewall.\${sec} 2>/dev/null || true
   fi
+  MODIFIED=1
 done
 
 for legacy in \$(uci show firewall 2>/dev/null | grep -iE "Pause_Internet_\${CLEAN}|Ban_Client_\${CLEAN}|Kick_Client_\${CLEAN}" | cut -d. -f2); do
   uci delete firewall.\${legacy} 2>/dev/null || true
+  MODIFIED=1
 done
 
-uci commit firewall
-/etc/init.d/firewall reload >/dev/null 2>&1 || true
+if [ "\$MODIFIED" -eq 1 ]; then
+  uci commit firewall
+  ( /etc/init.d/firewall reload ) >/dev/null 2>&1 &
+fi
 
-nft delete rule inet fw4 forward ether saddr "\$MAC_U" >/dev/null 2>&1 || true
-nft delete rule inet fw4 forward ether saddr "\$MAC_L" >/dev/null 2>&1 || true
-iptables -D FORWARD -m mac --mac-source "\$MAC_U" -j DROP >/dev/null 2>&1 || true
-iptables -D FORWARD -m mac --mac-source "\$MAC_L" -j DROP >/dev/null 2>&1 || true
+(
+  nft delete rule inet fw4 forward ether saddr "\$MAC_U" >/dev/null 2>&1 || true
+  nft delete rule inet fw4 forward ether saddr "\$MAC_L" >/dev/null 2>&1 || true
+  iptables -D FORWARD -m mac --mac-source "\$MAC_U" -j DROP >/dev/null 2>&1 || true
+  iptables -D FORWARD -m mac --mac-source "\$MAC_L" -j DROP >/dev/null 2>&1 || true
+) >/dev/null 2>&1 &
 exit 0
 ''';
 
@@ -4199,6 +4879,7 @@ exit 0
     final macUpper = macAddress.toUpperCase().replaceAll('-', ':');
     final macLower = macAddress.toLowerCase();
     bool modified = false;
+    bool ubusQuerySucceeded = false;
 
     try {
       final getRes = await callWithContext(
@@ -4212,6 +4893,7 @@ exit 0
       );
 
       if (getRes is List && getRes.length > 1 && getRes[0] == 0) {
+        ubusQuerySucceeded = true;
         final values =
             (getRes[1] as Map<String, dynamic>?)?['values']
                 as Map<String, dynamic>? ??
@@ -4288,18 +4970,30 @@ exit 0
       Logger.warning('_removeWirelessMacFilter ubus error: $e');
     }
 
-    final script =
-        '''
+    // Fast path: if ubus query succeeded, return immediately.
+    // If no deny rule existed (!modified), nothing to remove (0ms delay, no reload).
+    // If modified, ubus commit + network.wireless up already applied it cleanly.
+    if (ubusQuerySucceeded) {
+      return true;
+    }
+
+    final script = '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
+MODIFIED=0
 
-for sec in \$(uci show wireless 2>/dev/null | grep -i "maclist" | grep -i "\$MAC_U" | cut -d. -f2); do
-  uci del_list wireless.\${sec}.maclist="\$MAC_U" 2>/dev/null || true
-  uci del_list wireless.\${sec}.maclist="\$MAC_L" 2>/dev/null || true
+for sec in \$(uci show wireless 2>/dev/null | grep -iE "\\.macfilter='?deny'?|\\.macfilter='?2'?" | cut -d. -f2 | cut -d= -f1); do
+  if uci get wireless.\${sec}.maclist 2>/dev/null | grep -qi "\$MAC_U" || uci get wireless.\${sec}.maclist 2>/dev/null | grep -qi "\$MAC_L"; then
+    uci del_list wireless.\${sec}.maclist="\$MAC_U" 2>/dev/null || true
+    uci del_list wireless.\${sec}.maclist="\$MAC_L" 2>/dev/null || true
+    MODIFIED=1
+  fi
 done
 
-uci commit wireless
-wifi reload >/dev/null 2>&1 || ubus call network.wireless reload >/dev/null 2>&1 || true
+if [ "\$MODIFIED" -eq 1 ]; then
+  uci commit wireless
+  ( wifi reload || ubus call network.wireless reload ) >/dev/null 2>&1 &
+fi
 exit 0
 ''';
 
@@ -4341,22 +5035,20 @@ exit 0
       try {
         final hostapdObjects = <String>[];
         if (iface != null && iface.isNotEmpty) {
-          hostapdObjects.add('hostapd.$iface');
+          hostapdObjects.add(
+            iface.startsWith('hostapd.') ? iface : 'hostapd.$iface',
+          );
         }
-        final ubusList = await call(
+        final discovered = await listUbusObjects(
           ipAddress,
           sysauth,
           useHttps,
-          object: 'ubus',
-          method: 'list',
-          params: {},
+          pattern: 'hostapd.*',
+          context: mountedContext(context),
         );
-        if (ubusList is List) {
-          for (final obj in ubusList) {
-            final s = obj.toString();
-            if (s.startsWith('hostapd.') && !hostapdObjects.contains(s)) {
-              hostapdObjects.add(s);
-            }
+        for (final obj in discovered) {
+          if (obj.startsWith('hostapd.') && !hostapdObjects.contains(obj)) {
+            hostapdObjects.add(obj);
           }
         }
 
@@ -4469,6 +5161,1600 @@ exit 0
   }
 
   @override
+  Future<bool> addFirewallPortForward(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallPortForwarding portForward,
+    BuildContext? context,
+  }) async {
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: 'firewall',
+      action: () async {
+        final mCtx = mountedContext(context);
+        try {
+          final addRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'add',
+            params: {
+              'config': 'firewall',
+              'type': 'redirect',
+              'values': portForward.toUciValues(),
+            },
+            context: mCtx,
+          );
+          if (addRes is List && addRes.isNotEmpty && addRes[0] != 0) {
+            return false;
+          }
+          final addedSectionKey =
+              (addRes is List && addRes.length > 1 && addRes[1] is Map)
+                  ? (addRes[1] as Map)['section']?.toString()
+                  : null;
+
+          // Pass staged delta changes directly to uciApply with rollback protection
+          final applied = await uciApply(
+            ipAddress,
+            sysauth,
+            useHttps,
+            rollback: true,
+            timeout: 30,
+          );
+          if (!applied) {
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authenticated post-apply verification proving management RPC liveness
+          final verifyRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+          if (verifyRes is! List || verifyRes.length < 2 || verifyRes[0] != 0) {
+            Logger.warning(
+              'addFirewallPortForward verification failed: management RPC unreachable after apply',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authoritative state verification: verify added section exists
+          final verifyUciValues = extractUciValuesMap(verifyRes[1]);
+          if (addedSectionKey != null && addedSectionKey.isNotEmpty) {
+            if (!hasUciSection(verifyUciValues, addedSectionKey)) {
+              Logger.warning(
+                'addFirewallPortForward verification failed: section $addedSectionKey missing after apply',
+              );
+              await uciRevert(
+                ipAddress,
+                sysauth,
+                useHttps,
+                config: 'firewall',
+                context: mCtx,
+              );
+              return false;
+            }
+          }
+
+          final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+          if (!confirmed) {
+            Logger.warning('addFirewallPortForward uciConfirm failed');
+            return false;
+          }
+
+          try {
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'rc',
+              method: 'init',
+              params: {'name': 'firewall', 'action': 'reload'},
+              context: mCtx,
+            );
+          } catch (_) {}
+
+          return true;
+        } catch (e, stack) {
+          Logger.exception('addFirewallPortForward failed', e, stack);
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'firewall',
+            context: mCtx,
+          );
+          return false;
+        }
+      },
+    );
+  }
+
+  @override
+  Future<bool> updateFirewallPortForward(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallPortForwarding portForward,
+    BuildContext? context,
+  }) async {
+    if (portForward.sectionKey.trim().isEmpty) return false;
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: 'firewall',
+      action: () async {
+        final mCtx = mountedContext(context);
+        try {
+          final setRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'set',
+            params: {
+              'config': 'firewall',
+              'section': portForward.sectionKey,
+              'values': portForward.toUciValues(),
+            },
+            context: mCtx,
+          );
+          if (setRes is List && setRes.isNotEmpty && setRes[0] != 0) {
+            return false;
+          }
+
+          // Pass staged delta changes directly to uciApply with rollback protection
+          final applied = await uciApply(
+            ipAddress,
+            sysauth,
+            useHttps,
+            rollback: true,
+            timeout: 30,
+          );
+          if (!applied) {
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authenticated post-apply verification proving management RPC liveness
+          final verifyRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+          if (verifyRes is! List || verifyRes.length < 2 || verifyRes[0] != 0) {
+            Logger.warning(
+              'updateFirewallPortForward verification failed: management RPC unreachable after apply',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authoritative state verification: section exists with updated properties
+          final verifyUciValues = extractUciValuesMap(verifyRes[1]);
+          final targetSection =
+              findUciSection(verifyUciValues, portForward.sectionKey);
+          if (targetSection == null) {
+            Logger.warning(
+              'updateFirewallPortForward verification failed: section ${portForward.sectionKey} missing after update',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+          if (portForward.name.isNotEmpty &&
+              targetSection['name']?.toString() != portForward.name) {
+            Logger.warning(
+              'updateFirewallPortForward verification failed: section ${portForward.sectionKey} name mismatch',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+          if (portForward.target.isNotEmpty &&
+              targetSection['target']?.toString().toUpperCase() !=
+                  portForward.target.toUpperCase()) {
+            Logger.warning(
+              'updateFirewallPortForward verification failed: section ${portForward.sectionKey} target mismatch',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+          if (!confirmed) {
+            Logger.warning('updateFirewallPortForward uciConfirm failed');
+            return false;
+          }
+
+          try {
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'rc',
+              method: 'init',
+              params: {'name': 'firewall', 'action': 'reload'},
+              context: mCtx,
+            );
+          } catch (_) {}
+
+          return true;
+        } catch (e, stack) {
+          Logger.exception('updateFirewallPortForward failed', e, stack);
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'firewall',
+            context: mCtx,
+          );
+          return false;
+        }
+      },
+    );
+  }
+
+  @override
+  Future<bool> deleteFirewallPortForward(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String sectionKey,
+    BuildContext? context,
+  }) async {
+    if (sectionKey.trim().isEmpty) return false;
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: 'firewall',
+      action: () async {
+        final mCtx = mountedContext(context);
+        try {
+          final delRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'delete',
+            params: {
+              'config': 'firewall',
+              'section': sectionKey,
+            },
+            context: mCtx,
+          );
+          if (delRes is List && delRes.isNotEmpty && delRes[0] != 0) {
+            return false;
+          }
+
+          // Pass staged delta changes directly to uciApply with rollback protection
+          final applied = await uciApply(
+            ipAddress,
+            sysauth,
+            useHttps,
+            rollback: true,
+            timeout: 30,
+          );
+          if (!applied) {
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authenticated post-apply verification proving management RPC liveness
+          final verifyRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+          if (verifyRes is! List || verifyRes.length < 2 || verifyRes[0] != 0) {
+            Logger.warning(
+              'deleteFirewallPortForward verification failed: management RPC unreachable after apply',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authoritative state verification: section is absent
+          final verifyUciValues = extractUciValuesMap(verifyRes[1]);
+          if (hasUciSection(verifyUciValues, sectionKey)) {
+            Logger.warning(
+              'deleteFirewallPortForward verification failed: section $sectionKey still present after deletion',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+          if (!confirmed) {
+            Logger.warning('deleteFirewallPortForward uciConfirm failed');
+            return false;
+          }
+
+          try {
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'rc',
+              method: 'init',
+              params: {'name': 'firewall', 'action': 'reload'},
+              context: mCtx,
+            );
+          } catch (_) {}
+
+          return true;
+        } catch (e, stack) {
+          Logger.exception('deleteFirewallPortForward failed', e, stack);
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'firewall',
+            context: mCtx,
+          );
+          return false;
+        }
+      },
+    );
+  }
+
+  @override
+  Future<bool> addFirewallCustomRule(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallCustomRule rule,
+    BuildContext? context,
+  }) async {
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: 'firewall',
+      action: () async {
+        final mCtx = mountedContext(context);
+        try {
+          final mgmtPorts = await discoverManagementPorts(
+            ipAddress,
+            sysauth,
+            useHttps,
+            context: mCtx,
+          );
+          final isLockout = await SelfDeviceGuard.isManagementLockoutRisk(
+            target: rule.target,
+            srcZone: rule.srcZone,
+            destZone: rule.destZone,
+            srcMac: rule.srcMac,
+            srcIp: rule.srcIp,
+            destPort: rule.destPort,
+            proto: rule.proto,
+            managementPorts: mgmtPorts,
+            routerId: routerId,
+          );
+          if (isLockout) {
+            Logger.warning(
+              'SelfDeviceGuard blocked adding drop/reject rule affecting managing device/path',
+            );
+            return false;
+          }
+
+          final addRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'add',
+            params: {
+              'config': 'firewall',
+              'type': 'rule',
+              'values': rule.toUciValues(),
+            },
+            context: mCtx,
+          );
+          if (addRes is List && addRes.isNotEmpty && addRes[0] != 0) {
+            return false;
+          }
+          final addedSectionKey =
+              (addRes is List && addRes.length > 1 && addRes[1] is Map)
+                  ? (addRes[1] as Map)['section']?.toString()
+                  : null;
+
+          // Pass staged delta changes directly to uciApply with rollback protection
+          final applied = await uciApply(
+            ipAddress,
+            sysauth,
+            useHttps,
+            rollback: true,
+            timeout: 30,
+          );
+          if (!applied) {
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authenticated post-apply verification proving management RPC liveness
+          final verifyRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+          if (verifyRes is! List || verifyRes.length < 2 || verifyRes[0] != 0) {
+            Logger.warning(
+              'addFirewallCustomRule verification failed: management RPC unreachable after apply',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authoritative state verification: verify added section exists
+          final verifyUciValues = extractUciValuesMap(verifyRes[1]);
+          if (addedSectionKey != null && addedSectionKey.isNotEmpty) {
+            if (!hasUciSection(verifyUciValues, addedSectionKey)) {
+              Logger.warning(
+                'addFirewallCustomRule verification failed: section $addedSectionKey missing after apply',
+              );
+              await uciRevert(
+                ipAddress,
+                sysauth,
+                useHttps,
+                config: 'firewall',
+                context: mCtx,
+              );
+              return false;
+            }
+          }
+
+          final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+          if (!confirmed) {
+            Logger.warning('addFirewallCustomRule uciConfirm failed');
+            return false;
+          }
+
+          try {
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'rc',
+              method: 'init',
+              params: {'name': 'firewall', 'action': 'reload'},
+              context: mCtx,
+            );
+          } catch (_) {}
+
+          return true;
+        } catch (e, stack) {
+          Logger.exception('addFirewallCustomRule failed', e, stack);
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'firewall',
+            context: mCtx,
+          );
+          return false;
+        }
+      },
+    );
+  }
+
+  @override
+  Future<bool> updateFirewallCustomRule(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallCustomRule rule,
+    BuildContext? context,
+  }) async {
+    if (rule.sectionKey.trim().isEmpty) return false;
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: 'firewall',
+      action: () async {
+        final mCtx = mountedContext(context);
+        try {
+          final mgmtPorts = await discoverManagementPorts(
+            ipAddress,
+            sysauth,
+            useHttps,
+            context: mCtx,
+          );
+          final isLockout = await SelfDeviceGuard.isManagementLockoutRisk(
+            target: rule.target,
+            srcZone: rule.srcZone,
+            destZone: rule.destZone,
+            srcMac: rule.srcMac,
+            srcIp: rule.srcIp,
+            destPort: rule.destPort,
+            proto: rule.proto,
+            managementPorts: mgmtPorts,
+            routerId: routerId,
+          );
+          if (isLockout) {
+            Logger.warning(
+              'SelfDeviceGuard blocked updating drop/reject rule affecting managing device/path',
+            );
+            return false;
+          }
+
+          final setRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'set',
+            params: {
+              'config': 'firewall',
+              'section': rule.sectionKey,
+              'values': rule.toUciValues(),
+            },
+            context: mCtx,
+          );
+          if (setRes is List && setRes.isNotEmpty && setRes[0] != 0) {
+            return false;
+          }
+
+          // Pass staged delta changes directly to uciApply with rollback protection
+          final applied = await uciApply(
+            ipAddress,
+            sysauth,
+            useHttps,
+            rollback: true,
+            timeout: 30,
+          );
+          if (!applied) {
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authenticated post-apply verification proving management RPC liveness
+          final verifyRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+          if (verifyRes is! List || verifyRes.length < 2 || verifyRes[0] != 0) {
+            Logger.warning(
+              'updateFirewallCustomRule verification failed: management RPC unreachable after apply',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authoritative state verification: section exists with updated properties
+          final verifyUciValues = extractUciValuesMap(verifyRes[1]);
+          final targetSection =
+              findUciSection(verifyUciValues, rule.sectionKey);
+          if (targetSection == null) {
+            Logger.warning(
+              'updateFirewallCustomRule verification failed: section ${rule.sectionKey} missing after update',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+          if (rule.name.isNotEmpty &&
+              targetSection['name']?.toString() != rule.name) {
+            Logger.warning(
+              'updateFirewallCustomRule verification failed: section ${rule.sectionKey} name mismatch',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+          if (rule.target.isNotEmpty &&
+              targetSection['target']?.toString().toUpperCase() !=
+                  rule.target.toUpperCase()) {
+            Logger.warning(
+              'updateFirewallCustomRule verification failed: section ${rule.sectionKey} target mismatch',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+          if (!confirmed) {
+            Logger.warning('updateFirewallCustomRule uciConfirm failed');
+            return false;
+          }
+
+          try {
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'rc',
+              method: 'init',
+              params: {'name': 'firewall', 'action': 'reload'},
+              context: mCtx,
+            );
+          } catch (_) {}
+
+          return true;
+        } catch (e, stack) {
+          Logger.exception('updateFirewallCustomRule failed', e, stack);
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'firewall',
+            context: mCtx,
+          );
+          return false;
+        }
+      },
+    );
+  }
+
+  @override
+  Future<bool> deleteFirewallCustomRule(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String sectionKey,
+    BuildContext? context,
+  }) async {
+    if (sectionKey.trim().isEmpty) return false;
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: 'firewall',
+      action: () async {
+        final mCtx = mountedContext(context);
+        try {
+          final delRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'delete',
+            params: {
+              'config': 'firewall',
+              'section': sectionKey,
+            },
+            context: mCtx,
+          );
+          if (delRes is List && delRes.isNotEmpty && delRes[0] != 0) {
+            return false;
+          }
+
+          // Pass staged delta changes directly to uciApply with rollback protection
+          final applied = await uciApply(
+            ipAddress,
+            sysauth,
+            useHttps,
+            rollback: true,
+            timeout: 30,
+          );
+          if (!applied) {
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authenticated post-apply verification proving management RPC liveness
+          final verifyRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+          if (verifyRes is! List || verifyRes.length < 2 || verifyRes[0] != 0) {
+            Logger.warning(
+              'deleteFirewallCustomRule verification failed: management RPC unreachable after apply',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authoritative state verification: section is absent
+          final verifyUciValues = extractUciValuesMap(verifyRes[1]);
+          if (hasUciSection(verifyUciValues, sectionKey)) {
+            Logger.warning(
+              'deleteFirewallCustomRule verification failed: section $sectionKey still present after deletion',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+          if (!confirmed) {
+            Logger.warning('deleteFirewallCustomRule uciConfirm failed');
+            return false;
+          }
+
+          try {
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'rc',
+              method: 'init',
+              params: {'name': 'firewall', 'action': 'reload'},
+              context: mCtx,
+            );
+          } catch (_) {}
+
+          return true;
+        } catch (e, stack) {
+          Logger.exception('deleteFirewallCustomRule failed', e, stack);
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'firewall',
+            context: mCtx,
+          );
+          return false;
+        }
+      },
+    );
+  }
+
+  @override
+  Future<bool> reorderFirewallCustomRules(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String targetSectionKey,
+    required String siblingSectionKey,
+    required List<String> expectedRuleOrder,
+    BuildContext? context,
+  }) async {
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: 'firewall',
+      action: () async {
+        final mCtx = mountedContext(context);
+        try {
+          // Step 3: Retrieve Fresh Authoritative UCI State & Slot Indices
+          final getRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+          if (getRes is! List || getRes.length < 2 || getRes[0] != 0) {
+            return false;
+          }
+
+          final rawUci = getRes[1] as Map<String, dynamic>? ?? {};
+          final rawValues = rawUci['values'];
+          final Map<String, dynamic> uciValues = (rawValues is Map)
+              ? Map<String, dynamic>.from(rawValues)
+              : Map<String, dynamic>.from(rawUci);
+
+          final sectionsList = <Map<String, dynamic>>[];
+          int fallbackIdx = 0;
+          uciValues.forEach((k, v) {
+            if (v is Map) {
+              final secKey = v['.name']?.toString() ?? k;
+              final secType = v['.type']?.toString() ?? '';
+              final idx = (v['.index'] is int)
+                  ? v['.index'] as int
+                  : int.tryParse(v['.index']?.toString() ?? '') ?? fallbackIdx;
+              sectionsList.add({
+                'key': secKey,
+                'type': secType,
+                'index': idx,
+              });
+              fallbackIdx++;
+            }
+          });
+          sectionsList.sort(
+            (a, b) => (a['index'] as int).compareTo(b['index'] as int),
+          );
+
+          // Identify custom-rule slot indices in full section list S
+          final ruleSlotIndices = <int>[];
+          for (int i = 0; i < sectionsList.length; i++) {
+            if (sectionsList[i]['type'] == 'rule') {
+              ruleSlotIndices.add(i);
+            }
+          }
+
+          final freshRuleOrder = ruleSlotIndices
+              .map((idx) => sectionsList[idx]['key'] as String)
+              .toList();
+
+          // Step 4: Snapshot Stale-Order Preflight Verification
+          if (expectedRuleOrder.isNotEmpty &&
+              !listEquals(freshRuleOrder, expectedRuleOrder)) {
+            Logger.warning(
+              'reorderFirewallCustomRules aborted: freshRuleOrder ($freshRuleOrder) != expectedRuleOrder ($expectedRuleOrder)',
+            );
+            return false;
+          }
+
+          final jTarget = freshRuleOrder.indexOf(targetSectionKey);
+          final jSibling = freshRuleOrder.indexOf(siblingSectionKey);
+          if (jTarget == -1 || jSibling == -1) {
+            return false;
+          }
+          if ((jSibling - jTarget).abs() != 1) {
+            Logger.warning(
+              'reorderFirewallCustomRules aborted: target ($jTarget) and sibling ($jSibling) are not strictly adjacent',
+            );
+            return false;
+          }
+
+          // Step 5: Exchange Identities Occupying the Two Custom-Rule Slots
+          final fullSlotTarget = ruleSlotIndices[jTarget];
+          final fullSlotSibling = ruleSlotIndices[jSibling];
+
+          final sNew = List<String>.filled(sectionsList.length, '');
+          for (int k = 0; k < sectionsList.length; k++) {
+            if (!ruleSlotIndices.contains(k)) {
+              sNew[k] = sectionsList[k]['key'] as String;
+            } else {
+              if (k == fullSlotTarget) {
+                sNew[k] = siblingSectionKey;
+              } else if (k == fullSlotSibling) {
+                sNew[k] = targetSectionKey;
+              } else {
+                sNew[k] = sectionsList[k]['key'] as String;
+              }
+            }
+          }
+
+          // Step 6: Submit Complete Order
+          final orderRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'order',
+            params: {
+              'config': 'firewall',
+              'sections': sNew,
+            },
+            context: mCtx,
+          );
+          if (orderRes is List && orderRes.isNotEmpty && orderRes[0] != 0) {
+            return false;
+          }
+
+          // Step 7: ARM Kernel Rollback Watchdog (pass staged order delta directly to uciApply)
+          final applied = await uciApply(
+            ipAddress,
+            sysauth,
+            useHttps,
+            rollback: true,
+            timeout: 30,
+          );
+          if (!applied) {
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Step 9: Post-Mutation Authoritative Verification Rules
+          final postGetRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+          if (postGetRes is! List ||
+              postGetRes.length < 2 ||
+              postGetRes[0] != 0) {
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          final postRawUci = postGetRes[1] as Map<String, dynamic>? ?? {};
+          final postRawValues = postRawUci['values'];
+          final Map<String, dynamic> postUciValues = (postRawValues is Map)
+              ? Map<String, dynamic>.from(postRawValues)
+              : Map<String, dynamic>.from(postRawUci);
+
+          final postSectionsList = <Map<String, dynamic>>[];
+          int postFallbackIdx = 0;
+          postUciValues.forEach((k, v) {
+            if (v is Map) {
+              final secKey = v['.name']?.toString() ?? k;
+              final secType = v['.type']?.toString() ?? '';
+              final idx = (v['.index'] is int)
+                  ? v['.index'] as int
+                  : int.tryParse(v['.index']?.toString() ?? '') ??
+                      postFallbackIdx;
+              postSectionsList.add({
+                'key': secKey,
+                'type': secType,
+                'index': idx,
+              });
+              postFallbackIdx++;
+            }
+          });
+          postSectionsList.sort(
+            (a, b) => (a['index'] as int).compareTo(b['index'] as int),
+          );
+
+          // 5-Point Verification:
+          // 1) Total count unchanged
+          if (postSectionsList.length != sectionsList.length) {
+            Logger.warning('reorder verification failed: length mismatch');
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // 2) Non-Rule Exact Index Preservation
+          for (int k = 0; k < sectionsList.length; k++) {
+            if (!ruleSlotIndices.contains(k)) {
+              if (postSectionsList[k]['key'] != sectionsList[k]['key'] ||
+                  postSectionsList[k]['type'] != sectionsList[k]['type']) {
+                Logger.warning(
+                  'reorder verification failed: non-rule index $k modified',
+                );
+                await uciRevert(
+                  ipAddress,
+                  sysauth,
+                  useHttps,
+                  config: 'firewall',
+                  context: mCtx,
+                );
+                return false;
+              }
+            }
+          }
+
+          // 3) Custom-Rule Slot Preservation
+          final postRuleSlotIndices = <int>[];
+          for (int i = 0; i < postSectionsList.length; i++) {
+            if (postSectionsList[i]['type'] == 'rule') {
+              postRuleSlotIndices.add(i);
+            }
+          }
+          if (!listEquals(postRuleSlotIndices, ruleSlotIndices)) {
+            Logger.warning(
+              'reorder verification failed: rule slot indices shifted',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // 4) Untouched Custom-Rule Slot Invariance
+          for (int j = 0; j < ruleSlotIndices.length; j++) {
+            if (j != jTarget && j != jSibling) {
+              final slot = ruleSlotIndices[j];
+              if (postSectionsList[slot]['key'] !=
+                  sectionsList[slot]['key']) {
+                Logger.warning(
+                  'reorder verification failed: untouched rule slot $slot modified',
+                );
+                await uciRevert(
+                  ipAddress,
+                  sysauth,
+                  useHttps,
+                  config: 'firewall',
+                  context: mCtx,
+                );
+                return false;
+              }
+            }
+          }
+
+          // 5) Slot Identity Exchange
+          if (postSectionsList[fullSlotTarget]['key'] != siblingSectionKey ||
+              postSectionsList[fullSlotSibling]['key'] != targetSectionKey) {
+            Logger.warning(
+              'reorder verification failed: target/sibling not properly exchanged',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Step 11: Disarm Rollback & Finalize
+          final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+          if (!confirmed) {
+            Logger.warning('reorderFirewallCustomRules uciConfirm failed');
+            return false;
+          }
+
+          try {
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'rc',
+              method: 'init',
+              params: {'name': 'firewall', 'action': 'reload'},
+              context: mCtx,
+            );
+          } catch (_) {}
+
+          return true;
+        } catch (e, stack) {
+          Logger.exception('reorderFirewallCustomRules failed', e, stack);
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'firewall',
+            context: mCtx,
+          );
+          return false;
+        }
+      },
+    );
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic> extractUciValuesMap(dynamic rawData) {
+    if (rawData is Map) {
+      if (rawData['values'] is Map) {
+        return Map<String, dynamic>.from(rawData['values'] as Map);
+      }
+      return Map<String, dynamic>.from(rawData);
+    }
+    return {};
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic>? findUciSection(
+    Map<String, dynamic> uciValues,
+    String sectionKey,
+  ) {
+    if (uciValues.containsKey(sectionKey) && uciValues[sectionKey] is Map) {
+      return Map<String, dynamic>.from(uciValues[sectionKey] as Map);
+    }
+    for (final v in uciValues.values) {
+      if (v is Map && v['.name']?.toString() == sectionKey) {
+        return Map<String, dynamic>.from(v);
+      }
+    }
+    return null;
+  }
+
+  @visibleForTesting
+  static bool hasUciSection(
+    Map<String, dynamic> uciValues,
+    String sectionKey,
+  ) {
+    return findUciSection(uciValues, sectionKey) != null;
+  }
+
+  @visibleForTesting
+  static void extractPortsFromUciSpec(dynamic spec, Set<int> out) {
+    if (spec == null) return;
+    final list = spec is List ? spec : [spec];
+    for (final item in list) {
+      final str = item.toString().trim();
+      if (str.isEmpty) continue;
+      if (str.contains(']:')) {
+        // Bracketed IPv6 address with port, e.g. '[::]:80' or '[2001:db8::1]:8443'
+        final colonIdx = str.lastIndexOf(']:');
+        final portStr = str.substring(colonIdx + 2);
+        final p = int.tryParse(portStr);
+        if (p != null && p >= 1 && p <= 65535) out.add(p);
+      } else if (str.contains(':')) {
+        // Single colon indicates IPv4:port or host:port, e.g. '0.0.0.0:80' or '192.168.1.1:2222'.
+        // Multiple colons without brackets indicates an IPv6 address without port (e.g. '2001:db8::1').
+        final colonCount = ':'.allMatches(str).length;
+        if (colonCount == 1) {
+          final lastColon = str.lastIndexOf(':');
+          final portStr = str.substring(lastColon + 1);
+          final p = int.tryParse(portStr);
+          if (p != null && p >= 1 && p <= 65535) out.add(p);
+        }
+      } else {
+        // Raw integer port string, e.g. '80', '22', '8443'
+        final p = int.tryParse(str);
+        if (p != null && p >= 1 && p <= 65535) out.add(p);
+      }
+    }
+  }
+
+  static void _extractPortsFromUciSpec(dynamic spec, Set<int> out) =>
+      extractPortsFromUciSpec(spec, out);
+
+  @override
+  Future<Set<int>> discoverManagementPorts(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    final ports = <int>{22, 80, 443};
+
+    // 1. Current active connection port
+    try {
+      final uri = _buildUrl(ipAddress, useHttps, '');
+      if (uri.hasPort && uri.port > 0) {
+        ports.add(uri.port);
+      }
+    } catch (_) {}
+
+    final mCtx = mountedContext(context);
+
+    // 2. Discover uhttpd HTTP/HTTPS listening ports
+    try {
+      final uhttpdRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'uhttpd'},
+        context: mCtx,
+      );
+      if (uhttpdRes is List && uhttpdRes.length > 1 && uhttpdRes[0] == 0) {
+        final rawData = uhttpdRes[1];
+        final Map? values = (rawData is Map && rawData['values'] is Map)
+            ? rawData['values'] as Map
+            : (rawData is Map ? rawData : null);
+        if (values != null) {
+          for (final sec in values.values) {
+            if (sec is Map) {
+              _extractPortsFromUciSpec(sec['listen_http'], ports);
+              _extractPortsFromUciSpec(sec['listen_https'], ports);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 3. Discover dropbear SSH listening ports
+    try {
+      final dropbearRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'dropbear'},
+        context: mCtx,
+      );
+      if (dropbearRes is List && dropbearRes.length > 1 && dropbearRes[0] == 0) {
+        final rawData = dropbearRes[1];
+        final Map? values = (rawData is Map && rawData['values'] is Map)
+            ? rawData['values'] as Map
+            : (rawData is Map ? rawData : null);
+        if (values != null) {
+          for (final sec in values.values) {
+            if (sec is Map) {
+              _extractPortsFromUciSpec(sec['Port'] ?? sec['port'], ports);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    SelfDeviceGuard.setDiscoveredManagementPorts(routerId, ports);
+    SelfDeviceGuard.setDiscoveredManagementPorts(ipAddress, ports);
+    return ports;
+  }
+
+  @override
+  Future<bool> applyPerDeviceNetworkAccessPolicy(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required NetworkAccessPolicy policy,
+    required RouterCapabilities capabilities,
+    BuildContext? context,
+  }) async {
+    if (!capabilities.hasUciWriteAccess) {
+      Logger.warning(
+        'applyPerDeviceNetworkAccessPolicy aborted: router has no UCI write access',
+      );
+      return false;
+    }
+
+    if (policy.isEffectivelyBlocked) {
+      final isSelf = await SelfDeviceGuard.isSelfDevice(policy.targetMac);
+      if (isSelf) {
+        Logger.warning(
+          'SelfDeviceGuard aborted: cannot block managing device (${policy.targetMac})',
+        );
+        return false;
+      }
+    }
+
+    final routerId = '${useHttps ? "https" : "http"}://$ipAddress';
+    return await RouterScopedOperationQueue.instance.runLocked(
+      routerId: routerId,
+      domain: 'firewall',
+      action: () async {
+        final mCtx = mountedContext(context);
+        try {
+          final getRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+
+          if (getRes is! List || getRes.length < 2 || getRes[0] != 0) {
+            return false;
+          }
+
+          final overview = FirewallOverview.fromUciData(
+            getRes[1] as Map<String, dynamic>?,
+            backend: capabilities.firewallBackend,
+          );
+
+          final mutations = FirewallPolicyTranslator.translatePolicyToUci(
+            policy: policy,
+            capabilities: capabilities,
+            existingRules: overview.customRules,
+          );
+
+          if (mutations.isEmpty) {
+            return true;
+          }
+
+          for (final mutation in mutations) {
+            switch (mutation.type) {
+              case UciMutationType.add:
+                await callWithContext(
+                  ipAddress,
+                  sysauth,
+                  useHttps,
+                  object: 'uci',
+                  method: 'add',
+                  params: {
+                    'config': 'firewall',
+                    'type': 'rule',
+                    'values': mutation.values,
+                  },
+                  context: mCtx,
+                );
+                break;
+              case UciMutationType.set:
+                if (mutation.sectionKey != null) {
+                  await callWithContext(
+                    ipAddress,
+                    sysauth,
+                    useHttps,
+                    object: 'uci',
+                    method: 'set',
+                    params: {
+                      'config': 'firewall',
+                      'section': mutation.sectionKey!,
+                      'values': mutation.values,
+                    },
+                    context: mCtx,
+                  );
+                }
+                break;
+              case UciMutationType.delete:
+                if (mutation.sectionKey != null) {
+                  await callWithContext(
+                    ipAddress,
+                    sysauth,
+                    useHttps,
+                    object: 'uci',
+                    method: 'delete',
+                    params: {
+                      'config': 'firewall',
+                      'section': mutation.sectionKey!,
+                    },
+                    context: mCtx,
+                  );
+                }
+                break;
+              case UciMutationType.none:
+                break;
+            }
+          }
+
+          // Pass staged delta changes directly to uciApply with rollback protection
+          final applied = await uciApply(
+            ipAddress,
+            sysauth,
+            useHttps,
+            rollback: true,
+            timeout: 30,
+          );
+          if (!applied) {
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authenticated post-apply verification proving management RPC liveness
+          final verifyRes = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mCtx,
+          );
+          if (verifyRes is! List || verifyRes.length < 2 || verifyRes[0] != 0) {
+            Logger.warning(
+              'applyPerDeviceNetworkAccessPolicy verification failed: management RPC unreachable after apply',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          // Authoritative state verification: deleted sections absent & policy state matched
+          final verifyUciValues = extractUciValuesMap(verifyRes[1]);
+          for (final mutation in mutations) {
+            if (mutation.type == UciMutationType.delete &&
+                mutation.sectionKey != null) {
+              if (hasUciSection(verifyUciValues, mutation.sectionKey!)) {
+                Logger.warning(
+                  'applyPerDeviceNetworkAccessPolicy verification failed: deleted section ${mutation.sectionKey} still present',
+                );
+                await uciRevert(
+                  ipAddress,
+                  sysauth,
+                  useHttps,
+                  config: 'firewall',
+                  context: mCtx,
+                );
+                return false;
+              }
+            }
+          }
+
+          final verifyOverview = FirewallOverview.fromUciData(
+            verifyRes[1] as Map<String, dynamic>?,
+            backend: capabilities.firewallBackend,
+          );
+          final recognized = FirewallPolicyTranslator.recognizePolicy(
+            targetMac: policy.targetMac,
+            rules: verifyOverview.customRules,
+          );
+          if (policy.isEffectivelyBlocked && !recognized.hasActiveBlock) {
+            Logger.warning(
+              'applyPerDeviceNetworkAccessPolicy verification failed: block not active after apply',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          } else if (!policy.isEffectivelyBlocked && recognized.hasActiveBlock) {
+            Logger.warning(
+              'applyPerDeviceNetworkAccessPolicy verification failed: block still active after unblock apply',
+            );
+            await uciRevert(
+              ipAddress,
+              sysauth,
+              useHttps,
+              config: 'firewall',
+              context: mCtx,
+            );
+            return false;
+          }
+
+          final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+          if (!confirmed) {
+            Logger.warning('applyPerDeviceNetworkAccessPolicy uciConfirm failed');
+            return false;
+          }
+
+          try {
+            await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: 'rc',
+              method: 'init',
+              params: {'name': 'firewall', 'action': 'reload'},
+              context: mCtx,
+            );
+          } catch (_) {}
+
+          return true;
+        } catch (e, stack) {
+          Logger.exception('applyPerDeviceNetworkAccessPolicy failed', e, stack);
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'firewall',
+            context: mCtx,
+          );
+          return false;
+        }
+      },
+    );
+  }
+
+  @override
   Future<bool> banWirelessClient(
     String ipAddress,
     String sysauth,
@@ -4478,7 +6764,17 @@ exit 0
     int banTimeSeconds = 300,
     BuildContext? context,
   }) async {
-    return disconnectWirelessClient(
+    // 1. Guard against banning managing device
+    final isSelf = await SelfDeviceGuard.isSelfDevice(macAddress);
+    if (isSelf) {
+      Logger.warning(
+        'SelfDeviceGuard aborted: cannot ban managing device ($macAddress)',
+      );
+      return false;
+    }
+
+    // 2. Disconnect/ban wireless (if wireless client or hostapd exists)
+    final wifiFuture = disconnectWirelessClient(
       ipAddress,
       sysauth,
       useHttps,
@@ -4487,6 +6783,18 @@ exit 0
       banTimeSeconds: banTimeSeconds,
       context: context,
     );
+
+    // 3. Enforce firewall block on the aggregated rule (for wired & network-level packet drop)
+    final fwFuture = _enforceFirewallBan(
+      ipAddress: ipAddress,
+      sysauth: sysauth,
+      useHttps: useHttps,
+      macAddress: macAddress,
+      context: context,
+    );
+
+    final results = await Future.wait([wifiFuture, fwFuture]);
+    return results[0] || results[1];
   }
 
   @override
@@ -4499,9 +6807,46 @@ exit 0
   }) async {
     final macUpper = macAddress.toUpperCase().replaceAll('-', ':');
     final macLower = macAddress.toLowerCase();
+    bool ubusSuccess = false;
 
-    final unbanScript =
-        '''
+    // 1. Native ubus call to hostapd.* del_client with ban_time: 0 to immediately lift temporary ban
+    try {
+      final hostapdObjects = await listUbusObjects(
+        ipAddress,
+        sysauth,
+        useHttps,
+        pattern: 'hostapd.*',
+        context: mountedContext(context),
+      );
+      for (final obj in hostapdObjects) {
+        if (obj.startsWith('hostapd.')) {
+          try {
+            final res = await callWithContext(
+              ipAddress,
+              sysauth,
+              useHttps,
+              object: obj,
+              method: 'del_client',
+              params: {
+                'addr': macUpper,
+                'reason': 1,
+                'deauth': false,
+                'ban_time': 0,
+              },
+              context: mountedContext(context),
+            );
+            if (res is List && res.isNotEmpty && res[0] == 0) {
+              ubusSuccess = true;
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      Logger.warning('Native hostapd unban del_client error: $e');
+    }
+
+    // 2. Non-blocking background script to remove hostapd_cli deny_acl and live firewall drop rules
+    final unbanScript = '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
 
@@ -4526,7 +6871,7 @@ MAC_L="$macLower"
   iptables -D FORWARD -m mac --mac-source "\$MAC_L" -j DROP 2>/dev/null || true
   ebtables -D INPUT -s "\$MAC_U" -j DROP 2>/dev/null || true
   ebtables -D FORWARD -s "\$MAC_U" -j DROP 2>/dev/null || true
-) &
+) >/dev/null 2>&1 &
 exit 0
 ''';
 
@@ -4544,21 +6889,27 @@ exit 0
       Logger.warning('unbanWirelessClient script error: $e');
     }
 
-    final fwOk = await _removeFirewallBlock(
-      ipAddress: ipAddress,
-      sysauth: sysauth,
-      useHttps: useHttps,
-      macAddress: macAddress,
-      context: context,
-    );
-    final wifiOk = await _removeWirelessMacFilter(
-      ipAddress: ipAddress,
-      sysauth: sysauth,
-      useHttps: useHttps,
-      macAddress: macAddress,
-      context: context,
-    );
-    return fwOk && wifiOk;
+    // 3. Remove persistent UCI blocks concurrently
+    final results = await Future.wait([
+      _removeFirewallBlock(
+        ipAddress: ipAddress,
+        sysauth: sysauth,
+        useHttps: useHttps,
+        macAddress: macAddress,
+        context: context,
+      ),
+      _removeWirelessMacFilter(
+        ipAddress: ipAddress,
+        sysauth: sysauth,
+        useHttps: useHttps,
+        macAddress: macAddress,
+        context: context,
+      ),
+    ]);
+
+    final fwOk = results[0];
+    final wifiOk = results[1];
+    return (ubusSuccess || fwOk) && wifiOk;
   }
 
   @override
@@ -4580,31 +6931,39 @@ for s in /var/run/hostapd/* /var/run/hostapd-*/*; do
   fi
 done
 
-WIFI_UCI=\$(uci show wireless 2>/dev/null | grep -iE "maclist" | grep -oE "([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}" || true)
+WIFI_UCI=""
+for sec in \$(uci show wireless 2>/dev/null | grep -iE "\\.macfilter='?deny'?|\\.macfilter='?2'?" | cut -d. -f2 | cut -d= -f1); do
+  WIFI_UCI="\$WIFI_UCI \$(uci get wireless.\${sec}.maclist 2>/dev/null || true)"
+done
 
-FW_UCI=\$(uci show firewall 2>/dev/null | grep -iE "(src_mac|dest_mac)" | grep -oE "([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}" || true)
+BAN_FW_UCI=\$(uci show firewall 2>/dev/null | grep -iE "name='*Ban_Client_" | cut -d. -f2 | while read -r sec; do uci -q get firewall."\$sec".src_mac 2>/dev/null; done | tr '\n' ' ')
+
+PAUSE_FW_UCI=\$(uci show firewall 2>/dev/null | grep -iE "name='*(Pause_Internet_|nointernet_wireless_clients|Yala_Block_)" | cut -d. -f2 | while read -r sec; do uci -q get firewall."\$sec".src_mac 2>/dev/null; done | tr '\n' ' ')
 NFT_MACS=\$(nft list chain inet fw4 input 2>/dev/null; nft list chain inet fw4 forward 2>/dev/null | grep -iE "drop|reject" | grep -oE "([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}" || true)
 IPT_MACS=\$(iptables -L INPUT -v -n 2>/dev/null; iptables -L FORWARD -v -n 2>/dev/null | grep -iE "DROP|REJECT" | grep -oE "([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}" || true)
 
-echo "RESTRICTED:"
-echo "\$FW_UCI \$NFT_MACS \$IPT_MACS" | tr ' ' '\\n' | grep -vE "^00:00:00:00:00:00\$|^FF:FF:FF:FF:FF:FF\$" | sort -u | grep -v "^\$"
-
 echo "BANNED:"
-echo "\$DENY_MACS \$WIFI_UCI" | tr ' ' '\\n' | grep -vE "^00:00:00:00:00:00\$|^FF:FF:FF:FF:FF:FF\$" | sort -u | grep -v "^\$"
+echo "\$DENY_MACS \$WIFI_UCI \$BAN_FW_UCI" | tr ' ' '\\n' | grep -vE "^00:00:00:00:00:00\$|^FF:FF:FF:FF:FF:FF\$" | sort -u | grep -v "^\$"
+
+echo "RESTRICTED:"
+echo "\$PAUSE_FW_UCI \$NFT_MACS \$IPT_MACS" | tr ' ' '\\n' | grep -vE "^00:00:00:00:00:00\$|^FF:FF:FF:FF:FF:FF\$" | sort -u | grep -v "^\$"
 ''';
 
-      final res = await callWithContext(
-        ipAddress,
-        sysauth,
-        useHttps,
-        object: 'file',
-        method: 'exec',
-        params: {
-          'command': '/bin/sh',
-          'params': ['-c', script],
-        },
-        context: mountedContext(context),
-      );
+      dynamic res;
+      try {
+        res = await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'file',
+          method: 'exec',
+          params: {
+            'command': '/bin/sh',
+            'params': ['-c', script],
+          },
+          context: mountedContext(context),
+        );
+      } catch (_) {}
 
       final result = <String, List<Map<String, dynamic>>>{
         'restricted': [],
@@ -4640,18 +6999,153 @@ echo "\$DENY_MACS \$WIFI_UCI" | tr ' ' '\\n' | grep -vE "^00:00:00:00:00:00\$|^F
               'type': currentSection,
               'source': currentSection == 'restricted'
                   ? 'Internet Access Paused'
-                  : 'Wi-Fi Access Control (Banned)',
+                  : 'Client Access Control (Banned)',
             };
 
-            if (currentSection == 'restricted' &&
-                !result['restricted']!.any((e) => e['mac'] == macUpper)) {
-              result['restricted']!.add(entry);
-            } else if (currentSection == 'banned' &&
+            if (currentSection == 'banned' &&
                 !result['banned']!.any((e) => e['mac'] == macUpper)) {
               result['banned']!.add(entry);
+              result['restricted']!.removeWhere((e) => e['mac'] == macUpper);
+            } else if (currentSection == 'restricted' &&
+                !result['banned']!.any((e) => e['mac'] == macUpper) &&
+                !result['restricted']!.any((e) => e['mac'] == macUpper)) {
+              result['restricted']!.add(entry);
             }
           }
         }
+      } else {
+        // Native ubus fallback for routers where rpcd file.exec is restricted by ACLs
+        try {
+          final uciWire = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'wireless'},
+            context: mountedContext(context),
+          );
+          if (uciWire is List && uciWire.length > 1 && uciWire[0] == 0) {
+            final values =
+                (uciWire[1] as Map<String, dynamic>?)?['values']
+                    as Map<String, dynamic>? ??
+                {};
+            for (final sec in values.values) {
+              if (sec is Map<String, dynamic>) {
+                final mf = sec['macfilter']?.toString().toLowerCase();
+                if (mf == 'deny' || mf == '2') {
+                  final raw = sec['maclist'];
+                  final List<String> macs = raw is List
+                      ? raw
+                            .map(
+                              (e) => e
+                                  .toString()
+                                  .toUpperCase()
+                                  .replaceAll('-', ':'),
+                            )
+                            .toList()
+                      : (raw != null
+                            ? [
+                                raw.toString().toUpperCase().replaceAll(
+                                  '-',
+                                  ':',
+                                ),
+                              ]
+                            : []);
+                  for (final m in macs) {
+                    if (m.isNotEmpty &&
+                        !result['banned']!.any((e) => e['mac'] == m)) {
+                      result['banned']!.add({
+                        'mac': m,
+                        'name': m,
+                        'ip': 'N/A',
+                        'type': 'banned',
+                        'source': 'Wi-Fi Access Control (Banned)',
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          final uciFw = await callWithContext(
+            ipAddress,
+            sysauth,
+            useHttps,
+            object: 'uci',
+            method: 'get',
+            params: {'config': 'firewall'},
+            context: mountedContext(context),
+          );
+          if (uciFw is List && uciFw.length > 1 && uciFw[0] == 0) {
+            final values =
+                (uciFw[1] as Map<String, dynamic>?)?['values']
+                    as Map<String, dynamic>? ??
+                {};
+            for (final sec in values.values) {
+              if (sec is Map<String, dynamic>) {
+                final target = sec['target']?.toString().toUpperCase() ?? '';
+                final name = sec['name']?.toString() ?? '';
+                final isBanRule = name.startsWith('Ban_Client_');
+                final isBlock =
+                    target == 'DROP' ||
+                    target == 'REJECT' ||
+                    target == 'STOP' ||
+                    name.startsWith('Pause_Internet_') ||
+                    name.startsWith('Yala_Block_') ||
+                    name == 'nointernet_wireless_clients';
+                final srcMac = sec['src_mac'];
+                final List<String> macs = srcMac is List
+                    ? srcMac
+                          .map(
+                            (e) => e
+                                .toString()
+                                .toUpperCase()
+                                .replaceAll('-', ':'),
+                          )
+                          .toList()
+                    : (srcMac != null
+                          ? [
+                              srcMac.toString().toUpperCase().replaceAll(
+                                '-',
+                                ':',
+                              ),
+                            ]
+                          : []);
+                if (isBanRule) {
+                  for (final m in macs) {
+                    if (m.isNotEmpty &&
+                        !result['banned']!.any((e) => e['mac'] == m)) {
+                      result['banned']!.add({
+                        'mac': m,
+                        'name': m,
+                        'ip': 'N/A',
+                        'type': 'banned',
+                        'source': 'Client Access Control (Banned)',
+                      });
+                      result['restricted']!.removeWhere((e) => e['mac'] == m);
+                    }
+                  }
+                } else if (isBlock) {
+                  for (final m in macs) {
+                    if (m.isNotEmpty &&
+                        !result['banned']!.any((e) => e['mac'] == m) &&
+                        !result['restricted']!.any((e) => e['mac'] == m)) {
+                      result['restricted']!.add({
+                        'mac': m,
+                        'name': m,
+                        'ip': 'N/A',
+                        'type': 'restricted',
+                        'source': 'Internet Access Paused',
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (_) {}
       }
 
       return result;
@@ -5841,6 +8335,34 @@ rm -f "$leasePath" /tmp/dhcp.leases /var/dhcp.leases /tmp/dnsmasq.leases /var/li
         action: enable ? 'start' : 'stop',
         context: mountedContext(context),
       );
+
+      // Validate committed state from router
+      try {
+        final verifyRes = await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'uci',
+          method: 'get',
+          params: {'config': 'ddns', 'section': 'global'},
+          context: mountedContext(context),
+        );
+        if (verifyRes is Map) {
+          final values = verifyRes['values'] ?? verifyRes;
+          if (values is Map) {
+            final verifiedVal = values['is_enabled']?.toString();
+            final expectedVal = enable ? '1' : '0';
+            if (verifiedVal != null && verifiedVal != expectedVal) {
+              Logger.warning(
+                'toggleGlobalDdns: validation mismatch. Expected $expectedVal, got $verifiedVal',
+              );
+              return false;
+            }
+          }
+        }
+      } catch (e) {
+        Logger.debug('toggleGlobalDdns: validation query warning: $e');
+      }
 
       return true;
     } catch (e, stack) {
@@ -7305,6 +9827,433 @@ rm -f "$leasePath" /tmp/dhcp.leases /var/dhcp.leases /tmp/dnsmasq.leases /var/li
       return true;
     } catch (e, stack) {
       Logger.exception('Failed to set router hostname', e, stack);
+      return false;
+    }
+  }
+
+  String? _findDnsmasqSection(dynamic uciDhcpResponse) {
+    if (uciDhcpResponse == null) return null;
+    final Map? valuesMap;
+    if (uciDhcpResponse is Map && uciDhcpResponse['values'] is Map) {
+      valuesMap = uciDhcpResponse['values'] as Map;
+    } else if (uciDhcpResponse is List &&
+        uciDhcpResponse.length > 1 &&
+        uciDhcpResponse[1] is Map) {
+      final second = uciDhcpResponse[1] as Map;
+      valuesMap = second['values'] is Map ? second['values'] as Map : second;
+    } else if (uciDhcpResponse is Map) {
+      valuesMap = uciDhcpResponse;
+    } else {
+      valuesMap = null;
+    }
+    if (valuesMap != null) {
+      for (final entry in valuesMap.entries) {
+        final val = entry.value;
+        if (val is Map &&
+            (val['.type'] == 'dnsmasq' ||
+                entry.key.toString().contains('dnsmasq'))) {
+          return val['.name']?.toString() ?? entry.key.toString();
+        }
+      }
+    }
+    return null;
+  }
+
+  List<String> _extractDnsmasqAddressEntries(
+    dynamic uciDhcpResponse,
+    String sectionName,
+  ) {
+    final Map? valuesMap;
+    if (uciDhcpResponse is Map && uciDhcpResponse['values'] is Map) {
+      valuesMap = uciDhcpResponse['values'] as Map;
+    } else if (uciDhcpResponse is List &&
+        uciDhcpResponse.length > 1 &&
+        uciDhcpResponse[1] is Map) {
+      final second = uciDhcpResponse[1] as Map;
+      valuesMap = second['values'] is Map ? second['values'] as Map : second;
+    } else if (uciDhcpResponse is Map) {
+      valuesMap = uciDhcpResponse;
+    } else {
+      valuesMap = null;
+    }
+    if (valuesMap != null && valuesMap[sectionName] is Map) {
+      final sec = valuesMap[sectionName] as Map;
+      final rawAddress = sec['address'];
+      if (rawAddress is List) {
+        return rawAddress.map((e) => e.toString()).toList();
+      } else if (rawAddress is String && rawAddress.isNotEmpty) {
+        return [rawAddress];
+      }
+    }
+    return [];
+  }
+
+  @override
+  Future<List<String>> getDnsmasqBlockedDomains(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    try {
+      final getRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'dhcp'},
+        context: mountedContext(context),
+      );
+      final sectionName = _findDnsmasqSection(getRes);
+      if (sectionName == null) return [];
+
+      final rawEntries = _extractDnsmasqAddressEntries(getRes, sectionName);
+      final Set<String> domains = {};
+      for (final entry in rawEntries) {
+        final d = DomainValidator.parseBlockedDomainFromAddress(entry);
+        if (d != null && d.isNotEmpty) {
+          domains.add(d);
+        }
+      }
+      return domains.toList()..sort();
+    } catch (e, stack) {
+      Logger.exception('getDnsmasqBlockedDomains failed', e, stack);
+      return [];
+    }
+  }
+
+  @override
+  Future<bool> addDnsmasqBlockedDomain(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String domain, {
+    BuildContext? context,
+  }) async {
+    final mCtx = mountedContext(context);
+    final normalized = DomainValidator.normalize(domain);
+    if (normalized == null || !DomainValidator.isValid(normalized)) {
+      Logger.warning('addDnsmasqBlockedDomain: invalid domain "$domain"');
+      return false;
+    }
+
+    try {
+      final getRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'dhcp'},
+        context: mCtx,
+      );
+      final sectionName = _findDnsmasqSection(getRes);
+      if (sectionName == null) {
+        Logger.warning('addDnsmasqBlockedDomain: dnsmasq section not found');
+        return false;
+      }
+
+      final rawEntries = _extractDnsmasqAddressEntries(getRes, sectionName);
+      final bool alreadyBlocked = rawEntries.any((entry) {
+        final existing = DomainValidator.parseBlockedDomainFromAddress(entry);
+        return existing != null &&
+            existing.toLowerCase() == normalized.toLowerCase();
+      });
+      if (alreadyBlocked) {
+        return true;
+      }
+
+      final updatedEntries = List<String>.from(rawEntries)
+        ..add('/$normalized/#');
+
+      final setRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'set',
+        params: {
+          'config': 'dhcp',
+          'section': sectionName,
+          'values': {'address': updatedEntries},
+        },
+        context: mCtx,
+      );
+      if (setRes is List && setRes.isNotEmpty && setRes[0] != 0) {
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mCtx,
+        );
+        return false;
+      }
+
+      final applied = await uciApply(
+        ipAddress,
+        sysauth,
+        useHttps,
+        rollback: true,
+        timeout: 30,
+      );
+      if (!applied) {
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mCtx,
+        );
+        return false;
+      }
+
+      final verifyRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'dhcp'},
+        context: mCtx,
+      );
+      if (verifyRes is! List || verifyRes.length < 2 || verifyRes[0] != 0) {
+        Logger.warning(
+          'addDnsmasqBlockedDomain verification failed: RPC unreachable after apply',
+        );
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mCtx,
+        );
+        return false;
+      }
+
+      final verifiedEntries =
+          _extractDnsmasqAddressEntries(verifyRes, sectionName);
+      final verifiedBlocked = verifiedEntries.any((entry) {
+        final existing = DomainValidator.parseBlockedDomainFromAddress(entry);
+        return existing != null &&
+            existing.toLowerCase() == normalized.toLowerCase();
+      });
+
+      if (!verifiedBlocked) {
+        Logger.warning(
+          'addDnsmasqBlockedDomain verification failed: domain not present in dnsmasq config',
+        );
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mCtx,
+        );
+        return false;
+      }
+
+      final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+      if (!confirmed) {
+        Logger.warning('addDnsmasqBlockedDomain: uciConfirm failed');
+        return false;
+      }
+
+      return true;
+    } catch (e, stack) {
+      Logger.exception('addDnsmasqBlockedDomain failed', e, stack);
+      try {
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mCtx,
+        );
+      } catch (_) {}
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> removeDnsmasqBlockedDomain(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String domain, {
+    BuildContext? context,
+  }) async {
+    final mCtx = mountedContext(context);
+    final normalized = DomainValidator.normalize(domain);
+    if (normalized == null || normalized.isEmpty) {
+      Logger.warning('removeDnsmasqBlockedDomain: invalid domain "$domain"');
+      return false;
+    }
+
+    try {
+      final getRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'dhcp'},
+        context: mCtx,
+      );
+      final sectionName = _findDnsmasqSection(getRes);
+      if (sectionName == null) {
+        Logger.warning('removeDnsmasqBlockedDomain: dnsmasq section not found');
+        return false;
+      }
+
+      final rawEntries = _extractDnsmasqAddressEntries(getRes, sectionName);
+      final bool isPresent = rawEntries.any((entry) {
+        final existing = DomainValidator.parseBlockedDomainFromAddress(entry);
+        return existing != null &&
+            existing.toLowerCase() == normalized.toLowerCase();
+      });
+      if (!isPresent) {
+        return true;
+      }
+
+      final updatedEntries = rawEntries.where((entry) {
+        final existing = DomainValidator.parseBlockedDomainFromAddress(entry);
+        return existing == null ||
+            existing.toLowerCase() != normalized.toLowerCase();
+      }).toList();
+
+      if (updatedEntries.isEmpty) {
+        final delRes = await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'uci',
+          method: 'delete',
+          params: {
+            'config': 'dhcp',
+            'section': sectionName,
+            'option': 'address',
+          },
+          context: mCtx,
+        );
+        if (delRes is List && delRes.isNotEmpty && delRes[0] != 0) {
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'dhcp',
+            context: mCtx,
+          );
+          return false;
+        }
+      } else {
+        final setRes = await callWithContext(
+          ipAddress,
+          sysauth,
+          useHttps,
+          object: 'uci',
+          method: 'set',
+          params: {
+            'config': 'dhcp',
+            'section': sectionName,
+            'values': {'address': updatedEntries},
+          },
+          context: mCtx,
+        );
+        if (setRes is List && setRes.isNotEmpty && setRes[0] != 0) {
+          await uciRevert(
+            ipAddress,
+            sysauth,
+            useHttps,
+            config: 'dhcp',
+            context: mCtx,
+          );
+          return false;
+        }
+      }
+
+      final applied = await uciApply(
+        ipAddress,
+        sysauth,
+        useHttps,
+        rollback: true,
+        timeout: 30,
+      );
+      if (!applied) {
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mCtx,
+        );
+        return false;
+      }
+
+      final verifyRes = await callWithContext(
+        ipAddress,
+        sysauth,
+        useHttps,
+        object: 'uci',
+        method: 'get',
+        params: {'config': 'dhcp'},
+        context: mCtx,
+      );
+      if (verifyRes is! List || verifyRes.length < 2 || verifyRes[0] != 0) {
+        Logger.warning(
+          'removeDnsmasqBlockedDomain verification failed: RPC unreachable after apply',
+        );
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mCtx,
+        );
+        return false;
+      }
+
+      final verifiedEntries =
+          _extractDnsmasqAddressEntries(verifyRes, sectionName);
+      final stillBlocked = verifiedEntries.any((entry) {
+        final existing = DomainValidator.parseBlockedDomainFromAddress(entry);
+        return existing != null &&
+            existing.toLowerCase() == normalized.toLowerCase();
+      });
+
+      if (stillBlocked) {
+        Logger.warning(
+          'removeDnsmasqBlockedDomain verification failed: domain still present',
+        );
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mCtx,
+        );
+        return false;
+      }
+
+      final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
+      if (!confirmed) {
+        Logger.warning('removeDnsmasqBlockedDomain: uciConfirm failed');
+        return false;
+      }
+
+      return true;
+    } catch (e, stack) {
+      Logger.exception('removeDnsmasqBlockedDomain failed', e, stack);
+      try {
+        await uciRevert(
+          ipAddress,
+          sysauth,
+          useHttps,
+          config: 'dhcp',
+          context: mCtx,
+        );
+      } catch (_) {}
       return false;
     }
   }

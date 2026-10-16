@@ -239,5 +239,296 @@ void main() {
         expect(resPermDenied.isPermissionDenied, isTrue);
       },
     );
+
+    test(
+      'SwconfigTopologyParser maps hardware switch ports to chassis port indexes using board.json',
+      () {
+        final mockUciNetwork = {
+          'values': {
+            'sw0': {'.type': 'switch', 'name': 'switch0'},
+            'vlan1': {
+              '.type': 'switch_vlan',
+              'device': 'switch0',
+              'vlan': '1',
+              'ports': '1 2 3 4 0t',
+            },
+          },
+        };
+
+        // TP-Link Archer C60 v3 board.json switch layout where hardware num 4 is physical LAN 1
+        final mockBoardJson = {
+          'switch': {
+            'switch0': {
+              'enable': true,
+              'reset': true,
+              'ports': [
+                {'num': 0, 'device': 'eth0'},
+                {'num': 1, 'role': 'lan', 'index': 4},
+                {'num': 2, 'role': 'lan', 'index': 3},
+                {'num': 3, 'role': 'lan', 'index': 2},
+                {'num': 4, 'role': 'lan', 'index': 1},
+              ],
+            },
+          },
+        };
+
+        final mockNetworkDevices = {
+          'swconfigPortState': {
+            'result': [
+              {'port': 0, 'link': true, 'speed': 1000},
+              {'port': 1, 'link': false, 'speed': 0},
+              {'port': 2, 'link': false, 'speed': 0},
+              {'port': 3, 'link': false, 'speed': 0},
+              {'port': 4, 'link': true, 'speed': 100},
+            ],
+          },
+        };
+
+        final topology = SwconfigTopologyParser.parse(
+          mockUciNetwork,
+          mockNetworkDevices,
+          boardJson: mockBoardJson,
+        );
+
+        expect(topology.isAvailable, isTrue);
+        final vlan1 = topology.vlans.first;
+        expect(vlan1.ports.length, equals(5));
+
+        // Ports should be sorted by physical chassis index order
+        expect(vlan1.ports[0].name, equals('LAN Port 1'));
+        expect(vlan1.ports[0].portIndex, equals(4)); // Hardware switch port 4
+        expect(vlan1.ports[0].isUp, isTrue);
+        expect(vlan1.ports[0].linkSpeed, equals('100M'));
+
+        expect(vlan1.ports[1].name, equals('LAN Port 2'));
+        expect(vlan1.ports[1].portIndex, equals(3));
+        expect(vlan1.ports[1].isUp, isFalse);
+
+        expect(vlan1.ports[2].name, equals('LAN Port 3'));
+        expect(vlan1.ports[2].portIndex, equals(2));
+        expect(vlan1.ports[2].isUp, isFalse);
+
+        expect(vlan1.ports[3].name, equals('LAN Port 4'));
+        expect(vlan1.ports[3].portIndex, equals(1));
+        expect(vlan1.ports[3].isUp, isFalse);
+
+        // CPU port at the end
+        expect(vlan1.ports[4].name, equals('CPU (eth0)'));
+        expect(vlan1.ports[4].portIndex, equals(0));
+        expect(vlan1.ports[4].isTagged, isTrue);
+        expect(vlan1.ports[4].isWan, isFalse); // eth0 is CPU, not WAN!
+        expect(vlan1.ports[4].isCpu, isTrue);
+      },
+    );
+
+    test(
+      'SwconfigTopologyParser detects and synthesizes standalone WAN interface (eth1) alongside switch0',
+      () {
+        // Exact Archer C60 v3 layout where LAN is switch0 (eth0.1) and WAN is eth1
+        final mockUciNetwork = {
+          'values': {
+            'sw0': {'.type': 'switch', 'name': 'switch0'},
+            'vlan1': {
+              '.type': 'switch_vlan',
+              'device': 'switch0',
+              'vlan': '1',
+              'ports': '1 2 3 4 0t',
+            },
+            'wan': {'.type': 'interface', 'device': 'eth1', 'proto': 'dhcp'},
+            'wan6': {'.type': 'interface', 'device': 'eth1', 'proto': 'dhcpv6'},
+          },
+        };
+
+        final mockBoardJson = {
+          'network': {
+            'lan': {'device': 'eth0.1', 'protocol': 'static'},
+            'wan': {'device': 'eth1', 'protocol': 'dhcp'},
+          },
+          'switch': {
+            'switch0': {
+              'enable': true,
+              'reset': true,
+              'ports': [
+                {'num': 0, 'device': 'eth0'},
+                {'num': 1, 'role': 'lan', 'index': 4},
+                {'num': 2, 'role': 'lan', 'index': 3},
+                {'num': 3, 'role': 'lan', 'index': 2},
+                {'num': 4, 'role': 'lan', 'index': 1},
+              ],
+            },
+          },
+        };
+
+        final mockNetworkDevices = {
+          'swconfigPortState': {
+            'result': [
+              {'port': 0, 'link': true, 'speed': 1000},
+              {'port': 1, 'link': false, 'speed': 0},
+              {'port': 2, 'link': false, 'speed': 0},
+              {'port': 3, 'link': false, 'speed': 0},
+              {'port': 4, 'link': true, 'speed': 100},
+            ],
+          },
+          'eth1': {'up': true, 'carrier': true, 'speed': '100F'},
+          'eth0': {'up': true, 'carrier': true, 'speed': '1000F'},
+        };
+
+        final topology = SwconfigTopologyParser.parse(
+          mockUciNetwork,
+          mockNetworkDevices,
+          boardJson: mockBoardJson,
+        );
+
+        expect(topology.isAvailable, isTrue);
+        // Expect both VLAN 1 (switch0) and WAN Interface (eth1)
+        expect(topology.vlans.length, equals(2));
+
+        final switchVlan = topology.vlans.first;
+        expect(switchVlan.name, equals('VLAN 1 (switch0)'));
+        expect(switchVlan.ports.length, equals(5));
+
+        // CPU port on switch0
+        final cpuPort = switchVlan.ports.firstWhere((p) => p.name == 'CPU (eth0)');
+        expect(cpuPort.isCpu, isTrue);
+        expect(cpuPort.isWan, isFalse);
+        expect(cpuPort.isTagged, isTrue);
+        expect(cpuPort.isUp, isTrue);
+        expect(cpuPort.linkSpeed, equals('1000M'));
+
+        // Standalone WAN interface
+        final wanVlan = topology.vlans.last;
+        expect(wanVlan.name, equals('WAN Interface (eth1)'));
+        expect(wanVlan.ports.length, equals(1));
+        final wanPort = wanVlan.ports.first;
+        expect(wanPort.name, equals('WAN (eth1)'));
+        expect(wanPort.isWan, isTrue);
+        expect(wanPort.isCpu, isFalse);
+        expect(wanPort.isUp, isTrue);
+        expect(wanPort.linkSpeed, equals('100F'));
+      },
+    );
+
+    test(
+      'SwconfigTopologyParser does NOT duplicate WAN when WAN is already a switch0 VLAN port',
+      () {
+        // Router where WAN is port 1 on switch0 (e.g. Archer C7 v5)
+        final mockUciNetwork = {
+          'values': {
+            'sw0': {'.type': 'switch', 'name': 'switch0'},
+            'vlan1': {
+              '.type': 'switch_vlan',
+              'device': 'switch0',
+              'vlan': '1',
+              'ports': '2 3 4 5 0t',
+            },
+            'vlan2': {
+              '.type': 'switch_vlan',
+              'device': 'switch0',
+              'vlan': '2',
+              'ports': '1 0t',
+            },
+            'wan': {'.type': 'interface', 'device': 'eth0.2', 'proto': 'dhcp'},
+          },
+        };
+
+        final mockBoardJson = {
+          'network': {
+            'lan': {'device': 'eth0.1'},
+            'wan': {'device': 'eth0.2'},
+          },
+          'switch': {
+            'switch0': {
+              'ports': [
+                {'num': 0, 'device': 'eth0', 'role': 'cpu'},
+                {'num': 1, 'role': 'wan', 'index': 1},
+                {'num': 2, 'role': 'lan', 'index': 1},
+                {'num': 3, 'role': 'lan', 'index': 2},
+                {'num': 4, 'role': 'lan', 'index': 3},
+                {'num': 5, 'role': 'lan', 'index': 4},
+              ],
+            },
+          },
+        };
+
+        final mockNetworkDevices = {
+          'swconfigPortState': {
+            'result': [
+              {'port': 0, 'link': true, 'speed': 1000},
+              {'port': 1, 'link': true, 'speed': 1000},
+              {'port': 2, 'link': true, 'speed': 100},
+            ],
+          },
+        };
+
+        final topology = SwconfigTopologyParser.parse(
+          mockUciNetwork,
+          mockNetworkDevices,
+          boardJson: mockBoardJson,
+        );
+
+        expect(topology.isAvailable, isTrue);
+        // Only 2 switch_vlan sections, NO duplicate 3rd standalone WAN row
+        expect(topology.vlans.length, equals(2));
+        expect(topology.vlans[0].name, equals('VLAN 1 (switch0)'));
+        expect(topology.vlans[1].name, equals('VLAN 2 (switch0)'));
+
+        final wanPort = topology.vlans[1].ports.firstWhere((p) => p.isWan);
+        expect(wanPort.name, equals('WAN'));
+        expect(wanPort.isUp, isTrue);
+        expect(wanPort.isCpu, isFalse);
+      },
+    );
+
+    test(
+      'SwconfigTopologyParser handles standalone WAN with ISP VLAN tagging (eth1.835) and filters tunnels',
+      () {
+        final mockUciNetwork = {
+          'values': {
+            'sw0': {'.type': 'switch', 'name': 'switch0'},
+            'vlan1': {
+              '.type': 'switch_vlan',
+              'device': 'switch0',
+              'vlan': '1',
+              'ports': '1 2 3 4 0t',
+            },
+            'wan': {'.type': 'interface', 'device': 'eth1.835', 'proto': 'pppoe'},
+            'vpn_wan': {'.type': 'interface', 'device': 'wg0', 'proto': 'wireguard'},
+          },
+        };
+
+        final mockBoardJson = {
+          'network': {
+            'wan': {'device': 'eth1.835'},
+          },
+          'switch': {
+            'switch0': {
+              'ports': [
+                {'num': 0, 'device': 'eth0'},
+                {'num': 1, 'role': 'lan', 'index': 1},
+              ],
+            },
+          },
+        };
+
+        final mockNetworkDevices = {
+          'eth1': {'up': true, 'carrier': true, 'speed': '1000F'},
+          'wg0': {'up': true, 'carrier': true},
+        };
+
+        final topology = SwconfigTopologyParser.parse(
+          mockUciNetwork,
+          mockNetworkDevices,
+          boardJson: mockBoardJson,
+        );
+
+        expect(topology.isAvailable, isTrue);
+        // Should have VLAN 1 and WAN Interface (eth1), but NOT wg0
+        expect(topology.vlans.length, equals(2));
+        final wanVlan = topology.vlans.last;
+        expect(wanVlan.name, equals('WAN Interface (eth1)'));
+        expect(wanVlan.ports.first.name, equals('WAN (eth1)'));
+        expect(wanVlan.ports.first.linkSpeed, equals('1000F'));
+      },
+    );
   });
 }

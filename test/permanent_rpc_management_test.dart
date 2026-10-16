@@ -73,9 +73,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  group('Permanent RPC Management in MoreScreen', () {
+  group('MoreScreen Deduping & Permanent RPC Management', () {
     testWidgets(
-      'MoreScreen displays RPC & Permissions tile with Setup badge when RPC is missing',
+      'MoreScreen does not display duplicate RPC & Permissions or Change Router Password tiles',
       (tester) async {
         tester.view.physicalSize = const Size(1080, 2400);
         tester.view.devicePixelRatio = 1.0;
@@ -89,24 +89,14 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // RPC & Permissions tile should be visible permanently under Device Management
-        expect(find.text('RPC & Permissions'), findsOneWidget);
-        expect(find.text('Setup or repair router RPC access'), findsOneWidget);
-        expect(find.text('Setup'), findsOneWidget);
-
-        // Tap the tile to verify it opens RpcPermissionsDialog
-        await tester.tap(find.text('RPC & Permissions'));
-        await tester.pumpAndSettle();
-
-        expect(find.byType(RpcPermissionsDialog), findsOneWidget);
-        expect(find.text('Permission Required'), findsOneWidget);
-        expect(find.text('Fix Automatically'), findsOneWidget);
-        expect(find.text('Manual SSH Command'), findsOneWidget);
+        // Duplicate tiles must NOT appear on top-level MoreScreen
+        expect(find.text('RPC & Permissions'), findsNothing);
+        expect(find.text('Change Router Password'), findsNothing);
       },
     );
 
     testWidgets(
-      'MoreScreen displays RPC & Permissions tile with Ready badge when RPC is complete',
+      'SettingsScreen displays RPC & Permissions and opens verified state in RpcPermissionsDialog',
       (tester) async {
         tester.view.physicalSize = const Size(1080, 2400);
         tester.view.devicePixelRatio = 1.0;
@@ -116,19 +106,14 @@ void main() {
         appState.setCapabilitiesForTesting(_createCompleteCaps());
 
         await tester.pumpWidget(
-          const ProviderScope(child: MaterialApp(home: MoreScreen())),
+          const ProviderScope(child: MaterialApp(home: SettingsScreen())),
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('RPC & Permissions'), findsOneWidget);
-        expect(
-          find.text('Manage router RPC permissions and modules'),
-          findsOneWidget,
-        );
-        expect(find.text('Ready'), findsOneWidget);
+        expect(find.text('Manage'), findsOneWidget);
 
         // Tap the tile to verify it opens verified state in RpcPermissionsDialog
-        await tester.tap(find.text('RPC & Permissions'));
+        await tester.tap(find.text('Manage'));
         await tester.pumpAndSettle();
 
         expect(find.byType(RpcPermissionsDialog), findsOneWidget);
@@ -144,7 +129,7 @@ void main() {
     );
 
     testWidgets(
-      'Tapping Re-verify / Repair pops dialog and shows Permissions Verified toast without timing out',
+      'Tapping Re-verify / Repair in SettingsScreen pops dialog and shows Permissions Verified toast without timing out',
       (tester) async {
         tester.view.physicalSize = const Size(1080, 2400);
         tester.view.devicePixelRatio = 1.0;
@@ -156,12 +141,12 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             navigatorKey: LuciToastManager.navigatorKey,
-            home: const ProviderScope(child: MoreScreen()),
+            home: const ProviderScope(child: SettingsScreen()),
           ),
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('RPC & Permissions'));
+        await tester.tap(find.text('Manage'));
         await tester.pumpAndSettle();
 
         expect(find.byType(RpcPermissionsDialog), findsOneWidget);

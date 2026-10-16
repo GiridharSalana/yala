@@ -4,6 +4,7 @@
 
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:yala/modules/parental_controls/models/parental_profile.dart';
@@ -20,6 +21,19 @@ import 'package:yala/modules/bandwidth_monitor/models/bandwidth_data.dart';
 import 'package:yala/services/interfaces/api_service_interface.dart';
 import 'package:yala/config/app_config.dart';
 import 'package:yala/models/router_capabilities.dart';
+import 'package:yala/models/network_access_policy.dart';
+import 'package:yala/modules/firewall_security/models/firewall_info.dart';
+import 'package:yala/utils/self_device_guard.dart';
+import 'package:yala/utils/client_naming_helper.dart';
+import 'package:yala/modules/domain_blocking/models/domain_block_rule.dart';
+
+/// The four approved capability profiles for Reviewer Mode and test isolation.
+enum MockCapabilityProfile {
+  fullModernStack, // Profile A: fw4, IPv4 + IPv6, DSA, AGH, UCI write
+  legacyConstrained, // Profile B: fw3, IPv4 only, swconfig, no AGH, UCI write
+  readOnlyLuci, // Profile C: fw4, IPv4 + IPv6, UCI write access disabled
+  constrainedFailure, // Profile D: fw4, missing optional RPC, simulated network timeout
+}
 
 class MockApiService implements IApiService {
   static final Random _random = Random();
@@ -37,9 +51,243 @@ class MockApiService implements IApiService {
   static final Set<String> _mockRestrictedMacs = {'11:22:33:44:55:66'};
   static final Set<String> _mockBannedMacs = {'99:88:77:66:55:44'};
   static String _mockHostname = 'MockRouter';
+  static MockCapabilityProfile activeProfile =
+      MockCapabilityProfile.fullModernStack;
+  static bool simulateRollbackFailure = false;
+  static bool simulateVerificationFailure = false;
+  static bool simulateRpcLossAfterApply = false;
+  static Set<int> mockDiscoveredManagementPorts = {22, 80, 443};
+  static final List<FirewallPortForwarding> _mockPortForwards = [];
+  static final List<FirewallCustomRule> _mockCustomRules = [];
+  static final Map<String, NetworkAccessPolicy> _mockPolicies = {};
+  static final Set<String> _mockDnsmasqBlockedDomains = {
+    'ads.example.com',
+    'tracker.sample.org',
+  };
+  static bool simulateDnsmasqFailure = false;
+  static int getDnsmasqBlockedDomainsCallCount = 0;
+  static int addDnsmasqBlockedDomainCallCount = 0;
+  static int removeDnsmasqBlockedDomainCallCount = 0;
+
+  static List<FirewallPortForwarding> get mockPortForwards =>
+      List.unmodifiable(_mockPortForwards);
+  static List<FirewallCustomRule> get mockCustomRules =>
+      List.unmodifiable(_mockCustomRules);
+  static NetworkAccessPolicy? getMockPolicy(String mac) =>
+      _mockPolicies[ClientNamingHelper.normalizeMac(mac)];
 
   static void resetMockState() {
     _mockHostname = 'MockRouter';
+    resetMockFirewallState();
+    resetMockDnsmasqState();
+  }
+
+  static void resetMockDnsmasqState() {
+    _mockDnsmasqBlockedDomains.clear();
+    _mockDnsmasqBlockedDomains.addAll({
+      'ads.example.com',
+      'tracker.sample.org',
+    });
+    simulateDnsmasqFailure = false;
+    getDnsmasqBlockedDomainsCallCount = 0;
+    addDnsmasqBlockedDomainCallCount = 0;
+    removeDnsmasqBlockedDomainCallCount = 0;
+  }
+
+  static void resetMockFirewallState() {
+    _mockPortForwards.clear();
+    _mockCustomRules.clear();
+    _mockPolicies.clear();
+    activeProfile = MockCapabilityProfile.fullModernStack;
+    simulateRollbackFailure = false;
+    simulateVerificationFailure = false;
+    simulateRpcLossAfterApply = false;
+    mockDiscoveredManagementPorts = {22, 80, 443};
+    mockNetworkModel = NetworkModel.dsa;
+    mockPackageEngine = PackageManagerEngine.opkg;
+  }
+
+  static void setMockProfile(MockCapabilityProfile profile) {
+    activeProfile = profile;
+    switch (profile) {
+      case MockCapabilityProfile.fullModernStack:
+        mockNetworkModel = NetworkModel.dsa;
+        mockPackageEngine = PackageManagerEngine.opkg;
+        simulateRollbackFailure = false;
+        break;
+      case MockCapabilityProfile.legacyConstrained:
+        mockNetworkModel = NetworkModel.swconfig;
+        mockPackageEngine = PackageManagerEngine.opkg;
+        simulateRollbackFailure = false;
+        break;
+      case MockCapabilityProfile.readOnlyLuci:
+        mockNetworkModel = NetworkModel.dsa;
+        mockPackageEngine = PackageManagerEngine.opkg;
+        simulateRollbackFailure = false;
+        break;
+      case MockCapabilityProfile.constrainedFailure:
+        mockNetworkModel = NetworkModel.dsa;
+        mockPackageEngine = PackageManagerEngine.none;
+        simulateRollbackFailure = true;
+        break;
+    }
+  }
+
+  static RouterCapabilities getRouterCapabilitiesForProfile(
+    MockCapabilityProfile profile, {
+    String routerId = 'mock_router_id',
+  }) {
+    switch (profile) {
+      case MockCapabilityProfile.fullModernStack:
+        return RouterCapabilities(
+          routerId: routerId,
+          ubusObjects: const {
+            'system',
+            'luci-rpc',
+            'network.interface',
+            'iwinfo',
+            'file',
+            'service',
+            'rc',
+            'uci',
+            'opkg',
+            'apk',
+            'fw4',
+            'luci',
+          },
+          ubusMethods: const {
+            'system': ['info', 'board'],
+            'luci-rpc': ['getInitList', 'getWirelessDevices'],
+            'luci': ['setPassword'],
+            'file': ['read', 'stat', 'exec'],
+            'uci': [
+              'get',
+              'set',
+              'add',
+              'delete',
+              'commit',
+              'apply',
+              'confirm',
+              'revert',
+            ],
+          },
+          uciPermissions: const {
+            '*': ['read', 'write'],
+          },
+          packageEngine: PackageManagerEngine.opkg,
+          firewallBackend: FirewallBackend.fw4,
+          networkModel: NetworkModel.dsa,
+          releaseVersion: 'OpenWrt 23.05.3',
+          boardName: 'x86/64',
+          probedAt: DateTime.now(),
+          probeFailed: false,
+          hasAdGuardHome: true,
+          hasOdhcpd: true,
+          hasCron: true,
+          hasDropbear: true,
+          supportsIpv6InternetFirewall: true,
+        );
+      case MockCapabilityProfile.legacyConstrained:
+        return RouterCapabilities(
+          routerId: routerId,
+          ubusObjects: const {
+            'system',
+            'luci-rpc',
+            'network.interface',
+            'iwinfo',
+            'file',
+            'service',
+            'rc',
+            'uci',
+            'opkg',
+            'luci',
+          },
+          ubusMethods: const {
+            'system': ['info', 'board'],
+            'luci-rpc': ['getInitList', 'getWirelessDevices'],
+            'luci': ['setPassword'],
+            'file': ['read', 'stat', 'exec'],
+            'uci': [
+              'get',
+              'set',
+              'add',
+              'delete',
+              'commit',
+              'apply',
+              'confirm',
+              'revert',
+            ],
+          },
+          uciPermissions: const {
+            '*': ['read', 'write'],
+          },
+          packageEngine: PackageManagerEngine.opkg,
+          firewallBackend: FirewallBackend.fw3,
+          networkModel: NetworkModel.swconfig,
+          releaseVersion: 'OpenWrt 21.02.7',
+          boardName: 'MediaTek MT7621',
+          probedAt: DateTime.now(),
+          probeFailed: false,
+          hasAdGuardHome: false,
+          hasOdhcpd: false,
+          hasCron: true,
+          hasDropbear: true,
+          supportsIpv6InternetFirewall: false,
+        );
+      case MockCapabilityProfile.readOnlyLuci:
+        return RouterCapabilities(
+          routerId: routerId,
+          ubusObjects: const {
+            'system',
+            'luci-rpc',
+            'network.interface',
+            'file',
+            'uci',
+          },
+          ubusMethods: const {
+            'system': ['info', 'board'],
+            'file': ['read', 'stat'],
+            'uci': ['get'],
+          },
+          uciPermissions: const {
+            '*': ['read'],
+          },
+          packageEngine: PackageManagerEngine.opkg,
+          firewallBackend: FirewallBackend.fw4,
+          networkModel: NetworkModel.dsa,
+          releaseVersion: 'OpenWrt 23.05.3',
+          boardName: 'Generic x86',
+          probedAt: DateTime.now(),
+          probeFailed: false,
+          hasAdGuardHome: false,
+          hasOdhcpd: true,
+          hasCron: false,
+          hasDropbear: false,
+          supportsIpv6InternetFirewall: true,
+        );
+      case MockCapabilityProfile.constrainedFailure:
+        return RouterCapabilities(
+          routerId: routerId,
+          ubusObjects: const {'system'},
+          ubusMethods: const {
+            'system': ['info'],
+          },
+          uciPermissions: const {},
+          packageEngine: PackageManagerEngine.none,
+          firewallBackend: FirewallBackend.fw4,
+          networkModel: NetworkModel.unknown,
+          releaseVersion: 'OpenWrt Unknown',
+          boardName: 'Constrained Device',
+          probedAt: DateTime.now(),
+          probeFailed: true,
+          lastProbeError: 'Simulated network timeout/failure',
+          hasAdGuardHome: false,
+          hasOdhcpd: false,
+          hasCron: false,
+          hasDropbear: false,
+          supportsIpv6InternetFirewall: false,
+        );
+    }
   }
 
   @override
@@ -107,7 +355,9 @@ class MockApiService implements IApiService {
         } else if (cfg == 'dhcp') {
           targetFile = 'uci_dhcp.json';
         } else if (cfg == 'firewall') {
-          targetFile = 'uci_firewall_fw4.json';
+          targetFile = activeProfile == MockCapabilityProfile.legacyConstrained
+              ? 'uci_firewall_fw3.json'
+              : 'uci_firewall_fw4.json';
         }
         if (targetFile != null) {
           try {
@@ -261,7 +511,9 @@ class MockApiService implements IApiService {
         } else if (cfg == 'dhcp') {
           targetFile = 'uci_dhcp.json';
         } else if (cfg == 'firewall') {
-          targetFile = 'uci_firewall_fw4.json';
+          targetFile = activeProfile == MockCapabilityProfile.legacyConstrained
+              ? 'uci_firewall_fw3.json'
+              : 'uci_firewall_fw4.json';
         }
         if (targetFile != null) {
           try {
@@ -1183,8 +1435,10 @@ class MockApiService implements IApiService {
     required Map<String, String> values,
     BuildContext? context,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    // Return success response for mock UCI set operation
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) {
+      return [1, 'Permission denied: Read-only access'];
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
     return [0, 'success'];
   }
 
@@ -1196,8 +1450,10 @@ class MockApiService implements IApiService {
     required String config,
     BuildContext? context,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    // Return success response for mock UCI commit operation
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) {
+      return [1, 'Permission denied: Read-only access'];
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
     return [0, 'success'];
   }
 
@@ -1209,8 +1465,54 @@ class MockApiService implements IApiService {
     required String config,
     BuildContext? context,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 50));
     return [0, 'success'];
+  }
+
+  @override
+  Future<bool> uciApply(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    bool rollback = true,
+    int timeout = 30,
+  }) async {
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) return false;
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure) {
+      return false;
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+    return true;
+  }
+
+  @override
+  Future<bool> uciConfirm(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+  ) async {
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) return false;
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure) {
+      return false;
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+    return true;
+  }
+
+  SetPasswordRpcResponse? mockSetPasswordResponse;
+
+  @override
+  Future<SetPasswordRpcResponse> setRouterPassword(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    String username = 'root',
+    required String newPassword,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return mockSetPasswordResponse ?? const SetPasswordRpcResponse.success();
   }
 
   @override
@@ -1367,6 +1669,19 @@ class MockApiService implements IApiService {
   }
 
   @override
+  Future<bool> toggleWirelessRadio(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String radioName,
+    required bool enabled,
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return true;
+  }
+
+  @override
   Future<bool> setWifiAccessControl(
     String ipAddress,
     String sysauth,
@@ -1441,6 +1756,243 @@ class MockApiService implements IApiService {
   }
 
   @override
+  Future<bool> addFirewallPortForward(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallPortForwarding portForward,
+    BuildContext? context,
+  }) async {
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) return false;
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure ||
+        simulateVerificationFailure ||
+        simulateRpcLossAfterApply) {
+      return false;
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+    final key = portForward.sectionKey.isNotEmpty
+        ? portForward.sectionKey
+        : 'redirect_${_mockPortForwards.length + 1}';
+    _mockPortForwards.add(portForward.copyWith(sectionKey: key));
+    return true;
+  }
+
+  @override
+  Future<bool> updateFirewallPortForward(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallPortForwarding portForward,
+    BuildContext? context,
+  }) async {
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) return false;
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure ||
+        simulateVerificationFailure ||
+        simulateRpcLossAfterApply) {
+      return false;
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+    final idx = _mockPortForwards.indexWhere(
+      (p) => p.sectionKey == portForward.sectionKey,
+    );
+    if (idx != -1) {
+      _mockPortForwards[idx] = portForward;
+      return true;
+    }
+    _mockPortForwards.add(portForward);
+    return true;
+  }
+
+  @override
+  Future<bool> deleteFirewallPortForward(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String sectionKey,
+    BuildContext? context,
+  }) async {
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) return false;
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure ||
+        simulateVerificationFailure ||
+        simulateRpcLossAfterApply) {
+      return false;
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+    _mockPortForwards.removeWhere((p) => p.sectionKey == sectionKey);
+    return true;
+  }
+
+  @override
+  Future<bool> addFirewallCustomRule(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallCustomRule rule,
+    BuildContext? context,
+  }) async {
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) return false;
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure ||
+        simulateVerificationFailure ||
+        simulateRpcLossAfterApply) {
+      return false;
+    }
+    final isLockout = await SelfDeviceGuard.isManagementLockoutRisk(
+      target: rule.target,
+      srcZone: rule.srcZone,
+      destZone: rule.destZone,
+      srcMac: rule.srcMac,
+      srcIp: rule.srcIp,
+      destPort: rule.destPort,
+      proto: rule.proto,
+      managementPorts: mockDiscoveredManagementPorts,
+    );
+    if (isLockout) return false;
+    await Future.delayed(const Duration(milliseconds: 50));
+    final key = rule.sectionKey.isNotEmpty
+        ? rule.sectionKey
+        : 'rule_${_mockCustomRules.length + 1}';
+    _mockCustomRules.add(rule.copyWith(sectionKey: key));
+    return true;
+  }
+
+  @override
+  Future<bool> updateFirewallCustomRule(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required FirewallCustomRule rule,
+    BuildContext? context,
+  }) async {
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) return false;
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure ||
+        simulateVerificationFailure ||
+        simulateRpcLossAfterApply) {
+      return false;
+    }
+    final isLockout = await SelfDeviceGuard.isManagementLockoutRisk(
+      target: rule.target,
+      srcZone: rule.srcZone,
+      destZone: rule.destZone,
+      srcMac: rule.srcMac,
+      srcIp: rule.srcIp,
+      destPort: rule.destPort,
+      proto: rule.proto,
+      managementPorts: mockDiscoveredManagementPorts,
+    );
+    if (isLockout) return false;
+    await Future.delayed(const Duration(milliseconds: 50));
+    final idx = _mockCustomRules.indexWhere(
+      (r) => r.sectionKey == rule.sectionKey,
+    );
+    if (idx != -1) {
+      _mockCustomRules[idx] = rule;
+      return true;
+    }
+    _mockCustomRules.add(rule);
+    return true;
+  }
+
+  @override
+  Future<bool> deleteFirewallCustomRule(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String sectionKey,
+    BuildContext? context,
+  }) async {
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) return false;
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure ||
+        simulateVerificationFailure ||
+        simulateRpcLossAfterApply) {
+      return false;
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+    _mockCustomRules.removeWhere((r) => r.sectionKey == sectionKey);
+    return true;
+  }
+
+  @override
+  Future<bool> reorderFirewallCustomRules(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String targetSectionKey,
+    required String siblingSectionKey,
+    required List<String> expectedRuleOrder,
+    BuildContext? context,
+  }) async {
+    if (activeProfile == MockCapabilityProfile.readOnlyLuci) return false;
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure ||
+        simulateVerificationFailure ||
+        simulateRpcLossAfterApply) {
+      return false;
+    }
+    await Future.delayed(const Duration(milliseconds: 50));
+    final currentOrder = _mockCustomRules.map((r) => r.sectionKey).toList();
+    if (expectedRuleOrder.isNotEmpty &&
+        currentOrder.isNotEmpty &&
+        !listEquals(currentOrder, expectedRuleOrder)) {
+      return false;
+    }
+    final targetIdx =
+        _mockCustomRules.indexWhere((r) => r.sectionKey == targetSectionKey);
+    final siblingIdx =
+        _mockCustomRules.indexWhere((r) => r.sectionKey == siblingSectionKey);
+    if (targetIdx == -1 || siblingIdx == -1) return false;
+    final temp = _mockCustomRules[targetIdx];
+    _mockCustomRules[targetIdx] = _mockCustomRules[siblingIdx];
+    _mockCustomRules[siblingIdx] = temp;
+    return true;
+  }
+
+  @override
+  Future<Set<int>> discoverManagementPorts(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    return Set<int>.from(mockDiscoveredManagementPorts);
+  }
+
+  @override
+  Future<bool> applyPerDeviceNetworkAccessPolicy(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required NetworkAccessPolicy policy,
+    required RouterCapabilities capabilities,
+    BuildContext? context,
+  }) async {
+    if (!capabilities.hasUciWriteAccess ||
+        activeProfile == MockCapabilityProfile.readOnlyLuci) {
+      return false;
+    }
+    if (activeProfile == MockCapabilityProfile.constrainedFailure ||
+        simulateRollbackFailure ||
+        simulateVerificationFailure ||
+        simulateRpcLossAfterApply) {
+      return false;
+    }
+    final isSelf = await SelfDeviceGuard.isSelfDevice(policy.targetMac);
+    if (isSelf) return false;
+    final normMac = ClientNamingHelper.normalizeMac(policy.targetMac);
+    if (!policy.hasAnyRestriction) {
+      _mockPolicies.remove(normMac);
+    } else {
+      _mockPolicies[normMac] = policy.copyWith(targetMac: normMac);
+    }
+    return true;
+  }
+
+  @override
   Future<bool> banWirelessClient(
     String ipAddress,
     String sysauth,
@@ -1451,6 +2003,10 @@ class MockApiService implements IApiService {
     BuildContext? context,
   }) async {
     await Future.delayed(const Duration(milliseconds: 200));
+    final macUpper = macAddress.toUpperCase().replaceAll('-', ':');
+    if (banTimeSeconds > 0) {
+      _mockBannedMacs.add(macUpper);
+    }
     return true;
   }
 
@@ -1750,6 +2306,7 @@ class MockApiService implements IApiService {
     required String encryption,
     required String key,
     required String network,
+    Map<String, String>? extraOptions,
     BuildContext? context,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
@@ -1765,6 +2322,19 @@ class MockApiService implements IApiService {
     BuildContext? context,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    return true;
+  }
+
+  @override
+  Future<bool> updateInterfaceDhcpConfig(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    required String interface,
+    required Map<String, dynamic> values,
+    BuildContext? context,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 200));
     return true;
   }
 
@@ -2701,6 +3271,54 @@ Description: Command line tool for transferring data
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
     _mockHostname = newHostname;
+    return true;
+  }
+
+  @override
+  Future<List<String>> getDnsmasqBlockedDomains(
+    String ipAddress,
+    String sysauth,
+    bool useHttps, {
+    BuildContext? context,
+  }) async {
+    getDnsmasqBlockedDomainsCallCount++;
+    if (simulateDnsmasqFailure) {
+      throw Exception('Simulated dnsmasq get failure');
+    }
+    return _mockDnsmasqBlockedDomains.toList()..sort();
+  }
+
+  @override
+  Future<bool> addDnsmasqBlockedDomain(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String domain, {
+    BuildContext? context,
+  }) async {
+    addDnsmasqBlockedDomainCallCount++;
+    if (simulateDnsmasqFailure) return false;
+    final normalized = DomainValidator.normalize(domain);
+    if (normalized == null || !DomainValidator.isValid(normalized)) {
+      return false;
+    }
+    _mockDnsmasqBlockedDomains.add(normalized);
+    return true;
+  }
+
+  @override
+  Future<bool> removeDnsmasqBlockedDomain(
+    String ipAddress,
+    String sysauth,
+    bool useHttps,
+    String domain, {
+    BuildContext? context,
+  }) async {
+    removeDnsmasqBlockedDomainCallCount++;
+    if (simulateDnsmasqFailure) return false;
+    final normalized = DomainValidator.normalize(domain);
+    if (normalized == null || normalized.isEmpty) return false;
+    _mockDnsmasqBlockedDomains.remove(normalized);
     return true;
   }
 }

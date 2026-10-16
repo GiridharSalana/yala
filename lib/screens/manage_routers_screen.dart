@@ -29,90 +29,253 @@ class ManageRoutersScreen extends ConsumerStatefulWidget {
 class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
   String? _switchingRouterId;
 
-  Future<void> _showRenameDialog(
+  Future<void> _showEditRouterDialog(
     BuildContext context,
     model.Router router,
   ) async {
     final appState = ref.read(appStateProvider);
     final l10n = AppLocalizations.of(context);
-    final controller = TextEditingController(text: router.name ?? '');
+    final nameController = TextEditingController(text: router.name ?? '');
+    final ipController = TextEditingController(
+      text: router.useHttps && !router.ipAddress.startsWith('https://')
+          ? 'https://${router.ipAddress}'
+          : router.ipAddress,
+    );
+    final userController = TextEditingController(text: router.username);
+    final passController = TextEditingController(text: router.password);
+    final formKey = GlobalKey<FormState>();
+    bool obscureText = true;
+    bool isSaving = false;
+    String? errorMessage;
+
     try {
       final saved = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          actionsOverflowButtonSpacing: 8,
-          actionsOverflowDirection: VerticalDirection.down,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(l10n?.renameRouterDialogTitle ?? 'Rename Router Profile'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Assign a custom nickname to identify ${router.ipAddress}',
-                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+        builder: (ctx) {
+          return StatefulBuilder(
+            builder: (ctx, setDialogState) {
+              return AlertDialog(
+                actionsOverflowButtonSpacing: 8,
+                actionsOverflowDirection: VerticalDirection.down,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                title: Text(l10n?.renameRouterDialogTitle ?? 'Edit Router Profile'),
+                content: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: AutofillGroup(
+                    child: Form(
+                      key: formKey,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Update locally saved credentials and settings for this profile.',
+                              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: nameController,
+                              decoration: InputDecoration(
+                                labelText: l10n?.manageRouterProfileName ?? 'Profile Name (Optional)',
+                                border: const OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.label_outline_rounded),
+                                helperText: l10n?.manageRouterProfileNameHint ??
+                                    'e.g. Home Lab, Living Room, Travel Router',
+                                suffixIcon: (nameController.text.isNotEmpty)
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 18),
+                                        onPressed: () {
+                                          setDialogState(() {
+                                            nameController.clear();
+                                          });
+                                        },
+                                        tooltip: l10n?.manageRouterClearName ?? 'Clear Name',
+                                      )
+                                    : null,
+                              ),
+                              textCapitalization: TextCapitalization.words,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: ipController,
+                              decoration: InputDecoration(
+                                labelText: l10n?.routerAddressLabel ?? 'Router Address',
+                                border: const OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.router_outlined),
+                                helperText: 'e.g. 192.168.1.1, router.local:8080, https://192.168.1.1',
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter the router address';
+                                }
+                                final parsed = UrlParser.parse(value.trim());
+                                if (!parsed.isValid) {
+                                  return parsed.error ?? 'Invalid address format';
+                                }
+                                return null;
+                              },
+                              autofillHints: const [AutofillHints.url],
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: userController,
+                              decoration: InputDecoration(
+                                labelText: l10n?.usernameLabel ?? 'Username',
+                                border: const OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.person_outline),
+                                helperText: 'Default is usually root',
+                              ),
+                              validator: (v) =>
+                                  v == null || v.trim().isEmpty ? 'Required' : null,
+                              autofillHints: const [AutofillHints.username],
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: passController,
+                              decoration: InputDecoration(
+                                labelText: l10n?.passwordLabel ?? 'Password',
+                                border: const OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.lock_outline),
+                                helperText: 'Your router password',
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    obscureText
+                                        ? Icons.visibility_outlined
+                                        : Icons.visibility_off_outlined,
+                                  ),
+                                  onPressed: () => setDialogState(
+                                    () => obscureText = !obscureText,
+                                  ),
+                                  tooltip: obscureText ? 'Hide password' : 'Show password',
+                                ),
+                              ),
+                              obscureText: obscureText,
+                              autofillHints: const [AutofillHints.password],
+                            ),
+                            if (errorMessage != null) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(ctx).colorScheme.errorContainer.withValues(alpha: 1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Theme.of(ctx).colorScheme.onErrorContainer,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        errorMessage!,
+                                        style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                                          color: Theme.of(ctx).colorScheme.onErrorContainer,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    labelText: l10n?.manageRouterProfileName ?? 'Profile Name',
-                    hintText:
-                        l10n?.manageRouterProfileNameHint ??
-                        'e.g. Home Lab, Living Room, Travel Router',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.label_outline_rounded),
+                actions: [
+                  TextButton(
+                    onPressed: isSaving ? null : () => Navigator.pop(ctx, false),
+                    child: Text(l10n?.actionCancel ?? 'Cancel'),
                   ),
-                  textCapitalization: TextCapitalization.words,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n?.actionCancel ?? 'Cancel'),
-            ),
-            if (router.name != null && router.name!.trim().isNotEmpty)
-              TextButton(
-                onPressed: () {
-                  controller.clear();
-                  Navigator.pop(ctx, true);
-                },
-                child: Text(l10n?.manageRouterClearName ?? 'Clear Name'),
-              ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n?.actionSave ?? 'Save'),
-            ),
-          ],
-        ),
+                  FilledButton(
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            final input = ipController.text.trim();
+                            final user = userController.text.trim();
+                            final pass = passController.text;
+
+                            final parsedUrl = UrlParser.parse(input);
+                            if (!parsedUrl.isValid) {
+                              setDialogState(() {
+                                errorMessage = parsedUrl.error ?? 'Invalid address format';
+                              });
+                              return;
+                            }
+
+                            final hostWithPort = parsedUrl.hostWithPort;
+                            final useHttps = parsedUrl.useHttps;
+                            final newId = RouterService.generateId(hostWithPort, user, useHttps);
+
+                            // Collision check: if changing to another existing profile
+                            if (newId != router.id && appState.routers.any((r) => r.id == newId)) {
+                              setDialogState(() {
+                                errorMessage = 'A profile with this address and username already exists.';
+                              });
+                              return;
+                            }
+
+                            setDialogState(() {
+                              isSaving = true;
+                              errorMessage = null;
+                            });
+
+                            try {
+                              final customName = nameController.text.trim().isEmpty
+                                  ? null
+                                  : nameController.text.trim();
+
+                              final updatedRouter = router.copyWith(
+                                id: newId,
+                                ipAddress: hostWithPort,
+                                username: user,
+                                password: pass,
+                                useHttps: useHttps,
+                                name: customName,
+                                clearName: customName == null,
+                              );
+
+                              await appState.updateRouter(updatedRouter, oldId: router.id);
+                              if (ctx.mounted) {
+                                Navigator.pop(ctx, true);
+                              }
+                            } catch (e) {
+                              setDialogState(() {
+                                errorMessage = 'Failed to save changes: $e';
+                                isSaving = false;
+                              });
+                            }
+                          },
+                    child: Text(l10n?.actionSave ?? 'Save'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       );
 
       if (saved == true && context.mounted) {
-        final newName = controller.text.trim().isEmpty
-            ? null
-            : controller.text.trim();
-        await appState.updateRouterName(router.id, newName);
-        if (context.mounted) {
-          final updL10n = AppLocalizations.of(context);
-          context.showToastSuccess(
-            updL10n?.manageRouterProfileUpdated ?? 'Profile Updated',
-            subtitle: newName != null
-                ? (updL10n?.manageRouterRenamedTo(newName) ??
-                      'Renamed to "$newName"')
-                : (updL10n?.manageRouterNameReset ?? 'Reset to default name'),
-          );
-        }
+        final updL10n = AppLocalizations.of(context);
+        context.showToastSuccess(
+          updL10n?.manageRouterProfileUpdated ?? 'Profile Updated',
+          subtitle: 'Locally saved profile credentials updated.',
+        );
       }
     } finally {
-      controller.dispose();
+      nameController.dispose();
+      ipController.dispose();
+      userController.dispose();
+      passController.dispose();
     }
   }
 
@@ -789,8 +952,8 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                   '${router.ipAddress} (${router.username})',
                               isSelected: isSelected,
                               isSwitching: isSwitching,
-                              onRename: () =>
-                                  _showRenameDialog(context, router),
+                              onEdit: () =>
+                                  _showEditRouterDialog(context, router),
                               onTap: () async {
                                 if (isSwitching) return;
                                 if (isSelected && !widget.isFromLogin) {
@@ -1011,7 +1174,7 @@ class _UnifiedRouterCard extends StatelessWidget {
   final bool isSelected;
   final bool isSwitching;
   final VoidCallback? onTap;
-  final VoidCallback? onRename;
+  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   const _UnifiedRouterCard({
@@ -1021,7 +1184,7 @@ class _UnifiedRouterCard extends StatelessWidget {
     required this.isSelected,
     required this.isSwitching,
     this.onTap,
-    this.onRename,
+    this.onEdit,
     this.onDelete,
   });
 
@@ -1122,11 +1285,11 @@ class _UnifiedRouterCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (onRename != null)
+              if (onEdit != null)
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
-                  tooltip: 'Rename',
-                  onPressed: onRename,
+                  tooltip: AppLocalizations.of(context)?.actionEdit ?? 'Edit',
+                  onPressed: onEdit,
                 ),
               if (onDelete != null)
                 IconButton(

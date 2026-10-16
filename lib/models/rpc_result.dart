@@ -41,6 +41,19 @@ class RpcResult<T> {
         (lower.contains('available on filesystem') && lower.contains('needs'));
   }
 
+  /// Returns true if the RPC error indicates out-of-memory or process termination by the OOM killer.
+  bool get isMemoryExhausted {
+    if (errorCode == 137) return true;
+    if (errorMessage == null) return false;
+    final lower = errorMessage!.toLowerCase().trim();
+    return lower == 'killed' ||
+        lower.contains('out of memory') ||
+        lower.contains('cannot allocate memory') ||
+        lower.contains('memory exhausted') ||
+        lower.contains('oom killer') ||
+        lower.contains('oom-killer');
+  }
+
   /// Extracts a clean, concise, human-readable error summary from package manager output.
   String get userFriendlyPackageError {
     if (errorMessage == null || errorMessage!.trim().isEmpty) {
@@ -49,6 +62,9 @@ class RpcResult<T> {
     final raw = errorMessage!.trim();
     if (isInsufficientStorage) {
       return 'Insufficient storage space on router (No space left on device).';
+    }
+    if (isMemoryExhausted) {
+      return 'Router ran out of memory (OOM) during package dependency resolution.';
     }
     // Clean up multiline stderr or raw error codes to get the most relevant line
     final lines = raw

@@ -13,7 +13,13 @@ import 'package:yala/widgets/luci_collapsible_card.dart';
 import 'package:yala/widgets/luci_toast.dart';
 import 'package:yala/widgets/luci_guardrail.dart';
 import '../models/firewall_info.dart';
+import '../widgets/add_port_forward_dialog.dart';
+import '../widgets/advanced_port_forward_dialog.dart';
+import '../widgets/advanced_custom_rule_dialog.dart';
+import '../widgets/block_incoming_traffic_dialog.dart';
 import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/models/client.dart';
+import 'package:yala/utils/client_naming_helper.dart';
 
 class FirewallSecurityScreen extends ConsumerStatefulWidget {
   const FirewallSecurityScreen({super.key});
@@ -329,13 +335,25 @@ class _FirewallSecurityScreenState
         ),
         body: RefreshIndicator(
           onRefresh: () async {
-            await ref.read(appStateProvider).fetchDashboardData();
+            await ref.read(appStateProvider).refreshFirewallState();
           },
           child: !overview.isAvailable
               ? _buildUnavailableView(context, ref, overview)
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
                   children: [
+                    _buildProtectionStatusCard(context, overview),
+                    const SizedBox(height: 16),
+                    _buildQuickActionsSection(context),
+                    const SizedBox(height: 20),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    _buildSectionHeader(
+                      context,
+                      'Advanced Settings',
+                      Icons.settings_outlined,
+                    ),
+                    const SizedBox(height: 12),
                     _buildSectionHeader(
                       context,
                       l10n?.firewallGlobalPoliciesTitle ??
@@ -380,7 +398,7 @@ class _FirewallSecurityScreenState
                     LuciCollapsibleCard(
                       title:
                           l10n?.portForwardsTitle ??
-                          'Port Forwarding / Redirects',
+                          'Port Forwards',
                       count: overview.portForwards.length,
                       subtitle:
                           '${overview.portForwards.length} port forward rules',
@@ -388,18 +406,18 @@ class _FirewallSecurityScreenState
                       iconColor: Colors.orange,
                       childBuilder: (ctx) => _buildPortForwardingsList(
                         context,
-                        overview.portForwards,
+                        overview,
                       ),
                     ),
                     const SizedBox(height: 16),
                     LuciCollapsibleCard(
-                      title: l10n?.customRulesTitle ?? 'Custom Security Rules',
+                      title: l10n?.customRulesTitle ?? 'Custom Firewall Rules',
                       count: overview.customRules.length,
                       subtitle: '${overview.customRules.length} custom rules',
                       icon: Icons.rule_outlined,
                       iconColor: Colors.teal,
                       childBuilder: (ctx) =>
-                          _buildCustomRulesList(context, overview.customRules),
+                          _buildCustomRulesList(context, overview),
                     ),
                     const SizedBox(height: 80),
                   ],
@@ -459,6 +477,219 @@ class _FirewallSecurityScreenState
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildProtectionStatusCard(
+    BuildContext context,
+    FirewallOverview overview,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.shield_rounded,
+                color: Colors.green,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          l10n?.firewallShieldActive ?? 'Firewall Shield',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green, width: 0.8),
+                        ),
+                        child: Text(
+                          l10n?.statusActive ?? 'ACTIVE',
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    l10n?.firewallShieldActiveSubtitle ??
+                        'Defending your home network against unauthorized incoming traffic.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          context,
+          l10n?.firewallQuickActionsTitle ?? 'Quick Actions',
+          Icons.bolt_outlined,
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(
+                    color: theme.colorScheme.outlineVariant
+                        .withValues(alpha: 0.5),
+                  ),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => AddPortForwardDialog.show(context),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.door_sliding_outlined,
+                            color: theme.colorScheme.onPrimaryContainer,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          l10n?.firewallOpenPortTitle ?? 'Open a Port',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n?.firewallOpenPortSubtitle ??
+                              'Allow external devices to reach an app on your network.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.7),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(
+                    color: theme.colorScheme.outlineVariant
+                        .withValues(alpha: 0.5),
+                  ),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => BlockIncomingTrafficDialog.show(context),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.block_rounded,
+                            color: theme.colorScheme.onErrorContainer,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          l10n?.firewallBlockIncomingTitle ??
+                              'Block an Incoming Connection',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n?.firewallBlockIncomingSubtitle ??
+                              'Prevent an external address or connection from reaching your network.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.7),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -547,10 +778,12 @@ class _FirewallSecurityScreenState
                     children: [
                       Row(
                         children: [
-                          Text(
-                            'Software Flow Offloading',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          Flexible(
+                            child: Text(
+                              'Software Flow Offloading',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           if (isSoftwareStaged) ...[
@@ -591,10 +824,12 @@ class _FirewallSecurityScreenState
                       children: [
                         Row(
                           children: [
-                            Text(
-                              'Hardware Flow Offloading',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
+                            Flexible(
+                              child: Text(
+                                'Hardware Flow Offloading',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                             if (isHardwareStaged) ...[
@@ -699,24 +934,30 @@ class _FirewallSecurityScreenState
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      isWan ? Icons.public : Icons.router,
-                      color: isWan ? Colors.red : theme.colorScheme.primary,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Zone: ${zone.name.toUpperCase()}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(
+                        isWan ? Icons.public : Icons.router,
+                        color: isWan ? Colors.red : theme.colorScheme.primary,
+                        size: 22,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'Zone: ${zone.name.toUpperCase()}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                if (zone.masquerade)
+                if (zone.masquerade) ...[
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -735,6 +976,7 @@ class _FirewallSecurityScreenState
                       ),
                     ),
                   ),
+                ],
               ],
             ),
             const SizedBox(height: 8),
@@ -821,185 +1063,652 @@ class _FirewallSecurityScreenState
 
   Widget _buildPortForwardingsList(
     BuildContext context,
-    List<FirewallPortForwarding> pfs,
+    FirewallOverview overview,
   ) {
-    if (pfs.isEmpty) {
-      final l10n = AppLocalizations.of(context);
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            l10n?.firewallNoPortRules ?? 'No port forwarding rules active.',
-          ),
-        ),
-      );
-    }
+    final pfs = overview.portForwards;
+    final l10n = AppLocalizations.of(context);
+    final appState = ref.read(appStateProvider);
+    final canModify = appState.capabilities?.canModifyFirewall ?? true;
+    final clients = appState.clients;
 
     return Column(
-      children: pfs.map((pf) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.compare_arrows)),
-            title: Text(
-              pf.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+      children: [
+        if (canModify) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Add Port Forward'),
+                onPressed: () => AdvancedPortForwardDialog.show(
+                  context,
+                  overview: overview,
+                ),
+              ),
             ),
-            subtitle: Text(
-              '${pf.srcZone.toUpperCase()}:${pf.srcPort} ➔ ${pf.destIp}:${pf.destPort} (${pf.proto.toUpperCase()})',
-            ),
           ),
-        );
-      }).toList(),
+        ],
+        if (pfs.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                l10n?.firewallNoPortRules ?? 'No port forwarding rules active.',
+              ),
+            ),
+          )
+        else
+          ...pfs.map((pf) {
+            final matchedClient = clients.cast<Client?>().firstWhere(
+                  (c) => c != null && c.ipAddress.trim() == pf.destIp.trim(),
+                  orElse: () => null,
+                );
+            final deviceName = matchedClient != null
+                ? ClientNamingHelper.getDisplayName(
+                    matchedClient.macAddress,
+                    appState: appState,
+                    client: matchedClient,
+                  )
+                : null;
+            final destDisplay = deviceName != null
+                ? '$deviceName (${pf.destIp}:${pf.destPort})'
+                : '${pf.destIp}:${pf.destPort}';
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.compare_arrows)),
+                title: Text(
+                  pf.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  '${pf.srcZone.toUpperCase()}:${pf.srcPort} ➔ $destDisplay (${pf.proto.toUpperCase()})',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: canModify
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            tooltip: 'Edit port forward',
+                            onPressed: () => AdvancedPortForwardDialog.show(
+                              context,
+                              initialPortForward: pf,
+                              overview: overview,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            tooltip: 'Delete port forward',
+                            onPressed: () => _confirmDeletePortForward(pf),
+                          ),
+                        ],
+                      )
+                    : null,
+                onTap: canModify
+                    ? () => AdvancedPortForwardDialog.show(
+                          context,
+                          initialPortForward: pf,
+                          overview: overview,
+                        )
+                    : null,
+              ),
+            );
+          }),
+      ],
     );
+  }
+
+  Future<void> _confirmDeletePortForward(
+    FirewallPortForwarding pf,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Port Forward?'),
+        content: Text('Are you sure you want to delete "${pf.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final appState = ref.read(appStateProvider);
+      final success = await appState.deleteFirewallPortForward(
+        pf.sectionKey,
+        context: context,
+      );
+      if (success && mounted) {
+        LuciToastManager.showSuccess(
+          context,
+          'Port forward "${pf.name}" deleted successfully.',
+        );
+      }
+    }
   }
 
   Widget _buildCustomRulesList(
     BuildContext context,
-    List<FirewallCustomRule> rules,
+    FirewallOverview overview,
   ) {
-    if (rules.isEmpty) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'No custom security rules defined (default zone policies active).',
+    final rules = overview.customRules;
+    final appState = ref.read(appStateProvider);
+    final canModify = appState.capabilities?.canModifyFirewall ?? true;
+
+    return Column(
+      children: [
+        if (canModify) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.add_moderator_outlined),
+                label: const Text('Add Security Rule'),
+                onPressed: () => AdvancedCustomRuleDialog.show(
+                  context,
+                  overview: overview,
+                ),
+              ),
+            ),
+          ),
+        ],
+        if (rules.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'No custom security rules defined (default zone policies active).',
+              ),
+            ),
+          )
+        else
+          ...rules.asMap().entries.map((entry) {
+            return _buildCustomRuleCard(
+              context: context,
+              overview: overview,
+              rules: rules,
+              index: entry.key,
+              r: entry.value,
+              canModify: canModify,
+            );
+          }),
+      ],
+    );
+  }
+
+  Widget _buildCustomRuleCard({
+    required BuildContext context,
+    required FirewallOverview overview,
+    required List<FirewallCustomRule> rules,
+    required int index,
+    required FirewallCustomRule r,
+    required bool canModify,
+  }) {
+    final theme = Theme.of(context);
+    final isStaged = _stagedCustomRuleStates.containsKey(r.sectionKey);
+    final currentEnabled =
+        _stagedCustomRuleStates[r.sectionKey] ?? r.enabled;
+    final policyColor = _getPolicyColor(r.target);
+
+    final trafficDetails = <String>[];
+    if (r.destPort != null && r.destPort!.isNotEmpty) {
+      trafficDetails.add('Port: ${r.destPort}');
+    }
+    if (r.srcIp != null && r.srcIp!.isNotEmpty) {
+      trafficDetails.add('IP: ${r.srcIp}');
+    }
+    final trafficSuffix = trafficDetails.isNotEmpty
+        ? ' (${trafficDetails.join(", ")})'
+        : '';
+    final flowText =
+        '${r.srcZone.toUpperCase()} ➔ ${r.destZone.toUpperCase()}$trafficSuffix';
+    final subtitleText = isStaged
+        ? '$flowText • Original: ${r.enabled ? "ENABLED" : "DISABLED"}'
+        : flowText;
+
+    Widget buildTargetBadge() {
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 3,
+        ),
+        decoration: BoxDecoration(
+          color: policyColor.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(6),
+          border: r.isUnrecognizedTarget
+              ? Border.all(color: Colors.amber.shade700, width: 1)
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (r.isUnrecognizedTarget) ...[
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 12,
+                color: Colors.amber.shade700,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              r.target,
+              style: TextStyle(
+                color: r.isUnrecognizedTarget
+                    ? Colors.amber.shade800
+                    : policyColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget buildStagedBadge() {
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 6,
+          vertical: 1,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.amber.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: Colors.amber.shade700,
+            width: 0.8,
+          ),
+        ),
+        child: Text(
+          'STAGED',
+          style: TextStyle(
+            color: Colors.amber.shade900,
+            fontWeight: FontWeight.bold,
+            fontSize: 10,
           ),
         ),
       );
     }
 
-    final theme = Theme.of(context);
+    final reorderUpButton = IconButton(
+      icon: const Icon(Icons.arrow_upward, size: 18),
+      tooltip: 'Move up',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      onPressed: (index > 0 && !_isSaving)
+          ? () => _handleReorderRule(rules, index, -1)
+          : null,
+    );
 
-    return Column(
-      children: rules.map((r) {
-        final isStaged = _stagedCustomRuleStates.containsKey(r.sectionKey);
-        final currentEnabled =
-            _stagedCustomRuleStates[r.sectionKey] ?? r.enabled;
-        final policyColor = _getPolicyColor(r.target);
+    final reorderDownButton = IconButton(
+      icon: const Icon(Icons.arrow_downward, size: 18),
+      tooltip: 'Move down',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      onPressed: (index < rules.length - 1 && !_isSaving)
+          ? () => _handleReorderRule(rules, index, 1)
+          : null,
+    );
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isStaged
-                  ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
-                  : null,
-              borderRadius: BorderRadius.circular(14),
-              border: isStaged
-                  ? Border.all(color: theme.colorScheme.primary, width: 1.5)
-                  : null,
-            ),
-            child: ListTile(
-              leading: Icon(
-                currentEnabled ? Icons.check_circle : Icons.pause_circle_filled,
-                color: currentEnabled
-                    ? LuciStatusColors.connected
-                    : Colors.grey,
-              ),
-              title: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      r.name,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+    final editButton = IconButton(
+      icon: const Icon(Icons.edit_outlined, size: 18),
+      tooltip: 'Edit rule',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      onPressed: () => AdvancedCustomRuleDialog.show(
+        context,
+        initialRule: r,
+        overview: overview,
+      ),
+    );
+
+    final deleteButton = IconButton(
+      icon: const Icon(Icons.delete_outline, size: 18),
+      tooltip: 'Delete rule',
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      onPressed: () => _confirmDeleteCustomRule(r),
+    );
+
+    final enableSwitch = Switch.adaptive(
+      value: currentEnabled,
+      onChanged: _isSaving
+          ? null
+          : (newValue) => _toggleCustomRuleState(r, newValue),
+    );
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isStaged
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.12)
+              : null,
+          borderRadius: BorderRadius.circular(14),
+          border: isStaged
+              ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+              : null,
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: canModify
+              ? () => AdvancedCustomRuleDialog.show(
+                    context,
+                    initialRule: r,
+                    overview: overview,
+                  )
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+            child: LayoutBuilder(
+              builder: (ctx, constraints) {
+                final isWide = constraints.maxWidth >= 540;
+
+                if (isWide) {
+                  return Row(
+                    children: [
+                      Icon(
+                        currentEnabled
+                            ? Icons.check_circle
+                            : Icons.pause_circle_filled,
+                        color: currentEnabled
+                            ? LuciStatusColors.connected
+                            : Colors.grey,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    r.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isStaged) ...[
+                                  const SizedBox(width: 6),
+                                  buildStagedBadge(),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitleText,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      buildTargetBadge(),
+                      const SizedBox(width: 8),
+                      if (canModify) ...[
+                        reorderUpButton,
+                        const SizedBox(width: 2),
+                        reorderDownButton,
+                        const SizedBox(width: 4),
+                        editButton,
+                        const SizedBox(width: 2),
+                        deleteButton,
+                        const SizedBox(width: 6),
+                      ],
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          enableSwitch,
+                          const SizedBox(width: 4),
+                          Text(
+                            currentEnabled ? 'Enabled' : 'Disabled',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: currentEnabled
+                                  ? LuciStatusColors.connected
+                                  : theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                }
+
+                // Constrained / Mobile layout: structured secondary row for controls
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          currentEnabled
+                              ? Icons.check_circle
+                              : Icons.pause_circle_filled,
+                          color: currentEnabled
+                              ? LuciStatusColors.connected
+                              : Colors.grey,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  r.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isStaged) ...[
+                                const SizedBox(width: 6),
+                                buildStagedBadge(),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        buildTargetBadge(),
+                      ],
                     ),
-                  ),
-                  if (isStaged) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: Colors.amber.shade700,
-                          width: 0.8,
-                        ),
-                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 30, top: 4, bottom: 6),
                       child: Text(
-                        'STAGED',
-                        style: TextStyle(
-                          color: Colors.amber.shade900,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                        subtitleText,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Divider(
+                      height: 1,
+                      thickness: 0.5,
+                      color: theme.dividerColor.withValues(alpha: 0.25),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              enableSwitch,
+                              const SizedBox(width: 4),
+                              Text(
+                                currentEnabled ? 'Enabled' : 'Disabled',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: currentEnabled
+                                      ? LuciStatusColors.connected
+                                      : theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (canModify)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                reorderUpButton,
+                                const SizedBox(width: 2),
+                                reorderDownButton,
+                                const SizedBox(width: 4),
+                                editButton,
+                                const SizedBox(width: 2),
+                                deleteButton,
+                              ],
+                            ),
+                        ],
                       ),
                     ),
                   ],
-                ],
-              ),
-              subtitle: Text(
-                isStaged
-                    ? '${r.srcZone.toUpperCase()} ➔ ${r.destZone.toUpperCase()} • Original: ${r.enabled ? "ENABLED" : "DISABLED"}'
-                    : '${r.srcZone.toUpperCase()} ➔ ${r.destZone.toUpperCase()}',
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: policyColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: r.isUnrecognizedTarget
-                          ? Border.all(color: Colors.amber.shade700, width: 1)
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (r.isUnrecognizedTarget) ...[
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            size: 12,
-                            color: Colors.amber.shade700,
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                        Text(
-                          r.target,
-                          style: TextStyle(
-                            color: r.isUnrecognizedTarget
-                                ? Colors.amber.shade800
-                                : policyColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Switch.adaptive(
-                    value: currentEnabled,
-                    onChanged: _isSaving
-                        ? null
-                        : (newValue) => _toggleCustomRuleState(r, newValue),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
-        );
-      }).toList(),
+        ),
+      ),
     );
+  }
+
+  Future<void> _handleReorderRule(
+    List<FirewallCustomRule> rules,
+    int currentIndex,
+    int delta,
+  ) async {
+    if (_hasUnsavedChanges) {
+      LuciToastManager.showWarning(
+        context,
+        'Please save or discard unsaved changes before reordering rules.',
+      );
+      return;
+    }
+
+    final targetRule = rules[currentIndex];
+    final siblingRule = rules[currentIndex + delta];
+    final expectedOrder = rules.map((r) => r.sectionKey).toList();
+
+    const actionKey = 'reorder_firewall_rule';
+    context.showToastLoading(
+      'Reordering Rules',
+      subtitle: 'Updating firewall rule priority...',
+      actionKey: actionKey,
+    );
+
+    final appState = ref.read(appStateProvider);
+    final success = await appState.reorderFirewallCustomRules(
+      targetSectionKey: targetRule.sectionKey,
+      siblingSectionKey: siblingRule.sectionKey,
+      expectedRuleOrder: expectedOrder,
+      context: mounted ? context : null,
+    );
+
+    if (!mounted) return;
+    if (success) {
+      context.showToastSuccess(
+        'Rules Reordered',
+        subtitle: 'Firewall rule order updated successfully.',
+        actionKey: actionKey,
+      );
+    } else {
+      context.showToastError(
+        'Reorder Failed',
+        subtitle: 'Unable to update rule order in firewall configuration.',
+        actionKey: actionKey,
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteCustomRule(
+    FirewallCustomRule r,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Security Rule?'),
+        content: Text('Are you sure you want to delete "${r.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final appState = ref.read(appStateProvider);
+      final success = await appState.deleteFirewallCustomRule(
+        r.sectionKey,
+        context: context,
+      );
+      if (success && mounted) {
+        LuciToastManager.showSuccess(
+          context,
+          'Security rule "${r.name}" deleted successfully.',
+        );
+      }
+    }
   }
 
   Widget _buildPolicyRow(String title, String policy) {
@@ -1009,7 +1718,13 @@ class _FirewallSecurityScreenState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(

@@ -2,6 +2,7 @@
 // Copyright (C) 2025-2026 cogwheel0
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import 'package:flutter/foundation.dart';
 import 'package:yala/models/router_capabilities.dart';
 
 /// Default global firewall policy.
@@ -94,6 +95,7 @@ class FirewallZone {
   final String output;
   final String forward;
   final bool masquerade;
+  final bool masquerade6;
   final List<String> networks;
 
   const FirewallZone({
@@ -102,6 +104,7 @@ class FirewallZone {
     required this.output,
     required this.forward,
     required this.masquerade,
+    this.masquerade6 = false,
     required this.networks,
   });
 
@@ -120,6 +123,7 @@ class FirewallZone {
       output: (json['output']?.toString() ?? 'ACCEPT').toUpperCase(),
       forward: (json['forward']?.toString() ?? 'REJECT').toUpperCase(),
       masquerade: json['masq'] == '1' || json['masq'] == true,
+      masquerade6: json['masq6'] == '1' || json['masq6'] == true,
       networks: nets,
     );
   }
@@ -142,6 +146,7 @@ class FirewallForwarding {
 
 /// Port forwarding rule (redirect).
 class FirewallPortForwarding {
+  final String sectionKey;
   final String name;
   final String srcZone;
   final String srcPort;
@@ -149,8 +154,15 @@ class FirewallPortForwarding {
   final String destIp;
   final String destPort;
   final String proto;
+  final String? srcIp;
+  final bool reflection;
+  final bool enabled;
+  final String family;
+  final String target;
+  final Map<String, dynamic> rawUciValues;
 
   const FirewallPortForwarding({
+    this.sectionKey = '',
     required this.name,
     required this.srcZone,
     required this.srcPort,
@@ -158,11 +170,72 @@ class FirewallPortForwarding {
     required this.destIp,
     required this.destPort,
     required this.proto,
+    this.srcIp,
+    this.reflection = true,
+    this.enabled = true,
+    this.family = 'any',
+    this.target = 'DNAT',
+    this.rawUciValues = const {},
   });
 
-  factory FirewallPortForwarding.fromJson(Map<String, dynamic> json) {
+  FirewallPortForwarding copyWith({
+    String? sectionKey,
+    String? name,
+    String? srcZone,
+    String? srcPort,
+    String? destZone,
+    String? destIp,
+    String? destPort,
+    String? proto,
+    String? srcIp,
+    bool? reflection,
+    bool? enabled,
+    String? family,
+    String? target,
+    Map<String, dynamic>? rawUciValues,
+  }) {
     return FirewallPortForwarding(
-      name: json['name']?.toString() ?? json['.name']?.toString() ?? 'Redirect',
+      sectionKey: sectionKey ?? this.sectionKey,
+      name: name ?? this.name,
+      srcZone: srcZone ?? this.srcZone,
+      srcPort: srcPort ?? this.srcPort,
+      destZone: destZone ?? this.destZone,
+      destIp: destIp ?? this.destIp,
+      destPort: destPort ?? this.destPort,
+      proto: proto ?? this.proto,
+      srcIp: srcIp ?? this.srcIp,
+      reflection: reflection ?? this.reflection,
+      enabled: enabled ?? this.enabled,
+      family: family ?? this.family,
+      target: target ?? this.target,
+      rawUciValues: rawUciValues ?? this.rawUciValues,
+    );
+  }
+
+  factory FirewallPortForwarding.fromJson(
+    Map<String, dynamic> json, [
+    String? sectionKey,
+  ]) {
+    final sec = json['.name']?.toString() ?? sectionKey ?? '';
+    final rawTarget = (json['target']?.toString() ?? 'DNAT').toUpperCase();
+    final rawFamily = json['family']?.toString().toLowerCase() ?? 'any';
+    final rawProto = json['proto']?.toString().toLowerCase() ?? 'tcp';
+    final reflectionVal = json['reflection'];
+    final bool isReflection = reflectionVal == null ||
+        reflectionVal == '1' ||
+        reflectionVal == 1 ||
+        reflectionVal == true ||
+        reflectionVal == 'true';
+    final enabledVal = json['enabled'];
+    final bool isEnabled = enabledVal == null ||
+        (enabledVal != '0' &&
+            enabledVal != 0 &&
+            enabledVal != false &&
+            enabledVal != 'false');
+
+    return FirewallPortForwarding(
+      sectionKey: sec,
+      name: json['name']?.toString() ?? (sec.isNotEmpty ? sec : 'Redirect'),
       srcZone: json['src']?.toString() ?? 'wan',
       srcPort:
           json['src_dport']?.toString() ??
@@ -174,9 +247,97 @@ class FirewallPortForwarding {
           json['dest_port']?.toString() ??
           json['src_dport']?.toString() ??
           'Any',
-      proto: json['proto']?.toString() ?? 'tcp',
+      proto: rawProto,
+      srcIp: json['src_ip']?.toString(),
+      reflection: isReflection,
+      enabled: isEnabled,
+      family: rawFamily,
+      target: rawTarget,
+      rawUciValues: Map<String, dynamic>.from(json),
     );
   }
+
+  Map<String, String> toUciValues() {
+    final values = <String, String>{
+      'name': name,
+      'src': srcZone,
+      'dest': destZone,
+      'proto': proto,
+      'target': target,
+      'enabled': enabled ? '1' : '0',
+    };
+    if (srcPort.isNotEmpty && srcPort != 'Any') {
+      values['src_dport'] = srcPort;
+    }
+    if (destPort.isNotEmpty && destPort != 'Any') {
+      values['dest_port'] = destPort;
+    }
+    if (destIp.isNotEmpty && destIp != 'Any') {
+      values['dest_ip'] = destIp;
+    }
+    if (srcIp != null && srcIp!.trim().isNotEmpty && srcIp != 'Any') {
+      values['src_ip'] = srcIp!.trim();
+    }
+    if (!reflection) {
+      values['reflection'] = '0';
+    }
+    if (family != 'any' && family.isNotEmpty) {
+      values['family'] = family;
+    }
+    return values;
+  }
+
+  Map<String, dynamic> toJson() => {
+    'sectionKey': sectionKey,
+    'name': name,
+    'srcZone': srcZone,
+    'srcPort': srcPort,
+    'destZone': destZone,
+    'destIp': destIp,
+    'destPort': destPort,
+    'proto': proto,
+    if (srcIp != null) 'srcIp': srcIp,
+    'reflection': reflection,
+    'enabled': enabled,
+    'family': family,
+    'target': target,
+  };
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is FirewallPortForwarding &&
+        other.sectionKey == sectionKey &&
+        other.name == name &&
+        other.srcZone == srcZone &&
+        other.srcPort == srcPort &&
+        other.destZone == destZone &&
+        other.destIp == destIp &&
+        other.destPort == destPort &&
+        other.proto == proto &&
+        other.srcIp == srcIp &&
+        other.reflection == reflection &&
+        other.enabled == enabled &&
+        other.family == family &&
+        other.target == target;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    sectionKey,
+    name,
+    srcZone,
+    srcPort,
+    destZone,
+    destIp,
+    destPort,
+    proto,
+    srcIp,
+    reflection,
+    enabled,
+    family,
+    target,
+  );
 }
 
 /// Custom security rule.
@@ -188,6 +349,14 @@ class FirewallCustomRule {
   final String target;
   final bool enabled;
   final bool isUnrecognizedTarget;
+  final String proto;
+  final List<String> srcMac;
+  final String? srcIp;
+  final String? destIp;
+  final String? destPort;
+  final String family;
+  final int? position;
+  final Map<String, dynamic> rawUciValues;
 
   static const List<String> knownTargets = [
     'ACCEPT',
@@ -210,6 +379,14 @@ class FirewallCustomRule {
     required this.target,
     required this.enabled,
     this.isUnrecognizedTarget = false,
+    this.proto = 'any',
+    this.srcMac = const [],
+    this.srcIp,
+    this.destIp,
+    this.destPort,
+    this.family = 'any',
+    this.position,
+    this.rawUciValues = const {},
   });
 
   FirewallCustomRule copyWith({
@@ -220,6 +397,14 @@ class FirewallCustomRule {
     String? target,
     bool? enabled,
     bool? isUnrecognizedTarget,
+    String? proto,
+    List<String>? srcMac,
+    String? srcIp,
+    String? destIp,
+    String? destPort,
+    String? family,
+    int? position,
+    Map<String, dynamic>? rawUciValues,
   }) {
     return FirewallCustomRule(
       sectionKey: sectionKey ?? this.sectionKey,
@@ -229,6 +414,14 @@ class FirewallCustomRule {
       target: target ?? this.target,
       enabled: enabled ?? this.enabled,
       isUnrecognizedTarget: isUnrecognizedTarget ?? this.isUnrecognizedTarget,
+      proto: proto ?? this.proto,
+      srcMac: srcMac ?? this.srcMac,
+      srcIp: srcIp ?? this.srcIp,
+      destIp: destIp ?? this.destIp,
+      destPort: destPort ?? this.destPort,
+      family: family ?? this.family,
+      position: position ?? this.position,
+      rawUciValues: rawUciValues ?? this.rawUciValues,
     );
   }
 
@@ -236,6 +429,21 @@ class FirewallCustomRule {
     final rawTarget = (json['target']?.toString() ?? 'ACCEPT').toUpperCase();
     final isUnknown = !knownTargets.contains(rawTarget);
     final secName = json['.name']?.toString() ?? key;
+
+    final List<String> parsedSrcMac = [];
+    final rawSrcMac = json['src_mac'];
+    if (rawSrcMac is List) {
+      parsedSrcMac.addAll(
+        rawSrcMac.map((e) => e.toString().toUpperCase().replaceAll('-', ':')),
+      );
+    } else if (rawSrcMac != null && rawSrcMac.toString().trim().isNotEmpty) {
+      parsedSrcMac.add(
+        rawSrcMac.toString().toUpperCase().replaceAll('-', ':'),
+      );
+    }
+
+    final rawProto = json['proto']?.toString().toLowerCase() ?? 'any';
+    final rawFamily = json['family']?.toString().toLowerCase() ?? 'any';
 
     return FirewallCustomRule(
       sectionKey: secName.isNotEmpty ? secName : key,
@@ -248,8 +456,101 @@ class FirewallCustomRule {
           json['enabled'] != 0 &&
           json['enabled'] != false,
       isUnrecognizedTarget: isUnknown,
+      proto: rawProto,
+      srcMac: parsedSrcMac,
+      srcIp: json['src_ip']?.toString(),
+      destIp: json['dest_ip']?.toString(),
+      destPort:
+          json['dest_port']?.toString() ?? json['dest_dport']?.toString(),
+      family: rawFamily,
+      position: json['.index'] is int ? json['.index'] as int : null,
+      rawUciValues: Map<String, dynamic>.from(json),
     );
   }
+
+  Map<String, dynamic> toUciValues() {
+    final values = <String, dynamic>{
+      'name': name,
+      'src': srcZone,
+      'dest': destZone,
+      'target': target,
+      'enabled': enabled ? '1' : '0',
+    };
+    if (proto.isNotEmpty && proto != 'any') {
+      values['proto'] = proto;
+    }
+    if (srcMac.isNotEmpty) {
+      values['src_mac'] = srcMac.length == 1 ? srcMac.first : srcMac;
+    }
+    if (srcIp != null && srcIp!.trim().isNotEmpty && srcIp != 'Any') {
+      values['src_ip'] = srcIp!.trim();
+    }
+    if (destIp != null && destIp!.trim().isNotEmpty && destIp != 'Any') {
+      values['dest_ip'] = destIp!.trim();
+    }
+    if (destPort != null && destPort!.trim().isNotEmpty && destPort != 'Any') {
+      values['dest_port'] = destPort!.trim();
+    }
+    if (family.isNotEmpty && family != 'any') {
+      values['family'] = family;
+    }
+    return values;
+  }
+
+  Map<String, dynamic> toJson() => {
+    'sectionKey': sectionKey,
+    'name': name,
+    'srcZone': srcZone,
+    'destZone': destZone,
+    'target': target,
+    'enabled': enabled,
+    'isUnrecognizedTarget': isUnrecognizedTarget,
+    'proto': proto,
+    'srcMac': srcMac,
+    if (srcIp != null) 'srcIp': srcIp,
+    if (destIp != null) 'destIp': destIp,
+    if (destPort != null) 'destPort': destPort,
+    'family': family,
+    if (position != null) 'position': position,
+  };
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is FirewallCustomRule &&
+        other.sectionKey == sectionKey &&
+        other.name == name &&
+        other.srcZone == srcZone &&
+        other.destZone == destZone &&
+        other.target == target &&
+        other.enabled == enabled &&
+        other.isUnrecognizedTarget == isUnrecognizedTarget &&
+        other.proto == proto &&
+        listEquals(other.srcMac, srcMac) &&
+        other.srcIp == srcIp &&
+        other.destIp == destIp &&
+        other.destPort == destPort &&
+        other.family == family &&
+        other.position == position;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    sectionKey,
+    name,
+    srcZone,
+    destZone,
+    target,
+    enabled,
+    isUnrecognizedTarget,
+    proto,
+    Object.hashAll(srcMac),
+    srcIp,
+    destIp,
+    destPort,
+    family,
+    position,
+  );
 }
 
 /// Complete firewall & security overview container.
@@ -275,6 +576,30 @@ class FirewallOverview {
     required this.isNoCustomRules,
     this.errorMessage,
   });
+
+  /// Resolves the primary internal destination zone from the active firewall topology.
+  String? get primaryLanZoneName {
+    // 1. Look for a forwarding from an internal zone to wan
+    for (final fwd in forwardings) {
+      if (fwd.destZone.toLowerCase() == 'wan' &&
+          fwd.srcZone.toLowerCase() != 'wan') {
+        return fwd.srcZone;
+      }
+    }
+    // 2. Look for a zone named 'lan'
+    for (final zone in zones) {
+      if (zone.name.toLowerCase() == 'lan') {
+        return zone.name;
+      }
+    }
+    // 3. Fallback to non-masquerading zone that is not 'wan'
+    for (final zone in zones) {
+      if (!zone.masquerade && !zone.name.toLowerCase().contains('wan')) {
+        return zone.name;
+      }
+    }
+    return null;
+  }
 
   factory FirewallOverview.unavailable(
     FirewallBackend backend, [
@@ -408,7 +733,10 @@ class Fw3FirewallParser {
             );
           } else if (type == 'redirect') {
             pfList.add(
-              FirewallPortForwarding.fromJson(Map<String, dynamic>.from(val)),
+              FirewallPortForwarding.fromJson(
+                Map<String, dynamic>.from(val),
+                key,
+              ),
             );
           } else if (type == 'rule') {
             ruleList.add(
@@ -491,7 +819,10 @@ class Fw4FirewallParser {
             );
           } else if (type == 'redirect') {
             pfList.add(
-              FirewallPortForwarding.fromJson(Map<String, dynamic>.from(val)),
+              FirewallPortForwarding.fromJson(
+                Map<String, dynamic>.from(val),
+                key,
+              ),
             );
           } else if (type == 'rule') {
             ruleList.add(

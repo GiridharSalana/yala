@@ -52,8 +52,9 @@ class FakeRouterService implements RouterService {
   }
 
   @override
-  Future<void> updateRouter(model.Router router) async {
-    final index = _routers.indexWhere((r) => r.id == router.id);
+  Future<void> updateRouter(model.Router router, {String? oldId}) async {
+    final targetId = oldId ?? router.id;
+    final index = _routers.indexWhere((r) => r.id == targetId);
     if (index != -1) {
       _routers[index] = router;
     }

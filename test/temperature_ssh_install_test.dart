@@ -21,6 +21,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       mockSsh = MockSshService();
       appState = AppState.instance;
+      await appState.initializationFuture;
       appState.setSshServiceForTesting(mockSsh);
     });
 

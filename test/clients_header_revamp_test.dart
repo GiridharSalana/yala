@@ -121,16 +121,21 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Tap "Show Dumb AP Clients" chip
+        // Initially in Total, all clients including Dumb AP are visible
+        expect(find.text('Active-Wired-PC'), findsOneWidget);
+        expect(find.text('Inactive-Old-Laptop'), findsOneWidget);
+        expect(find.text('Dumb-AP-Phone'), findsOneWidget);
+
+        // Tap "Show Dumb AP Clients" chip to hide Dumb AP clients
         await tester.tap(find.text('Show Dumb AP Clients'));
         await tester.pumpAndSettle();
 
-        // Only Dumb AP client should be visible
-        expect(find.text('Dumb-AP-Phone'), findsOneWidget);
-        expect(find.text('Active-Wired-PC'), findsNothing);
-        expect(find.text('Inactive-Old-Laptop'), findsNothing);
+        // Router clients remain visible, Dumb AP client is filtered out
+        expect(find.text('Active-Wired-PC'), findsOneWidget);
+        expect(find.text('Inactive-Old-Laptop'), findsOneWidget);
+        expect(find.text('Dumb-AP-Phone'), findsNothing);
 
-        // Tap "Show Dumb AP Clients" chip again to toggle back to all
+        // Tap "Show Dumb AP Clients" chip again to restore Dumb AP clients
         await tester.tap(find.text('Show Dumb AP Clients'));
         await tester.pumpAndSettle();
 
