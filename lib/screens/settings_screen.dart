@@ -21,6 +21,7 @@ import 'package:yet_another_luci_app/widgets/language_picker_dialog.dart';
 import 'package:yet_another_luci_app/widgets/rpc_permissions_dialog.dart';
 import 'package:yet_another_luci_app/widgets/edit_hostname_dialog.dart';
 import 'package:yet_another_luci_app/widgets/change_router_password_dialog.dart';
+import 'package:yet_another_luci_app/modules/json_export/json_export_screen.dart';
 import 'package:yet_another_luci_app/state/app_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -110,6 +111,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           _buildCustomizeDashboardTile(context),
+          const SizedBox(height: 24),
+
+          // Data Management Section
+          _buildSectionHeader(
+            context,
+            l10n?.settingsDataManagement ?? 'DATA MANAGEMENT',
+            Icons.storage_rounded,
+          ),
+          const SizedBox(height: 8),
+          _buildExportConfigTile(context),
           const SizedBox(height: 24),
 
           // Router Diagnostics & Features Section
@@ -721,6 +732,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               MaterialPageRoute(
                 builder: (context) => const DashboardSettingsListScreen(),
               ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExportConfigTile(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+
+    return Container(
+      decoration: LuciCardStyles.standardCard(context),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: LuciCardStyles.standardRadius,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.download_rounded,
+              color: colorScheme.onPrimaryContainer,
+              size: 24,
+            ),
+          ),
+          title: Text(
+            l10n?.settingsExportConfigTitle ?? 'Export Configuration (JSON)',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Text(
+              l10n?.settingsExportConfigSubtitle ??
+                  'Export DDNS, DHCP leases, firewall rules, packages, cron jobs & more as JSON',
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.onSurfaceVariant,
+                height: 1.3,
+              ),
+            ),
+          ),
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const JsonExportScreen()),
             );
           },
         ),

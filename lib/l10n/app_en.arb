@@ -7363,5 +7363,422 @@
         "example": "2026-10-07 12:00"
       }
     }
+  },
+  "diagTabHealth": "Health & Diagnostic",
+  "@diagTabHealth": {
+    "description": "Tab title for root-cause health & diagnostics"
+  },
+  "diagBtnWhyBroken": "“Why Is My Internet Broken?” Diagnostic",
+  "@diagBtnWhyBroken": {
+    "description": "Button label to trigger root cause internet diagnostic"
+  },
+  "netDiagTitle": "Network Diagnostic",
+  "@netDiagTitle": {
+    "description": "App bar title for network diagnostic screen"
+  },
+  "netDiagSubtitleReady": "Perform automated, evidence-based root-cause analysis on router uplink, DNS resolution, default routes, IPv4, IPv6, and external reachability.",
+  "@netDiagSubtitleReady": {
+    "description": "Description explaining what network diagnostics check"
+  },
+  "netDiagRunningTitle": "Running Network Diagnostics...",
+  "@netDiagRunningTitle": {
+    "description": "Title when diagnostic analysis is currently executing"
+  },
+  "netDiagRunningSummary": "Gathering configuration and probing network paths...",
+  "@netDiagRunningSummary": {
+    "description": "Summary step when diagnostic is executing"
+  },
+  "netDiagReadyTitle": "Network Diagnostic Ready",
+  "@netDiagReadyTitle": {
+    "description": "Hero title when diagnostics are ready to run"
+  },
+  "netDiagHealthyTitle": "Network Healthy",
+  "@netDiagHealthyTitle": {
+    "description": "Hero title when all diagnostic checks pass"
+  },
+  "netDiagDegradedTitle": "Connectivity Degraded",
+  "@netDiagDegradedTitle": {
+    "description": "Hero title when network connectivity is degraded"
+  },
+  "netDiagSuspectedTitle": "Suspected Issue",
+  "@netDiagSuspectedTitle": {
+    "description": "Hero title when an issue is suspected"
+  },
+  "netDiagIssueDetectedTitle": "Connectivity Issue Detected",
+  "@netDiagIssueDetectedTitle": {
+    "description": "Hero title when connectivity failures are confirmed"
+  },
+  "netDiagTargetRouter": "Target: {name} ({ip})",
+  "@netDiagTargetRouter": {
+    "description": "Target router name and IP address",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagCollectedAt": "Collected at: {time} • Session ID: {id}",
+  "@netDiagCollectedAt": {
+    "description": "Timestamp and session id of diagnostic report",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagBtnRun": "Run Diagnostics",
+  "@netDiagBtnRun": {
+    "description": "Button to run network diagnostics"
+  },
+  "netDiagBtnRerun": "Rerun Diagnostics",
+  "@netDiagBtnRerun": {
+    "description": "Button to rerun network diagnostics"
+  },
+  "netDiagBtnCancel": "Cancel Analysis",
+  "@netDiagBtnCancel": {
+    "description": "Button to cancel ongoing network diagnostic analysis"
+  },
+  "netDiagBtnCancelling": "Cancelling...",
+  "@netDiagBtnCancelling": {
+    "description": "Label when diagnostic cancellation is in progress"
+  },
+  "netDiagBtnAnalyzing": "Analyzing...",
+  "@netDiagBtnAnalyzing": {
+    "description": "Label while diagnostic analysis is in progress"
+  },
+  "netDiagSectionFindings": "Root-Cause Findings & Hypotheses",
+  "@netDiagSectionFindings": {
+    "description": "Header for root cause findings section"
+  },
+  "netDiagSectionResults": "Diagnostic Test Results",
+  "@netDiagSectionResults": {
+    "description": "Header for diagnostic test results list"
+  },
+  "netDiagSectionScope": "Diagnostic Scope & Unverified Domains",
+  "@netDiagSectionScope": {
+    "description": "Header for unverified domains and limitations section"
+  },
+  "netDiagFilterShowIssuesOnly": "Show Issues Only ({count})",
+  "@netDiagFilterShowIssuesOnly": {
+    "description": "Filter chip label to show only failed or degraded tests",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "netDiagConfidenceHigh": "High Confidence",
+  "@netDiagConfidenceHigh": {
+    "description": "Badge label for high confidence finding"
+  },
+  "netDiagConfidenceModerate": "Moderate Confidence",
+  "@netDiagConfidenceModerate": {
+    "description": "Badge label for moderate confidence finding"
+  },
+  "netDiagConfidenceLow": "Low Confidence / Suspect",
+  "@netDiagConfidenceLow": {
+    "description": "Badge label for low confidence finding"
+  },
+  "netDiagSupportingEvidence": "Supporting Evidence / Observations:",
+  "@netDiagSupportingEvidence": {
+    "description": "Label for supporting evidence list"
+  },
+  "netDiagConflictingEvidence": "Conflicting / Mitigating Observations:",
+  "@netDiagConflictingEvidence": {
+    "description": "Label for contradictory evidence list"
+  },
+  "netDiagRecommendedActions": "Recommended Actions & Next Steps:",
+  "@netDiagRecommendedActions": {
+    "description": "Label for recommended steps list"
+  },
+  "netDiagWhyItMatters": "Why This Matters:",
+  "@netDiagWhyItMatters": {
+    "description": "Label explaining significance of test"
+  },
+  "netDiagSuggestedAction": "Suggested Action:",
+  "@netDiagSuggestedAction": {
+    "description": "Label for suggested action on failed test"
+  },
+  "netDiagScope": "Scope: {scope}",
+  "@netDiagScope": {
+    "description": "Scope label for test item",
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagObservedFacts": "Observed Facts / Evidence:",
+  "@netDiagObservedFacts": {
+    "description": "Label for observed facts"
+  },
+  "netDiagTechnicalFindings": "Technical Findings / Details:",
+  "@netDiagTechnicalFindings": {
+    "description": "Label for technical details section"
+  },
+  "netDiagExecutionDuration": "Execution Duration: {ms} ms",
+  "@netDiagExecutionDuration": {
+    "description": "Duration of test execution in milliseconds",
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "netDiagUnverifiedExplanation": "The diagnostic engine operates within the visibility boundaries of the router. Some failure domains require physical client verification, ISP-level inspection, or active traffic observation:",
+  "@netDiagUnverifiedExplanation": {
+    "description": "Explanation of unverified diagnostic areas"
+  },
+  "netDiagStatusHealthy": "Healthy",
+  "@netDiagStatusHealthy": {
+    "description": "Test status healthy"
+  },
+  "netDiagStatusDegraded": "Degraded",
+  "@netDiagStatusDegraded": {
+    "description": "Test status degraded"
+  },
+  "netDiagStatusSuspected": "Suspected",
+  "@netDiagStatusSuspected": {
+    "description": "Test status suspected"
+  },
+  "netDiagStatusFailureConfirmed": "Failure Confirmed",
+  "@netDiagStatusFailureConfirmed": {
+    "description": "Test status failure confirmed"
+  },
+  "netDiagStatusInconclusive": "Inconclusive",
+  "@netDiagStatusInconclusive": {
+    "description": "Test status inconclusive"
+  },
+  "netDiagStatusNotTested": "Not Tested",
+  "@netDiagStatusNotTested": {
+    "description": "Test status not tested"
+  },
+  "netDiagStatusUnsupported": "Unsupported",
+  "@netDiagStatusUnsupported": {
+    "description": "Test status unsupported"
+  },
+  "netDiagStatusNotApplicable": "Not Applicable",
+  "@netDiagStatusNotApplicable": {
+    "description": "Test status not applicable"
+  },
+  "settingsDataManagement": "DATA MANAGEMENT",
+  "@settingsDataManagement": {
+    "description": "Section header for data management in settings"
+  },
+  "settingsExportConfigTitle": "Export Configuration (JSON)",
+  "@settingsExportConfigTitle": {
+    "description": "Settings tile title to export configuration"
+  },
+  "settingsExportConfigSubtitle": "Export DDNS, DHCP leases, firewall rules, packages, cron jobs & more as JSON",
+  "@settingsExportConfigSubtitle": {
+    "description": "Settings tile subtitle describing exportable categories"
+  },
+  "jsonExportTitle": "Export Configuration",
+  "@jsonExportTitle": {
+    "description": "App bar title for export configuration screen"
+  },
+  "jsonExportBanner": "Export router configuration categories as JSON files. Sensitive fields such as passwords are automatically redacted before export. Data is sourced from the last dashboard refresh; installed packages require a live network call.",
+  "@jsonExportBanner": {
+    "description": "Information banner on json export screen"
+  },
+  "jsonExportSectionIndividual": "INDIVIDUAL EXPORTS",
+  "@jsonExportSectionIndividual": {
+    "description": "Section header for individual exports"
+  },
+  "jsonExportSectionAllInOne": "ALL-IN-ONE",
+  "@jsonExportSectionAllInOne": {
+    "description": "Section header for all-in-one export"
+  },
+  "jsonExportAllTitle": "Export All (JSON)",
+  "@jsonExportAllTitle": {
+    "description": "Title for all-in-one export card"
+  },
+  "jsonExportAllSubtitle": "Collects all 10 categories into a single structured JSON file. Installed packages require an active router session.",
+  "@jsonExportAllSubtitle": {
+    "description": "Subtitle for all-in-one export card"
+  },
+  "jsonExportBtnAll": "Export All (JSON)",
+  "@jsonExportBtnAll": {
+    "description": "Button to trigger full configuration export"
+  },
+  "jsonExportBtnExporting": "Exporting…",
+  "@jsonExportBtnExporting": {
+    "description": "Button label while exporting"
+  },
+  "jsonExportCatDdns": "DDNS Entries",
+  "@jsonExportCatDdns": {
+    "description": "Category title for DDNS"
+  },
+  "jsonExportCatDdnsSubtitle": "Dynamic DNS service configurations (passwords redacted)",
+  "@jsonExportCatDdnsSubtitle": {
+    "description": "Category subtitle for DDNS"
+  },
+  "jsonExportCatDhcp": "Static DHCP Leases",
+  "@jsonExportCatDhcp": {
+    "description": "Category title for static DHCP leases"
+  },
+  "jsonExportCatDhcpSubtitle": "Hostname → IP → MAC static lease mappings",
+  "@jsonExportCatDhcpSubtitle": {
+    "description": "Category subtitle for static DHCP leases"
+  },
+  "jsonExportCatFirewall": "Firewall Rules",
+  "@jsonExportCatFirewall": {
+    "description": "Category title for firewall rules"
+  },
+  "jsonExportCatFirewallSubtitle": "Custom traffic rules (non-system)",
+  "@jsonExportCatFirewallSubtitle": {
+    "description": "Category subtitle for firewall rules"
+  },
+  "jsonExportCatZoneForwarding": "Zone Forwarding",
+  "@jsonExportCatZoneForwarding": {
+    "description": "Category title for zone forwarding"
+  },
+  "jsonExportCatZoneForwardingSubtitle": "Firewall zone-to-zone forwarding definitions",
+  "@jsonExportCatZoneForwardingSubtitle": {
+    "description": "Category subtitle for zone forwarding"
+  },
+  "jsonExportCatPortForwarding": "Port Forwarding",
+  "@jsonExportCatPortForwarding": {
+    "description": "Category title for port forwarding"
+  },
+  "jsonExportCatPortForwardingSubtitle": "DNAT / port redirect rules",
+  "@jsonExportCatPortForwardingSubtitle": {
+    "description": "Category subtitle for port forwarding"
+  },
+  "jsonExportCatParentalControls": "Parental Control Profiles",
+  "@jsonExportCatParentalControls": {
+    "description": "Category title for parental control profiles"
+  },
+  "jsonExportCatParentalControlsSubtitle": "Local per-router parental control profiles",
+  "@jsonExportCatParentalControlsSubtitle": {
+    "description": "Category subtitle for parental control profiles"
+  },
+  "jsonExportCatInstalledPackages": "Installed Packages",
+  "@jsonExportCatInstalledPackages": {
+    "description": "Category title for installed packages"
+  },
+  "jsonExportCatInstalledPackagesSubtitle": "List of installed opkg / apk packages (live fetch)",
+  "@jsonExportCatInstalledPackagesSubtitle": {
+    "description": "Category subtitle for installed packages"
+  },
+  "jsonExportCatCronJobs": "Cron Jobs",
+  "@jsonExportCatCronJobs": {
+    "description": "Category title for cron jobs"
+  },
+  "jsonExportCatCronJobsSubtitle": "Scheduled cron entries from the router",
+  "@jsonExportCatCronJobsSubtitle": {
+    "description": "Category subtitle for cron jobs"
+  },
+  "jsonExportCatInitScripts": "Init Scripts",
+  "@jsonExportCatInitScripts": {
+    "description": "Category title for init scripts"
+  },
+  "jsonExportCatInitScriptsSubtitle": "rc.list init script enabled/disabled state",
+  "@jsonExportCatInitScriptsSubtitle": {
+    "description": "Category subtitle for init scripts"
+  },
+  "jsonExportCatDashboardSettings": "Dashboard Settings",
+  "@jsonExportCatDashboardSettings": {
+    "description": "Category title for dashboard settings"
+  },
+  "jsonExportCatDashboardSettingsSubtitle": "UI preferences: card order, visibility, shortcuts",
+  "@jsonExportCatDashboardSettingsSubtitle": {
+    "description": "Category subtitle for dashboard settings"
+  },
+  "jsonExportToastExporting": "Exporting {category}…",
+  "@jsonExportToastExporting": {
+    "description": "Toast message when category export begins",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "jsonExportToastBuilding": "Building full configuration export…",
+  "@jsonExportToastBuilding": {
+    "description": "Toast message while building all categories export"
+  },
+  "jsonExportToastFailed": "Export Failed",
+  "@jsonExportToastFailed": {
+    "description": "Toast error title when export fails"
+  },
+  "jsonExportToastNoData": "No Data",
+  "@jsonExportToastNoData": {
+    "description": "Toast error title when no data is available"
+  },
+  "jsonExportToastNoDataSubtitle": "{category}: no data available to export.",
+  "@jsonExportToastNoDataSubtitle": {
+    "description": "Toast error subtitle when no data is available for category",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "jsonExportToastExported": "{category} exported",
+  "@jsonExportToastExported": {
+    "description": "Toast success message when category export succeeds",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "jsonExportToastItemCount": "{count} item(s)",
+  "@jsonExportToastItemCount": {
+    "description": "Count of items exported",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "jsonExportToastFullExported": "Full configuration exported",
+  "@jsonExportToastFullExported": {
+    "description": "Toast success message when full export succeeds"
+  },
+  "jsonExportDialogTitle": "Configuration Exported",
+  "@jsonExportDialogTitle": {
+    "description": "Title of prompt dialog after export file saved"
+  },
+  "jsonExportDialogCategoryFileLabel": "{category} JSON",
+  "@jsonExportDialogCategoryFileLabel": {
+    "description": "File label in save prompt for single category",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "jsonExportDialogFullFileLabel": "Full Config JSON",
+  "@jsonExportDialogFullFileLabel": {
+    "description": "File label in save prompt for all categories"
+  },
+  "jsonExportToastSaveCancelled": "Save Cancelled",
+  "@jsonExportToastSaveCancelled": {
+    "description": "Toast error when user cancels save dialog"
+  },
+  "jsonExportToastSaveCancelledSubtitle": "File was not saved.",
+  "@jsonExportToastSaveCancelledSubtitle": {
+    "description": "Toast subtitle when user cancels save dialog"
+  },
+  "jsonExportToastError": "Export Error",
+  "@jsonExportToastError": {
+    "description": "Toast error title on exception"
+  },
+  "jsonExportTooltipExport": "Export {category}",
+  "@jsonExportTooltipExport": {
+    "description": "Tooltip for category export button",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
   }
 }
