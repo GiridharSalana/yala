@@ -90,7 +90,8 @@ class RpcPermissionsDialog extends StatelessWidget {
           children: [
             Text(
               isComplete
-                  ? 'Router RPC modules and backend execution permissions are verified and functioning properly.'
+                  ? (l10n?.rpcDialogVerifiedSubtitle ??
+                        'Router RPC modules and backend execution permissions are verified and functioning properly.')
                   : (customMessage ??
                         (l10n?.rpcdPermissionDeniedMessage(actionName) ??
                             'Your router does not have permission or RPC support to execute "$actionName".')),
@@ -102,22 +103,27 @@ class RpcPermissionsDialog extends StatelessWidget {
             const SizedBox(height: 14),
             _buildStatusItem(
               context,
-              title: 'LuCI RPC Modules',
+              title: l10n?.rpcStatusLuciRpc ?? 'LuCI RPC Modules',
               subtitle: 'rpcd-mod-luci, luci-mod-rpc, iwinfo',
               isOk: caps?.hasLuciRpc ?? false,
             ),
             const SizedBox(height: 8),
             _buildStatusItem(
               context,
-              title: 'Backend Execution Permissions',
-              subtitle: 'ubus session access to file.exec',
+              title:
+                  l10n?.rpcStatusBackendExec ?? 'Backend Execution Permissions',
+              subtitle:
+                  l10n?.rpcStatusBackendExecSub ??
+                  'ubus session access to file.exec',
               isOk: caps?.hasFileExec ?? false,
             ),
             const SizedBox(height: 8),
             _buildStatusItem(
               context,
-              title: 'UCI Configuration Access',
-              subtitle: 'ubus session read/write access to uci',
+              title: l10n?.rpcStatusUciAccess ?? 'UCI Configuration Access',
+              subtitle:
+                  l10n?.rpcStatusUciAccessSub ??
+                  'ubus session read/write access to uci',
               isOk: caps?.hasUciWriteAccess ?? false,
             ),
             const SizedBox(height: 14),
@@ -147,8 +153,10 @@ class RpcPermissionsDialog extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         isComplete
-                            ? 'Manual Setup / Verification Script'
-                            : 'Manual SSH Command',
+                            ? (l10n?.rpcManualSetupScript ??
+                                  'Manual Setup / Verification Script')
+                            : (l10n?.rpcManualSshCommand ??
+                                  'Manual SSH Command'),
                         style: theme.textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -172,14 +180,16 @@ class RpcPermissionsDialog extends StatelessWidget {
                           ClipboardData(text: remediationCommand),
                         );
                         context.showToastSuccess(
-                          'Command Copied',
-                          subtitle: 'Paste into router SSH terminal',
+                          l10n?.rpcToastCommandCopied ?? 'Command Copied',
+                          subtitle:
+                              l10n?.rpcToastCommandCopiedSub ??
+                              'Paste into router SSH terminal',
                         );
                       },
                       icon: const Icon(Icons.copy_rounded, size: 14),
-                      label: const Text(
-                        'Copy Command',
-                        style: TextStyle(fontSize: 12),
+                      label: Text(
+                        l10n?.addRpcHandlerCopyCommand ?? 'Copy Command',
+                        style: const TextStyle(fontSize: 12),
                       ),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
@@ -214,8 +224,10 @@ class RpcPermissionsDialog extends StatelessWidget {
               const actionKey = 'rpc_repair_dialog';
               LuciToastManager.safeShowLoading(
                 parentContext,
-                'Re-checking router...',
-                subtitle: 'Verifying RPC modules and permissions...',
+                l10n?.rpcToastRechecking ?? 'Re-checking router...',
+                subtitle:
+                    l10n?.rpcToastVerifying ??
+                    'Verifying RPC modules and permissions...',
                 actionKey: actionKey,
                 timeout: const Duration(seconds: 30),
               );
@@ -225,21 +237,26 @@ class RpcPermissionsDialog extends StatelessWidget {
               if (success) {
                 LuciToastManager.safeShowSuccess(
                   null,
-                  'Permissions Verified',
-                  subtitle: 'RPC modules and permissions are active.',
+                  l10n?.rpcToastPermissionsVerified ?? 'Permissions Verified',
+                  subtitle:
+                      l10n?.rpcToastPermissionsActive ??
+                      'RPC modules and permissions are active.',
                   actionKey: actionKey,
                 );
               } else {
                 LuciToastManager.safeShowError(
                   null,
-                  'Verification Incomplete',
-                  subtitle: 'Please check your router SSH terminal.',
+                  l10n?.rpcToastVerificationIncomplete ??
+                      'Verification Incomplete',
+                  subtitle:
+                      l10n?.rpcToastCheckSshTerminal ??
+                      'Please check your router SSH terminal.',
                   actionKey: actionKey,
                 );
               }
             },
             icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: const Text('Re-verify / Repair'),
+            label: Text(l10n?.rpcBtnReverifyRepair ?? 'Re-verify / Repair'),
           )
         else
           FilledButton.icon(
@@ -249,8 +266,10 @@ class RpcPermissionsDialog extends StatelessWidget {
               const actionKey = 'rpc_autofix_dialog';
               LuciToastManager.safeShowLoading(
                 parentContext,
-                'Fixing permissions...',
-                subtitle: 'Installing RPC packages & updating ACLs...',
+                l10n?.rpcToastFixingPermissions ?? 'Fixing permissions...',
+                subtitle:
+                    l10n?.rpcToastInstallingAcls ??
+                    'Installing RPC packages & updating ACLs...',
                 actionKey: actionKey,
                 timeout: const Duration(seconds: 45),
               );
@@ -260,16 +279,19 @@ class RpcPermissionsDialog extends StatelessWidget {
               if (success) {
                 LuciToastManager.safeShowSuccess(
                   null,
-                  'Permissions Fixed',
+                  l10n?.rpcToastAutoFixApplied ?? 'Permissions Fixed',
                   subtitle:
+                      l10n?.rpcToastRpcModulesActive ??
                       'RPC packages and permissions granted successfully!',
                   actionKey: actionKey,
                 );
               } else {
                 LuciToastManager.safeShowError(
                   null,
-                  'Permission Fix Failed',
-                  subtitle: 'Please run the manual SSH command above.',
+                  l10n?.rpcToastAutoFixFailed ?? 'Permission Fix Failed',
+                  subtitle:
+                      l10n?.rpcToastAutoFixFailedSub ??
+                      'Please run the manual SSH command above.',
                   actionKey: actionKey,
                 );
               }

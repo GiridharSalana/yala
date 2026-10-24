@@ -9,8 +9,11 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:dynamic_color/dynamic_color.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yet_another_luci_app/config/app_config.dart';
 import 'package:yet_another_luci_app/design/luci_theme.dart';
+import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:yet_another_luci_app/models/dashboard_preferences.dart';
 import 'package:yet_another_luci_app/models/router.dart' as model;
 import 'package:yet_another_luci_app/services/interfaces/api_service_interface.dart';
@@ -136,6 +139,22 @@ class SessionController {
   bool _reviewerModeEnabled = false;
   bool get reviewerModeEnabled => _reviewerModeEnabled;
 
+  SharedPreferences? _prefs;
+
+  // Pre-hydrated Monet dynamic color schemes (Android 12+)
+  ColorScheme? _preloadedLightDynamic;
+  ColorScheme? _preloadedDarkDynamic;
+  ColorScheme? get preloadedLightDynamic => _preloadedLightDynamic;
+  ColorScheme? get preloadedDarkDynamic => _preloadedDarkDynamic;
+
+  void setPreloadedDynamicColorSchemes({
+    ColorScheme? light,
+    ColorScheme? dark,
+  }) {
+    _preloadedLightDynamic = light;
+    _preloadedDarkDynamic = dark;
+  }
+
   // Theme mode state
   ThemeMode _themeMode = ThemeMode.system;
   ThemeMode get themeMode => _themeMode;
@@ -154,6 +173,106 @@ class SessionController {
   Locale? _locale;
   Locale? get locale => _locale;
   static const String _localeKey = 'app_locale';
+
+  static Locale? _parseLocale(String? stored) {
+    if (stored == null || stored.isEmpty || stored == 'system') {
+      return null;
+    } else if (stored.contains('_') || stored.contains('-')) {
+      final parts = stored.replaceAll('-', '_').split('_');
+      return Locale(parts[0], parts.length > 1 ? parts[1] : null);
+    } else {
+      return Locale(stored);
+    }
+  }
+
+  /// Synchronously or fast-asynchronously pre-hydrates user UI preferences
+  /// (Theme Palette, Theme Mode, Locale, Dynamic Color) prior to building Frame 1.
+  /// Eliminates the split-second theme flicker (FOUC) from default Amber to Material You.
+  Future<void> preHydratePreferences({SharedPreferences? prefs}) async {
+    try {
+      _prefs = prefs ?? await SharedPreferences.getInstance();
+
+      final corePalette = await DynamicColorPlugin.getCorePalette();
+      if (corePalette != null) {
+        _preloadedLightDynamic = corePalette.toColorScheme(
+          brightness: Brightness.light,
+        );
+        _preloadedDarkDynamic = corePalette.toColorScheme(
+          brightness: Brightness.dark,
+        );
+      }
+
+      // 1. Theme Palette Pre-Hydration
+      final cachedPalette = _prefs?.getString(_themePaletteKey);
+      if (cachedPalette != null) {
+        _themePalette = AppThemePalette.values.firstWhere(
+          (p) => p.name == cachedPalette,
+          orElse: () => AppThemePalette.amber,
+        );
+      } else {
+        final storedPalette = await _secureStorageService.readValue(
+          _themePaletteKey,
+        );
+        if (storedPalette != null) {
+          _themePalette = AppThemePalette.values.firstWhere(
+            (p) => p.name == storedPalette,
+            orElse: () => AppThemePalette.amber,
+          );
+        } else {
+          final storedDynamic = await _secureStorageService.readValue(
+            _dynamicThemeKey,
+          );
+          if (storedDynamic == 'true') {
+            _themePalette = AppThemePalette.dynamicTheme;
+          } else {
+            _themePalette = AppThemePalette.amber;
+          }
+        }
+        await _prefs?.setString(_themePaletteKey, _themePalette.name);
+        await _prefs?.setBool(
+          _dynamicThemeKey,
+          _themePalette == AppThemePalette.dynamicTheme,
+        );
+      }
+
+      // 2. Theme Mode Pre-Hydration
+      final cachedMode = _prefs?.getString(_themeModeKey);
+      if (cachedMode != null) {
+        _themeMode = ThemeMode.values.firstWhere(
+          (m) => m.name == cachedMode,
+          orElse: () => ThemeMode.system,
+        );
+      } else {
+        final stored = await _secureStorageService.readValue(_themeModeKey);
+        if (stored == 'dark') {
+          _themeMode = ThemeMode.dark;
+        } else if (stored == 'light') {
+          _themeMode = ThemeMode.light;
+        } else {
+          _themeMode = ThemeMode.system;
+        }
+        await _prefs?.setString(_themeModeKey, _themeMode.name);
+      }
+
+      // 3. Locale Pre-Hydration
+      final cachedLocale = _prefs?.getString(_localeKey);
+      if (cachedLocale != null) {
+        _locale = _parseLocale(cachedLocale);
+      } else {
+        final stored = await _secureStorageService.readValue(_localeKey);
+        _locale = _parseLocale(stored);
+        if (stored != null) {
+          await _prefs?.setString(_localeKey, stored);
+        }
+      }
+    } catch (e, stack) {
+      Logger.exception(
+        'SessionController.preHydratePreferences failed',
+        e,
+        stack,
+      );
+    }
+  }
 
   // Clients view mode (aggregate across routers)
   bool _clientsAggregateAllRouters = true;
@@ -224,7 +343,9 @@ class SessionController {
   }
 
   Future<void> loadThemeMode({bool notify = true}) async {
-    final stored = await _secureStorageService.readValue(_themeModeKey);
+    final cached = _prefs?.getString(_themeModeKey);
+    final stored =
+        cached ?? await _secureStorageService.readValue(_themeModeKey);
     if (stored == 'dark') {
       _themeMode = ThemeMode.dark;
     } else if (stored == 'light') {
@@ -239,14 +360,19 @@ class SessionController {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
+    try {
+      final prefs = _prefs ?? await SharedPreferences.getInstance();
+      _prefs = prefs;
+      await prefs.setString(_themeModeKey, mode.name);
+    } catch (_) {}
     await _secureStorageService.writeValue(_themeModeKey, mode.name);
     _notifyListeners();
   }
 
   Future<void> loadDynamicTheme({bool notify = true}) async {
-    final storedPalette = await _secureStorageService.readValue(
-      _themePaletteKey,
-    );
+    final cached = _prefs?.getString(_themePaletteKey);
+    final storedPalette =
+        cached ?? await _secureStorageService.readValue(_themePaletteKey);
     if (storedPalette != null) {
       var found = false;
       for (final p in AppThemePalette.values) {
@@ -261,7 +387,10 @@ class SessionController {
         _themePalette = AppThemePalette.amber;
       }
     } else {
-      final stored = await _secureStorageService.readValue(_dynamicThemeKey);
+      final cachedDynamic = _prefs?.getBool(_dynamicThemeKey);
+      final stored = cachedDynamic != null
+          ? cachedDynamic.toString()
+          : await _secureStorageService.readValue(_dynamicThemeKey);
       if (stored == 'true') {
         _themePalette = AppThemePalette.dynamicTheme;
       } else {
@@ -275,6 +404,15 @@ class SessionController {
 
   Future<void> setThemePalette(AppThemePalette palette) async {
     _themePalette = palette;
+    try {
+      final prefs = _prefs ?? await SharedPreferences.getInstance();
+      _prefs = prefs;
+      await prefs.setString(_themePaletteKey, palette.name);
+      await prefs.setBool(
+        _dynamicThemeKey,
+        palette == AppThemePalette.dynamicTheme,
+      );
+    } catch (_) {}
     await _secureStorageService.writeValue(_themePaletteKey, palette.name);
     await _secureStorageService.writeValue(
       _dynamicThemeKey,
@@ -294,15 +432,9 @@ class SessionController {
   }
 
   Future<void> loadLocale({bool notify = true}) async {
-    final stored = await _secureStorageService.readValue(_localeKey);
-    if (stored == null || stored.isEmpty || stored == 'system') {
-      _locale = null;
-    } else if (stored.contains('_') || stored.contains('-')) {
-      final parts = stored.replaceAll('-', '_').split('_');
-      _locale = Locale(parts[0], parts.length > 1 ? parts[1] : null);
-    } else {
-      _locale = Locale(stored);
-    }
+    final cached = _prefs?.getString(_localeKey);
+    final stored = cached ?? await _secureStorageService.readValue(_localeKey);
+    _locale = _parseLocale(stored);
     if (notify) {
       _notifyListeners();
     }
@@ -310,14 +442,17 @@ class SessionController {
 
   Future<void> setLocale(Locale? locale) async {
     _locale = locale;
-    if (locale == null) {
-      await _secureStorageService.writeValue(_localeKey, 'system');
-    } else {
-      final code = locale.countryCode != null && locale.countryCode!.isNotEmpty
-          ? '${locale.languageCode}_${locale.countryCode}'
-          : locale.languageCode;
-      await _secureStorageService.writeValue(_localeKey, code);
-    }
+    final code = locale == null
+        ? 'system'
+        : (locale.countryCode != null && locale.countryCode!.isNotEmpty
+              ? '${locale.languageCode}_${locale.countryCode}'
+              : locale.languageCode);
+    try {
+      final prefs = _prefs ?? await SharedPreferences.getInstance();
+      _prefs = prefs;
+      await prefs.setString(_localeKey, code);
+    } catch (_) {}
+    await _secureStorageService.writeValue(_localeKey, code);
     _notifyListeners();
   }
 
@@ -560,8 +695,17 @@ class SessionController {
         // Guardrail: Reset dashboard state if connection fails to avoid displaying stale data under new profile label
         _dashboardController?.resetState();
         final routerLabel = found.lastKnownHostname ?? found.ipAddress;
+        final target =
+            found.lastKnownHostname != null &&
+                found.lastKnownHostname != found.ipAddress
+            ? '$routerLabel (${found.ipAddress})'
+            : found.ipAddress;
+        final l10n = (context != null && context.mounted)
+            ? AppLocalizations.of(context)
+            : null;
         _setErrorState(
-          'Failed to establish session with $routerLabel (${found.ipAddress}).',
+          l10n?.loginFailedSession(target) ??
+              'Failed to establish session with $target.',
         );
       }
     } finally {
@@ -769,8 +913,12 @@ class SessionController {
         }
         return true;
       } else {
+        final l10n = (context != null && context.mounted)
+            ? AppLocalizations.of(context)
+            : null;
         _setErrorState(
-          'Login Failed: Invalid credentials or host unreachable.',
+          l10n?.loginInvalidCredentials ??
+              'Login Failed: Invalid credentials or host unreachable.',
         );
         _setLoadingState(false);
         _notifyListeners();

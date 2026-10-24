@@ -128,13 +128,13 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
                         icon: const Icon(Icons.troubleshoot_rounded, size: 20),
                         text: l10n?.diagTabHealth ?? 'Health & Diagnostic',
                       ),
-                      const Tab(
-                        icon: Icon(Icons.speed_rounded, size: 20),
-                        text: 'Speed Test',
+                      Tab(
+                        icon: const Icon(Icons.speed_rounded, size: 20),
+                        text: l10n?.diagTabSpeedTest ?? 'Speed Test',
                       ),
-                      const Tab(
-                        icon: Icon(Icons.timer_outlined, size: 20),
-                        text: 'DNS Latency',
+                      Tab(
+                        icon: const Icon(Icons.timer_outlined, size: 20),
+                        text: l10n?.diagTabDnsLatency ?? 'DNS Latency',
                       ),
                       Tab(
                         icon: const Icon(Icons.network_ping, size: 20),

@@ -806,9 +806,12 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
 
                         _buildSwitch(
                           title:
+                              l10n?.isolateWirelessClientsLabel ??
                               l10n?.wifiDetailClientIsolation ??
                               'Client Isolation',
                           subtitle:
+                              l10n?.wifiClientIsolationSubtitle ??
+                              l10n?.isolateWirelessClientsSubtitle ??
                               'Prevents connected Wi-Fi stations from directly communicating with each other',
                           value: _isolateClients,
                           onChanged: (v) => setState(() => _isolateClients = v),
@@ -818,15 +821,17 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                           DropdownButtonFormField<String>(
                             initialValue: _selectedPmf,
                             isExpanded: true,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText:
+                                  l10n?.pmfLabel ??
                                   'Protected Management Frames (PMF / 802.11w)',
-                              prefixIcon: Icon(
+                              prefixIcon: const Icon(
                                 Icons.verified_user_rounded,
                                 size: 20,
                               ),
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                               helperText:
+                                  l10n?.wifiPmfHelperText ??
                                   'Protection against deauthentication attacks',
                             ),
                             items: [
@@ -870,15 +875,19 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                             initialValue: _selectedCipher,
                             isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'Cipher / Encryption Algorithm',
+                              labelText:
+                                  l10n?.cipherAlgorithmLabel ??
+                                  'Cipher / Encryption Algorithm',
                               prefixIcon: const Icon(
                                 Icons.memory_rounded,
                                 size: 20,
                               ),
                               border: const OutlineInputBorder(),
                               helperText: _dynamicCiphers.isNotEmpty
-                                  ? 'Hardware-supported ciphers'
-                                  : 'Auto hardware selection',
+                                  ? (l10n?.wifiCipherHwSupported ??
+                                        'Hardware-supported ciphers')
+                                  : (l10n?.wifiCipherAutoSelection ??
+                                        'Auto hardware selection'),
                             ),
                             items: _buildCipherItems(),
                             onChanged: (val) {
@@ -893,6 +902,7 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         _buildSwitch(
                           title: l10n?.hideBroadcastSsidLabel ?? 'Hidden SSID',
                           subtitle:
+                              l10n?.hideBroadcastSsidSubtitle ??
                               'Do not broadcast SSID name in periodic 802.11 beacon frames',
                           value: _isHidden,
                           onChanged: (v) => setState(() => _isHidden = v),
@@ -901,13 +911,14 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         DropdownButtonFormField<String>(
                           initialValue: _macfilter,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'MAC Filter Mode',
-                            prefixIcon: Icon(
+                          decoration: InputDecoration(
+                            labelText:
+                                l10n?.macFilterModeLabel ?? 'MAC Filter Mode',
+                            prefixIcon: const Icon(
                               Icons.filter_alt_rounded,
                               size: 20,
                             ),
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
                           ),
                           items: [
                             DropdownMenuItem(
@@ -941,15 +952,17 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                             controller: _maclistController,
                             maxLines: 3,
                             onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(
-                              labelText: 'MAC Address List',
+                            decoration: InputDecoration(
+                              labelText:
+                                  l10n?.macListLabel ?? 'MAC Address List',
                               hintText: 'AA:BB:CC:DD:EE:FF\n11:22:33:44:55:66',
-                              prefixIcon: Icon(
+                              prefixIcon: const Icon(
                                 Icons.list_alt_rounded,
                                 size: 20,
                               ),
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                               helperText:
+                                  l10n?.macListHelperText ??
                                   'One MAC per line or separated by comma/space',
                             ),
                           ),
@@ -964,16 +977,22 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         ),
                         const SizedBox(height: 6),
                         _buildSwitch(
-                          title: 'Multicast → Unicast Conversion',
+                          title:
+                              l10n?.multicastToUnicastLabel ??
+                              'Multicast → Unicast Conversion',
                           subtitle:
+                              l10n?.multicastToUnicastSubtitle ??
                               'Converts multicast frames to unicast on air interface for reliability',
                           value: _multicastToUnicast,
                           onChanged: (v) =>
                               setState(() => _multicastToUnicast = v),
                         ),
                         _buildSwitch(
-                          title: 'WDS (Wireless Distribution System)',
+                          title:
+                              l10n?.wdsLabel ??
+                              'WDS (Wireless Distribution System)',
                           subtitle:
+                              l10n?.wdsSubtitle ??
                               'Transparent L2 bridge for multi-AP wireless mesh connections',
                           value: _wds,
                           onChanged: (v) => setState(() => _wds = v),
@@ -988,23 +1007,31 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         ),
                         const SizedBox(height: 6),
                         _buildSwitch(
-                          title: '802.11r Fast BSS Transition',
+                          title:
+                              l10n?.fastBssTransitionLabel ??
+                              '802.11r Fast BSS Transition',
                           subtitle:
+                              l10n?.fastBssTransitionSubtitle ??
                               'Enables seamless client handoff between access points',
                           value: _ieee80211r,
                           onChanged: (v) => setState(() => _ieee80211r = v),
                         ),
                         if (_ieee80211r) ...[
                           _buildSwitch(
-                            title: 'FT over DS',
+                            title: l10n?.ftOverDsLabel ?? 'FT over DS',
                             subtitle:
+                                l10n?.ftOverDsSubtitle ??
                                 'Pre-authenticates over Ethernet backbone',
                             value: _ftOverDs,
                             onChanged: (v) => setState(() => _ftOverDs = v),
                           ),
                           _buildSwitch(
-                            title: 'Generate Local FT PSK Keys',
-                            subtitle: 'Derives roaming keys locally per AP',
+                            title:
+                                l10n?.ftGeneratePskLocalLabel ??
+                                'Generate Local FT PSK Keys',
+                            subtitle:
+                                l10n?.ftGeneratePskLocalSubtitle ??
+                                'Derives roaming keys locally per AP',
                             value: _ftPskGenerateLocal,
                             onChanged: (v) =>
                                 setState(() => _ftPskGenerateLocal = v),
@@ -1013,11 +1040,16 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                           TextFormField(
                             controller: _mobilityDomainController,
                             onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(
-                              labelText: 'Mobility Domain ID',
+                            decoration: InputDecoration(
+                              labelText:
+                                  l10n?.mobilityDomainLabel ??
+                                  'Mobility Domain ID',
                               hintText: '4f4b',
-                              prefixIcon: Icon(Icons.domain_rounded, size: 20),
-                              border: OutlineInputBorder(),
+                              prefixIcon: const Icon(
+                                Icons.domain_rounded,
+                                size: 20,
+                              ),
+                              border: const OutlineInputBorder(),
                             ),
                             maxLength: 4,
                           ),
@@ -1028,6 +1060,7 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                               l10n?.fastTransition80211kLabel ??
                               '802.11k Radio Resource Management',
                           subtitle:
+                              l10n?.fastTransition80211kSubtitle ??
                               'Provides radio measurement reports to accelerate AP roaming decisions',
                           value: _ieee80211k,
                           onChanged: (v) => setState(() => _ieee80211k = v),
@@ -1037,20 +1070,26 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                               l10n?.fastTransition80211vLabel ??
                               '802.11v BSS Transition Management',
                           subtitle:
+                              l10n?.fastTransition80211vSubtitle ??
                               'Allows AP to guide stations to transition to optimal radios',
                           value: _ieee80211v,
                           onChanged: (v) => setState(() => _ieee80211v = v),
                         ),
                         _buildSwitch(
-                          title: 'WMM / QoS Prioritization',
+                          title:
+                              l10n?.wmmQosLabel ?? 'WMM / QoS Prioritization',
                           subtitle:
+                              l10n?.wmmQosSubtitle ??
                               'Wi-Fi Multimedia quality-of-service traffic prioritization',
                           value: _wmmEnabled,
                           onChanged: (v) => setState(() => _wmmEnabled = v),
                         ),
                         _buildSwitch(
-                          title: 'Disassociate Low-ACK Clients',
+                          title:
+                              l10n?.disassocLowAckLabel ??
+                              'Disassociate Low-ACK Clients',
                           subtitle:
+                              l10n?.disassocLowAckSubtitle ??
                               'Disassociates clients with excessive packet loss to conserve airtime',
                           value: _disassocLowAck,
                           onChanged: (v) => setState(() => _disassocLowAck = v),

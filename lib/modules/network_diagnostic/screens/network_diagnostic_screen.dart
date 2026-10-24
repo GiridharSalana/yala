@@ -195,7 +195,7 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
           iconColor = LuciStatusColors.connected;
           statusIcon = Icons.check_circle_rounded;
           statusTitle = l10n?.netDiagHealthyTitle ?? 'Network Healthy';
-          statusSummary = report.overallSummary;
+          statusSummary = _getLocalizedSummary(report.overallSummary, l10n);
           break;
         case DiagnosticStatus.degraded:
         case DiagnosticStatus.suspected:
@@ -206,7 +206,7 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
           statusTitle = report.overallStatus == DiagnosticStatus.degraded
               ? (l10n?.netDiagDegradedTitle ?? 'Connectivity Degraded')
               : (l10n?.netDiagSuspectedTitle ?? 'Suspected Issue');
-          statusSummary = report.overallSummary;
+          statusSummary = _getLocalizedSummary(report.overallSummary, l10n);
           break;
         case DiagnosticStatus.failureConfirmed:
           headerBg = LuciStatusColors.error.withValues(alpha: 0.12);
@@ -215,7 +215,7 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
           statusIcon = Icons.error_outline_rounded;
           statusTitle =
               l10n?.netDiagIssueDetectedTitle ?? 'Connectivity Issue Detected';
-          statusSummary = report.overallSummary;
+          statusSummary = _getLocalizedSummary(report.overallSummary, l10n);
           break;
         case DiagnosticStatus.inconclusive:
         case DiagnosticStatus.notTested:
@@ -226,7 +226,7 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
           iconColor = LuciStatusColors.inactive;
           statusIcon = Icons.help_outline_rounded;
           statusTitle = _getLocalizedStatusLabel(report.overallStatus, l10n);
-          statusSummary = report.overallSummary;
+          statusSummary = _getLocalizedSummary(report.overallSummary, l10n);
           break;
       }
     }
@@ -387,7 +387,7 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    finding.title,
+                    _getLocalizedFindingTitle(finding, l10n),
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -418,7 +418,7 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              finding.description,
+              _getLocalizedFindingDesc(finding, l10n),
               style: theme.textTheme.bodyMedium?.copyWith(
                 height: 1.4,
                 color: theme.colorScheme.onSurface,
@@ -443,7 +443,7 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
                       Text('• ', style: TextStyle(color: badgeColor)),
                       Expanded(
                         child: Text(
-                          ev,
+                          _getLocalizedEvidence(ev, l10n),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -594,11 +594,11 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
           childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
           leading: Icon(statusIcon, color: statusColor, size: 22),
           title: Text(
-            test.title,
+            _getLocalizedTestTitle(test, l10n),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           subtitle: Text(
-            test.explanation,
+            _getLocalizedTestExplanation(test, l10n),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -635,7 +635,7 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    test.whyItMatters,
+                    _getLocalizedTestWhyItMatters(test, l10n),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -833,6 +833,247 @@ class NetworkDiagnosticScreen extends ConsumerWidget {
         return l10n.netDiagConfidenceLow;
       case DiagnosticConfidence.inconclusive:
         return l10n.netDiagStatusInconclusive;
+    }
+  }
+
+  static String _getLocalizedSummary(String summary, AppLocalizations? l10n) {
+    if (summary ==
+        'Internet connection is operational. Router reachability and DNS resolution verified.') {
+      return l10n?.netDiagSummaryHealthy ?? summary;
+    }
+    return summary;
+  }
+
+  static String _getLocalizedFindingTitle(
+    RootCauseFinding finding,
+    AppLocalizations? l10n,
+  ) {
+    switch (finding.id) {
+      case 'ipv6_not_configured':
+        return l10n?.netDiagFindingIpv4OnlyTitle ?? finding.title;
+      case 'router_healthy_client_unverified':
+        return l10n?.netDiagFindingRouterReachabilityTitle ?? finding.title;
+      default:
+        return finding.title;
+    }
+  }
+
+  static String _getLocalizedFindingDesc(
+    RootCauseFinding finding,
+    AppLocalizations? l10n,
+  ) {
+    switch (finding.id) {
+      case 'ipv6_not_configured':
+        return l10n?.netDiagFindingIpv4OnlyDesc ?? finding.description;
+      case 'router_healthy_client_unverified':
+        return l10n?.netDiagFindingRouterReachabilityDesc ??
+            finding.description;
+      default:
+        return finding.description;
+    }
+  }
+
+  static String _getLocalizedEvidence(String evidence, AppLocalizations? l10n) {
+    if (evidence ==
+        'No global unicast IPv6 address found on active interfaces.') {
+      return l10n?.netDiagEvidenceNoIpv6 ?? evidence;
+    }
+    if (evidence == 'All router-originated connectivity probes passed.') {
+      return l10n?.netDiagEvidenceAllProbesPassed ?? evidence;
+    }
+    if (evidence ==
+        'LAN-to-WAN forwarding policy verified in firewall configuration.') {
+      return l10n?.netDiagEvidenceLanWanForwardingOk ?? evidence;
+    }
+    return evidence;
+  }
+
+  static String _getLocalizedTestTitle(
+    DiagnosticTestResult test,
+    AppLocalizations? l10n,
+  ) {
+    if (l10n == null) return test.title;
+    switch (test.id) {
+      case 'router_management_api':
+        return l10n.netDiagTestMgmtTitle;
+      case 'wan_interface_state':
+        return l10n.netDiagTestUplinkTitle;
+      case 'default_route_verification':
+        return l10n.netDiagTestRouteTitle;
+      case 'gateway_reachability':
+        return l10n.netDiagTestGatewayTitle;
+      case 'dns_resolution_checks':
+      case 'dns_resolution':
+        return l10n.netDiagTestDnsTitle;
+      case 'ipv4_external_reachability':
+        return l10n.netDiagTestIpv4Title;
+      case 'ipv6_external_reachability':
+        return l10n.netDiagTestIpv6Title;
+      case 'lan_forwarding_nat':
+      case 'client_forwarding_policy':
+        return l10n.netDiagTestForwardingTitle;
+      case 'path_mtu_fragmentation':
+      case 'path_mtu_check':
+        return l10n.netDiagTestMtuTitle;
+      default:
+        return test.title;
+    }
+  }
+
+  static String _getLocalizedTestExplanation(
+    DiagnosticTestResult test,
+    AppLocalizations? l10n,
+  ) {
+    if (l10n == null) return test.explanation;
+
+    final exp = test.explanation;
+    if (exp.startsWith('Skipped: ')) {
+      return l10n.netDiagTestSkipped(exp.substring(9));
+    }
+
+    switch (test.id) {
+      case 'router_management_api':
+        if (test.status == DiagnosticStatus.healthy) {
+          return l10n.netDiagTestMgmtDescHealthy;
+        } else if (test.status == DiagnosticStatus.failureConfirmed) {
+          return l10n.netDiagTestMgmtDescFailed;
+        }
+        break;
+
+      case 'wan_interface_state':
+        final upMatch = RegExp(
+          r'^Active uplink "([^"]+)" is up with protocol ([^.]+)\.',
+        ).firstMatch(exp);
+        if (upMatch != null) {
+          return l10n.netDiagTestUplinkDescUp(
+            upMatch.group(1)!,
+            upMatch.group(2)!,
+          );
+        }
+        if (exp.contains('is down') || exp.contains('disconnected')) {
+          return l10n.netDiagTestUplinkDescDown;
+        }
+        break;
+
+      case 'default_route_verification':
+        if (test.status == DiagnosticStatus.healthy) {
+          return l10n.netDiagTestRouteDescHealthy;
+        } else if (test.status == DiagnosticStatus.failureConfirmed) {
+          return l10n.netDiagTestRouteDescFailed;
+        }
+        break;
+
+      case 'gateway_reachability':
+        final gwMatch = RegExp(
+          r'^Upstream gateway \(([^)]+)\) is reachable \(RTT: ([^ ]+) ms\)\.',
+        ).firstMatch(exp);
+        if (gwMatch != null) {
+          return l10n.netDiagTestGatewayDescReachable(
+            gwMatch.group(1)!,
+            gwMatch.group(2)!,
+          );
+        }
+        final noRespMatch = RegExp(
+          r'^Upstream gateway \(([^)]+)\) did not respond to ICMP ping',
+        ).firstMatch(exp);
+        if (noRespMatch != null) {
+          return l10n.netDiagTestGatewayDescNoResponse(noRespMatch.group(1)!);
+        }
+        if (exp.contains('PPPoE point-to-point link')) {
+          return l10n.netDiagTestGatewayDescPppoe;
+        }
+        if (exp.contains('No upstream gateway IP could be verified') ||
+            exp.contains('No gateway IP was identified')) {
+          return l10n.netDiagTestGatewayDescNoGw;
+        }
+        break;
+
+      case 'dns_resolution_checks':
+      case 'dns_resolution':
+        if (test.status == DiagnosticStatus.healthy) {
+          return l10n.netDiagTestDnsDescHealthy;
+        } else if (test.status == DiagnosticStatus.failureConfirmed) {
+          return l10n.netDiagTestDnsDescFailed;
+        }
+        break;
+
+      case 'ipv4_external_reachability':
+        final v4Match = RegExp(
+          r'^Direct IPv4 external connectivity verified across all test endpoints \(min RTT: ([^ ]+) ms\)\.',
+        ).firstMatch(exp);
+        if (v4Match != null) {
+          return l10n.netDiagTestIpv4DescHealthy(v4Match.group(1)!);
+        }
+        if (test.status == DiagnosticStatus.failureConfirmed) {
+          return l10n.netDiagTestIpv4DescFailed;
+        }
+        break;
+
+      case 'ipv6_external_reachability':
+        if (exp.contains('IPv4-only network') ||
+            exp.contains('IPv6 is not configured')) {
+          return l10n.netDiagTestIpv6DescNotConfigured;
+        }
+        final v6Match = RegExp(r'min RTT: ([^ ]+) ms').firstMatch(exp);
+        if (v6Match != null) {
+          return l10n.netDiagTestIpv6DescVerified(v6Match.group(1)!);
+        }
+        if (test.status == DiagnosticStatus.failureConfirmed) {
+          return l10n.netDiagTestIpv6DescFailed;
+        }
+        break;
+
+      case 'lan_forwarding_nat':
+      case 'client_forwarding_policy':
+        if (test.status == DiagnosticStatus.healthy) {
+          return l10n.netDiagTestForwardingDescHealthy;
+        } else if (test.status == DiagnosticStatus.failureConfirmed) {
+          return l10n.netDiagTestForwardingDescFailed;
+        }
+        break;
+
+      case 'path_mtu_fragmentation':
+      case 'path_mtu_check':
+        if (test.status == DiagnosticStatus.healthy) {
+          return l10n.netDiagTestMtuDescHealthy;
+        } else if (test.status == DiagnosticStatus.failureConfirmed) {
+          return l10n.netDiagTestMtuDescFailed;
+        }
+        break;
+    }
+
+    return exp;
+  }
+
+  static String _getLocalizedTestWhyItMatters(
+    DiagnosticTestResult test,
+    AppLocalizations? l10n,
+  ) {
+    if (l10n == null) return test.whyItMatters;
+    switch (test.id) {
+      case 'router_management_api':
+        return l10n.netDiagTestMgmtWhy;
+      case 'wan_interface_state':
+        return l10n.netDiagTestUplinkWhy;
+      case 'default_route_verification':
+        return l10n.netDiagTestRouteWhy;
+      case 'gateway_reachability':
+        return l10n.netDiagTestGatewayWhy;
+      case 'dns_resolution_checks':
+      case 'dns_resolution':
+        return l10n.netDiagTestDnsWhy;
+      case 'ipv4_external_reachability':
+        return l10n.netDiagTestIpv4Why;
+      case 'ipv6_external_reachability':
+        return l10n.netDiagTestIpv6Why;
+      case 'lan_forwarding_nat':
+      case 'client_forwarding_policy':
+        return l10n.netDiagTestForwardingWhy;
+      case 'path_mtu_fragmentation':
+      case 'path_mtu_check':
+        return l10n.netDiagTestMtuWhy;
+      default:
+        return test.whyItMatters;
     }
   }
 }

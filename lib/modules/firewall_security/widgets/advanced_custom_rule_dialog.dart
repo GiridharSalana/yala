@@ -273,6 +273,7 @@ class _AdvancedCustomRuleDialogState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
     final capabilities = appState.capabilities;
     final supportsIpv6 = capabilities?.supportsIpv6InternetFirewall ?? false;
@@ -296,7 +297,9 @@ class _AdvancedCustomRuleDialogState
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _isEditing ? 'Edit Security Rule' : 'Add Security Rule',
+              _isEditing
+                  ? (l10n?.firewallEditRuleTitle ?? 'Edit Security Rule')
+                  : (l10n?.firewallAddRuleTitle ?? 'Add Security Rule'),
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
@@ -351,15 +354,19 @@ class _AdvancedCustomRuleDialogState
                       flex: 6,
                       child: TextFormField(
                         controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Rule Name *',
-                          hintText: 'e.g. Block IoT to WAN',
-                          prefixIcon: Icon(Icons.label_outline),
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText:
+                              l10n?.firewallRuleNameLabel ?? 'Rule Name *',
+                          hintText:
+                              l10n?.firewallRuleNameHint ??
+                              'e.g. Block IoT to WAN',
+                          prefixIcon: const Icon(Icons.label_outline),
+                          border: const OutlineInputBorder(),
                         ),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
-                            return 'Please enter rule name.';
+                            return l10n?.firewallRuleNameRequired ??
+                                'Please enter rule name.';
                           }
                           return null;
                         },
@@ -370,9 +377,11 @@ class _AdvancedCustomRuleDialogState
                       flex: 4,
                       child: DropdownButtonFormField<String>(
                         initialValue: _target,
-                        decoration: const InputDecoration(
-                          labelText: 'Action / Target',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText:
+                              l10n?.firewallRuleActionLabel ??
+                              'Action / Target',
+                          border: const OutlineInputBorder(),
                         ),
                         items: const [
                           DropdownMenuItem(
@@ -422,14 +431,19 @@ class _AdvancedCustomRuleDialogState
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _srcZone,
-                        decoration: const InputDecoration(
-                          labelText: 'Source Zone',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText:
+                              l10n?.firewallSourceZoneLabel ?? 'Source Zone',
+                          border: const OutlineInputBorder(),
                         ),
                         items: zoneOptions.map((z) {
                           return DropdownMenuItem(
                             value: z,
-                            child: Text(z == '*' ? 'Any (*)' : z.toUpperCase()),
+                            child: Text(
+                              z == '*'
+                                  ? (l10n?.firewallZoneAny ?? 'Any (*)')
+                                  : z.toUpperCase(),
+                            ),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -441,14 +455,20 @@ class _AdvancedCustomRuleDialogState
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _destZone,
-                        decoration: const InputDecoration(
-                          labelText: 'Destination Zone',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText:
+                              l10n?.firewallDestinationZoneLabel ??
+                              'Destination Zone',
+                          border: const OutlineInputBorder(),
                         ),
                         items: zoneOptions.map((z) {
                           return DropdownMenuItem(
                             value: z,
-                            child: Text(z == '*' ? 'Any (*)' : z.toUpperCase()),
+                            child: Text(
+                              z == '*'
+                                  ? (l10n?.firewallZoneAny ?? 'Any (*)')
+                                  : z.toUpperCase(),
+                            ),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -467,10 +487,13 @@ class _AdvancedCustomRuleDialogState
                     Expanded(
                       child: TextFormField(
                         controller: _srcIpController,
-                        decoration: const InputDecoration(
-                          labelText: 'Source IP / CIDR',
-                          hintText: 'e.g. 192.168.1.50 or /24',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText:
+                              l10n?.firewallSourceIpLabel ?? 'Source IP / CIDR',
+                          hintText:
+                              l10n?.firewallSourceIpHint ??
+                              'e.g. 192.168.1.50 or /24',
+                          border: const OutlineInputBorder(),
                         ),
                         validator: (v) {
                           if (v != null &&
@@ -486,10 +509,11 @@ class _AdvancedCustomRuleDialogState
                     Expanded(
                       child: TextFormField(
                         controller: _srcMacController,
-                        decoration: const InputDecoration(
-                          labelText: 'Source MAC',
+                        decoration: InputDecoration(
+                          labelText:
+                              l10n?.firewallSourceMacLabel ?? 'Source MAC',
                           hintText: 'e.g. AA:BB:CC:DD:EE:FF',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
                         ),
                         validator: (v) {
                           if (v != null && v.trim().isNotEmpty) {
@@ -515,10 +539,12 @@ class _AdvancedCustomRuleDialogState
                     Expanded(
                       child: TextFormField(
                         controller: _destIpController,
-                        decoration: const InputDecoration(
-                          labelText: 'Destination IP / CIDR',
+                        decoration: InputDecoration(
+                          labelText:
+                              l10n?.firewallDestIpLabel ??
+                              'Destination IP / CIDR',
                           hintText: 'e.g. 10.0.0.1 or /24',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
                         ),
                         validator: (v) {
                           if (v != null &&
@@ -534,10 +560,11 @@ class _AdvancedCustomRuleDialogState
                     Expanded(
                       child: TextFormField(
                         controller: _destPortController,
-                        decoration: const InputDecoration(
-                          labelText: 'Destination Port',
+                        decoration: InputDecoration(
+                          labelText:
+                              l10n?.firewallDestPortLabel ?? 'Destination Port',
                           hintText: 'e.g. 80, 443, 8000-8080',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
                         ),
                         validator: (v) {
                           if (v != null &&
@@ -560,9 +587,9 @@ class _AdvancedCustomRuleDialogState
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: _proto,
-                        decoration: const InputDecoration(
-                          labelText: 'Protocol',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n?.firewallProtocolLabel ?? 'Protocol',
+                          border: const OutlineInputBorder(),
                         ),
                         items: const [
                           DropdownMenuItem(value: 'any', child: Text('Any')),
@@ -584,26 +611,31 @@ class _AdvancedCustomRuleDialogState
                       child: DropdownButtonFormField<String>(
                         initialValue: _family,
                         decoration: InputDecoration(
-                          labelText: 'IP Family',
+                          labelText: l10n?.firewallIpFamilyLabel ?? 'IP Family',
                           border: const OutlineInputBorder(),
                           helperText: !supportsIpv6
-                              ? 'IPv6 not supported'
+                              ? (l10n?.firewallIpv6NotSupported ??
+                                    'IPv6 not supported')
                               : null,
                         ),
                         items: [
-                          const DropdownMenuItem(
+                          DropdownMenuItem(
                             value: 'any',
-                            child: Text('Any (IPv4+IPv6)'),
+                            child: Text(
+                              l10n?.firewallFamilyAny ?? 'Any (IPv4+IPv6)',
+                            ),
                           ),
-                          const DropdownMenuItem(
+                          DropdownMenuItem(
                             value: 'ipv4',
-                            child: Text('IPv4 only'),
+                            child: Text(
+                              l10n?.firewallFamilyIpv4Only ?? 'IPv4 only',
+                            ),
                           ),
                           DropdownMenuItem(
                             value: 'ipv6',
                             enabled: supportsIpv6,
                             child: Text(
-                              'IPv6 only',
+                              l10n?.firewallFamilyIpv6Only ?? 'IPv6 only',
                               style: TextStyle(
                                 color: !supportsIpv6 ? Colors.grey : null,
                               ),
@@ -621,9 +653,10 @@ class _AdvancedCustomRuleDialogState
 
                 // Enabled Switch
                 SwitchListTile.adaptive(
-                  title: const Text('Rule Enabled'),
-                  subtitle: const Text(
-                    'Activate this security rule immediately',
+                  title: Text(l10n?.firewallRuleEnabledLabel ?? 'Rule Enabled'),
+                  subtitle: Text(
+                    l10n?.firewallRuleEnabledSubtitle ??
+                        'Activate this security rule immediately',
                   ),
                   value: _enabled,
                   contentPadding: EdgeInsets.zero,
@@ -637,7 +670,7 @@ class _AdvancedCustomRuleDialogState
       actions: [
         TextButton(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n?.firewallBtnCancel ?? 'Cancel'),
         ),
         FilledButton.icon(
           onPressed: _isSubmitting ? null : _handleSubmit,
@@ -648,7 +681,11 @@ class _AdvancedCustomRuleDialogState
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Icon(_isEditing ? Icons.save : Icons.add_moderator),
-          label: Text(_isEditing ? 'Save Changes' : 'Add Security Rule'),
+          label: Text(
+            _isEditing
+                ? (l10n?.firewallBtnSaveChanges ?? 'Save Changes')
+                : (l10n?.firewallBtnCreateRule ?? 'Create Rule'),
+          ),
         ),
       ],
     );

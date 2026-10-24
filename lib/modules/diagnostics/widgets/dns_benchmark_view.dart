@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../design/luci_design_system.dart';
+import '../../../l10n/app_localizations.dart';
 import '../controllers/dns_benchmark_controller.dart';
 import '../models/dns_benchmark_models.dart';
 
@@ -42,6 +43,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
     final controller = ref.read(dnsBenchmarkControllerProvider.notifier);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     final isTested = state.lastRunTimestamp != null;
     final fastestId = state.fastestProvider?.provider.id;
@@ -55,7 +57,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 1. Vantage Point & Protocol Selector
-          _buildVantageSelector(context, state, controller),
+          _buildVantageSelector(context, state, controller, l10n),
           const SizedBox(height: LuciSpacing.md),
 
           // 2. Action Button (Run / Cancel) - Positioned ABOVE Current Router DNS per user requirement
@@ -63,7 +65,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
             OutlinedButton.icon(
               onPressed: () => controller.cancelBenchmark(),
               icon: const Icon(Icons.cancel_rounded),
-              label: const Text('Cancel DNS Benchmark'),
+              label: Text(l10n?.dnsBenchBtnCancel ?? 'Cancel DNS Benchmark'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: colorScheme.error,
                 side: BorderSide(color: colorScheme.error),
@@ -78,7 +80,9 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
               onPressed: () => controller.startBenchmark(),
               icon: const Icon(Icons.timer_outlined),
               label: Text(
-                isTested ? 'Run DNS Benchmark Again' : 'Run DNS Benchmark',
+                isTested
+                    ? (l10n?.dnsBenchBtnRerun ?? 'Run DNS Benchmark Again')
+                    : (l10n?.dnsBenchBtnRun ?? 'Run DNS Benchmark'),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
@@ -94,11 +98,11 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
           const SizedBox(height: LuciSpacing.md),
 
           // 3. Custom DNS Resolver Card (Toggleable; user input required)
-          _buildCustomDnsCard(context, state, controller),
+          _buildCustomDnsCard(context, state, controller, l10n),
           const SizedBox(height: LuciSpacing.md),
 
           // 4. Current Router DNS Card (Pinned baseline comparator)
-          _buildRouterDnsCard(context, state),
+          _buildRouterDnsCard(context, state, l10n),
           const SizedBox(height: LuciSpacing.md),
 
           // 5. Section Header & Sorting Indicator
@@ -106,7 +110,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'PUBLIC DNS RESOLVERS',
+                l10n?.dnsBenchPublicResolversHeader ?? 'PUBLIC DNS RESOLVERS',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
@@ -121,7 +125,9 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  isTested ? 'Lowest latency' : 'A-Z',
+                  isTested
+                      ? (l10n?.dnsBenchSortLowestLatency ?? 'Lowest latency')
+                      : (l10n?.dnsBenchSortAlphabetical ?? 'A-Z'),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -148,6 +154,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
               isFastest: isFastest,
               isActive:
                   state.isRunning && state.activeProviderId == item.provider.id,
+              l10n: l10n,
             );
           }),
           const SizedBox(height: LuciSpacing.md),
@@ -174,7 +181,8 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                     ),
                     const SizedBox(width: LuciSpacing.xs),
                     Text(
-                      'Fair Comparison & Protocol Notice',
+                      l10n?.dnsBenchDisclaimerTitle ??
+                          'Fair Comparison & Protocol Notice',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -185,9 +193,9 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                 ),
                 const SizedBox(height: LuciSpacing.xs),
                 Text(
-                  '• Query protocol: ${state.protocol.label} for controlled domain lookups.\n'
-                  '• Latency reflects the median response time under current network conditions.\n'
-                  '• "Fastest measured in this test" highlights low network RTT, but overall DNS choice should also consider privacy policies, malware blocking, parental controls, and DNSSEC validation.',
+                  '${l10n?.dnsBenchDisclaimer1(state.protocol.label) ?? '• Query protocol: ${state.protocol.label} for controlled domain lookups.'}\n'
+                  '${l10n?.dnsBenchDisclaimer2 ?? '• Latency reflects the median response time under current network conditions.'}\n'
+                  '${l10n?.dnsBenchDisclaimer3 ?? '• "Fastest measured in this test" highlights low network RTT, but overall DNS choice should also consider privacy policies, malware blocking, parental controls, and DNSSEC validation.'}',
                   style: TextStyle(
                     fontSize: 11,
                     height: 1.4,
@@ -197,7 +205,14 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                 if (state.lastRunTimestamp != null) ...[
                   const Divider(height: 16),
                   Text(
-                    'Last tested: ${state.lastRunTimestamp!.toLocal().toString().split('.').first}',
+                    l10n?.dnsBenchLastTested(
+                          state.lastRunTimestamp!
+                              .toLocal()
+                              .toString()
+                              .split('.')
+                              .first,
+                        ) ??
+                        'Last tested: ${state.lastRunTimestamp!.toLocal().toString().split('.').first}',
                     style: TextStyle(
                       fontSize: 11,
                       fontStyle: FontStyle.italic,
@@ -217,6 +232,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
     BuildContext context,
     DnsBenchmarkState state,
     DnsBenchmarkController controller,
+    AppLocalizations? l10n,
   ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -237,7 +253,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'TEST VANTAGE POINT',
+                l10n?.dnsBenchVantageHeader ?? 'TEST VANTAGE POINT',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 11,
@@ -257,16 +273,18 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
           ),
           const SizedBox(height: LuciSpacing.xs),
           SegmentedButton<DnsVantagePoint>(
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: DnsVantagePoint.clientDevice,
-                label: Text('From This Device (Wi-Fi)'),
-                icon: Icon(Icons.phone_android_rounded, size: 16),
+                label: Text(
+                  l10n?.dnsBenchVantageDevice ?? 'From This Device (Wi-Fi)',
+                ),
+                icon: const Icon(Icons.phone_android_rounded, size: 16),
               ),
               ButtonSegment(
                 value: DnsVantagePoint.router,
-                label: Text('From Router (WAN)'),
-                icon: Icon(Icons.router_rounded, size: 16),
+                label: Text(l10n?.dnsBenchVantageRouter ?? 'From Router (WAN)'),
+                icon: const Icon(Icons.router_rounded, size: 16),
               ),
             ],
             selected: {state.vantagePoint},
@@ -288,8 +306,10 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                 Expanded(
                   child: Text(
                     state.vantagePoint == DnsVantagePoint.clientDevice
-                        ? 'Measures end-to-end response time experienced by your phone.'
-                        : 'Measures direct router-to-server latency (ideal for choosing upstream DNS in router settings).',
+                        ? (l10n?.dnsBenchVantageDeviceDesc ??
+                              'Measures end-to-end response time experienced by your phone.')
+                        : (l10n?.dnsBenchVantageRouterDesc ??
+                              'Measures WAN query latency directly from the router to DNS servers.'),
                     style: TextStyle(
                       fontSize: 11,
                       color: colorScheme.onSurfaceVariant,
@@ -308,6 +328,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
     BuildContext context,
     DnsBenchmarkState state,
     DnsBenchmarkController controller,
+    AppLocalizations? l10n,
   ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -353,12 +374,13 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                     : colorScheme.onSurfaceVariant,
               ),
             ),
-            title: const Text(
-              'Custom DNS Resolver',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            title: Text(
+              l10n?.dnsBenchCustomTitle ?? 'Custom DNS Resolver',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             subtitle: Text(
-              'Benchmark your own DNS server alongside public providers',
+              l10n?.dnsBenchCustomSubtitle ??
+                  'Benchmark your own DNS server alongside public providers',
               style: TextStyle(
                 fontSize: 11,
                 color: colorScheme.onSurfaceVariant,
@@ -378,12 +400,16 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                 enabled: !state.isRunning,
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(
-                  labelText: 'DNS Server IP Address',
-                  hintText: 'e.g. 1.1.1.2 or 94.140.14.14',
+                  labelText:
+                      l10n?.dnsBenchCustomIpLabel ?? 'DNS Server IP Address',
+                  hintText:
+                      l10n?.dnsBenchCustomIpHint ??
+                      'e.g. 1.1.1.2 or 94.140.14.14',
                   isDense: true,
                   prefixIcon: const Icon(Icons.dns_rounded, size: 18),
                   errorText: ipText.isNotEmpty && !isValidIp
-                      ? 'Enter a valid IPv4 or IPv6 address'
+                      ? (l10n?.dnsBenchCustomIpError ??
+                            'Enter a valid IPv4 or IPv6 address')
                       : null,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -400,7 +426,11 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
     );
   }
 
-  Widget _buildRouterDnsCard(BuildContext context, DnsBenchmarkState state) {
+  Widget _buildRouterDnsCard(
+    BuildContext context,
+    DnsBenchmarkState state,
+    AppLocalizations? l10n,
+  ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final rResult = state.routerResult;
@@ -412,8 +442,12 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
         rResult.medianLatencyMs != null;
 
     final noteText = state.vantagePoint == DnsVantagePoint.clientDevice
-        ? 'Local cache response via ${config?.localEndpoint ?? 'router'}'
-        : 'Direct upstream lookup from router';
+        ? (l10n?.dnsBenchRouterDnsLocalCache(
+                config?.localEndpoint ?? 'router',
+              ) ??
+              'Local cache response via ${config?.localEndpoint ?? 'router'}')
+        : (l10n?.dnsBenchRouterDnsUpstream ??
+              'Direct upstream lookup from router');
 
     return Container(
       padding: const EdgeInsets.all(LuciSpacing.md),
@@ -449,15 +483,17 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Current Router DNS',
-                        style: TextStyle(
+                      Text(
+                        l10n?.dnsBenchRouterDnsTitle ?? 'Current Router DNS',
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
                       ),
                       Text(
-                        config?.localEndpoint ?? 'Resolving router config...',
+                        config?.localEndpoint ??
+                            (l10n?.dnsBenchRouterDnsResolving ??
+                                'Resolving router config...'),
                         style: TextStyle(
                           fontSize: 11,
                           color: colorScheme.onSurfaceVariant,
@@ -486,6 +522,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                 _buildStatusChip(
                   context,
                   rResult?.status ?? DnsBenchmarkStatus.untested,
+                  l10n,
                 ),
             ],
           ),
@@ -531,6 +568,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
     required int? rank,
     required bool isFastest,
     required bool isActive,
+    AppLocalizations? l10n,
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -628,9 +666,10 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                               color: Colors.green.shade600,
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
-                              'Fastest measured in this test',
-                              style: TextStyle(
+                            child: Text(
+                              l10n?.dnsBenchStatusFastest ??
+                                  'Fastest measured in this test',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
@@ -684,7 +723,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               else
-                _buildStatusChip(context, item.status),
+                _buildStatusChip(context, item.status, l10n),
             ],
           ),
           if (item.errorMessage != null && !hasLatency) ...[
@@ -701,38 +740,52 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
     );
   }
 
-  Widget _buildStatusChip(BuildContext context, DnsBenchmarkStatus status) {
+  Widget _buildStatusChip(
+    BuildContext context,
+    DnsBenchmarkStatus status,
+    AppLocalizations? l10n,
+  ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     Color bg;
     Color fg;
+    String label;
 
     switch (status) {
       case DnsBenchmarkStatus.untested:
         bg = colorScheme.surfaceContainerHighest;
         fg = colorScheme.onSurfaceVariant;
+        label = l10n?.dnsBenchStatusUntested ?? status.label;
         break;
       case DnsBenchmarkStatus.testing:
         bg = colorScheme.primaryContainer;
         fg = colorScheme.onPrimaryContainer;
+        label = l10n?.dnsBenchStatusTesting ?? status.label;
         break;
       case DnsBenchmarkStatus.success:
       case DnsBenchmarkStatus.partial:
         bg = Colors.green.shade100;
         fg = Colors.green.shade900;
+        label = status.label;
         break;
       case DnsBenchmarkStatus.timeout:
+        bg = colorScheme.errorContainer;
+        fg = colorScheme.onErrorContainer;
+        label = l10n?.dnsBenchStatusTimeout ?? status.label;
+        break;
       case DnsBenchmarkStatus.refused:
       case DnsBenchmarkStatus.unreachable:
       case DnsBenchmarkStatus.serverError:
         bg = colorScheme.errorContainer;
         fg = colorScheme.onErrorContainer;
+        label = l10n?.dnsBenchStatusFailed ?? status.label;
         break;
       case DnsBenchmarkStatus.unsupported:
       case DnsBenchmarkStatus.configRequired:
         bg = Colors.amber.shade100;
         fg = Colors.amber.shade900;
+        label = status.label;
         break;
     }
 
@@ -743,7 +796,7 @@ class _DnsBenchmarkViewState extends ConsumerState<DnsBenchmarkView> {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        status.label,
+        label,
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: fg),
       ),
     );

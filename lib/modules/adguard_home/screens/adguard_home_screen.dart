@@ -177,7 +177,9 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
                 final confirmed = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Delete Instance Profile?'),
+                    title: Text(
+                      l10n?.aghDeleteProfileTitle ?? 'Delete Instance Profile?',
+                    ),
                     content: Text(
                       'Are you sure you want to delete profile "${profileToDelete.name}"? Stored credentials for this instance will be permanently removed.',
                     ),
@@ -185,7 +187,7 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
                       TextButton(
                         key: const Key('agh_delete_profile_cancel_button'),
                         onPressed: () => Navigator.of(ctx).pop(false),
-                        child: const Text('Cancel'),
+                        child: Text(l10n?.actionCancel ?? 'Cancel'),
                       ),
                       FilledButton(
                         key: const Key('agh_delete_profile_confirm_button'),
@@ -194,7 +196,7 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
                           foregroundColor: Theme.of(ctx).colorScheme.onError,
                         ),
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Delete'),
+                        child: Text(l10n?.actionDelete ?? 'Delete'),
                       ),
                     ],
                   ),
@@ -262,14 +264,19 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
                   );
                 }),
                 const PopupMenuDivider(),
-                const PopupMenuItem<String>(
-                  key: Key('agh_add_external_profile_button'),
+                PopupMenuItem<String>(
+                  key: const Key('agh_add_external_profile_button'),
                   value: 'add_external',
                   child: Row(
                     children: [
-                      Icon(Icons.add_rounded, size: 18),
-                      SizedBox(width: 8),
-                      Expanded(child: Text('Add External Instance')),
+                      const Icon(Icons.add_rounded, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n?.aghAddExternalInstance ??
+                              'Add External Instance',
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -278,11 +285,16 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
                   PopupMenuItem<String>(
                     key: const Key('agh_edit_active_profile_button'),
                     value: 'edit_${state.activeProfile!.id}',
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.edit_outlined, size: 18),
-                        SizedBox(width: 8),
-                        Expanded(child: Text('Edit Current Profile')),
+                        const Icon(Icons.edit_outlined, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l10n?.aghEditCurrentProfile ??
+                                'Edit Current Profile',
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -599,16 +611,17 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'AdGuard Home Unreachable',
+              l10n?.aghUnreachableTitle ?? 'AdGuard Home Unreachable',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              state.statusError ??
-                  state.generalError ??
-                  'Unable to connect to AdGuard Home. Verify host address, port, and network availability.',
+              _getLocalizedAghError(
+                state.statusError ?? state.generalError,
+                l10n,
+              ),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -649,7 +662,8 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'AdGuard Home Management',
+                              l10n?.aghManagementTitle ??
+                                  'AdGuard Home Management',
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -659,9 +673,10 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'YALA manages existing AdGuard Home instances and does not install software on the router.\n\n'
-                        '• Router-local instance: Install and configure AdGuard Home independently (via SSH or your package manager), ensure the service is running, then tap Retry.\n'
-                        '• External instance: If running AdGuard Home on a Raspberry Pi, NAS, or server, add an external profile.',
+                        l10n?.aghManagementGuide ??
+                            'YALA manages existing AdGuard Home instances and does not install software on the router.\n\n'
+                                '• Router-local instance: Install and configure AdGuard Home independently (via SSH or your package manager), ensure the service is running, then tap Retry.\n'
+                                '• External instance: If running AdGuard Home on a Raspberry Pi, NAS, or server, add an external profile.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                           height: 1.4,
@@ -677,7 +692,10 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
                             controller: controller,
                           ),
                           icon: const Icon(Icons.add_link_rounded, size: 18),
-                          label: const Text('Add External Profile'),
+                          label: Text(
+                            l10n?.aghAddExternalProfile ??
+                                'Add External Profile',
+                          ),
                         ),
                       ),
                     ],
@@ -690,6 +708,18 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
         ),
       ),
     );
+  }
+
+  String _getLocalizedAghError(String? raw, AppLocalizations? l10n) {
+    if (raw == null) {
+      return l10n?.aghNetworkErrorSubtitle ??
+          'Network connection failure communicating with AdGuard Home';
+    }
+    if (raw.contains('Network connection failure') ||
+        raw.contains('failure communicating')) {
+      return l10n?.aghNetworkErrorSubtitle ?? raw;
+    }
+    return raw;
   }
 
   Widget _buildAuthRequiredBanner(

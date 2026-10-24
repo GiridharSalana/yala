@@ -1305,16 +1305,18 @@ class _EditSsidDialogState extends ConsumerState<EditSsidDialog> {
 
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'Multicast → Unicast Conversion',
-                                    style: TextStyle(
+                                  title: Text(
+                                    l10n?.multicastToUnicastLabel ??
+                                        'Multicast → Unicast Conversion',
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  subtitle: const Text(
-                                    'Converts multicast frames to unicast on air interface for reliability',
-                                    style: TextStyle(fontSize: 11),
+                                  subtitle: Text(
+                                    l10n?.multicastToUnicastSubtitle ??
+                                        'Converts multicast frames to unicast on air interface for reliability',
+                                    style: const TextStyle(fontSize: 11),
                                   ),
                                   value: _multicastToUnicast,
                                   onChanged: (val) =>
@@ -1322,16 +1324,18 @@ class _EditSsidDialogState extends ConsumerState<EditSsidDialog> {
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'WDS (Wireless Distribution System)',
-                                    style: TextStyle(
+                                  title: Text(
+                                    l10n?.wdsLabel ??
+                                        'WDS (Wireless Distribution System)',
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  subtitle: const Text(
-                                    'Transparent L2 bridge for multi-AP mesh connections',
-                                    style: TextStyle(fontSize: 11),
+                                  subtitle: Text(
+                                    l10n?.wdsSubtitle ??
+                                        'Transparent L2 bridge for multi-AP mesh connections',
+                                    style: const TextStyle(fontSize: 11),
                                   ),
                                   value: _wds,
                                   onChanged: (val) =>
@@ -1429,9 +1433,10 @@ class _EditSsidDialogState extends ConsumerState<EditSsidDialog> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  subtitle: const Text(
-                                    'Provides radio measurement reports to accelerate AP roaming decisions',
-                                    style: TextStyle(fontSize: 11),
+                                  subtitle: Text(
+                                    l10n?.fastTransition80211kSubtitle ??
+                                        'Provides radio measurement reports to accelerate AP roaming decisions',
+                                    style: const TextStyle(fontSize: 11),
                                   ),
                                   value: _ieee80211k,
                                   onChanged: (val) =>
@@ -1447,9 +1452,10 @@ class _EditSsidDialogState extends ConsumerState<EditSsidDialog> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  subtitle: const Text(
-                                    'Allows AP to guide stations to transition to optimal radios',
-                                    style: TextStyle(fontSize: 11),
+                                  subtitle: Text(
+                                    l10n?.fastTransition80211vSubtitle ??
+                                        'Allows AP to guide stations to transition to optimal radios',
+                                    style: const TextStyle(fontSize: 11),
                                   ),
                                   value: _ieee80211v,
                                   onChanged: (val) =>
@@ -1458,16 +1464,18 @@ class _EditSsidDialogState extends ConsumerState<EditSsidDialog> {
 
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'WMM / QoS Prioritization',
-                                    style: TextStyle(
+                                  title: Text(
+                                    l10n?.wmmQosLabel ??
+                                        'WMM / QoS Prioritization',
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  subtitle: const Text(
-                                    'Wi-Fi Multimedia quality-of-service traffic prioritization',
-                                    style: TextStyle(fontSize: 11),
+                                  subtitle: Text(
+                                    l10n?.wmmQosSubtitle ??
+                                        'Wi-Fi Multimedia quality-of-service traffic prioritization',
+                                    style: const TextStyle(fontSize: 11),
                                   ),
                                   value: _wmmEnabled,
                                   onChanged: (val) =>
@@ -1475,16 +1483,18 @@ class _EditSsidDialogState extends ConsumerState<EditSsidDialog> {
                                 ),
                                 SwitchListTile(
                                   contentPadding: EdgeInsets.zero,
-                                  title: const Text(
-                                    'Disassociate Low-ACK Clients',
-                                    style: TextStyle(
+                                  title: Text(
+                                    l10n?.disassocLowAckLabel ??
+                                        'Disassociate Low-ACK Clients',
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  subtitle: const Text(
-                                    'Kick clients with excessive packet loss to conserve airtime',
-                                    style: TextStyle(fontSize: 11),
+                                  subtitle: Text(
+                                    l10n?.disassocLowAckSubtitle ??
+                                        'Kick clients with excessive packet loss to conserve airtime',
+                                    style: const TextStyle(fontSize: 11),
                                   ),
                                   value: _disassocLowAck,
                                   onChanged: (val) =>

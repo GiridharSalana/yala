@@ -56,6 +56,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _scrollController = ScrollController();
 
   String? _selectedProfileId;
+  bool _isNewRouterMode = false;
+  bool _isProfileNameExpanded = false;
 
   bool _isConnecting = false;
   bool _passwordVisible = false;
@@ -175,10 +177,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             );
           }
         } else if (foundGateway != null) {
+          _autoFilledIp = foundGateway;
           // When triggered manually (!isOnInit) or if field is empty, update the input field
           if (!isOnInit || _ipController.text.trim().isEmpty) {
             _ipController.text = foundGateway;
-            _autoFilledIp = foundGateway;
           }
           if (!_hasDismissedAutoFillHint) {
             nextShowHint = true;
@@ -252,6 +254,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (!mounted) return;
 
       _hasDismissedAutoFillHint = hintDismissed;
+      if (_autoFilledIp == null) {
+        unawaited(_detectGatewayIp(isOnInit: true));
+      }
     } catch (_) {
       // Guardrail: ignore storage failure
     }
@@ -315,6 +320,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     }
 
+    _isNewRouterMode = _selectedProfileId == null;
+    _isProfileNameExpanded = _isNewRouterMode;
+
     // 2. Attach focus & controller listeners after initial controller text assignment
     _ipController.addListener(_onIpChanged);
     _ipFocusNode.addListener(() => _handleFieldFocus(_ipFocusNode));
@@ -342,6 +350,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   void _selectProfile(model.Router router) {
     if (RouterService.isMockRouter(router)) return;
     setState(() {
+      _isNewRouterMode = false;
+      _isProfileNameExpanded = false;
       _selectedProfileId = router.id;
       _profileNameController.text = router.name ?? '';
       _ipController.text =
@@ -356,11 +366,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   void _setupNewRouterProfile() {
     setState(() {
+      _isNewRouterMode = true;
+      _isProfileNameExpanded = true;
       _selectedProfileId = null;
       _profileNameController.clear();
-      _ipController.clear();
-      _usernameController.text = 'root';
       _passwordController.clear();
+      _usernameController.text = 'root';
+      if (_autoFilledIp != null && _autoFilledIp!.isNotEmpty) {
+        _ipController.text = _autoFilledIp!;
+      } else {
+        _ipController.clear();
+      }
     });
     _detectGatewayIp();
   }
@@ -395,6 +411,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (appState.errorMessage != null) {
         appState.setError(null);
       }
+      if (_isNewRouterMode) {
+        return;
+      }
       final input = _ipController.text.trim();
       final cleanInput = input
           .replaceFirst('https://', '')
@@ -413,6 +432,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           setState(() {
             _selectedProfileId = matchingRouter.id;
             _profileNameController.text = matchingRouter.name ?? '';
+            _isProfileNameExpanded = false;
           });
         }
       } else if (_selectedProfileId != null) {
@@ -1023,46 +1043,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               ),
                               const SizedBox(height: 8),
                               isWide
-                                  ? IntrinsicHeight(
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          // Left Pane: Hero Brand, LAN Security & Footers
-                                          Expanded(
-                                            flex: 5,
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: [
-                                                _buildHeaderLockup(
-                                                  context,
-                                                  isWide: true,
-                                                ),
-                                                const SizedBox(height: 24),
-                                                _buildSecurityAssurance(
-                                                  context,
-                                                ),
-                                                const SizedBox(height: 20),
-                                                _buildFooterLinks(context),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 32),
-                                          // Right Pane: Router Endpoint Console Form
-                                          Expanded(
-                                            flex: 6,
-                                            child: Center(
-                                              child: _buildFormCard(
+                                  ? Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        // Left Pane: Hero Brand, LAN Security & Footers
+                                        Expanded(
+                                          flex: 5,
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              _buildHeaderLockup(
                                                 context,
-                                                showSecurityInCard: false,
+                                                isWide: true,
                                               ),
+                                              const SizedBox(height: 24),
+                                              _buildSecurityAssurance(context),
+                                              const SizedBox(height: 20),
+                                              _buildFooterLinks(context),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 32),
+                                        // Right Pane: Router Endpoint Console Form
+                                        Expanded(
+                                          flex: 6,
+                                          child: Center(
+                                            child: _buildFormCard(
+                                              context,
+                                              showSecurityInCard: false,
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     )
                                   : Column(
                                       crossAxisAlignment:
@@ -1300,57 +1316,168 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
 
-              // Profile Name Field (Optional)
-              TextFormField(
-                key: const ValueKey('login_profile_name_field'),
-                controller: _profileNameController,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      l10n?.loginProfileNameOptional ??
-                          'Profile Name (Optional)',
+              // Profile Name Section (Collapsible)
+              AnimatedCrossFade(
+                firstChild: InkWell(
+                  key: const ValueKey('login_profile_name_toggle'),
+                  onTap: () {
+                    setState(() {
+                      _isProfileNameExpanded = true;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.25,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.35,
+                        ),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.label_outline_rounded,
+                          size: 16,
+                          color: primaryColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text:
+                                      l10n?.loginProfileNameOptional ??
+                                      'Profile Name (Optional)',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                if (_profileNameController.text
+                                    .trim()
+                                    .isNotEmpty) ...[
+                                  TextSpan(
+                                    text:
+                                        ' • ${_profileNameController.text.trim()}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 18,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ],
                     ),
                   ),
-                  hintText:
-                      l10n?.loginProfileNameHint ??
-                      'e.g. Home Lab, Living Room, Travel Router',
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.35,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: primaryColor, width: 1.5),
-                  ),
-                  prefixIcon: Icon(
-                    Icons.label_outline_rounded,
-                    color: primaryColor,
-                  ),
-                  helperText:
-                      l10n?.loginProfileNameHelper ??
-                      'A custom nickname to identify this router',
-                  helperMaxLines: 3,
-                  errorMaxLines: 2,
                 ),
+                secondChild: Padding(
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 2.0),
+                  child: ExcludeFocus(
+                    excluding: !_isProfileNameExpanded,
+                    child: TextFormField(
+                      key: const ValueKey('login_profile_name_field'),
+                      controller: _profileNameController,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            l10n?.loginProfileNameOptional ??
+                                'Profile Name (Optional)',
+                          ),
+                        ),
+                        hintText:
+                            l10n?.loginProfileNameHint ??
+                            'e.g. Home Lab, Living Room, Travel Router',
+                        filled: true,
+                        fillColor: colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.35),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.6,
+                            ),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(
+                            color: primaryColor,
+                            width: 1.5,
+                          ),
+                        ),
+                        prefixIcon: Icon(
+                          Icons.label_outline_rounded,
+                          color: primaryColor,
+                        ),
+                        suffixIcon: IconButton(
+                          key: const ValueKey(
+                            'login_profile_name_collapse_btn',
+                          ),
+                          icon: Icon(
+                            Icons.keyboard_arrow_up_rounded,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          tooltip:
+                              l10n?.loginProfileNameOptional ??
+                              'Profile Name (Optional)',
+                          onPressed: () {
+                            setState(() {
+                              _isProfileNameExpanded = false;
+                            });
+                          },
+                        ),
+                        helperText:
+                            l10n?.loginProfileNameHelper ??
+                            'A custom nickname to identify this router',
+                        helperMaxLines: 3,
+                        errorMaxLines: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                crossFadeState: _isProfileNameExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 200),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Router Address Field
               Tooltip(
@@ -1680,7 +1807,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      errorMessage,
+                                      _localizeErrorMessage(errorMessage, l10n),
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(
                                             color: colorScheme.onErrorContainer,
@@ -1847,9 +1974,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   builder: (context) {
                     final router = routers[index];
                     final isSelected =
-                        _selectedProfileId == router.id ||
-                        (_selectedProfileId == null &&
-                            _ipController.text == router.ipAddress);
+                        !_isNewRouterMode && _selectedProfileId == router.id;
                     final displayName = router.displayName;
 
                     return ChoiceChip(
@@ -1900,42 +2025,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   },
                 ),
               ],
-              ActionChip(
-                avatar: Icon(
-                  Icons.add_rounded,
-                  size: 16,
-                  color: _selectedProfileId == null
-                      ? colorScheme.onPrimaryContainer
-                      : colorScheme.onSurfaceVariant,
-                ),
-                label: Text(
-                  l10n?.loginNewRouterChip ?? 'New Router',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: _selectedProfileId == null
-                        ? FontWeight.bold
-                        : FontWeight.w500,
-                    color: _selectedProfileId == null
-                        ? colorScheme.onPrimaryContainer
-                        : colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                backgroundColor: _selectedProfileId == null
-                    ? colorScheme.primaryContainer
-                    : colorScheme.surfaceContainerHighest.withValues(
-                        alpha: 0.4,
+              Builder(
+                builder: (context) {
+                  final isNewRouterSelected =
+                      _isNewRouterMode || _selectedProfileId == null;
+                  return ActionChip(
+                    key: const ValueKey('login_new_router_chip'),
+                    avatar: Icon(
+                      Icons.add_rounded,
+                      size: 16,
+                      color: isNewRouterSelected
+                          ? colorScheme.onPrimaryContainer
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                    label: Text(
+                      l10n?.loginNewRouterChip ?? 'New Router',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isNewRouterSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        color: isNewRouterSelected
+                            ? colorScheme.onPrimaryContainer
+                            : colorScheme.onSurfaceVariant,
                       ),
-                side: BorderSide(
-                  color: _selectedProfileId == null
-                      ? primaryColor.withValues(alpha: 0.5)
-                      : colorScheme.outlineVariant.withValues(alpha: 0.4),
-                  width: 1,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                onPressed: _setupNewRouterProfile,
+                    ),
+                    backgroundColor: isNewRouterSelected
+                        ? colorScheme.primaryContainer
+                        : colorScheme.surfaceContainerHighest.withValues(
+                            alpha: 0.4,
+                          ),
+                    side: BorderSide(
+                      color: isNewRouterSelected
+                          ? primaryColor.withValues(alpha: 0.5)
+                          : colorScheme.outlineVariant.withValues(alpha: 0.4),
+                      width: 1,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    onPressed: _setupNewRouterProfile,
+                  );
+                },
               ),
             ],
           )
@@ -2099,7 +2231,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             vertical: 2,
                           ),
                           child: Text(
-                            'Privacy Policy',
+                            l10n?.privacyPolicyTitle ?? 'Privacy Policy',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -2131,7 +2263,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             vertical: 2,
                           ),
                           child: Text(
-                            'Terms & Conditions',
+                            l10n?.termsAndConditionsTitle ??
+                                'Terms & Conditions',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
@@ -2151,6 +2284,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         ),
       ],
     );
+  }
+
+  String _localizeErrorMessage(String error, AppLocalizations? l10n) {
+    if (l10n == null) return error;
+    final sessionMatch = RegExp(
+      r'^Failed to establish session with (.+?)\.?$',
+    ).firstMatch(error);
+    if (sessionMatch != null) {
+      final target = sessionMatch.group(1)!;
+      return l10n.loginFailedSession(target);
+    }
+    if (error == 'Login Failed: Invalid credentials or host unreachable.') {
+      return l10n.loginInvalidCredentials;
+    }
+    return error;
   }
 }
 

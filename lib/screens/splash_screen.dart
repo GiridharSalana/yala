@@ -13,6 +13,7 @@ import 'package:yet_another_luci_app/screens/main_screen.dart';
 import 'package:yet_another_luci_app/screens/login_screen.dart';
 import 'package:yet_another_luci_app/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:yet_another_luci_app/utils/logger.dart';
 
 import 'package:yet_another_luci_app/services/client_fingerprint_service.dart';
 
@@ -54,50 +55,67 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _initializeAppSession() async {
     final appState = AppState.instance;
 
-    // Concurrently await AppState startup hydration alongside credentials and fingerprints
-    final reviewerStorageFuture = SecureStorageService().readValue(
-      AppConfig.reviewerModeKey,
-    );
-    final credsFuture = SecureStorageService().getCredentials();
-    final fingerprintsFuture = ClientFingerprintService.instance.initialize();
-    final appStateInitFuture = appState.initializationFuture;
+    try {
+      // Concurrently await AppState startup hydration alongside credentials and fingerprints
+      final reviewerStorageFuture = SecureStorageService().readValue(
+        AppConfig.reviewerModeKey,
+      );
+      final credsFuture = SecureStorageService().getCredentials();
+      final fingerprintsFuture = ClientFingerprintService.instance.initialize();
+      final appStateInitFuture = appState.initializationFuture;
+      final disableAnimations = mounted
+          ? MediaQuery.of(context).disableAnimations
+          : false;
+      final minSplashDurationFuture = disableAnimations
+          ? Future<void>.value()
+          : Future<void>.delayed(const Duration(milliseconds: 750));
 
-    final results = await Future.wait([
-      reviewerStorageFuture,
-      credsFuture,
-      fingerprintsFuture,
-      appStateInitFuture,
-    ]);
+      final results = await Future.wait([
+        reviewerStorageFuture,
+        credsFuture,
+        fingerprintsFuture,
+        appStateInitFuture,
+        minSplashDurationFuture,
+      ]);
 
-    final reviewerModeEnabled = results[0] as String?;
-    final creds = results[1] as Map<String, String?>;
+      final reviewerModeEnabled = results[0] as String?;
+      final creds = results[1] as Map<String, String?>;
 
-    if (!mounted) return;
-
-    if (reviewerModeEnabled == 'true') {
-      await appState.setReviewerMode(true);
       if (!mounted) return;
-      _navigateToMainScreen();
-      return;
-    }
 
-    final savedIp = creds['ipAddress'] ?? appState.selectedRouter?.ipAddress;
-    final savedUser = creds['username'] ?? appState.selectedRouter?.username;
-    final savedPass = creds['password'] ?? appState.selectedRouter?.password;
+      if (reviewerModeEnabled == 'true') {
+        await appState.setReviewerMode(true);
+        if (!mounted) return;
+        _navigateToMainScreen();
+        return;
+      }
 
-    final hasSavedCreds =
-        savedIp != null && savedIp.isNotEmpty && savedPass != null;
+      final savedIp = creds['ipAddress'] ?? appState.selectedRouter?.ipAddress;
+      final savedUser = creds['username'] ?? appState.selectedRouter?.username;
+      final savedPass = creds['password'] ?? appState.selectedRouter?.password;
 
-    if (hasSavedCreds) {
-      await LocalNetworkPermissionService.ensurePermissionGranted();
+      final hasSavedCreds =
+          savedIp != null && savedIp.isNotEmpty && savedPass != null;
+
+      if (hasSavedCreds) {
+        await LocalNetworkPermissionService.ensurePermissionGranted();
+        if (!mounted) return;
+      }
+
+      _navigateToLoginScreen(
+        initialIp: savedIp,
+        initialUsername: savedUser,
+        initialPassword: savedPass,
+      );
+    } catch (e, stack) {
+      Logger.exception(
+        'SplashScreen initialization failed, navigating to login fallback',
+        e,
+        stack,
+      );
       if (!mounted) return;
+      _navigateToLoginScreen();
     }
-
-    _navigateToLoginScreen(
-      initialIp: savedIp,
-      initialUsername: savedUser,
-      initialPassword: savedPass,
-    );
   }
 
   void _navigateToMainScreen() {

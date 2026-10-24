@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../design/luci_design_system.dart';
+import '../../../l10n/app_localizations.dart';
 import '../controllers/speed_test_controller.dart';
 import '../models/speed_test_models.dart';
 
@@ -17,6 +18,7 @@ class SpeedTestView extends ConsumerWidget {
     final controller = ref.read(speedTestControllerProvider.notifier);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
@@ -27,7 +29,7 @@ class SpeedTestView extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // 1. Vantage Point & Transport Header Banner
-          _buildVantageBanner(context, state),
+          _buildVantageBanner(context, state, l10n),
           const SizedBox(height: LuciSpacing.md),
 
           // 2. Primary Metrics Cards (Download & Upload)
@@ -36,7 +38,7 @@ class SpeedTestView extends ConsumerWidget {
               Expanded(
                 child: _buildMetricCard(
                   context,
-                  title: 'Download',
+                  title: l10n?.speedTestMetricDownload ?? 'DOWNLOAD',
                   value: state.result?.downloadSpeedMbps != null
                       ? state.result!.downloadSpeedMbps!.toStringAsFixed(1)
                       : (state.isRunning &&
@@ -58,7 +60,7 @@ class SpeedTestView extends ConsumerWidget {
               Expanded(
                 child: _buildMetricCard(
                   context,
-                  title: 'Upload',
+                  title: l10n?.speedTestMetricUpload ?? 'UPLOAD',
                   value: state.result?.uploadSpeedMbps != null
                       ? state.result!.uploadSpeedMbps!.toStringAsFixed(1)
                       : (state.isRunning &&
@@ -86,7 +88,7 @@ class SpeedTestView extends ConsumerWidget {
               Expanded(
                 child: _buildSmallMetricCard(
                   context,
-                  title: 'Idle Ping',
+                  title: l10n?.speedTestMetricIdlePing ?? 'Idle Ping',
                   value: state.result?.idleLatencyMs != null
                       ? '${state.result!.idleLatencyMs!.toStringAsFixed(1)} ms'
                       : (state.progress?.currentLatencyMs != null
@@ -99,7 +101,7 @@ class SpeedTestView extends ConsumerWidget {
               Expanded(
                 child: _buildSmallMetricCard(
                   context,
-                  title: 'Jitter',
+                  title: l10n?.speedTestMetricJitter ?? 'Jitter',
                   value: state.result?.jitterMs != null
                       ? '${state.result!.jitterMs!.toStringAsFixed(1)} ms'
                       : (state.progress?.currentJitterMs != null
@@ -112,12 +114,14 @@ class SpeedTestView extends ConsumerWidget {
               Expanded(
                 child: _buildSmallMetricCard(
                   context,
-                  title: 'Loaded Ping',
+                  title: l10n?.speedTestMetricLoadedPing ?? 'Loaded Ping',
                   value: state.result?.loadedLatencyMs != null
                       ? '${state.result!.loadedLatencyMs!.toStringAsFixed(1)} ms'
                       : 'N/A',
                   icon: Icons.speed_rounded,
-                  tooltip: 'Latency measured during active network load',
+                  tooltip:
+                      l10n?.speedTestLoadedPingTooltip ??
+                      'Latency measured during active network load',
                 ),
               ),
             ],
@@ -137,7 +141,10 @@ class SpeedTestView extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          state.progress?.statusMessage ?? 'Preparing test...',
+                          _getLocalizedStatus(
+                            state.progress?.statusMessage,
+                            l10n,
+                          ),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
@@ -204,7 +211,7 @@ class SpeedTestView extends ConsumerWidget {
             OutlinedButton.icon(
               onPressed: () => controller.cancelTest(),
               icon: const Icon(Icons.cancel_rounded),
-              label: const Text('Cancel Speed Test'),
+              label: Text(l10n?.speedTestBtnCancel ?? 'Cancel Speed Test'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: colorScheme.error,
                 side: BorderSide(color: colorScheme.error),
@@ -220,8 +227,8 @@ class SpeedTestView extends ConsumerWidget {
               icon: const Icon(Icons.speed_rounded),
               label: Text(
                 state.result != null
-                    ? 'Run Router Speed Test Again'
-                    : 'Start Router Speed Test',
+                    ? (l10n?.speedTestBtnRerun ?? 'Run Router Speed Test Again')
+                    : (l10n?.speedTestBtnStart ?? 'Start Router Speed Test'),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
@@ -258,7 +265,8 @@ class SpeedTestView extends ConsumerWidget {
                     ),
                     const SizedBox(width: LuciSpacing.xs),
                     Text(
-                      'Measurement Context & Limitations',
+                      l10n?.speedTestContextTitle ??
+                          'Measurement Context & Limitations',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -269,10 +277,10 @@ class SpeedTestView extends ConsumerWidget {
                 ),
                 const SizedBox(height: LuciSpacing.xs),
                 Text(
-                  '• Vantage point: OpenWrt Router WAN interface.\n'
-                  '• Server endpoint: Cloudflare Anycast (speed.cloudflare.com).\n'
-                  '• Measures direct throughput and latency from the router WAN interface to Cloudflare Anycast.\n'
-                  '• Completely eliminates device Wi-Fi or cellular radio interference.',
+                  '• ${l10n?.speedTestContextBullet1 ?? 'Vantage point: OpenWrt Router WAN interface.'}\n'
+                  '• ${l10n?.speedTestContextBullet2 ?? 'Server endpoint: Cloudflare Anycast (speed.cloudflare.com).'}\n'
+                  '• ${l10n?.speedTestContextBullet3 ?? 'Measures direct throughput and latency from the router WAN interface to Cloudflare Anycast.'}\n'
+                  '• ${l10n?.speedTestContextBullet4 ?? 'Completely eliminates device Wi-Fi or cellular radio interference.'}',
                   style: TextStyle(
                     fontSize: 11,
                     height: 1.4,
@@ -282,7 +290,14 @@ class SpeedTestView extends ConsumerWidget {
                 if (state.result?.timestamp != null) ...[
                   const Divider(height: 16),
                   Text(
-                    'Last tested: ${state.result!.timestamp.toLocal().toString().split('.').first}',
+                    l10n?.speedTestLastTested(
+                          state.result!.timestamp
+                              .toLocal()
+                              .toString()
+                              .split('.')
+                              .first,
+                        ) ??
+                        'Last tested: ${state.result!.timestamp.toLocal().toString().split('.').first}',
                     style: TextStyle(
                       fontSize: 11,
                       fontStyle: FontStyle.italic,
@@ -298,7 +313,11 @@ class SpeedTestView extends ConsumerWidget {
     );
   }
 
-  Widget _buildVantageBanner(BuildContext context, SpeedTestState state) {
+  Widget _buildVantageBanner(
+    BuildContext context,
+    SpeedTestState state,
+    AppLocalizations? l10n,
+  ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final transport = state.result?.connectionType ?? 'Router WAN';
@@ -330,7 +349,8 @@ class SpeedTestView extends ConsumerWidget {
               const SizedBox(width: LuciSpacing.sm),
               Expanded(
                 child: Text(
-                  'Router Internet Speed Test (WAN)',
+                  l10n?.speedTestVantageTitle ??
+                      'Router Internet Speed Test (WAN)',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -343,26 +363,42 @@ class SpeedTestView extends ConsumerWidget {
           const SizedBox(height: LuciSpacing.sm + 2),
           _buildBannerBullet(
             context,
-            'Vantage Point: Direct OpenWrt router WAN interface ($transport)',
+            l10n?.speedTestVantagePoint(transport) ??
+                'Vantage Point: Direct OpenWrt router WAN interface ($transport)',
           ),
           const SizedBox(height: 5),
           _buildBannerBullet(
             context,
-            'Endpoint: Cloudflare Anycast edge (speed.cloudflare.com)',
+            l10n?.speedTestEndpoint ??
+                'Endpoint: Cloudflare Anycast edge (speed.cloudflare.com)',
           ),
           const SizedBox(height: 5),
           _buildBannerBullet(
             context,
-            'Methodology: Multi-stage steady-state buffer warmup & sustained throughput measurement via LuCI RPC',
+            l10n?.speedTestParamMethodology ??
+                'Methodology: Multi-stage steady-state buffer warmup & sustained throughput measurement via LuCI RPC',
           ),
           const SizedBox(height: 5),
           _buildBannerBullet(
             context,
-            'Radio Isolation: Completely eliminates client device Wi-Fi or cellular skew',
+            l10n?.speedTestParamIsolation ??
+                'Radio Isolation: Completely eliminates client device Wi-Fi or cellular skew',
           ),
         ],
       ),
     );
+  }
+
+  String _getLocalizedStatus(String? raw, AppLocalizations? l10n) {
+    if (raw == null) return l10n?.speedTestPreparing ?? 'Preparing test...';
+    if (raw.contains('completed successfully')) {
+      return l10n?.speedTestSuccess ??
+          'Router speed test completed successfully';
+    }
+    if (raw.contains('cancelled by user')) {
+      return l10n?.speedTestCancelled ?? 'Speed test cancelled by user';
+    }
+    return raw;
   }
 
   Widget _buildBannerBullet(BuildContext context, String text) {

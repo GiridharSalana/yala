@@ -290,39 +290,37 @@ class _BlockIncomingTrafficDialogState
                 const SizedBox(height: 8),
 
                 // Target Type Selector
-                SegmentedButton<BlockTargetType>(
-                  segments: [
-                    ButtonSegment(
-                      value: BlockTargetType.externalIp,
-                      label: Text(
-                        loc?.firewallBlockExternalIp ?? 'IP',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      icon: const Icon(Icons.public_outlined),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<BlockTargetType>(
+                    showSelectedIcon: false,
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                     ),
-                    ButtonSegment(
-                      value: BlockTargetType.portOrService,
-                      label: Text(
-                        loc?.firewallBlockPortOrService ?? 'Port',
-                        overflow: TextOverflow.ellipsis,
+                    segments: [
+                      ButtonSegment(
+                        value: BlockTargetType.externalIp,
+                        label: Text(loc?.firewallBlockTabIp ?? 'IP'),
+                        icon: const Icon(Icons.public_outlined, size: 18),
                       ),
-                      icon: const Icon(Icons.numbers_outlined),
-                    ),
-                    ButtonSegment(
-                      value: BlockTargetType.commonApp,
-                      label: Text(
-                        loc?.firewallBlockCommonApp ?? 'Preset',
-                        overflow: TextOverflow.ellipsis,
+                      ButtonSegment(
+                        value: BlockTargetType.portOrService,
+                        label: Text(loc?.firewallBlockTabPort ?? 'Port'),
+                        icon: const Icon(Icons.numbers_outlined, size: 18),
                       ),
-                      icon: const Icon(Icons.security_outlined),
-                    ),
-                  ],
-                  selected: {_targetType},
-                  onSelectionChanged: (set) {
-                    if (set.isNotEmpty) {
-                      _onTargetTypeChanged(set.first);
-                    }
-                  },
+                      ButtonSegment(
+                        value: BlockTargetType.commonApp,
+                        label: Text(loc?.firewallBlockTabPreset ?? 'Preset'),
+                        icon: const Icon(Icons.security_outlined, size: 18),
+                      ),
+                    ],
+                    selected: {_targetType},
+                    onSelectionChanged: (set) {
+                      if (set.isNotEmpty) {
+                        _onTargetTypeChanged(set.first);
+                      }
+                    },
+                  ),
                 ),
                 const SizedBox(height: 16),
 

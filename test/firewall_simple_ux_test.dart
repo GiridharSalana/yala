@@ -424,7 +424,7 @@ void main() {
           find.widgetWithText(TextFormField, 'External Port'),
           '22',
         );
-        await tester.tap(find.text('Enter IP address manually'));
+        await tester.tap(find.text('Manual IP'));
         await tester.pumpAndSettle();
         await tester.enterText(
           find.widgetWithText(TextFormField, 'Internal Device IP'),

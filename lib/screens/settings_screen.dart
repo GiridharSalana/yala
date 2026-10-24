@@ -137,7 +137,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           if (activeRouter != null) ...[
             _buildSectionHeader(
               context,
-              'ROUTER SECURITY & ACCESS',
+              l10n?.routerSecuritySection ?? 'ROUTER SECURITY & ACCESS',
               Icons.security_outlined,
             ),
             const SizedBox(height: 8),
@@ -960,8 +960,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         Expanded(
                           child: Text(
                             caps.isRpcComplete
-                                ? 'RPC permissions & execution modules verified'
-                                : 'Missing RPC permissions may restrict advanced router management features',
+                                ? (l10n?.rpcPermissionsVerified ??
+                                      'RPC permissions & execution modules verified')
+                                : (l10n?.rpcPermissionsMissingWarning ??
+                                      'Missing RPC permissions may restrict advanced router management features'),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: caps.isRpcComplete
@@ -975,7 +977,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          caps.isRpcComplete ? 'Manage' : 'Auto-Fix',
+                          caps.isRpcComplete
+                              ? (l10n?.actionManage ?? 'Manage')
+                              : (l10n?.actionAutoFix ?? 'Auto-Fix'),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -1059,7 +1063,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(height: 2),
                       Text(
                         isSupported
-                            ? 'Update root/admin password on active router'
+                            ? (l10n?.changePasswordSubtitle ??
+                                  'Update root/admin password on active router')
                             : (l10n?.changePasswordUnsupported ??
                                   'Router does not expose luci.setPassword via rpcd-mod-luci.'),
                         style: TextStyle(
@@ -1331,13 +1336,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Icons.privacy_tip_outlined,
                   color: colorScheme.primary,
                 ),
-                title: const Text(
-                  'Privacy Policy',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                title: Text(
+                  l10n?.privacyPolicyTitle ?? 'Privacy Policy',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                subtitle: const Text(
-                  'Read our local-first zero-telemetry policy',
-                  style: TextStyle(fontSize: 12),
+                subtitle: Text(
+                  l10n?.privacyPolicySubtitle ??
+                      'Read our local-first zero-telemetry policy',
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: const Icon(Icons.open_in_new_rounded, size: 18),
                 onTap: () => launchUrlString(
@@ -1411,13 +1420,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Icons.policy_outlined,
                   color: colorScheme.primary,
                 ),
-                title: const Text(
-                  'License & Attribution (GPLv3)',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                title: Text(
+                  l10n?.licenseAttributionTitle ??
+                      'License & Attribution (GPLv3)',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                subtitle: const Text(
-                  'GNU General Public License v3.0 • Copyleft & Credits',
-                  style: TextStyle(fontSize: 12),
+                subtitle: Text(
+                  l10n?.licenseAttributionSubtitle ??
+                      'GNU General Public License v3.0 • Copyleft & Credits',
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                 onTap: () => _showGplLicenseDialog(context),
@@ -1432,13 +1446,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Icons.article_outlined,
                   color: colorScheme.primary,
                 ),
-                title: const Text(
-                  'Open Source Licenses',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                title: Text(
+                  l10n?.openSourceLicensesTitle ?? 'Open Source Licenses',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                subtitle: const Text(
-                  'Third-party software notices and licenses',
-                  style: TextStyle(fontSize: 12),
+                subtitle: Text(
+                  l10n?.openSourceLicensesSubtitle ??
+                      'Third-party software notices and licenses',
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                 onTap: () => showLicensePage(

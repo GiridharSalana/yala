@@ -503,42 +503,35 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                 const SizedBox(height: 8),
 
                 // Device Selection Mode Segment
-                Row(
-                  children: [
-                    Expanded(
-                      child: ChoiceChip(
-                        label: Text(
-                          loc?.firewallWizardSelectDevice ??
-                              'Select from connected devices',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        selected: !_useManualIp,
-                        onSelected: validClients.isEmpty
-                            ? null
-                            : (selected) {
-                                if (selected) {
-                                  setState(() => _useManualIp = false);
-                                }
-                              },
-                      ),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<bool>(
+                    showSelectedIcon: false,
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ChoiceChip(
+                    segments: [
+                      ButtonSegment<bool>(
+                        value: false,
+                        icon: const Icon(Icons.devices_outlined, size: 18),
                         label: Text(
-                          loc?.firewallWizardManualIp ??
-                              'Enter IP address manually',
-                          overflow: TextOverflow.ellipsis,
+                          loc?.firewallWizardSelectDevice ?? 'Connected Device',
                         ),
-                        selected: _useManualIp,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() => _useManualIp = true);
-                          }
-                        },
+                        enabled: validClients.isNotEmpty,
                       ),
-                    ),
-                  ],
+                      ButtonSegment<bool>(
+                        value: true,
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: Text(loc?.firewallWizardManualIp ?? 'Manual IP'),
+                      ),
+                    ],
+                    selected: {_useManualIp},
+                    onSelectionChanged: (newSelection) {
+                      if (newSelection.isNotEmpty) {
+                        setState(() => _useManualIp = newSelection.first);
+                      }
+                    },
+                  ),
                 ),
                 const SizedBox(height: 12),
 
