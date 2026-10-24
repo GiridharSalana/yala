@@ -125,7 +125,7 @@ void main() {
         expect(find.textContaining('Summary'), findsOneWidget);
 
         // Advanced settings should remain collapsed by default
-        expect(find.text('Client Isolation'), findsNothing);
+        expect(find.text('Isolate Wireless Clients'), findsNothing);
       },
     );
 
@@ -170,8 +170,8 @@ void main() {
         expect(find.text('IP & DHCP Settings'), findsOneWidget);
 
         // Key controls within groups are rendered
-        expect(find.text('Client Isolation'), findsOneWidget);
-        expect(find.text('802.11r Fast BSS Transition'), findsOneWidget);
+        expect(find.text('Isolate Wireless Clients'), findsOneWidget);
+        expect(find.textContaining('802.11r Fast BSS Transition'), findsOneWidget);
       },
     );
 
