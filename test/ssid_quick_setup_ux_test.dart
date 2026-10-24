@@ -171,7 +171,10 @@ void main() {
 
         // Key controls within groups are rendered
         expect(find.text('Isolate Wireless Clients'), findsOneWidget);
-        expect(find.textContaining('802.11r Fast BSS Transition'), findsOneWidget);
+        expect(
+          find.textContaining('802.11r Fast BSS Transition'),
+          findsOneWidget,
+        );
       },
     );
 
