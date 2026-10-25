@@ -192,9 +192,10 @@ class FirewallValidator {
       return {'tcp', 'udp', 'icmp', 'other'};
     }
 
-    final tokens = clean.replaceAll('/', ' ').replaceAll('+', ' ').split(
-      RegExp(r'\s+'),
-    );
+    final tokens = clean
+        .replaceAll('/', ' ')
+        .replaceAll('+', ' ')
+        .split(RegExp(r'\s+'));
     final result = <String>{};
 
     for (final token in tokens) {
@@ -236,7 +237,10 @@ class FirewallValidator {
   /// Accepts addresses like '203.0.113.50/32', '203.0.113.0/24', '0.0.0.0/0', or '203.0.113.50'.
   static Ipv4Range? parseIpv4Cidr(String input) {
     final clean = input.trim();
-    if (clean.isEmpty || clean == '0.0.0.0/0' || clean == 'Any' || clean == '*') {
+    if (clean.isEmpty ||
+        clean == '0.0.0.0/0' ||
+        clean == 'Any' ||
+        clean == '*') {
       return const Ipv4Range(0, 0xFFFFFFFF);
     }
 
@@ -515,13 +519,13 @@ class FirewallValidator {
         cleanDestIp == '*' ||
         cleanDestIp == '127.0.0.1' ||
         cleanDestIp == 'localhost' ||
-        (routerLanIp != null && cleanDestIp == routerLanIp.toLowerCase().trim());
+        (routerLanIp != null &&
+            cleanDestIp == routerLanIp.toLowerCase().trim());
 
     final allMgmtPorts = <int, String>{
       ...routerManagementPorts,
       if (customManagementPorts != null)
-        for (final p in customManagementPorts)
-          p: 'Custom Management ($p)',
+        for (final p in customManagementPorts) p: 'Custom Management ($p)',
     };
 
     for (final interval in ports) {
@@ -637,12 +641,7 @@ class FirewallValidator {
       }
 
       // Source IP overlap
-      if (!cidrsOverlap(
-        srcIp,
-        pf.srcIp,
-        family1: family,
-        family2: pf.family,
-      )) {
+      if (!cidrsOverlap(srcIp, pf.srcIp, family1: family, family2: pf.family)) {
         continue;
       }
 
@@ -826,7 +825,8 @@ class FirewallValidator {
       if (backend == FirewallBackend.fw3) {
         return const NatReflectionCapabilityResult(
           status: NatReflectionStatus.unsupported,
-          unsupportedReason: NatReflectionUnsupportedReason.ipv6UnsupportedOnFw3,
+          unsupportedReason:
+              NatReflectionUnsupportedReason.ipv6UnsupportedOnFw3,
           userFacingReason:
               'IPv6 NAT reflection is not supported on Firewall3 (iptables).',
         );
@@ -845,7 +845,8 @@ class FirewallValidator {
               'Authoritative IPv6 WAN zone could not be determined.',
         );
       }
-      if (redirectContext.srcZone.toLowerCase() != wan6Zone.name.toLowerCase()) {
+      if (redirectContext.srcZone.toLowerCase() !=
+          wan6Zone.name.toLowerCase()) {
         return const NatReflectionCapabilityResult(
           status: NatReflectionStatus.unknown,
           userFacingReason:
@@ -875,7 +876,8 @@ class FirewallValidator {
               'Authoritative IPv4 WAN zone could not be determined.',
         );
       }
-      if (redirectContext.srcZone.toLowerCase() != wan4Zone.name.toLowerCase()) {
+      if (redirectContext.srcZone.toLowerCase() !=
+          wan4Zone.name.toLowerCase()) {
         return const NatReflectionCapabilityResult(
           status: NatReflectionStatus.unknown,
           userFacingReason:
@@ -940,8 +942,7 @@ class FirewallValidator {
         if (topologyFacts.externalIpv6AddressFact == null) {
           return const NatReflectionCapabilityResult(
             status: NatReflectionStatus.unknown,
-            userFacingReason:
-                'External IPv6 address is missing or ambiguous.',
+            userFacingReason: 'External IPv6 address is missing or ambiguous.',
           );
         }
       } else {
@@ -966,8 +967,7 @@ class FirewallValidator {
         if (topologyFacts.externalIpv4AddressFact == null) {
           return const NatReflectionCapabilityResult(
             status: NatReflectionStatus.unknown,
-            userFacingReason:
-                'External IPv4 address is missing or ambiguous.',
+            userFacingReason: 'External IPv4 address is missing or ambiguous.',
           );
         }
       }
@@ -1038,8 +1038,9 @@ class FirewallValidator {
       final ip4List = topologyFacts.logicalNetworkIpv4Addresses[net] ?? [];
       final hasIp4Internal = ip4List.any((f) => f.isSuitableInternal);
       final ip6List = topologyFacts.logicalNetworkIpv6Addresses[net] ?? [];
-      final hasIp6Internal =
-          ip6List.any((f) => (f.isUla || f.isGlobalUnicast) && !f.isLinkLocal);
+      final hasIp6Internal = ip6List.any(
+        (f) => (f.isUla || f.isGlobalUnicast) && !f.isLinkLocal,
+      );
       return hasIp4Internal || hasIp6Internal;
     });
     if (!hasInternalSubnet) {
@@ -1074,8 +1075,7 @@ class FirewallValidator {
       }
       if (destIpReachable) break;
 
-      final routedList =
-          topologyFacts.logicalNetworkRoutedSubnets[net] ?? [];
+      final routedList = topologyFacts.logicalNetworkRoutedSubnets[net] ?? [];
       for (final cidr in routedList) {
         if (Ipv4CidrUtil.containsCidr(cidr, cleanDestIp)) {
           destIpReachable = true;
@@ -1105,8 +1105,8 @@ class FirewallValidator {
     // 8. Effective reflection_zone evaluation & hairpin SNAT anchor
     final effectiveReflectionZones =
         redirectContext.existingReflectionZones.isNotEmpty
-            ? redirectContext.existingReflectionZones
-            : [redirectContext.destZone];
+        ? redirectContext.existingReflectionZones
+        : [redirectContext.destZone];
 
     for (final rzName in effectiveReflectionZones) {
       final cleanRzName = rzName.trim().toLowerCase();
@@ -1147,8 +1147,7 @@ class FirewallValidator {
 
       // Positive internal verification for rzZone
       final rzHostFacing = rzZone.networks.any(
-        (net) =>
-            topologyFacts.logicalNetworkHasHostFacingDevice[net] == true,
+        (net) => topologyFacts.logicalNetworkHasHostFacingDevice[net] == true,
       );
       if (!rzHostFacing) {
         return NatReflectionCapabilityResult(
@@ -1160,11 +1159,9 @@ class FirewallValidator {
 
       // SNAT anchor IP requirement: must possess at least one suitable internal IP
       final hasSnatAnchor = rzZone.networks.any((net) {
-        final ip4List =
-            topologyFacts.logicalNetworkIpv4Addresses[net] ?? [];
+        final ip4List = topologyFacts.logicalNetworkIpv4Addresses[net] ?? [];
         final hasIp4 = ip4List.any((f) => f.isSuitableInternal);
-        final ip6List =
-            topologyFacts.logicalNetworkIpv6Addresses[net] ?? [];
+        final ip6List = topologyFacts.logicalNetworkIpv6Addresses[net] ?? [];
         final hasIp6 = ip6List.any(
           (f) => (f.isUla || f.isGlobalUnicast) && !f.isLinkLocal,
         );
@@ -1185,8 +1182,7 @@ class FirewallValidator {
               f.srcZone.toLowerCase() == cleanRzName &&
               f.destZone.toLowerCase() == destZoneName,
         );
-        final hasPermissiveFwdPolicy =
-            rzZone.forward.toUpperCase() == 'ACCEPT';
+        final hasPermissiveFwdPolicy = rzZone.forward.toUpperCase() == 'ACCEPT';
 
         if (!hasExplicitFwd && !hasPermissiveFwdPolicy) {
           return NatReflectionCapabilityResult(
@@ -1243,7 +1239,11 @@ class Ipv4CidrUtil {
 
   /// Evaluates true bitwise CIDR containment:
   /// Tests whether [candidateIp] shares the same subnet as [networkIp] for [prefixLength].
-  static bool containsIp(String networkIp, String candidateIp, int prefixLength) {
+  static bool containsIp(
+    String networkIp,
+    String candidateIp,
+    int prefixLength,
+  ) {
     final netInt = ipToInt(networkIp);
     final candInt = ipToInt(candidateIp);
     if (netInt == null || candInt == null) return false;
@@ -1264,7 +1264,9 @@ class Ipv4CidrUtil {
       final childParts = targetIpOrCidr.trim().split('/');
       if (childParts.length != 2) return false;
       final childPrefix = int.tryParse(childParts[1]);
-      if (childPrefix == null || childPrefix < 0 || childPrefix > 32) return false;
+      if (childPrefix == null || childPrefix < 0 || childPrefix > 32) {
+        return false;
+      }
       if (prefix > childPrefix) return false;
       return containsIp(parts[0], childParts[0], prefix);
     }
@@ -1278,12 +1280,13 @@ class Ipv4AddressFact {
   final String address;
   final int prefixLength;
   final String subnetCidr;
-  final bool isLoopback;       // 127.0.0.0/8
-  final bool isLinkLocal;      // 169.254.0.0/16
-  final bool isBroadcast;      // 255.255.255.255 or 0.0.0.0
+  final bool isLoopback; // 127.0.0.0/8
+  final bool isLinkLocal; // 169.254.0.0/16
+  final bool isBroadcast; // 255.255.255.255 or 0.0.0.0
   final bool isPrivateRfc1918; // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-  final bool isCgnatRfc6598;   // 100.64.0.0/10
-  final bool isPublicRoutable; // valid unicast not private/cgnat/loopback/linklocal
+  final bool isCgnatRfc6598; // 100.64.0.0/10
+  final bool
+  isPublicRoutable; // valid unicast not private/cgnat/loopback/linklocal
 
   const Ipv4AddressFact({
     required this.address,
@@ -1300,7 +1303,9 @@ class Ipv4AddressFact {
   bool get isSuitableWan => !isLoopback && !isLinkLocal && !isBroadcast;
   bool get isSuitableInternal =>
       (isPrivateRfc1918 || isCgnatRfc6598 || isPublicRoutable) &&
-      !isLoopback && !isLinkLocal && !isBroadcast;
+      !isLoopback &&
+      !isLinkLocal &&
+      !isBroadcast;
 
   /// True bitwise containment check for target IP in this address fact's subnet.
   bool contains(String targetIp) =>
@@ -1373,7 +1378,11 @@ class Ipv6AddressUtil {
   }
 
   /// True bitwise IPv6 prefix containment.
-  static bool containsIp(List<int> networkBytes, List<int> candidateBytes, int prefixLength) {
+  static bool containsIp(
+    List<int> networkBytes,
+    List<int> candidateBytes,
+    int prefixLength,
+  ) {
     if (networkBytes.length != 16 || candidateBytes.length != 16) return false;
     if (prefixLength <= 0) return true;
     if (prefixLength > 128) prefixLength = 128;
@@ -1400,11 +1409,11 @@ class Ipv6AddressFact {
   final String address;
   final int prefixLength;
   final List<int> rawBytes;
-  final bool isLinkLocal;      // fe80::/10 via bitwise math
-  final bool isGlobalUnicast;   // 2000::/3 via bitwise math
-  final bool isUla;             // fc00::/7 via bitwise math
+  final bool isLinkLocal; // fe80::/10 via bitwise math
+  final bool isGlobalUnicast; // 2000::/3 via bitwise math
+  final bool isUla; // fc00::/7 via bitwise math
   final int? preferredLifetime; // seconds valid from ubus 'preferred'
-  final int? validLifetime;     // seconds valid from ubus 'valid'
+  final int? validLifetime; // seconds valid from ubus 'valid'
 
   const Ipv6AddressFact({
     required this.address,
@@ -1475,11 +1484,11 @@ class FirewallTopologyFacts {
   bool hasHostFacingDevice(String network) =>
       logicalNetworkHasHostFacingDevice[network] == true;
 
-  Set<String> get hostFacingLogicalNetworks =>
-      logicalNetworkHasHostFacingDevice.entries
-          .where((e) => e.value)
-          .map((e) => e.key)
-          .toSet();
+  Set<String> get hostFacingLogicalNetworks => logicalNetworkHasHostFacingDevice
+      .entries
+      .where((e) => e.value)
+      .map((e) => e.key)
+      .toSet();
 
   factory FirewallTopologyFacts.fromNetworkDump(
     Map<String, dynamic>? dumpData, {
@@ -1557,24 +1566,27 @@ class FirewallTopologyFacts {
             final isLoop = addr.startsWith('127.');
             final isLl = addr.startsWith('169.254.');
             final isBc = addr == '255.255.255.255' || addr == '0.0.0.0';
-            final isPriv = addr.startsWith('10.') ||
+            final isPriv =
+                addr.startsWith('10.') ||
                 addr.startsWith('192.168.') ||
                 RegExp(r'^172\.(1[6-9]|2[0-9]|3[0-1])\.').hasMatch(addr);
             final isCg = RegExp(
               r'^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\.',
             ).hasMatch(addr);
 
-            facts.add(Ipv4AddressFact(
-              address: addr,
-              prefixLength: pfx,
-              subnetCidr: cidr,
-              isLoopback: isLoop,
-              isLinkLocal: isLl,
-              isBroadcast: isBc,
-              isPrivateRfc1918: isPriv,
-              isCgnatRfc6598: isCg,
-              isPublicRoutable: !isLoop && !isLl && !isBc && !isPriv && !isCg,
-            ));
+            facts.add(
+              Ipv4AddressFact(
+                address: addr,
+                prefixLength: pfx,
+                subnetCidr: cidr,
+                isLoopback: isLoop,
+                isLinkLocal: isLl,
+                isBroadcast: isBc,
+                isPrivateRfc1918: isPriv,
+                isCgnatRfc6598: isCg,
+                isPublicRoutable: !isLoop && !isLl && !isBc && !isPriv && !isCg,
+              ),
+            );
           }
           if (facts.isNotEmpty) {
             ip4FactsByNet[netName] = facts;
@@ -1701,10 +1713,12 @@ class FirewallTopologyFacts {
     Ipv6AddressFact? extIp6Fact;
     if (defIpv6Net != null && ip6FactsByNet.containsKey(defIpv6Net)) {
       final candidates = ip6FactsByNet[defIpv6Net]!
-          .where((f) =>
-              f.isGlobalUnicast &&
-              !f.isLinkLocal &&
-              (f.validLifetime == null || f.validLifetime! > 0))
+          .where(
+            (f) =>
+                f.isGlobalUnicast &&
+                !f.isLinkLocal &&
+                (f.validLifetime == null || f.validLifetime! > 0),
+          )
           .toList();
       if (candidates.length == 1) {
         extIp6Fact = candidates.first;
@@ -1712,23 +1726,30 @@ class FirewallTopologyFacts {
         final gwBytes = defIpv6Gw != null
             ? Ipv6AddressUtil.tryParse(defIpv6Gw)
             : null;
-        final matchingGw = (gwBytes != null &&
-                Ipv6AddressUtil.isGlobalUnicast(gwBytes))
+        final matchingGw =
+            (gwBytes != null && Ipv6AddressUtil.isGlobalUnicast(gwBytes))
             ? candidates
-                .where((c) => Ipv6AddressUtil.containsIp(
-                    c.rawBytes, gwBytes, c.prefixLength))
-                .toList()
+                  .where(
+                    (c) => Ipv6AddressUtil.containsIp(
+                      c.rawBytes,
+                      gwBytes,
+                      c.prefixLength,
+                    ),
+                  )
+                  .toList()
             : <Ipv6AddressFact>[];
 
         if (matchingGw.length == 1) {
           extIp6Fact = matchingGw.first;
         } else {
           final pool = matchingGw.length > 1 ? matchingGw : candidates;
-          final withLifetime =
-              pool.where((c) => c.preferredLifetime != null).toList();
+          final withLifetime = pool
+              .where((c) => c.preferredLifetime != null)
+              .toList();
           if (withLifetime.length == pool.length) {
-            withLifetime.sort((a, b) =>
-                b.preferredLifetime!.compareTo(a.preferredLifetime!));
+            withLifetime.sort(
+              (a, b) => b.preferredLifetime!.compareTo(a.preferredLifetime!),
+            );
             final highest = withLifetime.first.preferredLifetime!;
             final tied = withLifetime
                 .where((c) => c.preferredLifetime == highest)
@@ -1774,7 +1795,9 @@ class FirewallTopologyFacts {
 
         final devName =
             raw['device']?.toString() ?? raw['l3_device']?.toString();
-        if (devName == null || devName.isEmpty || wanDevices.contains(devName)) {
+        if (devName == null ||
+            devName.isEmpty ||
+            wanDevices.contains(devName)) {
           hostFacingByNet[netName] = false;
           continue;
         }
@@ -1786,7 +1809,8 @@ class FirewallTopologyFacts {
             final dtype = dInfo['type']?.toString().toLowerCase();
 
             // Virtual and tunnel devices cannot make a network host-facing
-            final isTunnel = dtype == 'tunnel' ||
+            final isTunnel =
+                dtype == 'tunnel' ||
                 dtype == 'wireguard' ||
                 dtype == 'gre' ||
                 dtype == 'veth' ||
@@ -1794,7 +1818,8 @@ class FirewallTopologyFacts {
 
             if (!isTunnel) {
               if (dtype == 'bridge') {
-                final members = dInfo['bridge_members'] ??
+                final members =
+                    dInfo['bridge_members'] ??
                     dInfo['bridge-members'] ??
                     dInfo['ports'];
                 final mList = (members is List)
@@ -1827,12 +1852,13 @@ class FirewallTopologyFacts {
                 isHostFacing = true;
               } else if (dtype == 'network device' || dtype == 'ethernet') {
                 // Physical switch/ethernet: check for positive internal subnet facts (IPv4 or IPv6)
-                final hasIp4Internal = ip4FactsByNet.containsKey(netName) &&
+                final hasIp4Internal =
+                    ip4FactsByNet.containsKey(netName) &&
                     ip4FactsByNet[netName]!.any((f) => f.isSuitableInternal);
-                final hasIp6Internal = ip6FactsByNet.containsKey(netName) &&
+                final hasIp6Internal =
+                    ip6FactsByNet.containsKey(netName) &&
                     ip6FactsByNet[netName]!.any(
-                      (f) =>
-                          (f.isUla || f.isGlobalUnicast) && !f.isLinkLocal,
+                      (f) => (f.isUla || f.isGlobalUnicast) && !f.isLinkLocal,
                     );
                 isHostFacing = hasIp4Internal || hasIp6Internal;
               }
@@ -1863,11 +1889,7 @@ class FirewallTopologyFacts {
 }
 
 /// NAT reflection evaluation status.
-enum NatReflectionStatus {
-  supported,
-  unsupported,
-  unknown,
-}
+enum NatReflectionStatus { supported, unsupported, unknown }
 
 /// Structured reasons for unsupported NAT reflection.
 enum NatReflectionUnsupportedReason {
@@ -1945,8 +1967,7 @@ class NatReflectionRedirectContext {
       destIp: forward.destIp,
       family: forward.family,
       existingReflection: forward.rawUciValues['reflection']?.toString(),
-      existingReflectionSrc:
-          forward.rawUciValues['reflection_src']?.toString(),
+      existingReflectionSrc: forward.rawUciValues['reflection_src']?.toString(),
       existingReflectionZones: rzList,
     );
   }

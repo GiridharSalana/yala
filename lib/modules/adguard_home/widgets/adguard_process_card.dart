@@ -128,7 +128,8 @@ class AdGuardProcessCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Tooltip(
-                      message: l10n?.aghEstimatedRamTooltip ??
+                      message:
+                          l10n?.aghEstimatedRamTooltip ??
                           'Calculated from process memory percentage; not kernel RSS',
                       child: Icon(
                         Icons.help_outline_rounded,

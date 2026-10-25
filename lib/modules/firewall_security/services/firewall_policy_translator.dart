@@ -273,10 +273,7 @@ class FirewallPolicyTranslator {
     } else {
       // Add new rule section
       mutations.add(
-        UciRuleMutation(
-          type: UciMutationType.add,
-          values: ruleValues,
-        ),
+        UciRuleMutation(type: UciMutationType.add, values: ruleValues),
       );
     }
 

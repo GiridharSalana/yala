@@ -12,10 +12,7 @@ import '../models/adguard_models.dart';
 class AdGuardFilterListsDialog extends StatefulWidget {
   final AdGuardController controller;
 
-  const AdGuardFilterListsDialog({
-    super.key,
-    required this.controller,
-  });
+  const AdGuardFilterListsDialog({super.key, required this.controller});
 
   /// Displays the filter lists management dialog.
   static Future<void> show(
@@ -130,10 +127,8 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
     await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogCtx) => _EditFilterListDialog(
-        controller: widget.controller,
-        list: list,
-      ),
+      builder: (dialogCtx) =>
+          _EditFilterListDialog(controller: widget.controller, list: list),
     );
     if (mounted) setState(() {});
   }
@@ -214,10 +209,7 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 680,
-          maxHeight: 720,
-        ),
+        constraints: const BoxConstraints(maxWidth: 680, maxHeight: 720),
         child: Column(
           children: [
             // Header
@@ -258,7 +250,9 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
                     ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
-                    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).closeButtonTooltip,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -270,11 +264,16 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
               Container(
                 key: const Key('agh_filter_list_error_banner'),
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: colorScheme.errorContainer,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: colorScheme.error.withValues(alpha: 0.5)),
+                  border: Border.all(
+                    color: colorScheme.error.withValues(alpha: 0.5),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -317,7 +316,8 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
                 key: const Key('agh_filter_lists_search_field'),
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: l10n?.aghFilterListsSearch ?? 'Search filter lists…',
+                  hintText:
+                      l10n?.aghFilterListsSearch ?? 'Search filter lists…',
                   prefixIcon: const Icon(Icons.search_rounded, size: 20),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -329,9 +329,13 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
                       : null,
                   isDense: true,
                   filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  fillColor: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.5,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -448,14 +452,18 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
                     label: Text(
                       l10n?.aghRefreshFilterLists ?? 'Check for Updates',
                     ),
-                    onPressed: state.isMutatingFilterLists ? null : _refreshLists,
+                    onPressed: state.isMutatingFilterLists
+                        ? null
+                        : _refreshLists,
                   ),
                   const Spacer(),
                   FilledButton.icon(
                     key: const Key('agh_add_filter_list_button'),
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: Text(l10n?.aghAddFilterList ?? 'Add Filter List'),
-                    onPressed: state.isMutatingFilterLists ? null : _openAddDialog,
+                    onPressed: state.isMutatingFilterLists
+                        ? null
+                        : _openAddDialog,
                   ),
                 ],
               ),
@@ -491,7 +499,7 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
                 _searchQuery.isNotEmpty
                     ? (l10n?.aghNoData ?? 'No data available')
                     : (l10n?.aghFilterListsEmpty ??
-                        'No filter lists configured'),
+                          'No filter lists configured'),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -515,7 +523,9 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
           return Container(
             key: Key('agh_filter_list_tile_$itemKey'),
             decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              color: colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.35,
+              ),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: colorScheme.outlineVariant.withValues(alpha: 0.4),
@@ -558,8 +568,9 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
                     Switch(
                       key: Key('agh_filter_list_toggle_$itemKey'),
                       value: item.enabled,
-                      onChanged:
-                          isMutating ? null : (val) => _toggleList(item, val),
+                      onChanged: isMutating
+                          ? null
+                          : (val) => _toggleList(item, val),
                     ),
                   ],
                 ),
@@ -629,7 +640,9 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
                         minWidth: 32,
                         minHeight: 32,
                       ),
-                      onPressed: isMutating ? null : () => _openEditDialog(item),
+                      onPressed: isMutating
+                          ? null
+                          : () => _openEditDialog(item),
                     ),
                     const SizedBox(width: 4),
                     // Delete button
@@ -646,8 +659,9 @@ class _AdGuardFilterListsDialogState extends State<AdGuardFilterListsDialog>
                         minWidth: 32,
                         minHeight: 32,
                       ),
-                      onPressed:
-                          isMutating ? null : () => _confirmRemoveList(item),
+                      onPressed: isMutating
+                          ? null
+                          : () => _confirmRemoveList(item),
                     ),
                   ],
                 ),
@@ -676,8 +690,7 @@ class _FilterPreset {
 const List<_FilterPreset> _curatedPresets = [
   _FilterPreset(
     name: 'AdGuard DNS filter',
-    url:
-        'https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt',
+    url: 'https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt',
     whitelist: false,
   ),
   _FilterPreset(
@@ -692,8 +705,7 @@ const List<_FilterPreset> _curatedPresets = [
   ),
   _FilterPreset(
     name: 'Steven Black Unified',
-    url:
-        'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts',
+    url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts',
     whitelist: false,
   ),
   _FilterPreset(
@@ -780,7 +792,8 @@ class _AddFilterListDialogState extends State<_AddFilterListDialog> {
     } else {
       setState(() {
         _isSubmitting = false;
-        _dialogError = widget.controller.currentState.filterListActionError ??
+        _dialogError =
+            widget.controller.currentState.filterListActionError ??
             'Failed to add filter list';
       });
     }
@@ -856,7 +869,9 @@ class _AddFilterListDialogState extends State<_AddFilterListDialog> {
                         preset.name,
                         style: const TextStyle(fontSize: 12),
                       ),
-                      onPressed: _isSubmitting ? null : () => _applyPreset(preset),
+                      onPressed: _isSubmitting
+                          ? null
+                          : () => _applyPreset(preset),
                     );
                   }).toList(),
                 ),
@@ -972,10 +987,7 @@ class _EditFilterListDialog extends StatefulWidget {
   final AdGuardController controller;
   final AdGuardFilterList list;
 
-  const _EditFilterListDialog({
-    required this.controller,
-    required this.list,
-  });
+  const _EditFilterListDialog({required this.controller, required this.list});
 
   @override
   State<_EditFilterListDialog> createState() => _EditFilterListDialogState();
@@ -1043,7 +1055,8 @@ class _EditFilterListDialogState extends State<_EditFilterListDialog> {
     } else {
       setState(() {
         _isSubmitting = false;
-        _dialogError = widget.controller.currentState.filterListActionError ??
+        _dialogError =
+            widget.controller.currentState.filterListActionError ??
             'Failed to update filter list';
       });
     }

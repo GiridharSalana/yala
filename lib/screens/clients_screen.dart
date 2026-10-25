@@ -137,8 +137,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
         ? appState.fetchAggregatedClients(
             onIncrementalUpdate: (incrementalList) {
               if (mounted) {
-                final currentRouterId =
-                    ref.read(appStateProvider).selectedRouter?.id;
+                final currentRouterId = ref
+                    .read(appStateProvider)
+                    .selectedRouter
+                    ?.id;
                 if (targetRouterId != null &&
                     currentRouterId != targetRouterId) {
                   return;
@@ -154,25 +156,30 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
           )
         : appState.fetchClientsForSelectedRouter();
     _clientsFuture = future;
-    future.then((list) {
-      if (mounted) {
-        final currentRouterId = ref.read(appStateProvider).selectedRouter?.id;
-        // Discard stale in-flight results if selected router changed
-        if (targetRouterId != null && currentRouterId != targetRouterId) {
-          return;
-        }
-        setState(() {
-          _cachedClientsRouterId = currentRouterId;
-          if (list.isNotEmpty || _cachedClients.isEmpty) {
-            _cachedClients = list;
+    future
+        .then((list) {
+          if (mounted) {
+            final currentRouterId = ref
+                .read(appStateProvider)
+                .selectedRouter
+                ?.id;
+            // Discard stale in-flight results if selected router changed
+            if (targetRouterId != null && currentRouterId != targetRouterId) {
+              return;
+            }
+            setState(() {
+              _cachedClientsRouterId = currentRouterId;
+              if (list.isNotEmpty || _cachedClients.isEmpty) {
+                _cachedClients = list;
+              }
+            });
+          }
+        })
+        .catchError((error) {
+          if (mounted) {
+            setState(() {});
           }
         });
-      }
-    }).catchError((error) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
     return future;
   }
 
@@ -320,7 +327,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
           _cachedClientsRouterId = currentId;
         }
         final isMatchingRouter = _cachedClientsRouterId == currentId;
-        final aggregatedClients = (snapshot.hasData && snapshot.data != null && (snapshot.data!.isNotEmpty || _cachedClients.isEmpty))
+        final aggregatedClients =
+            (snapshot.hasData &&
+                snapshot.data != null &&
+                (snapshot.data!.isNotEmpty || _cachedClients.isEmpty))
             ? snapshot.data!
             : (isMatchingRouter ? _cachedClients : <Client>[]);
         final l10n = AppLocalizations.of(context);
@@ -382,8 +392,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                     minHeight: 38,
                                   ),
                                   filled: true,
-                                  fillColor: colorScheme
-                                      .surfaceContainerHighest
+                                  fillColor: colorScheme.surfaceContainerHighest
                                       .withValues(alpha: 0.45),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(14.0),
@@ -455,8 +464,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(18.0),
                                     side: BorderSide(
-                                      color: colorScheme
-                                          .surfaceContainerHighest
+                                      color: colorScheme.surfaceContainerHighest
                                           .withValues(alpha: 0.10),
                                       width: 1,
                                     ),
@@ -1320,7 +1328,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen>
 /// Returns whether a client displays the active "Wired" badge.
 /// Dumb AP clients that are stale or failed do not display the active Wired badge.
 bool clientHasActiveWiredBadge(Client client) {
-  final isStaleDumbApWired = client.isDumbApClient &&
+  final isStaleDumbApWired =
+      client.isDumbApClient &&
       (client.neighState == NeighborReachability.stale ||
           client.neighState == NeighborReachability.failed);
   return client.isConnected &&
@@ -2058,8 +2067,9 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                 final isRpcMissing = appState.isMissingRpcPackages;
                 final isDarkMode = theme.brightness == Brightness.dark;
                 final colorScheme = theme.colorScheme;
-                final policy =
-                    appState.getDeviceNetworkAccessPolicy(client.macAddress);
+                final policy = appState.getDeviceNetworkAccessPolicy(
+                  client.macAddress,
+                );
                 final isBanned = appState.isWirelessBanned(client.macAddress);
                 final canPause = client.isConnected || policy.hasAnyRestriction;
 
@@ -2203,11 +2213,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              buttonIcon,
-                              size: 15,
-                              color: buttonColor,
-                            ),
+                            Icon(buttonIcon, size: 15, color: buttonColor),
                             const SizedBox(width: 4),
                             Text(
                               buttonLabel,
@@ -2578,8 +2584,9 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
 
       // Find the static mapping record to get exact IP, DUID, and hostname configured on the router
       final normMac = client.macAddress.toUpperCase().replaceAll('-', ':');
-      DhcpStaticMapping? existingMapping =
-          appState.findStaticLeaseByMac(client.macAddress);
+      DhcpStaticMapping? existingMapping = appState.findStaticLeaseByMac(
+        client.macAddress,
+      );
       if (existingMapping == null && appState.dashboardData != null) {
         final dhcpOverview = DhcpDnsOverview.fromDashboardData(
           appState.dashboardData,
@@ -2593,22 +2600,25 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
         }
       }
 
-      final targetIp = (existingMapping != null &&
+      final targetIp =
+          (existingMapping != null &&
               existingMapping.ipAddress.isNotEmpty &&
               existingMapping.ipAddress != 'N/A')
           ? existingMapping.ipAddress
           : (client.ipAddress != 'N/A' && client.ipAddress.isNotEmpty
-              ? client.ipAddress
-              : null);
+                ? client.ipAddress
+                : null);
 
-      final hostname = (existingMapping != null &&
+      final hostname =
+          (existingMapping != null &&
               existingMapping.hostname.isNotEmpty &&
               existingMapping.hostname != 'Unnamed Host')
           ? existingMapping.hostname
           : (client.staticLeaseName ??
-              (client.hostname != 'Unknown' ? client.hostname : null));
+                (client.hostname != 'Unknown' ? client.hostname : null));
 
-      final duid = (existingMapping != null &&
+      final duid =
+          (existingMapping != null &&
               existingMapping.duid.isNotEmpty &&
               existingMapping.duid != 'N/A')
           ? existingMapping.duid
@@ -2648,10 +2658,7 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard> {
     BuildContext context,
     Client client,
   ) async {
-    await DeviceNetworkAccessCard.showAsBottomSheet(
-      context,
-      client: client,
-    );
+    await DeviceNetworkAccessCard.showAsBottomSheet(context, client: client);
     if (mounted) setState(() {});
   }
 

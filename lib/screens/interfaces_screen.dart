@@ -2215,30 +2215,10 @@ class _InterfacesScreenState extends ConsumerState<InterfacesScreen> {
           '',
           isLoading: true,
         ),
-        _buildDetailRow(
-          context,
-          'Mode',
-          '',
-          isLoading: true,
-        ),
-        _buildDetailRow(
-          context,
-          'Channel',
-          '',
-          isLoading: true,
-        ),
-        _buildDetailRow(
-          context,
-          'Signal',
-          '',
-          isLoading: true,
-        ),
-        _buildDetailRow(
-          context,
-          'Network',
-          '',
-          isLoading: true,
-        ),
+        _buildDetailRow(context, 'Mode', '', isLoading: true),
+        _buildDetailRow(context, 'Channel', '', isLoading: true),
+        _buildDetailRow(context, 'Signal', '', isLoading: true),
+        _buildDetailRow(context, 'Network', '', isLoading: true),
       ],
     );
   }
@@ -2748,8 +2728,9 @@ class _UnifiedNetworkCardState extends State<UnifiedNetworkCard>
                               child: LuciSkeleton(
                                 width: 120,
                                 height: 12,
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(4)),
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(4),
+                                ),
                               ),
                             )
                           else

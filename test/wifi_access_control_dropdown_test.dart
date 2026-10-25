@@ -20,7 +20,10 @@ void main() {
   setUp(() async {
     FlutterSecureStorage.setMockInitialValues({});
     SharedPreferences.setMockInitialValues({});
-    SelfDeviceGuard.setMockLocalAddresses({'192.168.1.50', '00:11:22:33:44:55'});
+    SelfDeviceGuard.setMockLocalAddresses({
+      '192.168.1.50',
+      '00:11:22:33:44:55',
+    });
     await AppState.instance.initializationFuture;
   });
 
@@ -87,19 +90,13 @@ void main() {
         );
 
         // Verify DropdownButtonFormField is present immediately
-        expect(
-          find.byType(DropdownButtonFormField<Client>),
-          findsOneWidget,
-        );
+        expect(find.byType(DropdownButtonFormField<Client>), findsOneWidget);
 
         // Let async background refresh settle
         await tester.pumpAndSettle();
 
         // Verify dropdown is still present
-        expect(
-          find.byType(DropdownButtonFormField<Client>),
-          findsOneWidget,
-        );
+        expect(find.byType(DropdownButtonFormField<Client>), findsOneWidget);
 
         // Tap dropdown to open it
         await tester.tap(find.byType(DropdownButtonFormField<Client>));

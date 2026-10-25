@@ -24,14 +24,14 @@ class MockLoadingClientController extends ClientController {
   final Completer<List<Client>> completer;
 
   MockLoadingClientController(this.completer)
-      : super(
-          apiServiceRef: () => MockApiService(),
-          authServiceRef: () => MockAuthService(),
-          routerServiceRef: () => RouterService(isReviewerMode: false),
-          reviewerModeRef: () => false,
-          executeRouterCommandOutput: (cmd, args) async => null,
-          processDhcpLeases: (raw) => raw,
-        );
+    : super(
+        apiServiceRef: () => MockApiService(),
+        authServiceRef: () => MockAuthService(),
+        routerServiceRef: () => RouterService(isReviewerMode: false),
+        reviewerModeRef: () => false,
+        executeRouterCommandOutput: (cmd, args) async => null,
+        processDhcpLeases: (raw) => raw,
+      );
 
   @override
   Future<List<Client>> fetchClientsForSelectedRouter() => completer.future;
@@ -46,14 +46,14 @@ class MockClientControllerWithFixedClients extends ClientController {
   final List<Client> fixedClients;
 
   MockClientControllerWithFixedClients(this.fixedClients)
-      : super(
-          apiServiceRef: () => MockApiService(),
-          authServiceRef: () => MockAuthService(),
-          routerServiceRef: () => RouterService(isReviewerMode: false),
-          reviewerModeRef: () => false,
-          executeRouterCommandOutput: (cmd, args) async => null,
-          processDhcpLeases: (raw) => raw,
-        );
+    : super(
+        apiServiceRef: () => MockApiService(),
+        authServiceRef: () => MockAuthService(),
+        routerServiceRef: () => RouterService(isReviewerMode: false),
+        reviewerModeRef: () => false,
+        executeRouterCommandOutput: (cmd, args) async => null,
+        processDhcpLeases: (raw) => raw,
+      );
 
   @override
   Future<List<Client>> fetchClientsForSelectedRouter() async => fixedClients;

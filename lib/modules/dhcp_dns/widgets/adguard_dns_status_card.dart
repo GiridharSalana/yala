@@ -24,10 +24,7 @@ import 'package:yala/modules/adguard_home/screens/adguard_home_screen.dart';
 class AdGuardDnsStatusCard extends ConsumerStatefulWidget {
   final String routerId;
 
-  const AdGuardDnsStatusCard({
-    super.key,
-    required this.routerId,
-  });
+  const AdGuardDnsStatusCard({super.key, required this.routerId});
 
   @override
   ConsumerState<AdGuardDnsStatusCard> createState() =>
@@ -132,11 +129,7 @@ class _AdGuardDnsStatusCardState extends ConsumerState<AdGuardDnsStatusCard> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.dns_rounded,
-                    size: 20,
-                    color: colorScheme.primary,
-                  ),
+                  Icon(Icons.dns_rounded, size: 20, color: colorScheme.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -199,8 +192,7 @@ class _AdGuardDnsStatusCardState extends ConsumerState<AdGuardDnsStatusCard> {
     ThemeData theme,
   ) {
     final colorScheme = theme.colorScheme;
-    final isStopped =
-        state.status != null && state.status?.running == false;
+    final isStopped = state.status != null && state.status?.running == false;
 
     final String badgeText = isStopped
         ? (l10n?.aghDnsCardStoppedBadge ?? 'Stopped / Inactive')
@@ -210,14 +202,15 @@ class _AdGuardDnsStatusCardState extends ConsumerState<AdGuardDnsStatusCard> {
         ? Icons.stop_circle_outlined
         : Icons.warning_amber_rounded;
 
-    final Color badgeColor =
-        isStopped ? Colors.red.shade700 : Colors.orange.shade800;
+    final Color badgeColor = isStopped
+        ? Colors.red.shade700
+        : Colors.orange.shade800;
 
     final String descriptionText = isStopped
         ? (l10n?.aghDnsCardStoppedDesc ??
-            'AdGuard Home DNS engine is stopped. Standard router DNS is active.')
+              'AdGuard Home DNS engine is stopped. Standard router DNS is active.')
         : (l10n?.aghDnsEngineNotOperationalDesc ??
-            'AdGuard Home API is connected, but DNS engine is not operational.');
+              'AdGuard Home API is connected, but DNS engine is not operational.');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -234,11 +227,7 @@ class _AdGuardDnsStatusCardState extends ConsumerState<AdGuardDnsStatusCard> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.dns_rounded,
-                    size: 20,
-                    color: colorScheme.primary,
-                  ),
+                  Icon(Icons.dns_rounded, size: 20, color: colorScheme.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -313,14 +302,14 @@ class _AdGuardDnsStatusCardState extends ConsumerState<AdGuardDnsStatusCard> {
     final String badgeText = isEnabled
         ? (l10n?.aghProtectionEnabled ?? 'Protection Enabled')
         : (isPaused
-            ? (l10n?.aghProtectionPaused ?? 'Protection Paused')
-            : (l10n?.aghProtectionDisabled ?? 'Protection Disabled'));
+              ? (l10n?.aghProtectionPaused ?? 'Protection Paused')
+              : (l10n?.aghProtectionDisabled ?? 'Protection Disabled'));
 
     final IconData badgeIcon = isEnabled
         ? Icons.shield_rounded
         : (isPaused
-            ? Icons.pause_circle_outline_rounded
-            : Icons.shield_outlined);
+              ? Icons.pause_circle_outline_rounded
+              : Icons.shield_outlined);
 
     final totalQueries = state.stats?.numDnsQueries ?? 0;
     final blockedQueries = state.stats?.numBlockedFiltering ?? 0;
@@ -345,7 +334,9 @@ class _AdGuardDnsStatusCardState extends ConsumerState<AdGuardDnsStatusCard> {
                   Icon(
                     Icons.shield_rounded,
                     size: 20,
-                    color: isEnabled ? Colors.green.shade700 : colorScheme.primary,
+                    color: isEnabled
+                        ? Colors.green.shade700
+                        : colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -492,10 +483,7 @@ class _AdGuardDnsStatusCardState extends ConsumerState<AdGuardDnsStatusCard> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withValues(alpha: 0.35),
-          width: 0.8,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

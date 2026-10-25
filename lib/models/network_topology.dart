@@ -381,7 +381,9 @@ class DsaTopologyParser {
         wanPortNames.add('wan');
       }
       for (final wanName in wanPortNames) {
-        if (!allPorts.any((ap) => ap.name == wanName || (ap.isWan && !ap.isCpu))) {
+        if (!allPorts.any(
+          (ap) => ap.name == wanName || (ap.isWan && !ap.isCpu),
+        )) {
           final wanPort = buildDsaPort(wanName, isWanOverride: true);
           allPorts.add(wanPort);
           vlans.add(
@@ -482,9 +484,12 @@ class SwconfigTopologyParser {
                 final idxVal = p['index'] is int
                     ? p['index'] as int
                     : int.tryParse(p['index']?.toString() ?? '') ?? numVal;
-                specs.add(
-                  (num: numVal, role: role, index: idxVal, device: devVal),
-                );
+                specs.add((
+                  num: numVal,
+                  role: role,
+                  index: idxVal,
+                  device: devVal,
+                ));
               }
             }
 
@@ -516,15 +521,17 @@ class SwconfigTopologyParser {
               if (s.role == 'cpu') {
                 cpuSet.add(s.num);
                 orderMap[s.num] = 900 + s.index; // CPU ports at the end
-                final devStr =
-                    s.device != null && s.device!.isNotEmpty ? s.device! : 'eth0';
+                final devStr = s.device != null && s.device!.isNotEmpty
+                    ? s.device!
+                    : 'eth0';
                 cpuDeviceNames.add(devStr);
                 labels[s.num] = 'CPU ($devStr)';
               } else if (s.role == 'wan') {
                 wanSet.add(s.num);
                 orderMap[s.num] = s.index;
-                labels[s.num] =
-                    (roleCounts['wan'] ?? 0) > 1 ? 'WAN $pnum' : 'WAN';
+                labels[s.num] = (roleCounts['wan'] ?? 0) > 1
+                    ? 'WAN $pnum'
+                    : 'WAN';
                 pnum++;
               } else {
                 // LAN or other
@@ -568,16 +575,22 @@ class SwconfigTopologyParser {
             final vid = int.tryParse(vlanIdStr) ?? 1;
             final rawPorts = val['ports']?.toString() ?? '';
 
-            final swLabels = boardPortLabels[switchDev] ??
+            final swLabels =
+                boardPortLabels[switchDev] ??
                 (boardPortLabels.isNotEmpty
                     ? boardPortLabels.values.first
                     : null);
-            final swWan = boardWanPorts[switchDev] ??
+            final swWan =
+                boardWanPorts[switchDev] ??
                 (boardWanPorts.isNotEmpty ? boardWanPorts.values.first : null);
-            final swCpu = boardCpuPorts[switchDev] ??
+            final swCpu =
+                boardCpuPorts[switchDev] ??
                 (boardCpuPorts.isNotEmpty ? boardCpuPorts.values.first : null);
-            final swOrder = boardPortOrder[switchDev] ??
-                (boardPortOrder.isNotEmpty ? boardPortOrder.values.first : null);
+            final swOrder =
+                boardPortOrder[switchDev] ??
+                (boardPortOrder.isNotEmpty
+                    ? boardPortOrder.values.first
+                    : null);
 
             final portsList = <TopologyPort>[];
             for (final portToken in rawPorts.split(' ')) {
@@ -594,10 +607,14 @@ class SwconfigTopologyParser {
                   swLabels.containsKey(pIndex)) {
                 portName = swLabels[pIndex]!;
                 isWan = swWan?.contains(pIndex) ?? false;
-                isCpu = swCpu?.contains(pIndex) ??
+                isCpu =
+                    swCpu?.contains(pIndex) ??
                     portName.toLowerCase().contains('cpu');
               } else {
-                isCpu = (pIndex != null && swCpu != null && swCpu.contains(pIndex)) ||
+                isCpu =
+                    (pIndex != null &&
+                        swCpu != null &&
+                        swCpu.contains(pIndex)) ||
                     (pIndex == 0 && isTagged);
                 isWan = !isCpu && (pIndex == 0);
                 portName = isCpu
@@ -774,8 +791,9 @@ class SwconfigTopologyParser {
       for (final rawWanDev in wanCandidates) {
         if (!isPhysicalNetdev(rawWanDev)) continue;
 
-        final baseDev =
-            rawWanDev.contains('.') ? rawWanDev.split('.').first : rawWanDev;
+        final baseDev = rawWanDev.contains('.')
+            ? rawWanDev.split('.').first
+            : rawWanDev;
 
         // If baseDev is the CPU interconnect of the switch (e.g. eth0 in eth0.2), WAN is switch-integrated
         if (cpuDeviceNames.contains(baseDev)) continue;
@@ -826,8 +844,9 @@ class SwconfigTopologyParser {
           isUp = true;
         }
 
-        final portDisplayName =
-            baseDev.toLowerCase() == 'wan' ? 'WAN' : 'WAN ($baseDev)';
+        final portDisplayName = baseDev.toLowerCase() == 'wan'
+            ? 'WAN'
+            : 'WAN ($baseDev)';
         final wanPort = TopologyPort(
           name: portDisplayName,
           isTagged: false,

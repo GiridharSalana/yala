@@ -174,7 +174,10 @@ class SecureStorageService {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList
           .whereType<Map>()
-          .map((e) => AdGuardInstanceProfile.fromJson(Map<String, dynamic>.from(e)))
+          .map(
+            (e) =>
+                AdGuardInstanceProfile.fromJson(Map<String, dynamic>.from(e)),
+          )
           .toList();
     } catch (e, stack) {
       Logger.exception('Failed to get AdGuard instance profiles', e, stack);
@@ -183,10 +186,15 @@ class SecureStorageService {
   }
 
   /// Saves a list of AdGuard instance profiles.
-  Future<void> saveAdGuardProfiles(List<AdGuardInstanceProfile> profiles) async {
+  Future<void> saveAdGuardProfiles(
+    List<AdGuardInstanceProfile> profiles,
+  ) async {
     try {
       final jsonList = profiles.map((p) => p.toJson()).toList();
-      await _storage.write(key: _adGuardProfilesKey, value: jsonEncode(jsonList));
+      await _storage.write(
+        key: _adGuardProfilesKey,
+        value: jsonEncode(jsonList),
+      );
     } catch (e, stack) {
       Logger.exception('Failed to save AdGuard instance profiles', e, stack);
       rethrow;
@@ -319,9 +327,7 @@ class SecureStorageService {
           .map((e) => Router.fromJson(Map<String, dynamic>.from(e)))
           .where(
             (r) =>
-                r.id.isNotEmpty &&
-                r.ipAddress.isNotEmpty &&
-                !_isMockRouter(r),
+                r.id.isNotEmpty && r.ipAddress.isNotEmpty && !_isMockRouter(r),
           )
           .toList();
     } catch (e, stack) {

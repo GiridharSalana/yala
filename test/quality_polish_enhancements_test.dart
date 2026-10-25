@@ -174,7 +174,9 @@ void main() {
 
         // Reset palette and connection status
         await appState.setThemePalette(AppThemePalette.amber);
-        appState.setConnectionStatusForTesting(RouterConnectionStatus.connected);
+        appState.setConnectionStatusForTesting(
+          RouterConnectionStatus.connected,
+        );
       },
     );
   });

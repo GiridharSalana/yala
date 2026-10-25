@@ -32,8 +32,8 @@ class DhcpDnsScreen extends ConsumerWidget {
     final selectedRouter = ref.watch(
       appStateProvider.select((s) => s.selectedRouter),
     );
-    final routerId = selectedRouter?.id ??
-        (isReviewerMode ? 'reviewer-mock-router' : '');
+    final routerId =
+        selectedRouter?.id ?? (isReviewerMode ? 'reviewer-mock-router' : '');
     final l10n = AppLocalizations.of(context);
     final dashboardData = Map<String, dynamic>.from(dashboardDataRaw ?? {});
     dashboardData['clients'] = clients
@@ -73,8 +73,7 @@ class DhcpDnsScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
           children: [
-            if (routerId.isNotEmpty)
-              AdGuardDnsStatusCard(routerId: routerId),
+            if (routerId.isNotEmpty) AdGuardDnsStatusCard(routerId: routerId),
             _buildSectionHeader(
               context,
               l10n?.dhcpDnsForwardersSectionTitle ??

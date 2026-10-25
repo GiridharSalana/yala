@@ -20,13 +20,12 @@ void main() {
 
     test('strips port numbers and user credentials', () {
       expect(
-        DomainValidator.normalize('http://user:password@tracker.adservice.net:8443/ping'),
+        DomainValidator.normalize(
+          'http://user:password@tracker.adservice.net:8443/ping',
+        ),
         'tracker.adservice.net',
       );
-      expect(
-        DomainValidator.normalize('adserver.com:8080'),
-        'adserver.com',
-      );
+      expect(DomainValidator.normalize('adserver.com:8080'), 'adserver.com');
     });
 
     test('converts uppercase to lowercase', () {
@@ -36,7 +35,10 @@ void main() {
 
     test('strips leading wildcard prefixes and dots', () {
       expect(DomainValidator.normalize('*.doubleclick.net'), 'doubleclick.net');
-      expect(DomainValidator.normalize('.analytics.yahoo.com'), 'analytics.yahoo.com');
+      expect(
+        DomainValidator.normalize('.analytics.yahoo.com'),
+        'analytics.yahoo.com',
+      );
       expect(DomainValidator.normalize('example.com.'), 'example.com');
     });
 
@@ -135,21 +137,31 @@ void main() {
         'sub.ads.org',
       );
       expect(
-        DomainValidator.parseBlockedDomainFromAdGuardRule('||tracker.net^\$important'),
+        DomainValidator.parseBlockedDomainFromAdGuardRule(
+          '||tracker.net^\$important',
+        ),
         'tracker.net',
       );
     });
 
     test('ignores allowlist rules starting with @@', () {
       expect(
-        DomainValidator.parseBlockedDomainFromAdGuardRule('@@||allowed.workplace.com^'),
+        DomainValidator.parseBlockedDomainFromAdGuardRule(
+          '@@||allowed.workplace.com^',
+        ),
         isNull,
       );
     });
 
     test('ignores comments and empty lines', () {
-      expect(DomainValidator.parseBlockedDomainFromAdGuardRule('! Comment line'), isNull);
-      expect(DomainValidator.parseBlockedDomainFromAdGuardRule('# Another comment'), isNull);
+      expect(
+        DomainValidator.parseBlockedDomainFromAdGuardRule('! Comment line'),
+        isNull,
+      );
+      expect(
+        DomainValidator.parseBlockedDomainFromAdGuardRule('# Another comment'),
+        isNull,
+      );
       expect(DomainValidator.parseBlockedDomainFromAdGuardRule(''), isNull);
     });
   });
@@ -161,7 +173,9 @@ void main() {
         'example.com',
       );
       expect(
-        DomainValidator.parseBlockedDomainFromAddress('/ads.google.com/0.0.0.0'),
+        DomainValidator.parseBlockedDomainFromAddress(
+          '/ads.google.com/0.0.0.0',
+        ),
         'ads.google.com',
       );
       expect(
@@ -175,9 +189,15 @@ void main() {
     });
 
     test('ignores comments and non-matching formats', () {
-      expect(DomainValidator.parseBlockedDomainFromAddress('# /commented.com/#'), isNull);
+      expect(
+        DomainValidator.parseBlockedDomainFromAddress('# /commented.com/#'),
+        isNull,
+      );
       expect(DomainValidator.parseBlockedDomainFromAddress(''), isNull);
-      expect(DomainValidator.parseBlockedDomainFromAddress('invalid_entry'), isNull);
+      expect(
+        DomainValidator.parseBlockedDomainFromAddress('invalid_entry'),
+        isNull,
+      );
     });
   });
 

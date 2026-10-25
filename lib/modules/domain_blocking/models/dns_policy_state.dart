@@ -90,13 +90,13 @@ class DnsPolicyState {
 
   @override
   int get hashCode => Object.hash(
-        activeEngine,
-        isFilteringActive,
-        Object.hashAll(globalRules),
-        Object.hashAll(supportedScopes),
-        warning,
-        error,
-      );
+    activeEngine,
+    isFilteringActive,
+    Object.hashAll(globalRules),
+    Object.hashAll(supportedScopes),
+    warning,
+    error,
+  );
 
   @override
   String toString() =>

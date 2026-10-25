@@ -46,8 +46,7 @@ class UiTestMockAdGuardApiService implements IAdGuardApiService {
   @override
   Future<AdGuardConnectionStatus> testConnection({
     AdGuardCredentials? credentials,
-  }) async =>
-      testConnectionResult;
+  }) async => testConnectionResult;
 
   AdGuardCredentials? activeCreds;
   AdGuardStatus? mockStatus;
@@ -82,15 +81,11 @@ class UiTestMockAdGuardApiService implements IAdGuardApiService {
       numReplacedSafesearch: 0,
       numReplacedParental: 0,
       avgProcessingTime: 0.015,
-      topQueriedDomains: [
-        AdGuardTopItem(identifier: 'google.com', count: 500),
-      ],
+      topQueriedDomains: [AdGuardTopItem(identifier: 'google.com', count: 500)],
       topBlockedDomains: [
         AdGuardTopItem(identifier: 'adservice.google.com', count: 300),
       ],
-      topClients: [
-        AdGuardTopItem(identifier: '192.168.1.100', count: 800),
-      ],
+      topClients: [AdGuardTopItem(identifier: '192.168.1.100', count: 800)],
       dnsQueriesTrend: [100, 200],
       blockedFilteringTrend: [20, 40],
       blockRatePercentage: 20.0,
@@ -184,7 +179,10 @@ class UiTestMockAdGuardApiService implements IAdGuardApiService {
   }
 
   @override
-  Future<AdGuardApiResult<bool>> updateClient(String oldName, AdGuardClient client) async {
+  Future<AdGuardApiResult<bool>> updateClient(
+    String oldName,
+    AdGuardClient client,
+  ) async {
     return AdGuardApiResult.success(true);
   }
 
@@ -200,8 +198,7 @@ class UiTestMockAdGuardApiService implements IAdGuardApiService {
     required String name,
     required String url,
     required bool whitelist,
-  }) async =>
-      AdGuardApiResult.success(true);
+  }) async => AdGuardApiResult.success(true);
 
   @override
   Future<AdGuardApiResult<bool>> setFilterList({
@@ -210,15 +207,13 @@ class UiTestMockAdGuardApiService implements IAdGuardApiService {
     required String newUrl,
     required bool enabled,
     required bool whitelist,
-  }) async =>
-      AdGuardApiResult.success(true);
+  }) async => AdGuardApiResult.success(true);
 
   @override
   Future<AdGuardApiResult<bool>> removeFilterList({
     required String url,
     required bool whitelist,
-  }) async =>
-      AdGuardApiResult.success(true);
+  }) async => AdGuardApiResult.success(true);
 
   @override
   Future<AdGuardApiResult<bool>> refreshFilterLists({bool? whitelist}) async =>
@@ -260,15 +255,15 @@ class UiTestFakeLuciApiService implements IApiService {
             '%CPU': '1.5',
             '%MEM': '3.2',
             'VSZ': '45056',
-          }
-        ]
+          },
+        ],
       };
     }
     if (object == 'luci' && method == 'getInitList') {
       return {
         'result': {
-          'adguardhome': {'enabled': true, 'running': true}
-        }
+          'adguardhome': {'enabled': true, 'running': true},
+        },
       };
     }
     return {'result': []};
@@ -306,34 +301,40 @@ void main() {
     });
 
     // ── 15. IPv4/IPv6 Web UI URL Construction ──────────────────────────────
-    test('15. IPv4/IPv6 Web UI URL construction handles formats and custom ports', () {
-      // IPv4 HTTP
-      expect(
-        AdGuardWebUrlHelper.buildWebUrl(host: '192.168.1.1', port: 3000),
-        equals('http://192.168.1.1:3000'),
-      );
-      // IPv4 HTTPS
-      expect(
-        AdGuardWebUrlHelper.buildWebUrl(
-            host: '192.168.1.1', port: 3000, useHttps: true),
-        equals('https://192.168.1.1:3000'),
-      );
-      // IPv6 standard (adds bracket notation)
-      expect(
-        AdGuardWebUrlHelper.buildWebUrl(host: '2001:db8::1', port: 3000),
-        equals('http://[2001:db8::1]:3000'),
-      );
-      // IPv6 already bracketed (does not duplicate brackets)
-      expect(
-        AdGuardWebUrlHelper.buildWebUrl(host: '[2001:db8::1]', port: 3000),
-        equals('http://[2001:db8::1]:3000'),
-      );
-      // Custom port
-      expect(
-        AdGuardWebUrlHelper.buildWebUrl(host: '10.0.0.1', port: 8080),
-        equals('http://10.0.0.1:8080'),
-      );
-    });
+    test(
+      '15. IPv4/IPv6 Web UI URL construction handles formats and custom ports',
+      () {
+        // IPv4 HTTP
+        expect(
+          AdGuardWebUrlHelper.buildWebUrl(host: '192.168.1.1', port: 3000),
+          equals('http://192.168.1.1:3000'),
+        );
+        // IPv4 HTTPS
+        expect(
+          AdGuardWebUrlHelper.buildWebUrl(
+            host: '192.168.1.1',
+            port: 3000,
+            useHttps: true,
+          ),
+          equals('https://192.168.1.1:3000'),
+        );
+        // IPv6 standard (adds bracket notation)
+        expect(
+          AdGuardWebUrlHelper.buildWebUrl(host: '2001:db8::1', port: 3000),
+          equals('http://[2001:db8::1]:3000'),
+        );
+        // IPv6 already bracketed (does not duplicate brackets)
+        expect(
+          AdGuardWebUrlHelper.buildWebUrl(host: '[2001:db8::1]', port: 3000),
+          equals('http://[2001:db8::1]:3000'),
+        );
+        // Custom port
+        expect(
+          AdGuardWebUrlHelper.buildWebUrl(host: '10.0.0.1', port: 8080),
+          equals('http://10.0.0.1:8080'),
+        );
+      },
+    );
 
     // ── 11. Reviewer Mode Browser Suppression ──────────────────────────────
     testWidgets(
@@ -425,15 +426,17 @@ void main() {
             child: AdGuardProtectionCard(
               status: enabledStatus,
               isMutating: false,
-              onSetProtection: ({required bool enabled, Duration? duration}) async {},
+              onSetProtection:
+                  ({required bool enabled, Duration? duration}) async {},
             ),
           ),
         );
         await tester.pumpAndSettle();
 
         expect(find.text('Protection Enabled'), findsNothing);
-        final Switch toggleSwitch =
-            tester.widget(find.byKey(const Key('agh_protection_toggle_switch')));
+        final Switch toggleSwitch = tester.widget(
+          find.byKey(const Key('agh_protection_toggle_switch')),
+        );
         expect(toggleSwitch.value, isTrue);
 
         // State B: Paused with duration
@@ -452,14 +455,18 @@ void main() {
             child: AdGuardProtectionCard(
               status: pausedStatus,
               isMutating: false,
-              onSetProtection: ({required bool enabled, Duration? duration}) async {},
+              onSetProtection:
+                  ({required bool enabled, Duration? duration}) async {},
             ),
           ),
         );
         await tester.pumpAndSettle();
 
         expect(find.text('Protection Paused'), findsOneWidget);
-        expect(find.byKey(const Key('agh_protection_pause_time')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_protection_pause_time')),
+          findsOneWidget,
+        );
         expect(find.textContaining('15m 0s'), findsOneWidget);
 
         // State C: Disabled
@@ -477,15 +484,17 @@ void main() {
             child: AdGuardProtectionCard(
               status: disabledStatus,
               isMutating: false,
-              onSetProtection: ({required bool enabled, Duration? duration}) async {},
+              onSetProtection:
+                  ({required bool enabled, Duration? duration}) async {},
             ),
           ),
         );
         await tester.pumpAndSettle();
 
         expect(find.text('Protection Disabled'), findsOneWidget);
-        final Switch disabledSwitch =
-            tester.widget(find.byKey(const Key('agh_protection_toggle_switch')));
+        final Switch disabledSwitch = tester.widget(
+          find.byKey(const Key('agh_protection_toggle_switch')),
+        );
         expect(disabledSwitch.value, isFalse);
       },
     );
@@ -521,7 +530,10 @@ void main() {
         expect(find.byKey(const Key('agh_pause_30m_option')), findsOneWidget);
         expect(find.byKey(const Key('agh_pause_1h_option')), findsOneWidget);
         expect(find.byKey(const Key('agh_pause_24h_option')), findsOneWidget);
-        expect(find.byKey(const Key('agh_pause_custom_option')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_pause_custom_option')),
+          findsOneWidget,
+        );
 
         // Tap 30m preset
         await tester.tap(find.byKey(const Key('agh_pause_30m_option')));
@@ -595,16 +607,18 @@ void main() {
 
         await tester.pumpWidget(
           buildTestApp(
-            child: const AdGuardProcessCard(
-              telemetry: mockTelemetry,
-            ),
+            child: const AdGuardProcessCard(telemetry: mockTelemetry),
           ),
         );
         await tester.pumpAndSettle();
 
         expect(find.text('Estimated RAM'), findsOneWidget);
-        expect(find.byTooltip('Calculated from process memory percentage; not kernel RSS'),
-            findsOneWidget);
+        expect(
+          find.byTooltip(
+            'Calculated from process memory percentage; not kernel RSS',
+          ),
+          findsOneWidget,
+        );
         expect(find.text('1660'), findsOneWidget);
         expect(find.text('1.5%'), findsOneWidget);
         expect(find.text('44.0 MB'), findsOneWidget);
@@ -627,22 +641,23 @@ void main() {
         );
 
         await tester.pumpWidget(
-          buildTestApp(
-            child: const AdGuardTopologyCard(
-              topology: topology,
-            ),
-          ),
+          buildTestApp(child: const AdGuardTopologyCard(topology: topology)),
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_topology_mode_badge')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_topology_mode_badge')),
+          findsOneWidget,
+        );
         expect(find.text('Direct Port 53'), findsOneWidget);
         expect(
           find.byKey(const Key('agh_topology_disclaimer_text')),
           findsOneWidget,
         );
         expect(
-          find.text('Inferred from configuration and ports; not live traffic inspection'),
+          find.text(
+            'Inferred from configuration and ports; not live traffic inspection',
+          ),
           findsOneWidget,
         );
       },
@@ -673,9 +688,18 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_auth_required_banner')), findsOneWidget);
-        expect(find.text('AdGuard Home Authentication Required'), findsOneWidget);
-        expect(find.byKey(const Key('agh_enter_credentials_button')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_auth_required_banner')),
+          findsOneWidget,
+        );
+        expect(
+          find.text('AdGuard Home Authentication Required'),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('agh_enter_credentials_button')),
+          findsOneWidget,
+        );
       },
     );
 
@@ -704,7 +728,10 @@ void main() {
                 return ElevatedButton(
                   key: const Key('open_creds_dialog'),
                   onPressed: () {
-                    AdGuardCredentialsDialog.show(context, controller: controller);
+                    AdGuardCredentialsDialog.show(
+                      context,
+                      controller: controller,
+                    );
                   },
                   child: const Text('Open'),
                 );
@@ -717,8 +744,14 @@ void main() {
         await tester.tap(find.byKey(const Key('open_creds_dialog')));
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_credentials_username_field')), findsOneWidget);
-        expect(find.byKey(const Key('agh_credentials_password_field')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_credentials_username_field')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('agh_credentials_password_field')),
+          findsOneWidget,
+        );
 
         // Enter credentials
         await tester.enterText(
@@ -733,7 +766,9 @@ void main() {
 
         // Submit
         mockApi.isAuthRequiredState = false;
-        await tester.tap(find.byKey(const Key('agh_credentials_submit_button')));
+        await tester.tap(
+          find.byKey(const Key('agh_credentials_submit_button')),
+        );
         await tester.pumpAndSettle();
 
         expect(mockApi.setCredentialsCallCount, equals(1));
@@ -769,7 +804,10 @@ void main() {
                 return ElevatedButton(
                   key: const Key('open_creds_dialog_9b'),
                   onPressed: () {
-                    AdGuardCredentialsDialog.show(context, controller: controller);
+                    AdGuardCredentialsDialog.show(
+                      context,
+                      controller: controller,
+                    );
                   },
                   child: const Text('Open'),
                 );
@@ -793,7 +831,9 @@ void main() {
         await tester.pump();
 
         // Submit while API still returns authRequired
-        await tester.tap(find.byKey(const Key('agh_credentials_submit_button')));
+        await tester.tap(
+          find.byKey(const Key('agh_credentials_submit_button')),
+        );
         await tester.pumpAndSettle();
 
         // Dialog remains open and displays error
@@ -882,18 +922,16 @@ void main() {
           buildTestApp(
             key: const Key('scope_auth'),
             overrides: [
-              adguardControllerProvider('test-router-auth').overrideWith(
-                (ref) {
-                  final c = AdGuardController(
-                    ref,
-                    'test-router-auth',
-                    apiServiceOverride: mockApi,
-                    luciApiServiceOverride: mockLuci,
-                  );
-                  c.refresh();
-                  return c;
-                },
-              ),
+              adguardControllerProvider('test-router-auth').overrideWith((ref) {
+                final c = AdGuardController(
+                  ref,
+                  'test-router-auth',
+                  apiServiceOverride: mockApi,
+                  luciApiServiceOverride: mockLuci,
+                );
+                c.refresh();
+                return c;
+              }),
             ],
             child: const AdGuardDashboardCard(routerId: 'test-router-auth'),
           ),
@@ -902,47 +940,47 @@ void main() {
         expect(find.byKey(const Key('agh_dashboard_card')), findsOneWidget);
         expect(find.byKey(const Key('agh_dashboard_queries')), findsOneWidget);
         expect(find.byKey(const Key('agh_dashboard_blocked')), findsOneWidget);
-        expect(find.byKey(const Key('agh_dashboard_block_rate')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_dashboard_block_rate')),
+          findsOneWidget,
+        );
       },
     );
 
     // ── 13. Dashboard Navigation ───────────────────────────────────────────
-    testWidgets(
-      '13. AdGuardDashboardCard triggers navigation on tap',
-      (tester) async {
-        final mockApi = UiTestMockAdGuardApiService(routerId: 'test-router');
-        final mockLuci = UiTestFakeLuciApiService();
-        bool tapped = false;
+    testWidgets('13. AdGuardDashboardCard triggers navigation on tap', (
+      tester,
+    ) async {
+      final mockApi = UiTestMockAdGuardApiService(routerId: 'test-router');
+      final mockLuci = UiTestFakeLuciApiService();
+      bool tapped = false;
 
-        await tester.pumpWidget(
-          buildTestApp(
-            overrides: [
-              adguardControllerProvider('test-router').overrideWith(
-                (ref) {
-                  final c = AdGuardController(
-                    ref,
-                    'test-router',
-                    apiServiceOverride: mockApi,
-                    luciApiServiceOverride: mockLuci,
-                  );
-                  c.refresh();
-                  return c;
-                },
-              ),
-            ],
-            child: AdGuardDashboardCard(
-              routerId: 'test-router',
-              onTap: () => tapped = true,
-            ),
+      await tester.pumpWidget(
+        buildTestApp(
+          overrides: [
+            adguardControllerProvider('test-router').overrideWith((ref) {
+              final c = AdGuardController(
+                ref,
+                'test-router',
+                apiServiceOverride: mockApi,
+                luciApiServiceOverride: mockLuci,
+              );
+              c.refresh();
+              return c;
+            }),
+          ],
+          child: AdGuardDashboardCard(
+            routerId: 'test-router',
+            onTap: () => tapped = true,
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.byKey(const Key('agh_dashboard_card')));
-        await tester.pump();
-        expect(tapped, isTrue);
-      },
-    );
+      await tester.tap(find.byKey(const Key('agh_dashboard_card')));
+      await tester.pump();
+      expect(tapped, isTrue);
+    });
 
     // ── 14. Router-State Isolation ─────────────────────────────────────────
     testWidgets(
@@ -1032,44 +1070,43 @@ void main() {
     );
 
     // ── 1. Main Screen Rendering ───────────────────────────────────────────
-    testWidgets(
-      '1. AdGuardHomeScreen renders all cards when healthy',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 3000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('1. AdGuardHomeScreen renders all cards when healthy', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-        final mockApi = UiTestMockAdGuardApiService(routerId: 'test-router');
-        final mockLuci = UiTestFakeLuciApiService();
+      final mockApi = UiTestMockAdGuardApiService(routerId: 'test-router');
+      final mockLuci = UiTestFakeLuciApiService();
 
-        await tester.pumpWidget(
-          buildTestApp(
-            overrides: [
-              adguardControllerProvider('test-router').overrideWith(
-                (ref) => AdGuardController(
-                  ref,
-                  'test-router',
-                  apiServiceOverride: mockApi,
-                  luciApiServiceOverride: mockLuci,
-                ),
+      await tester.pumpWidget(
+        buildTestApp(
+          overrides: [
+            adguardControllerProvider('test-router').overrideWith(
+              (ref) => AdGuardController(
+                ref,
+                'test-router',
+                apiServiceOverride: mockApi,
+                luciApiServiceOverride: mockLuci,
               ),
-            ],
-            child: const AdGuardHomeScreen(routerId: 'test-router'),
-          ),
-        );
-        await tester.pumpAndSettle();
+            ),
+          ],
+          child: const AdGuardHomeScreen(routerId: 'test-router'),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        expect(find.byType(AdGuardStatusCard), findsOneWidget);
-        expect(find.byType(AdGuardProtectionCard), findsOneWidget);
-        expect(find.byType(AdGuardFilteringCard), findsOneWidget);
-        expect(find.byType(AdGuardStatsCard), findsOneWidget);
-        expect(find.byType(AdGuardTopListsCard), findsOneWidget);
-        expect(find.byType(AdGuardTopologyCard), findsOneWidget);
-        expect(find.byType(AdGuardProcessCard), findsOneWidget);
-        expect(find.byType(AdGuardServiceCard), findsOneWidget);
-      },
-    );
+      expect(find.byType(AdGuardStatusCard), findsOneWidget);
+      expect(find.byType(AdGuardProtectionCard), findsOneWidget);
+      expect(find.byType(AdGuardFilteringCard), findsOneWidget);
+      expect(find.byType(AdGuardStatsCard), findsOneWidget);
+      expect(find.byType(AdGuardTopListsCard), findsOneWidget);
+      expect(find.byType(AdGuardTopologyCard), findsOneWidget);
+      expect(find.byType(AdGuardProcessCard), findsOneWidget);
+      expect(find.byType(AdGuardServiceCard), findsOneWidget);
+    });
 
     // ── 16. Milestone C: LuciLoadingView During Initial Discovery (No Red Flash) ──
     testWidgets(
@@ -1105,7 +1142,10 @@ void main() {
         await tester.pump();
 
         // LuciLoadingView must be visible
-        expect(find.byKey(const Key('agh_initial_loading_view')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_initial_loading_view')),
+          findsOneWidget,
+        );
         expect(find.byType(LuciLoadingView), findsOneWidget);
 
         // Invariant: No premature red flash / Stopped / Disabled cards
@@ -1161,7 +1201,10 @@ void main() {
         await tester.pumpAndSettle();
 
         // Error view rendered with retry button
-        expect(find.byKey(const Key('agh_discovery_error_view')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_discovery_error_view')),
+          findsOneWidget,
+        );
         expect(find.byKey(const Key('agh_error_retry_button')), findsOneWidget);
         expect(find.text('AdGuard Home Unreachable'), findsOneWidget);
 
@@ -1203,10 +1246,8 @@ void main() {
             child: Builder(
               builder: (context) => ElevatedButton(
                 key: const Key('open_dialog_button'),
-                onPressed: () => AdGuardProfileDialog.show(
-                  context,
-                  controller: controller,
-                ),
+                onPressed: () =>
+                    AdGuardProfileDialog.show(context, controller: controller),
                 child: const Text('Open Dialog'),
               ),
             ),
@@ -1251,7 +1292,10 @@ void main() {
         await tester.tap(find.byKey(const Key('agh_test_connection_button')));
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_test_status_indicator')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_test_status_indicator')),
+          findsOneWidget,
+        );
         expect(find.text('Connection successful!'), findsOneWidget);
 
         // 4. Save profile
@@ -1264,7 +1308,10 @@ void main() {
           controller.state.profiles.any((p) => p.name == 'Raspberry Pi AGH'),
           isTrue,
         );
-        expect(controller.state.activeProfile?.name, equals('Raspberry Pi AGH'));
+        expect(
+          controller.state.activeProfile?.name,
+          equals('Raspberry Pi AGH'),
+        );
 
         controller.dispose();
       },
@@ -1388,11 +1435,17 @@ void main() {
         await tester.pumpAndSettle();
 
         // Active profile subtitle in AppBar
-        expect(find.byKey(const Key('agh_active_profile_subtitle')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_active_profile_subtitle')),
+          findsOneWidget,
+        );
         expect(find.text('Raspberry Pi External'), findsWidgets);
 
         // External topology disclaimer rendered
-        expect(find.byKey(const Key('agh_external_topology_disclaimer')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_external_topology_disclaimer')),
+          findsOneWidget,
+        );
 
         // Procd OpenWrt cards must NOT be rendered
         expect(find.byType(AdGuardProcessCard), findsNothing);
@@ -1433,10 +1486,8 @@ void main() {
             child: Builder(
               builder: (context) => ElevatedButton(
                 key: const Key('open_dialog_button'),
-                onPressed: () => AdGuardProfileDialog.show(
-                  context,
-                  controller: controller,
-                ),
+                onPressed: () =>
+                    AdGuardProfileDialog.show(context, controller: controller),
                 child: const Text('Open Dialog'),
               ),
             ),
@@ -1459,21 +1510,30 @@ void main() {
         await tester.tap(find.byKey(const Key('agh_save_profile_button')));
         await tester.pumpAndSettle();
 
-        expect(find.text('Enter a valid IP address or hostname'), findsOneWidget);
+        expect(
+          find.text('Enter a valid IP address or hostname'),
+          findsOneWidget,
+        );
 
         // 2. Enter URL with http:// and port and trailing slash
         await tester.enterText(
           find.byKey(const Key('agh_profile_host_field')),
           'http://192.168.1.129:3000/',
         );
-        await tester.ensureVisible(find.byKey(const Key('agh_test_connection_button')));
+        await tester.ensureVisible(
+          find.byKey(const Key('agh_test_connection_button')),
+        );
         await tester.tap(find.byKey(const Key('agh_test_connection_button')));
         await tester.pumpAndSettle();
 
         // Verifies host field was sanitized to IP only and port was parsed
-        final hostField = tester.widget<TextFormField>(find.byKey(const Key('agh_profile_host_field')));
+        final hostField = tester.widget<TextFormField>(
+          find.byKey(const Key('agh_profile_host_field')),
+        );
         expect(hostField.controller?.text, equals('192.168.1.129'));
-        final portField = tester.widget<TextFormField>(find.byKey(const Key('agh_profile_port_field')));
+        final portField = tester.widget<TextFormField>(
+          find.byKey(const Key('agh_profile_port_field')),
+        );
         expect(portField.controller?.text, equals('3000'));
         expect(find.text('Connection successful!'), findsOneWidget);
 
@@ -1523,11 +1583,16 @@ void main() {
         await tester.pumpAndSettle();
 
         // Expect Edit Current Profile button to be visible
-        expect(find.byKey(const Key('agh_edit_active_profile_button')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_edit_active_profile_button')),
+          findsOneWidget,
+        );
         expect(find.text('Edit Current Profile'), findsOneWidget);
 
         // Tap Edit Current Profile
-        await tester.tap(find.byKey(const Key('agh_edit_active_profile_button')));
+        await tester.tap(
+          find.byKey(const Key('agh_edit_active_profile_button')),
+        );
         await tester.pumpAndSettle();
 
         // Dialog opens in Edit mode
@@ -1538,64 +1603,73 @@ void main() {
     );
 
     // ── 22. Profile Deletion Cancellation ──────────────────────────────────
-    testWidgets(
-      '22. Profile deletion cancellation keeps profile intact',
-      (tester) async {
-        tester.view.physicalSize = const Size(800, 3000);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets('22. Profile deletion cancellation keeps profile intact', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-        final extProfile = AdGuardInstanceProfile.external(
-          id: 'ext_cancel_del',
-          name: 'Cancel Me Not',
-          host: '192.168.1.130',
-          port: 3000,
-        );
+      final extProfile = AdGuardInstanceProfile.external(
+        id: 'ext_cancel_del',
+        name: 'Cancel Me Not',
+        host: '192.168.1.130',
+        port: 3000,
+      );
 
-        final mockApi = UiTestMockAdGuardApiService(routerId: 'test-router');
-        final mockLuci = UiTestFakeLuciApiService();
+      final mockApi = UiTestMockAdGuardApiService(routerId: 'test-router');
+      final mockLuci = UiTestFakeLuciApiService();
 
-        await tester.pumpWidget(
-          buildTestApp(
-            overrides: [
-              adguardControllerProvider('test-router').overrideWith(
-                (ref) => AdGuardController(
-                  ref,
-                  'test-router',
-                  initialProfile: extProfile,
-                  apiServiceOverride: mockApi,
-                  luciApiServiceOverride: mockLuci,
-                ),
+      await tester.pumpWidget(
+        buildTestApp(
+          overrides: [
+            adguardControllerProvider('test-router').overrideWith(
+              (ref) => AdGuardController(
+                ref,
+                'test-router',
+                initialProfile: extProfile,
+                apiServiceOverride: mockApi,
+                luciApiServiceOverride: mockLuci,
               ),
-            ],
-            child: const AdGuardHomeScreen(routerId: 'test-router'),
-          ),
-        );
-        await tester.pumpAndSettle();
+            ),
+          ],
+          child: const AdGuardHomeScreen(routerId: 'test-router'),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        // Tap Profile Selector Menu Button
-        await tester.tap(find.byKey(const Key('agh_profile_selector_button')));
-        await tester.pumpAndSettle();
+      // Tap Profile Selector Menu Button
+      await tester.tap(find.byKey(const Key('agh_profile_selector_button')));
+      await tester.pumpAndSettle();
 
-        // Tap Delete Current Profile
-        await tester.tap(find.byKey(const Key('agh_delete_active_profile_button')));
-        await tester.pumpAndSettle();
+      // Tap Delete Current Profile
+      await tester.tap(
+        find.byKey(const Key('agh_delete_active_profile_button')),
+      );
+      await tester.pumpAndSettle();
 
-        // Verify confirmation dialog is displayed
-        expect(find.text('Delete Instance Profile?'), findsOneWidget);
-        expect(find.byKey(const Key('agh_delete_profile_cancel_button')), findsOneWidget);
-        expect(find.byKey(const Key('agh_delete_profile_confirm_button')), findsOneWidget);
+      // Verify confirmation dialog is displayed
+      expect(find.text('Delete Instance Profile?'), findsOneWidget);
+      expect(
+        find.byKey(const Key('agh_delete_profile_cancel_button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('agh_delete_profile_confirm_button')),
+        findsOneWidget,
+      );
 
-        // Tap Cancel
-        await tester.tap(find.byKey(const Key('agh_delete_profile_cancel_button')));
-        await tester.pumpAndSettle();
+      // Tap Cancel
+      await tester.tap(
+        find.byKey(const Key('agh_delete_profile_cancel_button')),
+      );
+      await tester.pumpAndSettle();
 
-        // Verify dialog dismissed and profile remains active
-        expect(find.text('Delete Instance Profile?'), findsNothing);
-        expect(find.text('Cancel Me Not'), findsWidgets);
-      },
-    );
+      // Verify dialog dismissed and profile remains active
+      expect(find.text('Delete Instance Profile?'), findsNothing);
+      expect(find.text('Cancel Me Not'), findsWidgets);
+    });
 
     // ── 23. Profile Deletion Confirmation ──────────────────────────────────
     testWidgets(
@@ -1639,11 +1713,15 @@ void main() {
         await tester.pumpAndSettle();
 
         // Tap Delete Current Profile
-        await tester.tap(find.byKey(const Key('agh_delete_active_profile_button')));
+        await tester.tap(
+          find.byKey(const Key('agh_delete_active_profile_button')),
+        );
         await tester.pumpAndSettle();
 
         // Tap Delete Confirm
-        await tester.tap(find.byKey(const Key('agh_delete_profile_confirm_button')));
+        await tester.tap(
+          find.byKey(const Key('agh_delete_profile_confirm_button')),
+        );
         await tester.pumpAndSettle();
 
         // Dialog dismissed
@@ -1662,25 +1740,25 @@ void main() {
           port: 3000,
         );
 
-        final mockApi = UiTestMockAdGuardApiService(routerId: 'dash-ext-router');
+        final mockApi = UiTestMockAdGuardApiService(
+          routerId: 'dash-ext-router',
+        );
         final mockLuci = UiTestFakeLuciApiService();
 
         await tester.pumpWidget(
           buildTestApp(
             overrides: [
-              adguardControllerProvider('dash-ext-router').overrideWith(
-                (ref) {
-                  final c = AdGuardController(
-                    ref,
-                    'dash-ext-router',
-                    initialProfile: extProfile,
-                    apiServiceOverride: mockApi,
-                    luciApiServiceOverride: mockLuci,
-                  );
-                  c.refresh();
-                  return c;
-                },
-              ),
+              adguardControllerProvider('dash-ext-router').overrideWith((ref) {
+                final c = AdGuardController(
+                  ref,
+                  'dash-ext-router',
+                  initialProfile: extProfile,
+                  apiServiceOverride: mockApi,
+                  luciApiServiceOverride: mockLuci,
+                );
+                c.refresh();
+                return c;
+              }),
             ],
             child: const AdGuardDashboardCard(routerId: 'dash-ext-router'),
           ),
@@ -1688,7 +1766,10 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byKey(const Key('agh_dashboard_card')), findsOneWidget);
-        expect(find.byKey(const Key('agh_dashboard_card_external_subtitle')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_dashboard_card_external_subtitle')),
+          findsOneWidget,
+        );
         expect(find.text('HomeLab Pi (External Standalone)'), findsOneWidget);
       },
     );
@@ -1697,7 +1778,9 @@ void main() {
     testWidgets(
       '25. AdGuardDashboardCard triggers auto-hydration on mount when router has capability',
       (tester) async {
-        final mockApi = UiTestMockAdGuardApiService(routerId: 'dash-hydrate-router');
+        final mockApi = UiTestMockAdGuardApiService(
+          routerId: 'dash-hydrate-router',
+        );
         final mockLuci = UiTestFakeLuciApiService();
 
         await tester.pumpWidget(
@@ -1743,14 +1826,21 @@ void main() {
               ),
               isMutating: false,
               actionError: 'Failed to update protection status',
-              onSetProtection: ({required bool enabled, Duration? duration}) async {},
+              onSetProtection:
+                  ({required bool enabled, Duration? duration}) async {},
             ),
           ),
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_protection_error_banner')), findsOneWidget);
-        expect(find.byKey(const Key('agh_protection_error_text')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_protection_error_banner')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('agh_protection_error_text')),
+          findsOneWidget,
+        );
         expect(find.text('Failed to update protection status'), findsOneWidget);
 
         // Re-pump without error
@@ -1767,13 +1857,17 @@ void main() {
               ),
               isMutating: false,
               actionError: null,
-              onSetProtection: ({required bool enabled, Duration? duration}) async {},
+              onSetProtection:
+                  ({required bool enabled, Duration? duration}) async {},
             ),
           ),
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_protection_error_banner')), findsNothing);
+        expect(
+          find.byKey(const Key('agh_protection_error_banner')),
+          findsNothing,
+        );
       },
     );
 
@@ -1796,7 +1890,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_service_error_banner')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_service_error_banner')),
+          findsOneWidget,
+        );
         expect(find.byKey(const Key('agh_service_error_text')), findsOneWidget);
         expect(find.text('Service stop failed: RPC error'), findsOneWidget);
 
@@ -1835,33 +1932,44 @@ void main() {
         await tester.pumpWidget(
           buildTestApp(
             overrides: [
-              adguardControllerProvider('gen-err-router').overrideWith(
-                (ref) {
-                  final c = AdGuardController(
-                    ref,
-                    'gen-err-router',
-                    apiServiceOverride: mockApi,
-                    luciApiServiceOverride: mockLuci,
+              adguardControllerProvider('gen-err-router').overrideWith((ref) {
+                final c = AdGuardController(
+                  ref,
+                  'gen-err-router',
+                  apiServiceOverride: mockApi,
+                  luciApiServiceOverride: mockLuci,
+                );
+                // Simulate an unexpected error while having valid cached status
+                c.refresh().then((_) {
+                  c.state = c.state.copyWith(
+                    generalError:
+                        'Unexpected system fault during background sync',
                   );
-                  // Simulate an unexpected error while having valid cached status
-                  c.refresh().then((_) {
-                    c.state = c.state.copyWith(
-                      generalError: 'Unexpected system fault during background sync',
-                    );
-                  });
-                  return c;
-                },
-              ),
+                });
+                return c;
+              }),
             ],
             child: const AdGuardHomeScreen(routerId: 'gen-err-router'),
           ),
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_general_error_banner')), findsOneWidget);
-        expect(find.text('Unexpected system fault during background sync'), findsOneWidget);
-        expect(find.byKey(const Key('agh_api_unreachable_banner')), findsNothing);
-        expect(find.byKey(const Key('agh_invalid_endpoint_banner')), findsNothing);
+        expect(
+          find.byKey(const Key('agh_general_error_banner')),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Unexpected system fault during background sync'),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('agh_api_unreachable_banner')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('agh_invalid_endpoint_banner')),
+          findsNothing,
+        );
       },
     );
 
@@ -1872,25 +1980,39 @@ void main() {
         const filtering = AdGuardFilteringStatus(
           enabled: true,
           filterLists: [
-            AdGuardFilterList(id: 1, name: 'AdGuard Base', rulesCount: 40000, enabled: true),
-            AdGuardFilterList(id: 2, name: 'Tracking Protection', rulesCount: 15000, enabled: true),
-            AdGuardFilterList(id: 3, name: 'Experimental', rulesCount: 5000, enabled: false),
+            AdGuardFilterList(
+              id: 1,
+              name: 'AdGuard Base',
+              rulesCount: 40000,
+              enabled: true,
+            ),
+            AdGuardFilterList(
+              id: 2,
+              name: 'Tracking Protection',
+              rulesCount: 15000,
+              enabled: true,
+            ),
+            AdGuardFilterList(
+              id: 3,
+              name: 'Experimental',
+              rulesCount: 5000,
+              enabled: false,
+            ),
           ],
           userRules: ['||example.com^', '@@||allowme.org^'],
           totalRulesCount: 55002,
         );
 
         await tester.pumpWidget(
-          buildTestApp(
-            child: const AdGuardFilteringCard(
-              filtering: filtering,
-            ),
-          ),
+          buildTestApp(child: const AdGuardFilteringCard(filtering: filtering)),
         );
         await tester.pumpAndSettle();
 
         expect(find.byKey(const Key('agh_filtering_card')), findsOneWidget);
-        expect(find.byKey(const Key('agh_filtering_status_chip')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_filtering_status_chip')),
+          findsOneWidget,
+        );
         expect(find.text('Filtering Active'), findsOneWidget);
         // Enabled / Total filter lists (2 / 3)
         expect(find.byKey(const Key('agh_filter_lists_count')), findsOneWidget);
@@ -1911,18 +2033,19 @@ void main() {
         const filtering = AdGuardFilteringStatus(
           enabled: false,
           filterLists: [
-            AdGuardFilterList(id: 1, name: 'AdGuard Base', rulesCount: 40000, enabled: false),
+            AdGuardFilterList(
+              id: 1,
+              name: 'AdGuard Base',
+              rulesCount: 40000,
+              enabled: false,
+            ),
           ],
           userRules: [],
           totalRulesCount: 0,
         );
 
         await tester.pumpWidget(
-          buildTestApp(
-            child: const AdGuardFilteringCard(
-              filtering: filtering,
-            ),
-          ),
+          buildTestApp(child: const AdGuardFilteringCard(filtering: filtering)),
         );
         await tester.pumpAndSettle();
 
@@ -1952,7 +2075,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_filtering_degraded_banner')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_filtering_degraded_banner')),
+          findsOneWidget,
+        );
         expect(find.text('Filtering API response delayed'), findsOneWidget);
       },
     );
@@ -1969,15 +2095,14 @@ void main() {
         );
 
         await tester.pumpWidget(
-          buildTestApp(
-            child: const AdGuardFilteringCard(
-              filtering: filtering,
-            ),
-          ),
+          buildTestApp(child: const AdGuardFilteringCard(filtering: filtering)),
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_filtering_empty_message')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_filtering_empty_message')),
+          findsOneWidget,
+        );
         expect(find.text('No filter lists configured'), findsOneWidget);
       },
     );
@@ -1989,14 +2114,14 @@ void main() {
         // Loading
         await tester.pumpWidget(
           buildTestApp(
-            child: const AdGuardFilteringCard(
-              filtering: null,
-              isLoading: true,
-            ),
+            child: const AdGuardFilteringCard(filtering: null, isLoading: true),
           ),
         );
         await tester.pump();
-        expect(find.byKey(const Key('agh_filtering_card_loading')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_filtering_card_loading')),
+          findsOneWidget,
+        );
 
         // Error when null
         await tester.pumpWidget(
@@ -2008,16 +2133,18 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.byKey(const Key('agh_filtering_card_error')), findsOneWidget);
-        expect(find.text('Failed to connect to filtering endpoint'), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_filtering_card_error')),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Failed to connect to filtering endpoint'),
+          findsOneWidget,
+        );
 
         // Sized box shrink when both null
         await tester.pumpWidget(
-          buildTestApp(
-            child: const AdGuardFilteringCard(
-              filtering: null,
-            ),
-          ),
+          buildTestApp(child: const AdGuardFilteringCard(filtering: null)),
         );
         await tester.pumpAndSettle();
         expect(find.byKey(const Key('agh_filtering_card')), findsNothing);
@@ -2040,16 +2167,15 @@ void main() {
         );
 
         await tester.pumpWidget(
-          buildTestApp(
-            child: const AdGuardTopologyCard(
-              topology: topology,
-            ),
-          ),
+          buildTestApp(child: const AdGuardTopologyCard(topology: topology)),
         );
         await tester.pumpAndSettle();
 
         expect(find.text('Routing Status'), findsOneWidget);
-        expect(find.byKey(const Key('agh_topology_routing_status_badge')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_topology_routing_status_badge')),
+          findsOneWidget,
+        );
         expect(find.text('Router Forwarding Verified'), findsOneWidget);
       },
     );
@@ -2063,7 +2189,9 @@ void main() {
           routerId: 'test_router_ui_revert',
         );
         final controller = AdGuardController(
-          container.read(adguardControllerProvider('test_router_ui_revert').notifier).ref,
+          container
+              .read(adguardControllerProvider('test_router_ui_revert').notifier)
+              .ref,
           'test_router_ui_revert',
           apiServiceOverride: mockApiService,
         );
@@ -2090,8 +2218,14 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_configure_router_dns_btn')), findsOneWidget);
-        expect(find.byKey(const Key('agh_revert_router_dns_btn')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_configure_router_dns_btn')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('agh_revert_router_dns_btn')),
+          findsOneWidget,
+        );
         expect(find.text('Remove Forwarding'), findsOneWidget);
       },
     );
@@ -2127,7 +2261,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_stats_period_button')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_stats_period_button')),
+          findsOneWidget,
+        );
         expect(find.text('All Time'), findsOneWidget);
 
         // Tap the period popup button
@@ -2169,7 +2306,9 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final switchFinder = find.byKey(const Key('agh_service_autostart_switch'));
+        final switchFinder = find.byKey(
+          const Key('agh_service_autostart_switch'),
+        );
         expect(switchFinder, findsOneWidget);
         expect(find.text('Autostart on boot'), findsOneWidget);
 
@@ -2207,7 +2346,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_manage_user_rules_button')), findsNothing);
+        expect(
+          find.byKey(const Key('agh_manage_user_rules_button')),
+          findsNothing,
+        );
 
         final rulesTile = find.byKey(const Key('agh_user_rules_count'));
         expect(rulesTile, findsOneWidget);
@@ -2228,7 +2370,11 @@ void main() {
           routerId: 'test_router_custom_rules',
         );
         final controller = AdGuardController(
-          container.read(adguardControllerProvider('test_router_custom_rules').notifier).ref,
+          container
+              .read(
+                adguardControllerProvider('test_router_custom_rules').notifier,
+              )
+              .ref,
           'test_router_custom_rules',
           apiServiceOverride: mockApiService,
         );
@@ -2257,7 +2403,10 @@ void main() {
         await tester.tap(find.text('Open Dialog'));
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_custom_rules_dialog')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_custom_rules_dialog')),
+          findsOneWidget,
+        );
         // Comments should not be counted as active rules: 2 active rules
         expect(find.text('2 rules'), findsOneWidget);
 
@@ -2308,7 +2457,13 @@ void main() {
           ),
         );
         final controller = AdGuardController(
-          container.read(adguardControllerProvider('test_router_custom_rules_err').notifier).ref,
+          container
+              .read(
+                adguardControllerProvider(
+                  'test_router_custom_rules_err',
+                ).notifier,
+              )
+              .ref,
           'test_router_custom_rules_err',
           apiServiceOverride: mockApiService,
         );
@@ -2333,16 +2488,28 @@ void main() {
         await tester.tap(find.text('Open Dialog'));
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('agh_custom_rules_dialog')), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_custom_rules_dialog')),
+          findsOneWidget,
+        );
 
         // Tap Save
         await tester.tap(find.byKey(const Key('agh_custom_rules_save_button')));
         await tester.pumpAndSettle();
 
         // Dialog should remain open with error banner visible
-        expect(find.byKey(const Key('agh_custom_rules_dialog')), findsOneWidget);
-        expect(find.byKey(const Key('agh_custom_rules_error_banner')), findsOneWidget);
-        expect(find.textContaining('Invalid filter rule syntax error'), findsOneWidget);
+        expect(
+          find.byKey(const Key('agh_custom_rules_dialog')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const Key('agh_custom_rules_error_banner')),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('Invalid filter rule syntax error'),
+          findsOneWidget,
+        );
       },
     );
   });

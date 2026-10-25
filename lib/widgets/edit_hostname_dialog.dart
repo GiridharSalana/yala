@@ -33,11 +33,12 @@ class EditHostnameDialog extends StatefulWidget {
     VoidCallback? onSaved,
   }) {
     final appState = AppState.instance;
-    final effectiveCurrent = (currentHostname != null && currentHostname.trim().isNotEmpty)
+    final effectiveCurrent =
+        (currentHostname != null && currentHostname.trim().isNotEmpty)
         ? currentHostname.trim()
         : (appState.dashboardData?['boardInfo']?['hostname']?.toString() ??
-            appState.selectedRouter?.lastKnownHostname ??
-            'OpenWrt');
+              appState.selectedRouter?.lastKnownHostname ??
+              'OpenWrt');
 
     return showDialog<bool>(
       context: context,
@@ -63,7 +64,9 @@ class _EditHostnameDialogState extends State<EditHostnameDialog> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.currentHostname);
-    _validationErrorReason = NetworkActionsController.validateHostname(_controller.text);
+    _validationErrorReason = NetworkActionsController.validateHostname(
+      _controller.text,
+    );
   }
 
   @override
@@ -87,17 +90,22 @@ class _EditHostnameDialogState extends State<EditHostnameDialog> {
       case 'empty':
         return l10n?.hostnameValidationEmpty ?? 'Hostname cannot be empty';
       case 'too_long':
-        return l10n?.hostnameValidationLength ?? 'Hostname must be between 1 and 63 characters';
+        return l10n?.hostnameValidationLength ??
+            'Hostname must be between 1 and 63 characters';
       case 'hyphen_edge':
-        return l10n?.hostnameValidationHyphen ?? 'Hostname cannot start or end with a hyphen';
+        return l10n?.hostnameValidationHyphen ??
+            'Hostname cannot start or end with a hyphen';
       case 'invalid_characters':
       default:
-        return l10n?.hostnameValidationInvalid ?? 'Only letters (a-z), numbers (0-9), and hyphens (-) allowed';
+        return l10n?.hostnameValidationInvalid ??
+            'Only letters (a-z), numbers (0-9), and hyphens (-) allowed';
     }
   }
 
-  bool get _isValid => _validationErrorReason == null && _controller.text.trim().isNotEmpty;
-  bool get _isUnchanged => _controller.text.trim() == widget.currentHostname.trim();
+  bool get _isValid =>
+      _validationErrorReason == null && _controller.text.trim().isNotEmpty;
+  bool get _isUnchanged =>
+      _controller.text.trim() == widget.currentHostname.trim();
 
   Future<void> _handleSave() async {
     final trimmed = _controller.text.trim();
@@ -108,9 +116,7 @@ class _EditHostnameDialogState extends State<EditHostnameDialog> {
     if (_isUnchanged) {
       unawaited(OsPlatformIntegration.triggerHaptic(OsHapticType.selection));
       Navigator.of(context).pop(false);
-      context.showToastInfo(
-        l10n?.hostnameUnchanged ?? 'Hostname is unchanged',
-      );
+      context.showToastInfo(l10n?.hostnameUnchanged ?? 'Hostname is unchanged');
       return;
     }
 
@@ -137,7 +143,8 @@ class _EditHostnameDialogState extends State<EditHostnameDialog> {
         Navigator.of(context).pop(true);
         if (parentContext.mounted) {
           parentContext.showToastSuccess(
-            l10n?.hostnameSavedSuccess ?? 'Router hostname updated successfully',
+            l10n?.hostnameSavedSuccess ??
+                'Router hostname updated successfully',
           );
         }
       } else {
@@ -217,9 +224,14 @@ class _EditHostnameDialogState extends State<EditHostnameDialog> {
               const SizedBox(height: 16),
               // Current hostname chip
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.6,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: colorScheme.outlineVariant.withValues(alpha: 0.5),
@@ -268,14 +280,18 @@ class _EditHostnameDialogState extends State<EditHostnameDialog> {
                 onChanged: _validate,
                 decoration: InputDecoration(
                   labelText: l10n?.hostnameInputLabel ?? 'Hostname',
-                  hintText: l10n?.hostnameInputHint ?? 'e.g. OpenWrt, home-router',
+                  hintText:
+                      l10n?.hostnameInputHint ?? 'e.g. OpenWrt, home-router',
                   prefixIcon: const Icon(Icons.dns_outlined, size: 20),
                   errorText: _getLocalizedError(l10n),
                   errorMaxLines: 2,
-                  helperText: 'RFC 1123 (1-63 chars, letters, numbers, hyphens)',
+                  helperText:
+                      'RFC 1123 (1-63 chars, letters, numbers, hyphens)',
                   helperMaxLines: 2,
                   filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  fillColor: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.3,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -318,7 +334,9 @@ class _EditHostnameDialogState extends State<EditHostnameDialog> {
                   height: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(colorScheme.onPrimary),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      colorScheme.onPrimary,
+                    ),
                   ),
                 )
               : Text(

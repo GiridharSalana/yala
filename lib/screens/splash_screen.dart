@@ -13,6 +13,7 @@ import 'package:yala/screens/main_screen.dart';
 import 'package:yala/screens/login_screen.dart';
 import 'package:yala/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+import 'package:yala/utils/logger.dart';
 
 import 'package:yala/services/client_fingerprint_service.dart';
 
@@ -66,108 +67,126 @@ class _SplashScreenState extends State<SplashScreen>
 
     final appState = AppState.instance;
 
-    // Concurrently await AppState startup hydration alongside credentials and fingerprints
-    final reviewerStorageFuture = SecureStorageService().readValue(
-      AppConfig.reviewerModeKey,
-    );
-    final credsFuture = SecureStorageService().getCredentials();
-    final fingerprintsFuture = ClientFingerprintService.instance.initialize();
-    final appStateInitFuture = appState.initializationFuture;
+    try {
+      // Concurrently await AppState startup hydration alongside credentials and fingerprints
+      final reviewerStorageFuture = SecureStorageService().readValue(
+        AppConfig.reviewerModeKey,
+      );
+      final credsFuture = SecureStorageService().getCredentials();
+      final fingerprintsFuture = ClientFingerprintService.instance.initialize();
+      final appStateInitFuture = appState.initializationFuture;
+      final disableAnimations = mounted
+          ? MediaQuery.of(context).disableAnimations
+          : false;
+      final minSplashDurationFuture = disableAnimations
+          ? Future<void>.value()
+          : Future<void>.delayed(const Duration(milliseconds: 750));
 
-    final results = await Future.wait([
-      reviewerStorageFuture,
-      credsFuture,
-      fingerprintsFuture,
-      appStateInitFuture,
-    ]);
+      final results = await Future.wait([
+        reviewerStorageFuture,
+        credsFuture,
+        fingerprintsFuture,
+        appStateInitFuture,
+        minSplashDurationFuture,
+      ]);
 
-    final reviewerModeEnabled = results[0] as String?;
-    final creds = results[1] as Map<String, String?>;
+      final reviewerModeEnabled = results[0] as String?;
+      final creds = results[1] as Map<String, String?>;
 
-    if (!mounted) {
-      _sessionInitInFlight = false;
-      return;
-    }
-
-    if (reviewerModeEnabled == 'true') {
-      await appState.setReviewerMode(true);
       if (!mounted) {
         _sessionInitInFlight = false;
         return;
       }
-      _sessionInitInFlight = false;
-      _navigateToMainScreen();
-      return;
-    }
 
-    final savedRouter =
-        appState.selectedRouter ??
-        (appState.routers.isNotEmpty ? appState.routers.first : null);
+      if (reviewerModeEnabled == 'true') {
+        await appState.setReviewerMode(true);
+        if (!mounted) {
+          _sessionInitInFlight = false;
+          return;
+        }
+        _sessionInitInFlight = false;
+        _navigateToMainScreen();
+        return;
+      }
 
-    final hasSavedRouter = savedRouter != null;
-    final hasLegacyCreds =
-        creds['ipAddress'] != null &&
-        creds['ipAddress']!.isNotEmpty &&
-        creds['username'] != null &&
-        creds['username']!.isNotEmpty &&
-        creds['password'] != null &&
-        creds['password']!.isNotEmpty;
+      final savedRouter =
+          appState.selectedRouter ??
+          (appState.routers.isNotEmpty ? appState.routers.first : null);
 
-    // First launch after install (no saved router profile): login screen only.
-    if (!hasSavedRouter && !hasLegacyCreds) {
+      final hasSavedRouter = savedRouter != null;
+      final hasLegacyCreds =
+          creds['ipAddress'] != null &&
+          creds['ipAddress']!.isNotEmpty &&
+          creds['username'] != null &&
+          creds['username']!.isNotEmpty &&
+          creds['password'] != null &&
+          creds['password']!.isNotEmpty;
+
+      // First launch after install (no saved router profile): login screen only.
+      if (!hasSavedRouter && !hasLegacyCreds) {
+        if (!mounted) {
+          _sessionInitInFlight = false;
+          return;
+        }
+        _sessionInitInFlight = false;
+        _navigateToLoginScreen();
+        return;
+      }
+
+      await LocalNetworkPermissionService.ensurePermissionGranted();
       if (!mounted) {
         _sessionInitInFlight = false;
         return;
       }
+
+      final bool success;
+      if (savedRouter != null) {
+        success = await appState.login(
+          savedRouter.ipAddress,
+          savedRouter.username,
+          savedRouter.password,
+          savedRouter.useHttps,
+          context: context,
+        );
+      } else {
+        success = await appState.login(
+          creds['ipAddress']!,
+          creds['username']!,
+          creds['password']!,
+          creds['useHttps'] == 'true',
+          context: context,
+        );
+      }
+
+      if (!mounted) {
+        _sessionInitInFlight = false;
+        return;
+      }
+
+      if (success) {
+        _sessionInitInFlight = false;
+        _navigateToMainScreen();
+        return;
+      }
+
+      // Saved profile but router unreachable: stay on splash (no login flash).
       _sessionInitInFlight = false;
+      setState(() {
+        _isConnecting = false;
+        _connectionError =
+            appState.errorMessage ??
+            'Could not connect to your router. Check Wi‑Fi and try again.';
+      });
+    } catch (e, stack) {
+      Logger.exception(
+        'SplashScreen initialization failed, navigating to login fallback',
+        e,
+        stack,
+      );
+      _sessionInitInFlight = false;
+      if (!mounted) return;
       _navigateToLoginScreen();
-      return;
     }
-
-    await LocalNetworkPermissionService.ensurePermissionGranted();
-    if (!mounted) {
-      _sessionInitInFlight = false;
-      return;
-    }
-
-    final bool success;
-    if (savedRouter != null) {
-      success = await appState.login(
-        savedRouter.ipAddress,
-        savedRouter.username,
-        savedRouter.password,
-        savedRouter.useHttps,
-        context: context,
-      );
-    } else {
-      success = await appState.login(
-        creds['ipAddress']!,
-        creds['username']!,
-        creds['password']!,
-        creds['useHttps'] == 'true',
-        context: context,
-      );
-    }
-
-    if (!mounted) {
-      _sessionInitInFlight = false;
-      return;
-    }
-
-    if (success) {
-      _sessionInitInFlight = false;
-      _navigateToMainScreen();
-      return;
-    }
-
-    // Saved profile but router unreachable: stay on splash (no login flash).
-    _sessionInitInFlight = false;
-    setState(() {
-      _isConnecting = false;
-      _connectionError =
-          appState.errorMessage ??
-          'Could not connect to your router. Check Wi‑Fi and try again.';
-    });
   }
 
   void _navigateToMainScreen() {

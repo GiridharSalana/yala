@@ -27,9 +27,7 @@ enum DomainBlockScope {
 
 /// Robust RFC 1035 / RFC 1123 domain validation and normalization helper.
 class DomainValidator {
-  static final RegExp _ipv4Pattern = RegExp(
-    r'^(\d{1,3}\.){3}\d{1,3}$',
-  );
+  static final RegExp _ipv4Pattern = RegExp(r'^(\d{1,3}\.){3}\d{1,3}$');
   static final RegExp _labelValidPattern = RegExp(
     r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$',
   );
@@ -271,10 +269,8 @@ class DomainValidator {
           delta++;
         } else if (r == n) {
           var q = delta;
-          for (var k = base;; k += base) {
-            final t = k <= bias
-                ? tMin
-                : (k >= bias + tMax ? tMax : k - bias);
+          for (var k = base; ; k += base) {
+            final t = k <= bias ? tMin : (k >= bias + tMax ? tMax : k - bias);
             if (q < t) break;
             final digit = t + ((q - t) % (base - t));
             output.writeCharCode(encodeDigit(digit));
@@ -345,7 +341,8 @@ class DomainBlockRule {
     DateTime? createdAt,
     String? comment,
   }) {
-    final norm = DomainValidator.normalize(domain) ?? domain.trim().toLowerCase();
+    final norm =
+        DomainValidator.normalize(domain) ?? domain.trim().toLowerCase();
     return DomainBlockRule(
       domain: norm,
       rawPattern: rawPattern,
@@ -392,18 +389,19 @@ class DomainBlockRule {
   }
 
   Map<String, dynamic> toJson() => {
-        'domain': domain,
-        'rawPattern': rawPattern,
-        'engine': engine.name,
-        'scope': scope.name,
-        'targetMac': targetMac,
-        'targetIp': targetIp,
-        'isEnabled': isEnabled,
-        'createdAt': createdAt?.toIso8601String(),
-        'comment': comment,
-      };
+    'domain': domain,
+    'rawPattern': rawPattern,
+    'engine': engine.name,
+    'scope': scope.name,
+    'targetMac': targetMac,
+    'targetIp': targetIp,
+    'isEnabled': isEnabled,
+    'createdAt': createdAt?.toIso8601String(),
+    'comment': comment,
+  };
 
-  factory DomainBlockRule.fromJson(Map<String, dynamic> json) => DomainBlockRule(
+  factory DomainBlockRule.fromJson(Map<String, dynamic> json) =>
+      DomainBlockRule(
         domain: json['domain']?.toString() ?? '',
         rawPattern: json['rawPattern']?.toString(),
         engine: DnsBlockingEngine.values.firstWhere(

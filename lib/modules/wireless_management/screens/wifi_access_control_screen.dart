@@ -105,15 +105,11 @@ class _WifiAccessControlScreenState
           }
         },
       );
-      final results = await Future.wait([
-        localAddressesFuture,
-        clientsFuture,
-      ]);
+      final results = await Future.wait([localAddressesFuture, clientsFuture]);
       if (!mounted) return;
       final localAddresses = results[0] as List<String>;
       final clients = results[1] as List<Client>;
-      final effectiveClients =
-          clients.isNotEmpty ? clients : _availableClients;
+      final effectiveClients = clients.isNotEmpty ? clients : _availableClients;
       setState(() {
         if (effectiveClients.isNotEmpty) {
           _availableClients = effectiveClients;

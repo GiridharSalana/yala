@@ -73,47 +73,46 @@ void main() {
   });
 
   group('Accurate Interface Mapping Across All Router Setups', () {
-    test('PPPoE Router Setup: prioritizes pppoe-wan L3 interface over eth1', () {
-      final data = {
-        'wan': {
-          'interface': 'wan',
-          'device': 'eth1',
-          'l3_device': 'pppoe-wan',
-        },
-        'interfaceDump': {
-          'interface': [
-            {
-              'interface': 'wan',
-              'device': 'eth1',
-              'l3_device': 'pppoe-wan',
-              'route': [
-                {'target': '0.0.0.0', 'mask': 0},
-              ],
-            },
-            {
-              'interface': 'lan',
-              'device': 'br-lan',
-              'l3_device': 'br-lan',
-            },
-          ],
-        },
-      };
+    test(
+      'PPPoE Router Setup: prioritizes pppoe-wan L3 interface over eth1',
+      () {
+        final data = {
+          'wan': {
+            'interface': 'wan',
+            'device': 'eth1',
+            'l3_device': 'pppoe-wan',
+          },
+          'interfaceDump': {
+            'interface': [
+              {
+                'interface': 'wan',
+                'device': 'eth1',
+                'l3_device': 'pppoe-wan',
+                'route': [
+                  {'target': '0.0.0.0', 'mask': 0},
+                ],
+              },
+              {'interface': 'lan', 'device': 'br-lan', 'l3_device': 'br-lan'},
+            ],
+          },
+        };
 
-      final overview = SqmOverview.fromDashboardData(data);
-      expect(overview.primaryWanInterface, equals('pppoe-wan'));
-      expect(overview.networkInterfaces, contains('pppoe-wan'));
-      expect(overview.networkInterfaces, contains('eth1'));
-      expect(overview.networkInterfaces, contains('br-lan'));
+        final overview = SqmOverview.fromDashboardData(data);
+        expect(overview.primaryWanInterface, equals('pppoe-wan'));
+        expect(overview.networkInterfaces, contains('pppoe-wan'));
+        expect(overview.networkInterfaces, contains('eth1'));
+        expect(overview.networkInterfaces, contains('br-lan'));
 
-      expect(
-        overview.interfaceLabel('pppoe-wan'),
-        contains('Active PPPoE WAN (Recommended)'),
-      );
-      expect(
-        overview.interfaceLabel('br-lan'),
-        contains('LAN / Dumb AP Bridge'),
-      );
-    });
+        expect(
+          overview.interfaceLabel('pppoe-wan'),
+          contains('Active PPPoE WAN (Recommended)'),
+        );
+        expect(
+          overview.interfaceLabel('br-lan'),
+          contains('LAN / Dumb AP Bridge'),
+        );
+      },
+    );
 
     test('Standard DHCP WAN: detects wan/eth0 as primary WAN', () {
       final data = {
@@ -139,11 +138,7 @@ void main() {
       final data = {
         'interfaceDump': {
           'interface': [
-            {
-              'interface': 'lan',
-              'device': 'br-lan',
-              'l3_device': 'br-lan',
-            },
+            {'interface': 'lan', 'device': 'br-lan', 'l3_device': 'br-lan'},
           ],
         },
         'networkDevices': [
@@ -200,22 +195,25 @@ void main() {
   });
 
   group('Template Handling & Existing Queue Preservation', () {
-    test('Identifies OpenWrt anonymous section cfg01b68a as default template', () {
-      const q = SqmQueue(
-        name: 'cfg01b68a',
-        enabled: false,
-        interface: 'pppoe-wan',
-        download: 0,
-        upload: 0,
-      );
+    test(
+      'Identifies OpenWrt anonymous section cfg01b68a as default template',
+      () {
+        const q = SqmQueue(
+          name: 'cfg01b68a',
+          enabled: false,
+          interface: 'pppoe-wan',
+          download: 0,
+          upload: 0,
+        );
 
-      expect(q.isDefaultTemplate, isTrue);
-      expect(q.isConfigured, isFalse);
-      expect(
-        q.displayName(primaryWanInterface: 'pppoe-wan'),
-        equals('Primary WAN Queue (pppoe-wan)'),
-      );
-    });
+        expect(q.isDefaultTemplate, isTrue);
+        expect(q.isConfigured, isFalse);
+        expect(
+          q.displayName(primaryWanInterface: 'pppoe-wan'),
+          equals('Primary WAN Queue (pppoe-wan)'),
+        );
+      },
+    );
 
     test('Identifies named queue correctly', () {
       const q = SqmQueue(

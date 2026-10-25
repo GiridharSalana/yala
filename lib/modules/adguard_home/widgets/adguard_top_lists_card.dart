@@ -10,10 +10,7 @@ import 'adguard_top_lists_bottom_sheet.dart';
 class AdGuardTopListsCard extends StatefulWidget {
   final AdGuardStats? stats;
 
-  const AdGuardTopListsCard({
-    super.key,
-    required this.stats,
-  });
+  const AdGuardTopListsCard({super.key, required this.stats});
 
   @override
   State<AdGuardTopListsCard> createState() => _AdGuardTopListsCardState();
@@ -53,7 +50,8 @@ class _AdGuardTopListsCardState extends State<AdGuardTopListsCard>
     final topQueried = widget.stats?.topQueriedDomains ?? const [];
     final topClients = widget.stats?.topClients ?? const [];
 
-    final allEmpty = topBlocked.isEmpty && topQueried.isEmpty && topClients.isEmpty;
+    final allEmpty =
+        topBlocked.isEmpty && topQueried.isEmpty && topClients.isEmpty;
 
     return Card(
       elevation: 2,
@@ -119,21 +117,27 @@ class _AdGuardTopListsCardState extends State<AdGuardTopListsCard>
                 children: [
                   _buildList(
                     context,
-                    items: topBlocked.map((e) => (name: e.identifier, count: e.count)).toList(),
+                    items: topBlocked
+                        .map((e) => (name: e.identifier, count: e.count))
+                        .toList(),
                     emptyMessage: l10n?.aghNoData ?? 'No data available',
                     keyPrefix: 'agh_top_blocked',
                     barColor: Colors.red.shade400,
                   ),
                   _buildList(
                     context,
-                    items: topQueried.map((e) => (name: e.identifier, count: e.count)).toList(),
+                    items: topQueried
+                        .map((e) => (name: e.identifier, count: e.count))
+                        .toList(),
                     emptyMessage: l10n?.aghNoData ?? 'No data available',
                     keyPrefix: 'agh_top_queried',
                     barColor: colorScheme.primary,
                   ),
                   _buildList(
                     context,
-                    items: topClients.map((e) => (name: e.identifier, count: e.count)).toList(),
+                    items: topClients
+                        .map((e) => (name: e.identifier, count: e.count))
+                        .toList(),
                     emptyMessage: l10n?.aghNoData ?? 'No data available',
                     keyPrefix: 'agh_top_clients',
                     barColor: Colors.teal.shade400,
@@ -166,7 +170,9 @@ class _AdGuardTopListsCardState extends State<AdGuardTopListsCard>
               Icon(
                 Icons.insights_outlined,
                 size: 32,
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.4,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -185,7 +191,10 @@ class _AdGuardTopListsCardState extends State<AdGuardTopListsCard>
 
     final displayedItems = items.take(5).toList();
     final hasMore = items.length > 5;
-    final maxCount = items.fold<int>(1, (max, item) => item.count > max ? item.count : max);
+    final maxCount = items.fold<int>(
+      1,
+      (max, item) => item.count > max ? item.count : max,
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -234,7 +243,8 @@ class _AdGuardTopListsCardState extends State<AdGuardTopListsCard>
                       borderRadius: BorderRadius.circular(2),
                       child: LinearProgressIndicator(
                         value: fraction,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation<Color>(barColor),
                         minHeight: 4,
                       ),
@@ -254,7 +264,9 @@ class _AdGuardTopListsCardState extends State<AdGuardTopListsCard>
                 key: Key('${keyPrefix}_view_all_button'),
                 icon: const Icon(Icons.open_in_new_rounded, size: 14),
                 label: Text(
-                  AppLocalizations.of(context)?.aghViewAllWithCount(items.length) ??
+                  AppLocalizations.of(
+                        context,
+                      )?.aghViewAllWithCount(items.length) ??
                       'View all (${items.length})',
                   style: const TextStyle(
                     fontSize: 11,

@@ -21,6 +21,7 @@ import 'package:yala/widgets/language_picker_dialog.dart';
 import 'package:yala/widgets/rpc_permissions_dialog.dart';
 import 'package:yala/widgets/edit_hostname_dialog.dart';
 import 'package:yala/widgets/change_router_password_dialog.dart';
+import 'package:yala/modules/json_export/json_export_screen.dart';
 import 'package:yala/state/app_state.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -116,6 +117,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _buildCustomizeDashboardTile(context),
           const SizedBox(height: 24),
 
+          // Data Management Section
+          _buildSectionHeader(
+            context,
+            l10n?.settingsDataManagement ?? 'DATA MANAGEMENT',
+            Icons.storage_rounded,
+          ),
+          const SizedBox(height: 8),
+          _buildExportConfigTile(context),
+          const SizedBox(height: 24),
+
           // Router Diagnostics & Features Section
           _buildSectionHeader(
             context,
@@ -130,7 +141,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           if (activeRouter != null) ...[
             _buildSectionHeader(
               context,
-              'ROUTER SECURITY & ACCESS',
+              l10n?.routerSecuritySection ?? 'ROUTER SECURITY & ACCESS',
               Icons.security_outlined,
             ),
             const SizedBox(height: 8),
@@ -314,7 +325,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       IconButton(
                         icon: const Icon(Icons.edit_outlined, size: 16),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                        constraints: const BoxConstraints(
+                          minWidth: 26,
+                          minHeight: 26,
+                        ),
                         visualDensity: VisualDensity.compact,
                         tooltip: l10n?.tooltipEditHostname ?? 'Edit hostname',
                         onPressed: () => EditHostnameDialog.show(
@@ -729,6 +743,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Widget _buildExportConfigTile(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
+
+    return Container(
+      decoration: LuciCardStyles.standardCard(context),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: LuciCardStyles.standardRadius,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.download_rounded,
+              color: colorScheme.onPrimaryContainer,
+              size: 24,
+            ),
+          ),
+          title: Text(
+            l10n?.settingsExportConfigTitle ?? 'Export Configuration (JSON)',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Text(
+              l10n?.settingsExportConfigSubtitle ??
+                  'Export DDNS, DHCP leases, firewall rules, packages, cron jobs & more as JSON',
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.onSurfaceVariant,
+                height: 1.3,
+              ),
+            ),
+          ),
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const JsonExportScreen()),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildCapabilitiesTile(BuildContext context, AppState appState) {
     final colorScheme = Theme.of(context).colorScheme;
     final caps = appState.capabilities;
@@ -894,8 +964,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         Expanded(
                           child: Text(
                             caps.isRpcComplete
-                                ? 'RPC permissions & execution modules verified'
-                                : 'Missing RPC permissions may restrict advanced router management features',
+                                ? (l10n?.rpcPermissionsVerified ??
+                                      'RPC permissions & execution modules verified')
+                                : (l10n?.rpcPermissionsMissingWarning ??
+                                      'Missing RPC permissions may restrict advanced router management features'),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: caps.isRpcComplete
@@ -909,7 +981,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          caps.isRpcComplete ? 'Manage' : 'Auto-Fix',
+                          caps.isRpcComplete
+                              ? (l10n?.actionManage ?? 'Manage')
+                              : (l10n?.actionAutoFix ?? 'Auto-Fix'),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -985,15 +1059,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           fontSize: 15,
                           color: isSupported
                               ? colorScheme.onSurface
-                              : colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                              : colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         isSupported
-                            ? 'Update root/admin password on active router'
+                            ? (l10n?.changePasswordSubtitle ??
+                                  'Update root/admin password on active router')
                             : (l10n?.changePasswordUnsupported ??
-                                'Router does not expose luci.setPassword via rpcd-mod-luci.'),
+                                  'Router does not expose luci.setPassword via rpcd-mod-luci.'),
                         style: TextStyle(
                           fontSize: 12,
                           color: colorScheme.onSurfaceVariant,
@@ -1263,13 +1340,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Icons.privacy_tip_outlined,
                   color: colorScheme.primary,
                 ),
-                title: const Text(
-                  'Privacy Policy',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                title: Text(
+                  l10n?.privacyPolicyTitle ?? 'Privacy Policy',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                subtitle: const Text(
-                  'Read our local-first zero-telemetry policy',
-                  style: TextStyle(fontSize: 12),
+                subtitle: Text(
+                  l10n?.privacyPolicySubtitle ??
+                      'Read our local-first zero-telemetry policy',
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: const Icon(Icons.open_in_new_rounded, size: 18),
                 onTap: () => launchUrlString(
@@ -1343,13 +1424,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Icons.policy_outlined,
                   color: colorScheme.primary,
                 ),
-                title: const Text(
-                  'License & Attribution (GPLv3)',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                title: Text(
+                  l10n?.licenseAttributionTitle ??
+                      'License & Attribution (GPLv3)',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                subtitle: const Text(
-                  'GNU General Public License v3.0 • Copyleft & Credits',
-                  style: TextStyle(fontSize: 12),
+                subtitle: Text(
+                  l10n?.licenseAttributionSubtitle ??
+                      'GNU General Public License v3.0 • Copyleft & Credits',
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                 onTap: () => _showGplLicenseDialog(context),
@@ -1364,13 +1450,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Icons.article_outlined,
                   color: colorScheme.primary,
                 ),
-                title: const Text(
-                  'Open Source Licenses',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                title: Text(
+                  l10n?.openSourceLicensesTitle ?? 'Open Source Licenses',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                subtitle: const Text(
-                  'Third-party software notices and licenses',
-                  style: TextStyle(fontSize: 12),
+                subtitle: Text(
+                  l10n?.openSourceLicensesSubtitle ??
+                      'Third-party software notices and licenses',
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded, size: 20),
                 onTap: () => showLicensePage(

@@ -1023,9 +1023,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
               colorScheme.error.withValues(alpha: 0.20),
               colorScheme.surfaceContainerHigh,
             ).withValues(alpha: 0.95)
-          : colorScheme.errorContainer.withValues(
-              alpha: isDark ? 0.90 : 0.95,
-            );
+          : colorScheme.errorContainer.withValues(alpha: isDark ? 0.90 : 0.95);
       borderColor = colorScheme.error.withValues(alpha: 0.35);
       textColor = colorScheme.onErrorContainer;
       accentColor = colorScheme.error;

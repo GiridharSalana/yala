@@ -86,14 +86,19 @@ class AdGuardStatsCard extends StatelessWidget {
                   initialValue: selectedPeriod,
                   onSelected: onPeriodChanged,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.6),
+                      color: colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.6,
+                      ),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                          color: colorScheme.outlineVariant, width: 0.6),
+                        color: colorScheme.outlineVariant,
+                        width: 0.6,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -123,8 +128,11 @@ class AdGuardStatsCard extends StatelessWidget {
                         child: Row(
                           children: [
                             if (selectedPeriod == period)
-                              Icon(Icons.check,
-                                  size: 16, color: colorScheme.primary)
+                              Icon(
+                                Icons.check,
+                                size: 16,
+                                color: colorScheme.primary,
+                              )
                             else
                               const SizedBox(width: 16),
                             const SizedBox(width: 8),

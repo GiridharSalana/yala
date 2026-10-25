@@ -117,6 +117,16 @@ class AppConfig {
       (const bool.fromEnvironment('FDROID_BUILD', defaultValue: false) ||
           _flavorStr.toLowerCase() == 'fdroid');
 
+  @visibleForTesting
+  static bool? debugIsIpaBuild;
+
+  /// Whether the current build is an iOS IPA sideloadable build.
+  /// True if running on iOS or explicitly enabled via compile-time flag `--dart-define=IPA_BUILD=true`.
+  static bool get isIpaBuild =>
+      debugIsIpaBuild ??
+      (const bool.fromEnvironment('IPA_BUILD', defaultValue: false) ||
+          (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS));
+
   /// Human-readable build channel description.
   static String get flavorName =>
       flavor == AppFlavor.playstore ? 'Play Store' : 'Community';

@@ -116,9 +116,11 @@ class _ChangeRouterPasswordDialogState
     // 1. Critical Confirmation Guardrail
     final confirmed = await LuciGuardrail.confirmCriticalOperation(
       context,
-      title: l10n?.changePasswordCriticalDialogTitle ??
+      title:
+          l10n?.changePasswordCriticalDialogTitle ??
           'Critical: Change Router Password',
-      description: l10n?.changePasswordCriticalDialogDesc ??
+      description:
+          l10n?.changePasswordCriticalDialogDesc ??
           'Changing the router\'s root/admin password will terminate active sessions. If you lose or forget the new password, a physical router factory reset will be required.',
       hazardDetails: const [
         'Terminates active sessions across all devices',
@@ -126,7 +128,8 @@ class _ChangeRouterPasswordDialogState
       ],
       confirmLabel: 'Proceed with Change',
       cancelLabel: 'Cancel',
-      acknowledgementLabel: l10n?.changePasswordCriticalDialogAcknowledge ??
+      acknowledgementLabel:
+          l10n?.changePasswordCriticalDialogAcknowledge ??
           'I understand the risks and want to proceed',
       requireAcknowledgement: true,
       isDestructive: true,
@@ -295,7 +298,9 @@ class _ChangeRouterPasswordDialogState
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.4),
+                  color: theme.colorScheme.errorContainer.withValues(
+                    alpha: 0.4,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -350,7 +355,9 @@ class _ChangeRouterPasswordDialogState
                   padding: const EdgeInsets.all(10),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
+                    color: theme.colorScheme.errorContainer.withValues(
+                      alpha: 0.6,
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -381,8 +388,8 @@ class _ChangeRouterPasswordDialogState
                 obscureText: _obscureCurrent,
                 enabled: !_isProcessing,
                 decoration: InputDecoration(
-                  labelText: l10n?.changePasswordCurrentLabel ??
-                      'Current Password',
+                  labelText:
+                      l10n?.changePasswordCurrentLabel ?? 'Current Password',
                   prefixIcon: const Icon(Icons.lock_outline, size: 20),
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -428,9 +435,7 @@ class _ChangeRouterPasswordDialogState
               // Password Strength Meter
               if (_newPasswordController.text.isNotEmpty) ...[
                 const SizedBox(height: 6),
-                PasswordStrengthMeter(
-                  password: _newPasswordController.text,
-                ),
+                PasswordStrengthMeter(password: _newPasswordController.text),
               ],
 
               // Same password warning
@@ -504,7 +509,8 @@ class _ChangeRouterPasswordDialogState
                 obscureText: _obscureConfirm,
                 enabled: !_isProcessing,
                 decoration: InputDecoration(
-                  labelText: l10n?.changePasswordConfirmLabel ??
+                  labelText:
+                      l10n?.changePasswordConfirmLabel ??
                       'Confirm New Password',
                   prefixIcon: const Icon(Icons.check_circle_outline, size: 20),
                   suffixIcon: IconButton(
@@ -568,7 +574,9 @@ class _ChangeRouterPasswordDialogState
       actionsOverflowDirection: VerticalDirection.down,
       actions: [
         OutlinedButton(
-          onPressed: _isProcessing ? null : () => Navigator.of(context).pop(false),
+          onPressed: _isProcessing
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
         FilledButton(

@@ -91,21 +91,23 @@ class SqmTelemetryService {
 
       void flushCurrentTin() {
         if (currentTinName != null && currentTinName!.isNotEmpty) {
-          tins.add(CakeTinStats(
-            name: currentTinName!,
-            thresholdBps: currentTinFields['threshold'],
-            targetMs: currentTinFields['target'],
-            intervalMs: currentTinFields['interval'],
-            pkDelayMs: currentTinFields['pk_delay'],
-            avDelayMs: currentTinFields['av_delay'],
-            spDelayMs: currentTinFields['sp_delay'],
-            backlogBytes: currentTinFields['backlogBytes'] ?? 0,
-            backlogPackets: currentTinFields['backlogPackets'] ?? 0,
-            droppedPackets: currentTinFields['dropped'] ?? 0,
-            sentPackets: currentTinFields['sentPackets'],
-            sentBytes: currentTinFields['sentBytes'],
-            ecnMarked: currentTinFields['ecn_mark'],
-          ));
+          tins.add(
+            CakeTinStats(
+              name: currentTinName!,
+              thresholdBps: currentTinFields['threshold'],
+              targetMs: currentTinFields['target'],
+              intervalMs: currentTinFields['interval'],
+              pkDelayMs: currentTinFields['pk_delay'],
+              avDelayMs: currentTinFields['av_delay'],
+              spDelayMs: currentTinFields['sp_delay'],
+              backlogBytes: currentTinFields['backlogBytes'] ?? 0,
+              backlogPackets: currentTinFields['backlogPackets'] ?? 0,
+              droppedPackets: currentTinFields['dropped'] ?? 0,
+              sentPackets: currentTinFields['sentPackets'],
+              sentBytes: currentTinFields['sentBytes'],
+              ecnMarked: currentTinFields['ecn_mark'],
+            ),
+          );
         }
         currentTinName = null;
         currentTinFields = {};
@@ -213,26 +215,32 @@ class SqmTelemetryService {
             final rateStr = trimmed.substring('threshold '.length).trim();
             currentTinFields['threshold'] = _parseRateOrBytes(rateStr);
           } else if (trimmed.startsWith('target ')) {
-            currentTinFields['target'] =
-                _parseTimeDelayMs(trimmed.substring('target '.length).trim());
+            currentTinFields['target'] = _parseTimeDelayMs(
+              trimmed.substring('target '.length).trim(),
+            );
           } else if (trimmed.startsWith('interval ')) {
-            currentTinFields['interval'] =
-                _parseTimeDelayMs(trimmed.substring('interval '.length).trim());
+            currentTinFields['interval'] = _parseTimeDelayMs(
+              trimmed.substring('interval '.length).trim(),
+            );
           } else if (trimmed.startsWith('pk_delay ')) {
-            currentTinFields['pk_delay'] =
-                _parseTimeDelayMs(trimmed.substring('pk_delay '.length).trim());
+            currentTinFields['pk_delay'] = _parseTimeDelayMs(
+              trimmed.substring('pk_delay '.length).trim(),
+            );
           } else if (trimmed.startsWith('av_delay ')) {
-            currentTinFields['av_delay'] =
-                _parseTimeDelayMs(trimmed.substring('av_delay '.length).trim());
+            currentTinFields['av_delay'] = _parseTimeDelayMs(
+              trimmed.substring('av_delay '.length).trim(),
+            );
           } else if (trimmed.startsWith('sp_delay ')) {
-            currentTinFields['sp_delay'] =
-                _parseTimeDelayMs(trimmed.substring('sp_delay '.length).trim());
+            currentTinFields['sp_delay'] = _parseTimeDelayMs(
+              trimmed.substring('sp_delay '.length).trim(),
+            );
           } else if (trimmed.startsWith('dropped ')) {
             currentTinFields['dropped'] =
                 int.tryParse(trimmed.substring('dropped '.length).trim()) ?? 0;
           } else if (trimmed.startsWith('ecn_mark ')) {
-            currentTinFields['ecn_mark'] =
-                int.tryParse(trimmed.substring('ecn_mark '.length).trim());
+            currentTinFields['ecn_mark'] = int.tryParse(
+              trimmed.substring('ecn_mark '.length).trim(),
+            );
           }
         }
       }
@@ -375,7 +383,9 @@ class SqmTelemetryService {
           method: 'exec',
           params: RealApiService.fileExecArgs('tc', arguments),
         );
-        if (fallbackRes is List && fallbackRes.length > 1 && fallbackRes[0] == 0) {
+        if (fallbackRes is List &&
+            fallbackRes.length > 1 &&
+            fallbackRes[0] == 0) {
           data = fallbackRes[1] as Map<String, dynamic>?;
         } else if (fallbackRes is Map<String, dynamic>) {
           data = fallbackRes;

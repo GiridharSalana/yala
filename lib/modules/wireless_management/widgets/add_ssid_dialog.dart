@@ -121,7 +121,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
   void _loadSubnetDhcpDefaults() {
     try {
       final appState = ref.read(appStateProvider);
-      final rawDhcp = appState.dashboardData?['uciDhcpConfig'] ??
+      final rawDhcp =
+          appState.dashboardData?['uciDhcpConfig'] ??
           appState.dashboardData?['dhcp'];
       if (rawDhcp is Map) {
         final values = (rawDhcp['values'] is Map)
@@ -144,8 +145,9 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
             if (v['dhcpv6'] != null) _dhcpv6Mode = v['dhcpv6'].toString();
             if (v['dns'] != null) {
               final dnsVal = v['dns'];
-              _dnsServersController.text =
-                  dnsVal is List ? dnsVal.join(', ') : dnsVal.toString();
+              _dnsServersController.text = dnsVal is List
+                  ? dnsVal.join(', ')
+                  : dnsVal.toString();
             }
           }
         });
@@ -369,8 +371,9 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
         extraOptions['ft_over_ds'] = _ftOverDs ? '1' : '0';
         extraOptions['ft_psk_generate_local'] = _ftPskGenerateLocal ? '1' : '0';
         if (_mobilityDomainController.text.trim().isNotEmpty) {
-          extraOptions['mobility_domain'] =
-              _mobilityDomainController.text.trim().toLowerCase();
+          extraOptions['mobility_domain'] = _mobilityDomainController.text
+              .trim()
+              .toLowerCase();
         }
       }
       if (_ieee80211k) {
@@ -386,12 +389,12 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
         extraOptions['gtk_rekey'] = _gtkRekeyController.text.trim();
       }
       if (_inactivityLimitController.text.trim().isNotEmpty) {
-        extraOptions['inactivity_limit'] =
-            _inactivityLimitController.text.trim();
+        extraOptions['inactivity_limit'] = _inactivityLimitController.text
+            .trim();
       }
       if (_maxListenIntervalController.text.trim().isNotEmpty) {
-        extraOptions['max_listen_interval'] =
-            _maxListenIntervalController.text.trim();
+        extraOptions['max_listen_interval'] = _maxListenIntervalController.text
+            .trim();
       }
       if (_macfilter != 'disable') {
         extraOptions['macfilter'] = _macfilter;
@@ -588,7 +591,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                     onChanged: (_) => setState(() {}),
                     validator: (val) {
                       if (val == null || val.trim().isEmpty) {
-                        return l10n?.ssidErrorEmpty ?? 'SSID name cannot be empty';
+                        return l10n?.ssidErrorEmpty ??
+                            'SSID name cannot be empty';
                       }
                       if (utf8.encode(val.trim()).length > 32) {
                         return l10n?.ssidErrorExceedsBytes(
@@ -618,10 +622,14 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         : _availableNetworks.first,
                     isExpanded: true,
                     decoration: InputDecoration(
-                      labelText: l10n?.wifiDetailNetworkBridge ?? 'Network Attachment',
+                      labelText:
+                          l10n?.wifiDetailNetworkBridge ?? 'Network Attachment',
                       prefixIcon: const Icon(Icons.lan_rounded, size: 20),
                       border: const OutlineInputBorder(),
-                      helperText: _getNetworkDescription(_selectedNetwork, l10n),
+                      helperText: _getNetworkDescription(
+                        _selectedNetwork,
+                        l10n,
+                      ),
                       helperMaxLines: 2,
                     ),
                     items: _availableNetworks
@@ -652,7 +660,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                     initialValue: _selectedEncryption,
                     isExpanded: true,
                     decoration: InputDecoration(
-                      labelText: l10n?.encryptionSecurityModeLabel ??
+                      labelText:
+                          l10n?.encryptionSecurityModeLabel ??
                           'Security Protocol',
                       prefixIcon: const Icon(Icons.security_rounded, size: 20),
                       border: const OutlineInputBorder(),
@@ -688,7 +697,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                       controller: _passphraseController,
                       obscureText: !_showPassphrase,
                       decoration: InputDecoration(
-                        labelText: l10n?.passphraseKeyLabel ?? 'Passphrase / Key',
+                        labelText:
+                            l10n?.passphraseKeyLabel ?? 'Passphrase / Key',
                         hintText: '8–63 characters',
                         prefixIcon: const Icon(Icons.key_rounded, size: 20),
                         border: const OutlineInputBorder(),
@@ -719,7 +729,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                     _buildBanner(
                       color: Colors.amber,
                       icon: Icons.warning_amber_rounded,
-                      text: l10n?.openNetworkWarningBody ??
+                      text:
+                          l10n?.openNetworkWarningBody ??
                           'An open Wi-Fi network transmits data without encryption. Anyone within range can connect and monitor unencrypted traffic.',
                     ),
                     CheckboxListTile(
@@ -774,7 +785,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              l10n?.advancedSettingsTitle ?? 'Advanced Settings',
+                              l10n?.advancedSettingsTitle ??
+                                  'Advanced Settings',
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: theme.colorScheme.primary,
@@ -787,16 +799,19 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                       children: [
                         // ── Group 1: Security & Privacy ───────────────────
                         _buildGroupHeader(
-                          l10n?.secGroupSecurityPrivacy ??
-                              'Security & Privacy',
+                          l10n?.secGroupSecurityPrivacy ?? 'Security & Privacy',
                           Icons.shield_rounded,
                         ),
                         const SizedBox(height: 6),
 
                         _buildSwitch(
-                          title: l10n?.wifiDetailClientIsolation ??
+                          title:
+                              l10n?.isolateWirelessClientsLabel ??
+                              l10n?.wifiDetailClientIsolation ??
                               'Client Isolation',
                           subtitle:
+                              l10n?.wifiClientIsolationSubtitle ??
+                              l10n?.isolateWirelessClientsSubtitle ??
                               'Prevents connected Wi-Fi stations from directly communicating with each other',
                           value: _isolateClients,
                           onChanged: (v) => setState(() => _isolateClients = v),
@@ -806,15 +821,17 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                           DropdownButtonFormField<String>(
                             initialValue: _selectedPmf,
                             isExpanded: true,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText:
+                                  l10n?.pmfLabel ??
                                   'Protected Management Frames (PMF / 802.11w)',
-                              prefixIcon: Icon(
+                              prefixIcon: const Icon(
                                 Icons.verified_user_rounded,
                                 size: 20,
                               ),
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                               helperText:
+                                  l10n?.wifiPmfHelperText ??
                                   'Protection against deauthentication attacks',
                             ),
                             items: [
@@ -843,7 +860,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                                 ),
                               ),
                             ],
-                            onChanged: (_selectedEncryption == 'sae' ||
+                            onChanged:
+                                (_selectedEncryption == 'sae' ||
                                     _selectedEncryption == 'owe')
                                 ? null
                                 : (val) {
@@ -857,13 +875,19 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                             initialValue: _selectedCipher,
                             isExpanded: true,
                             decoration: InputDecoration(
-                              labelText: 'Cipher / Encryption Algorithm',
-                              prefixIcon:
-                                  const Icon(Icons.memory_rounded, size: 20),
+                              labelText:
+                                  l10n?.cipherAlgorithmLabel ??
+                                  'Cipher / Encryption Algorithm',
+                              prefixIcon: const Icon(
+                                Icons.memory_rounded,
+                                size: 20,
+                              ),
                               border: const OutlineInputBorder(),
                               helperText: _dynamicCiphers.isNotEmpty
-                                  ? 'Hardware-supported ciphers'
-                                  : 'Auto hardware selection',
+                                  ? (l10n?.wifiCipherHwSupported ??
+                                        'Hardware-supported ciphers')
+                                  : (l10n?.wifiCipherAutoSelection ??
+                                        'Auto hardware selection'),
                             ),
                             items: _buildCipherItems(),
                             onChanged: (val) {
@@ -878,6 +902,7 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         _buildSwitch(
                           title: l10n?.hideBroadcastSsidLabel ?? 'Hidden SSID',
                           subtitle:
+                              l10n?.hideBroadcastSsidSubtitle ??
                               'Do not broadcast SSID name in periodic 802.11 beacon frames',
                           value: _isHidden,
                           onChanged: (v) => setState(() => _isHidden = v),
@@ -886,11 +911,14 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         DropdownButtonFormField<String>(
                           initialValue: _macfilter,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'MAC Filter Mode',
-                            prefixIcon:
-                                Icon(Icons.filter_alt_rounded, size: 20),
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText:
+                                l10n?.macFilterModeLabel ?? 'MAC Filter Mode',
+                            prefixIcon: const Icon(
+                              Icons.filter_alt_rounded,
+                              size: 20,
+                            ),
+                            border: const OutlineInputBorder(),
                           ),
                           items: [
                             DropdownMenuItem(
@@ -924,13 +952,17 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                             controller: _maclistController,
                             maxLines: 3,
                             onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(
-                              labelText: 'MAC Address List',
+                            decoration: InputDecoration(
+                              labelText:
+                                  l10n?.macListLabel ?? 'MAC Address List',
                               hintText: 'AA:BB:CC:DD:EE:FF\n11:22:33:44:55:66',
-                              prefixIcon:
-                                  Icon(Icons.list_alt_rounded, size: 20),
-                              border: OutlineInputBorder(),
+                              prefixIcon: const Icon(
+                                Icons.list_alt_rounded,
+                                size: 20,
+                              ),
+                              border: const OutlineInputBorder(),
                               helperText:
+                                  l10n?.macListHelperText ??
                                   'One MAC per line or separated by comma/space',
                             ),
                           ),
@@ -945,16 +977,22 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         ),
                         const SizedBox(height: 6),
                         _buildSwitch(
-                          title: 'Multicast → Unicast Conversion',
+                          title:
+                              l10n?.multicastToUnicastLabel ??
+                              'Multicast → Unicast Conversion',
                           subtitle:
+                              l10n?.multicastToUnicastSubtitle ??
                               'Converts multicast frames to unicast on air interface for reliability',
                           value: _multicastToUnicast,
                           onChanged: (v) =>
                               setState(() => _multicastToUnicast = v),
                         ),
                         _buildSwitch(
-                          title: 'WDS (Wireless Distribution System)',
+                          title:
+                              l10n?.wdsLabel ??
+                              'WDS (Wireless Distribution System)',
                           subtitle:
+                              l10n?.wdsSubtitle ??
                               'Transparent L2 bridge for multi-AP wireless mesh connections',
                           value: _wds,
                           onChanged: (v) => setState(() => _wds = v),
@@ -969,22 +1007,31 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         ),
                         const SizedBox(height: 6),
                         _buildSwitch(
-                          title: '802.11r Fast BSS Transition',
+                          title:
+                              l10n?.fastBssTransitionLabel ??
+                              '802.11r Fast BSS Transition',
                           subtitle:
+                              l10n?.fastBssTransitionSubtitle ??
                               'Enables seamless client handoff between access points',
                           value: _ieee80211r,
                           onChanged: (v) => setState(() => _ieee80211r = v),
                         ),
                         if (_ieee80211r) ...[
                           _buildSwitch(
-                            title: 'FT over DS',
-                            subtitle: 'Pre-authenticates over Ethernet backbone',
+                            title: l10n?.ftOverDsLabel ?? 'FT over DS',
+                            subtitle:
+                                l10n?.ftOverDsSubtitle ??
+                                'Pre-authenticates over Ethernet backbone',
                             value: _ftOverDs,
                             onChanged: (v) => setState(() => _ftOverDs = v),
                           ),
                           _buildSwitch(
-                            title: 'Generate Local FT PSK Keys',
-                            subtitle: 'Derives roaming keys locally per AP',
+                            title:
+                                l10n?.ftGeneratePskLocalLabel ??
+                                'Generate Local FT PSK Keys',
+                            subtitle:
+                                l10n?.ftGeneratePskLocalSubtitle ??
+                                'Derives roaming keys locally per AP',
                             value: _ftPskGenerateLocal,
                             onChanged: (v) =>
                                 setState(() => _ftPskGenerateLocal = v),
@@ -993,43 +1040,56 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                           TextFormField(
                             controller: _mobilityDomainController,
                             onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(
-                              labelText: 'Mobility Domain ID',
+                            decoration: InputDecoration(
+                              labelText:
+                                  l10n?.mobilityDomainLabel ??
+                                  'Mobility Domain ID',
                               hintText: '4f4b',
-                              prefixIcon:
-                                  Icon(Icons.domain_rounded, size: 20),
-                              border: OutlineInputBorder(),
+                              prefixIcon: const Icon(
+                                Icons.domain_rounded,
+                                size: 20,
+                              ),
+                              border: const OutlineInputBorder(),
                             ),
                             maxLength: 4,
                           ),
                           const SizedBox(height: 8),
                         ],
                         _buildSwitch(
-                          title: l10n?.fastTransition80211kLabel ??
+                          title:
+                              l10n?.fastTransition80211kLabel ??
                               '802.11k Radio Resource Management',
                           subtitle:
+                              l10n?.fastTransition80211kSubtitle ??
                               'Provides radio measurement reports to accelerate AP roaming decisions',
                           value: _ieee80211k,
                           onChanged: (v) => setState(() => _ieee80211k = v),
                         ),
                         _buildSwitch(
-                          title: l10n?.fastTransition80211vLabel ??
+                          title:
+                              l10n?.fastTransition80211vLabel ??
                               '802.11v BSS Transition Management',
                           subtitle:
+                              l10n?.fastTransition80211vSubtitle ??
                               'Allows AP to guide stations to transition to optimal radios',
                           value: _ieee80211v,
                           onChanged: (v) => setState(() => _ieee80211v = v),
                         ),
                         _buildSwitch(
-                          title: 'WMM / QoS Prioritization',
+                          title:
+                              l10n?.wmmQosLabel ?? 'WMM / QoS Prioritization',
                           subtitle:
+                              l10n?.wmmQosSubtitle ??
                               'Wi-Fi Multimedia quality-of-service traffic prioritization',
                           value: _wmmEnabled,
                           onChanged: (v) => setState(() => _wmmEnabled = v),
                         ),
                         _buildSwitch(
-                          title: 'Disassociate Low-ACK Clients',
+                          title:
+                              l10n?.disassocLowAckLabel ??
+                              'Disassociate Low-ACK Clients',
                           subtitle:
+                              l10n?.disassocLowAckSubtitle ??
                               'Disassociates clients with excessive packet loss to conserve airtime',
                           value: _disassocLowAck,
                           onChanged: (v) => setState(() => _disassocLowAck = v),
@@ -1107,7 +1167,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                         _buildBanner(
                           color: Colors.amber,
                           icon: Icons.warning_amber_rounded,
-                          text: l10n?.networkWideWarning(_selectedNetwork) ??
+                          text:
+                              l10n?.networkWideWarning(_selectedNetwork) ??
                               'These settings apply to all devices connected to the $_selectedNetwork network, not only this Wi-Fi network.',
                         ),
                         const SizedBox(height: 10),
@@ -1117,10 +1178,12 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                             Expanded(
                               child: TextFormField(
                                 controller: _dhcpStartController,
-                                onChanged: (_) =>
-                                    setState(() => _dhcpSettingsModified = true),
+                                onChanged: (_) => setState(
+                                  () => _dhcpSettingsModified = true,
+                                ),
                                 decoration: InputDecoration(
-                                  labelText: l10n?.dhcpPoolStartLabel ??
+                                  labelText:
+                                      l10n?.dhcpPoolStartLabel ??
                                       'DHCP Pool Start',
                                   border: const OutlineInputBorder(),
                                   helperText: 'e.g. 100',
@@ -1132,10 +1195,12 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                             Expanded(
                               child: TextFormField(
                                 controller: _dhcpLimitController,
-                                onChanged: (_) =>
-                                    setState(() => _dhcpSettingsModified = true),
+                                onChanged: (_) => setState(
+                                  () => _dhcpSettingsModified = true,
+                                ),
                                 decoration: InputDecoration(
-                                  labelText: l10n?.dhcpPoolLimitLabel ??
+                                  labelText:
+                                      l10n?.dhcpPoolLimitLabel ??
                                       'DHCP Pool Limit',
                                   border: const OutlineInputBorder(),
                                   helperText: 'e.g. 150',
@@ -1151,10 +1216,12 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                             Expanded(
                               child: TextFormField(
                                 controller: _dhcpLeaseController,
-                                onChanged: (_) =>
-                                    setState(() => _dhcpSettingsModified = true),
+                                onChanged: (_) => setState(
+                                  () => _dhcpSettingsModified = true,
+                                ),
                                 decoration: InputDecoration(
-                                  labelText: l10n?.dhcpLeaseDurationLabel ??
+                                  labelText:
+                                      l10n?.dhcpLeaseDurationLabel ??
                                       'DHCP Lease Duration',
                                   border: const OutlineInputBorder(),
                                   helperText: 'e.g. 12h or 86400',
@@ -1165,10 +1232,12 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
                             Expanded(
                               child: TextFormField(
                                 controller: _dnsServersController,
-                                onChanged: (_) =>
-                                    setState(() => _dhcpSettingsModified = true),
+                                onChanged: (_) => setState(
+                                  () => _dhcpSettingsModified = true,
+                                ),
                                 decoration: InputDecoration(
-                                  labelText: l10n?.dnsServersLabel ??
+                                  labelText:
+                                      l10n?.dnsServersLabel ??
                                       'Custom DNS Servers',
                                   border: const OutlineInputBorder(),
                                   helperText: 'e.g. 1.1.1.1, 8.8.8.8',
@@ -1274,7 +1343,7 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
               hasUciWrite
                   ? (l10n?.createWifiNetwork ?? 'Create Wi-Fi Network')
                   : (l10n?.createWifiNetworkNonRoot ??
-                      'Create Wi-Fi Network (Non-Root)'),
+                        'Create Wi-Fi Network (Non-Root)'),
             ),
           ),
         ],
@@ -1482,17 +1551,20 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
     final static_ = [
       {
         'value': 'sae-mixed',
-        'label': l10n?.wifiSecMixedRecommended ??
+        'label':
+            l10n?.wifiSecMixedRecommended ??
             'WPA2/WPA3 Mixed — Recommended default',
       },
       {
         'value': 'sae',
-        'label': l10n?.wifiSecWpa3Strict ??
+        'label':
+            l10n?.wifiSecWpa3Strict ??
             'WPA3-SAE Personal — Strict / Max security',
       },
       {
         'value': 'psk2',
-        'label': l10n?.wifiSecWpa2Legacy ??
+        'label':
+            l10n?.wifiSecWpa2Legacy ??
             'WPA2-PSK (CCMP/AES) — Legacy compatible',
       },
       {
@@ -1501,7 +1573,8 @@ class _AddSsidDialogState extends ConsumerState<AddSsidDialog> {
       },
       {
         'value': 'owe',
-        'label': l10n?.wifiSecOwe ?? 'Enhanced Open (OWE) — Encrypted, no password',
+        'label':
+            l10n?.wifiSecOwe ?? 'Enhanced Open (OWE) — Encrypted, no password',
       },
       {
         'value': 'none',

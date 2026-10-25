@@ -47,7 +47,8 @@ class _AdGuardCustomRulesDialogState extends State<AdGuardCustomRulesDialog> {
   @override
   void initState() {
     super.initState();
-    final existingRules = widget.initialRules ??
+    final existingRules =
+        widget.initialRules ??
         widget.controller.currentState.filtering?.userRules ??
         [];
     _textController = TextEditingController(text: existingRules.join('\n'));
@@ -113,7 +114,8 @@ class _AdGuardCustomRulesDialogState extends State<AdGuardCustomRulesDialog> {
       final l10n = AppLocalizations.of(context);
       setState(() {
         _isSaving = false;
-        _errorMessage = widget.controller.currentState.filteringError ??
+        _errorMessage =
+            widget.controller.currentState.filteringError ??
             (l10n?.aghSaveRulesError ?? 'Failed to save custom rules');
       });
     }
@@ -212,7 +214,9 @@ class _AdGuardCustomRulesDialogState extends State<AdGuardCustomRulesDialog> {
               ],
               Container(
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.4,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: colorScheme.outlineVariant,
@@ -232,7 +236,8 @@ class _AdGuardCustomRulesDialogState extends State<AdGuardCustomRulesDialog> {
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.all(12),
                     border: InputBorder.none,
-                    hintText: '# Example rules:\n||example.com^\n@@||allowed.com^\n127.0.0.1 host.local\n! comment',
+                    hintText:
+                        '# Example rules:\n||example.com^\n@@||allowed.com^\n127.0.0.1 host.local\n! comment',
                     hintStyle: TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 12,

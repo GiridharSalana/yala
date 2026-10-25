@@ -101,10 +101,7 @@ class ControllableRealApiService extends RealApiService {
     if (authCompleter != null) {
       return authCompleter!.future;
     }
-    return const AuthResult(
-      status: AuthStatus.success,
-      token: 'renewed_token',
-    );
+    return const AuthResult(status: AuthStatus.success, token: 'renewed_token');
   }
 }
 
@@ -216,16 +213,19 @@ void main() {
       },
     );
 
-    test('Cancelling password transition advances epoch and disengages barrier', () {
-      final apiService = ControllableRealApiService();
-      final authService = RealAuthService(apiService);
+    test(
+      'Cancelling password transition advances epoch and disengages barrier',
+      () {
+        final apiService = ControllableRealApiService();
+        final authService = RealAuthService(apiService);
 
-      authService.startPasswordTransition();
-      expect(authService.authEpoch, equals(1));
+        authService.startPasswordTransition();
+        expect(authService.authEpoch, equals(1));
 
-      authService.cancelPasswordTransition();
-      expect(authService.authEpoch, equals(2));
-    });
+        authService.cancelPasswordTransition();
+        expect(authService.authEpoch, equals(2));
+      },
+    );
   });
 
   group('10-State Password Transition State Machine Tests', () {
@@ -306,28 +306,31 @@ void main() {
       expect(appState.selectedRouter?.password, equals(newPass));
     });
 
-    test('Router RPC Rejection: Preserves credentials and aborts cleanly', () async {
-      final currentPass = appState.selectedRouter?.password ?? '';
-      const newPass = 'NewPasswordRejected123';
+    test(
+      'Router RPC Rejection: Preserves credentials and aborts cleanly',
+      () async {
+        final currentPass = appState.selectedRouter?.password ?? '';
+        const newPass = 'NewPasswordRejected123';
 
-      mockApi.setPasswordResponse = const SetPasswordRpcResponse.rejected(
-        'Access denied',
-      );
+        mockApi.setPasswordResponse = const SetPasswordRpcResponse.rejected(
+          'Access denied',
+        );
 
-      final result = await appState.changeRouterPassword(
-        currentPassword: currentPass,
-        newPassword: newPass,
-      );
+        final result = await appState.changeRouterPassword(
+          currentPassword: currentPass,
+          newPassword: newPass,
+        );
 
-      expect(result.isSuccess, isFalse);
-      expect(result.status, equals(ChangePasswordStatus.failed));
-      expect(result.errorMessage, contains('Access denied'));
+        expect(result.isSuccess, isFalse);
+        expect(result.status, equals(ChangePasswordStatus.failed));
+        expect(result.errorMessage, contains('Access denied'));
 
-      // Original password preserved in memory
-      expect(appState.selectedRouter?.password, equals(currentPass));
-      // Old session was NOT destroyed because transition aborted at step 5
-      expect(mockApi.destroySessionCallCount, equals(0));
-    });
+        // Original password preserved in memory
+        expect(appState.selectedRouter?.password, equals(currentPass));
+        // Old session was NOT destroyed because transition aborted at step 5
+        expect(mockApi.destroySessionCallCount, equals(0));
+      },
+    );
 
     test(
       'Rejection Router-Side: New auth fails, old auth succeeds restores old session',
@@ -337,10 +340,13 @@ void main() {
 
         // setPassword RPC says success, but router didn't actually change passwd:
         mockApi.setPasswordResponse = const SetPasswordRpcResponse.success();
-        mockApi.authResultsByPassword[newPass] =
-            AuthResult.invalidCredentials('Wrong password');
-        mockApi.authResultsByPassword[currentPass] =
-            const AuthResult(status: AuthStatus.success, token: 'restored_old_token');
+        mockApi.authResultsByPassword[newPass] = AuthResult.invalidCredentials(
+          'Wrong password',
+        );
+        mockApi.authResultsByPassword[currentPass] = const AuthResult(
+          status: AuthStatus.success,
+          token: 'restored_old_token',
+        );
 
         final result = await appState.changeRouterPassword(
           currentPassword: currentPass,
@@ -365,15 +371,20 @@ void main() {
         const currentPass = 'SecretCurrentPass123';
         const newPass = 'AmbiguousNetworkDrop123';
 
-        final initialRouter = appState.selectedRouter!.copyWith(password: currentPass);
+        final initialRouter = appState.selectedRouter!.copyWith(
+          password: currentPass,
+        );
         appState.routerService?.updateRouterInMemory(initialRouter);
 
-        mockApi.setPasswordResponse =
-            const SetPasswordRpcResponse.networkError('Socket closed');
-        mockApi.authResultsByPassword[newPass] =
-            AuthResult.unreachable('Connection timeout');
-        mockApi.authResultsByPassword[currentPass] =
-            AuthResult.unreachable('Connection timeout');
+        mockApi.setPasswordResponse = const SetPasswordRpcResponse.networkError(
+          'Socket closed',
+        );
+        mockApi.authResultsByPassword[newPass] = AuthResult.unreachable(
+          'Connection timeout',
+        );
+        mockApi.authResultsByPassword[currentPass] = AuthResult.unreachable(
+          'Connection timeout',
+        );
 
         final result = await appState.changeRouterPassword(
           currentPassword: currentPass,
@@ -393,14 +404,20 @@ void main() {
       },
     );
 
-    test('retrySaveRouterPassword updates credentials and returns true', () async {
-      final router = appState.selectedRouter!.copyWith(
-        password: 'RetriedNewPassword123',
-      );
-      final ok = await appState.retrySaveRouterPassword(router);
-      expect(ok, isTrue);
-      expect(appState.selectedRouter?.password, equals('RetriedNewPassword123'));
-    });
+    test(
+      'retrySaveRouterPassword updates credentials and returns true',
+      () async {
+        final router = appState.selectedRouter!.copyWith(
+          password: 'RetriedNewPassword123',
+        );
+        final ok = await appState.retrySaveRouterPassword(router);
+        expect(ok, isTrue);
+        expect(
+          appState.selectedRouter?.password,
+          equals('RetriedNewPassword123'),
+        );
+      },
+    );
   });
 
   group('PasswordStrengthMeter Unit Tests', () {
@@ -410,9 +427,7 @@ void main() {
       // 1. Password under 8 characters: renders SizedBox.shrink
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: PasswordStrengthMeter(password: 'short'),
-          ),
+          home: Scaffold(body: PasswordStrengthMeter(password: 'short')),
         ),
       );
       expect(find.byType(PasswordStrengthMeter), findsOneWidget);
@@ -431,81 +446,75 @@ void main() {
   });
 
   group('ChangeRouterPasswordDialog Widget Tests', () {
-    testWidgets(
-      'Dialog renders form fields, toggles visibility, and submits',
-      (tester) async {
-        await tester.pumpWidget(
-          const MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(
-              body: ChangeRouterPasswordDialog(),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('Dialog renders form fields, toggles visibility, and submits', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ChangeRouterPasswordDialog()),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        // Verify elements
-        expect(find.text('Change Router Password'), findsOneWidget);
-        expect(find.text('Current Password'), findsOneWidget);
-        expect(find.text('New Password'), findsOneWidget);
-        expect(find.text('Confirm New Password'), findsOneWidget);
+      // Verify elements
+      expect(find.text('Change Router Password'), findsOneWidget);
+      expect(find.text('Current Password'), findsOneWidget);
+      expect(find.text('New Password'), findsOneWidget);
+      expect(find.text('Confirm New Password'), findsOneWidget);
 
-        // Submit button initially disabled (fields empty)
-        final submitButtonFinder = find.widgetWithText(
-          FilledButton,
-          'Change Password',
-        );
-        expect(submitButtonFinder, findsOneWidget);
-        final FilledButton initialButton = tester.widget(submitButtonFinder);
-        expect(initialButton.onPressed, isNull);
+      // Submit button initially disabled (fields empty)
+      final submitButtonFinder = find.widgetWithText(
+        FilledButton,
+        'Change Password',
+      );
+      expect(submitButtonFinder, findsOneWidget);
+      final FilledButton initialButton = tester.widget(submitButtonFinder);
+      expect(initialButton.onPressed, isNull);
 
-        // Fill in mismatched passwords
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Current Password'),
-          'OldPass123',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'New Password'),
-          'NewPassword123!',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Confirm New Password'),
-          'DifferentPassword123!',
-        );
-        await tester.pumpAndSettle();
+      // Fill in mismatched passwords
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Current Password'),
+        'OldPass123',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'New Password'),
+        'NewPassword123!',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Confirm New Password'),
+        'DifferentPassword123!',
+      );
+      await tester.pumpAndSettle();
 
-        expect(find.text('Passwords do not match'), findsOneWidget);
-        final FilledButton mismatchButton = tester.widget(submitButtonFinder);
-        expect(mismatchButton.onPressed, isNull);
+      expect(find.text('Passwords do not match'), findsOneWidget);
+      final FilledButton mismatchButton = tester.widget(submitButtonFinder);
+      expect(mismatchButton.onPressed, isNull);
 
-        // Fill in weak password (< 8 chars): requires acknowledgement checkbox
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'New Password'),
-          'abc',
-        );
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'Confirm New Password'),
-          'abc',
-        );
-        await tester.pumpAndSettle();
+      // Fill in weak password (< 8 chars): requires acknowledgement checkbox
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'New Password'),
+        'abc',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Confirm New Password'),
+        'abc',
+      );
+      await tester.pumpAndSettle();
 
-        expect(
-          find.text('Proceed with weak password anyway'),
-          findsOneWidget,
-        );
-        final FilledButton weakButton = tester.widget(submitButtonFinder);
-        expect(weakButton.onPressed, isNull);
+      expect(find.text('Proceed with weak password anyway'), findsOneWidget);
+      final FilledButton weakButton = tester.widget(submitButtonFinder);
+      expect(weakButton.onPressed, isNull);
 
-        // Check acknowledgement
-        await tester.tap(find.byType(Checkbox));
-        await tester.pumpAndSettle();
+      // Check acknowledgement
+      await tester.tap(find.byType(Checkbox));
+      await tester.pumpAndSettle();
 
-        final FilledButton weakAcknowledgedButton = tester.widget(
-          submitButtonFinder,
-        );
-        expect(weakAcknowledgedButton.onPressed, isNotNull);
-      },
-    );
+      final FilledButton weakAcknowledgedButton = tester.widget(
+        submitButtonFinder,
+      );
+      expect(weakAcknowledgedButton.onPressed, isNotNull);
+    });
   });
 }

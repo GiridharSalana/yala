@@ -63,8 +63,9 @@ class DeviceNetworkAccessCard extends ConsumerStatefulWidget {
                       height: 4,
                       margin: const EdgeInsets.only(top: 12, bottom: 4),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.outlineVariant
-                            .withValues(alpha: 0.7),
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.7,
+                        ),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -205,9 +206,7 @@ class _DeviceNetworkAccessCardState
     }
   }
 
-  Future<void> _selectCustomExpiry(
-    NetworkAccessPolicy currentPolicy,
-  ) async {
+  Future<void> _selectCustomExpiry(NetworkAccessPolicy currentPolicy) async {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
@@ -289,8 +288,9 @@ class _DeviceNetworkAccessCardState
     final l10n = AppLocalizations.of(context);
     final appState = ref.watch(appStateProvider);
 
-    final policy =
-        appState.getDeviceNetworkAccessPolicy(widget.client.macAddress);
+    final policy = appState.getDeviceNetworkAccessPolicy(
+      widget.client.macAddress,
+    );
     final supportsIpv6 =
         appState.capabilities?.supportsIpv6InternetFirewall ?? false;
     final isDarkMode = theme.brightness == Brightness.dark;
@@ -333,11 +333,7 @@ class _DeviceNetworkAccessCardState
           // Header Row
           Row(
             children: [
-              Icon(
-                Icons.shield_outlined,
-                size: 16,
-                color: colorScheme.primary,
-              ),
+              Icon(Icons.shield_outlined, size: 16, color: colorScheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -462,12 +458,12 @@ class _DeviceNetworkAccessCardState
                           // User is turning off internet (blocking)
                           final safe =
                               await SelfDeviceGuard.checkSelfActionGuardrail(
-                            context,
-                            actionName: 'Block Internet Access',
-                            targetMac: widget.client.macAddress,
-                            targetIp: widget.client.ipAddress,
-                            targetHostname: widget.client.displayName,
-                          );
+                                context,
+                                actionName: 'Block Internet Access',
+                                targetMac: widget.client.macAddress,
+                                targetIp: widget.client.ipAddress,
+                                targetHostname: widget.client.displayName,
+                              );
                           if (!safe) return;
                           await _applyPolicy(
                             NetworkAccessPolicy.blocked(
@@ -510,8 +506,9 @@ class _DeviceNetworkAccessCardState
                         l10n?.clientIpv4Internet ?? 'IPv4 Internet',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: !policy.effectiveInternetAccess
-                              ? theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.45)
+                              ? theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.45,
+                                )
                               : null,
                           fontWeight: FontWeight.w500,
                         ),
@@ -520,17 +517,18 @@ class _DeviceNetworkAccessCardState
                     Switch.adaptive(
                       value: policy.effectiveIpv4Access,
                       activeThumbColor: colorScheme.primary,
-                      onChanged: (!_isApplying && policy.effectiveInternetAccess)
+                      onChanged:
+                          (!_isApplying && policy.effectiveInternetAccess)
                           ? (val) async {
                               if (!val && !policy.ipv6Access) {
                                 final safe =
                                     await SelfDeviceGuard.checkSelfActionGuardrail(
-                                  context,
-                                  actionName: 'Block IPv4 Internet',
-                                  targetMac: widget.client.macAddress,
-                                  targetIp: widget.client.ipAddress,
-                                  targetHostname: widget.client.displayName,
-                                );
+                                      context,
+                                      actionName: 'Block IPv4 Internet',
+                                      targetMac: widget.client.macAddress,
+                                      targetIp: widget.client.ipAddress,
+                                      targetHostname: widget.client.displayName,
+                                    );
                                 if (!safe) return;
                               }
                               await _applyPolicy(
@@ -560,10 +558,12 @@ class _DeviceNetworkAccessCardState
                           Text(
                             l10n?.clientIpv6Internet ?? 'IPv6 Internet',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: (!supportsIpv6 ||
+                              color:
+                                  (!supportsIpv6 ||
                                       !policy.effectiveInternetAccess)
-                                  ? theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.45)
+                                  ? theme.colorScheme.onSurface.withValues(
+                                      alpha: 0.45,
+                                    )
                                   : null,
                               fontWeight: FontWeight.w500,
                             ),
@@ -583,19 +583,20 @@ class _DeviceNetworkAccessCardState
                     Switch.adaptive(
                       value: supportsIpv6 ? policy.effectiveIpv6Access : false,
                       activeThumbColor: colorScheme.primary,
-                      onChanged: (!_isApplying &&
+                      onChanged:
+                          (!_isApplying &&
                               policy.effectiveInternetAccess &&
                               supportsIpv6)
                           ? (val) async {
                               if (!val && !policy.ipv4Access) {
                                 final safe =
                                     await SelfDeviceGuard.checkSelfActionGuardrail(
-                                  context,
-                                  actionName: 'Block IPv6 Internet',
-                                  targetMac: widget.client.macAddress,
-                                  targetIp: widget.client.ipAddress,
-                                  targetHostname: widget.client.displayName,
-                                );
+                                      context,
+                                      actionName: 'Block IPv6 Internet',
+                                      targetMac: widget.client.macAddress,
+                                      targetIp: widget.client.ipAddress,
+                                      targetHostname: widget.client.displayName,
+                                    );
                                 if (!safe) return;
                               }
                               await _applyPolicy(
@@ -617,28 +618,26 @@ class _DeviceNetworkAccessCardState
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: isDarkMode
-                  ? theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.4)
-                  : theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.6),
+                  ? theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.4,
+                    )
+                  : theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.6,
+                    ),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.info_outline, size: 14, color: colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     !policy.effectiveInternetAccess
                         ? (l10n?.clientGlobalBlockedDesc ??
-                            'Global internet access is blocked. IPv4 and IPv6 traffic are both blocked.')
+                              'Global internet access is blocked. IPv4 and IPv6 traffic are both blocked.')
                         : (l10n?.clientIpv6InternetDesc ??
-                            'Blocking IPv6 Internet stops public IPv6 web access. Local communication on your home network remains active.'),
+                              'Blocking IPv6 Internet stops public IPv6 web access. Local communication on your home network remains active.'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 11,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -670,10 +669,12 @@ class _DeviceNetworkAccessCardState
                 Text(
                   policy.scheduleExpiry != null
                       ? (policy.isExpired
-                          ? (l10n?.clientScheduleExpired ?? 'Schedule expired')
-                          : (l10n?.clientScheduleExpiresIn(
-                                  _formatRemaining(policy.scheduleExpiry!)) ??
-                              'Expires in ${_formatRemaining(policy.scheduleExpiry!)}'))
+                            ? (l10n?.clientScheduleExpired ??
+                                  'Schedule expired')
+                            : (l10n?.clientScheduleExpiresIn(
+                                    _formatRemaining(policy.scheduleExpiry!),
+                                  ) ??
+                                  'Expires in ${_formatRemaining(policy.scheduleExpiry!)}'))
                       : (l10n?.clientScheduleAlways ?? 'Always'),
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 11,
@@ -693,17 +694,17 @@ class _DeviceNetworkAccessCardState
                 _buildScheduleChip(
                   label: l10n?.clientScheduleAlways ?? 'Always',
                   isSelected: policy.scheduleExpiry == null,
-                  onTap: () => _applyPolicy(
-                    policy.copyWith(clearScheduleExpiry: true),
-                  ),
+                  onTap: () =>
+                      _applyPolicy(policy.copyWith(clearScheduleExpiry: true)),
                 ),
                 _buildScheduleChip(
                   label: '+1h',
                   isSelected: false,
                   onTap: () => _applyPolicy(
                     policy.copyWith(
-                      scheduleExpiry:
-                          DateTime.now().add(const Duration(hours: 1)),
+                      scheduleExpiry: DateTime.now().add(
+                        const Duration(hours: 1),
+                      ),
                     ),
                   ),
                 ),
@@ -712,8 +713,9 @@ class _DeviceNetworkAccessCardState
                   isSelected: false,
                   onTap: () => _applyPolicy(
                     policy.copyWith(
-                      scheduleExpiry:
-                          DateTime.now().add(const Duration(hours: 2)),
+                      scheduleExpiry: DateTime.now().add(
+                        const Duration(hours: 2),
+                      ),
                     ),
                   ),
                 ),
@@ -722,8 +724,9 @@ class _DeviceNetworkAccessCardState
                   isSelected: false,
                   onTap: () => _applyPolicy(
                     policy.copyWith(
-                      scheduleExpiry:
-                          DateTime.now().add(const Duration(hours: 8)),
+                      scheduleExpiry: DateTime.now().add(
+                        const Duration(hours: 8),
+                      ),
                     ),
                   ),
                 ),
@@ -732,8 +735,9 @@ class _DeviceNetworkAccessCardState
                   isSelected: false,
                   onTap: () => _applyPolicy(
                     policy.copyWith(
-                      scheduleExpiry:
-                          DateTime.now().add(const Duration(hours: 24)),
+                      scheduleExpiry: DateTime.now().add(
+                        const Duration(hours: 24),
+                      ),
                     ),
                   ),
                 ),
@@ -775,69 +779,72 @@ class _DeviceNetworkAccessCardState
                       ),
                     )
                   : (policy.hasAnyRestriction
-                      ? FilledButton.icon(
-                          onPressed: _isApplying
-                              ? null
-                              : () async {
-                                  await _applyPolicy(
-                                    NetworkAccessPolicy.unrestricted(
-                                      widget.client.macAddress,
-                                    ),
-                                  );
-                                },
-                          icon: const Icon(
-                            Icons.check_circle_outline,
-                            size: 18,
-                          ),
-                          label: const Text(
-                            'Restore Full Access',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: colorScheme.primary,
-                            foregroundColor: colorScheme.onPrimary,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                        ? FilledButton.icon(
+                            onPressed: _isApplying
+                                ? null
+                                : () async {
+                                    await _applyPolicy(
+                                      NetworkAccessPolicy.unrestricted(
+                                        widget.client.macAddress,
+                                      ),
+                                    );
+                                  },
+                            icon: const Icon(
+                              Icons.check_circle_outline,
+                              size: 18,
                             ),
-                          ),
-                        )
-                      : OutlinedButton.icon(
-                          onPressed: _isApplying
-                              ? null
-                              : () async {
-                                  final safe =
-                                      await SelfDeviceGuard.checkSelfActionGuardrail(
-                                    context,
-                                    actionName: 'Block Internet Access',
-                                    targetMac: widget.client.macAddress,
-                                    targetIp: widget.client.ipAddress,
-                                    targetHostname: widget.client.displayName,
-                                  );
-                                  if (!safe) return;
-                                  await _applyPolicy(
-                                    NetworkAccessPolicy.blocked(
-                                      widget.client.macAddress,
-                                    ),
-                                  );
-                                },
-                          icon: const Icon(Icons.pause_rounded, size: 18),
-                          label: Text(
-                            l10n?.btnPauseAccess ?? 'Pause Access',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: colorScheme.error,
-                            side: BorderSide(
-                              color: colorScheme.error.withValues(alpha: 0.6),
-                              width: 1.0,
+                            label: const Text(
+                              'Restore Full Access',
+                              style: TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: colorScheme.onPrimary,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                          ),
-                        )),
+                          )
+                        : OutlinedButton.icon(
+                            onPressed: _isApplying
+                                ? null
+                                : () async {
+                                    final safe =
+                                        await SelfDeviceGuard.checkSelfActionGuardrail(
+                                          context,
+                                          actionName: 'Block Internet Access',
+                                          targetMac: widget.client.macAddress,
+                                          targetIp: widget.client.ipAddress,
+                                          targetHostname:
+                                              widget.client.displayName,
+                                        );
+                                    if (!safe) return;
+                                    await _applyPolicy(
+                                      NetworkAccessPolicy.blocked(
+                                        widget.client.macAddress,
+                                      ),
+                                    );
+                                  },
+                            icon: const Icon(Icons.pause_rounded, size: 18),
+                            label: Text(
+                              l10n?.btnPauseAccess ?? 'Pause Access',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colorScheme.error,
+                              side: BorderSide(
+                                color: colorScheme.error.withValues(alpha: 0.6),
+                                width: 1.0,
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          )),
             ),
           ],
         ],

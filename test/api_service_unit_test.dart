@@ -69,7 +69,12 @@ void main() {
   group('RealApiService isUciSuccessful Tests', () {
     test('Correctly identifies successful UCI return formats', () {
       expect(apiService.isUciSuccessful([0]), isTrue);
-      expect(apiService.isUciSuccessful({'result': [0]}), isTrue);
+      expect(
+        apiService.isUciSuccessful({
+          'result': [0],
+        }),
+        isTrue,
+      );
       expect(apiService.isUciSuccessful({'code': 0}), isTrue);
       expect(apiService.isUciSuccessful({'rc': 0}), isTrue);
       expect(apiService.isUciSuccessful({'success': true}), isTrue);
@@ -79,8 +84,16 @@ void main() {
 
     test('Correctly identifies failed UCI return formats', () {
       expect(apiService.isUciSuccessful([1]), isFalse);
-      expect(apiService.isUciSuccessful({'error': 'Section not found'}), isFalse);
-      expect(apiService.isUciSuccessful({'result': [1]}), isFalse);
+      expect(
+        apiService.isUciSuccessful({'error': 'Section not found'}),
+        isFalse,
+      );
+      expect(
+        apiService.isUciSuccessful({
+          'result': [1],
+        }),
+        isFalse,
+      );
       expect(apiService.isUciSuccessful({'code': 1}), isFalse);
       expect(apiService.isUciSuccessful({'rc': 1}), isFalse);
       expect(apiService.isUciSuccessful(null), isFalse);
@@ -131,7 +144,10 @@ void main() {
 
     test('Falls back to 12h default on malformed strings', () {
       expect(RealApiService.sanitizeOpenWrtLeaseTime('invalid'), equals('12h'));
-      expect(RealApiService.sanitizeOpenWrtLeaseTime('abc123xyz'), equals('12h'));
+      expect(
+        RealApiService.sanitizeOpenWrtLeaseTime('abc123xyz'),
+        equals('12h'),
+      );
     });
   });
 
@@ -160,11 +176,16 @@ void main() {
       final procB = {'PID': 100, 'COMMAND': '/usr/sbin/dropbear'};
 
       expect(
-        apiService.extractProcessList([0, [procA, procB]]),
+        apiService.extractProcessList([
+          0,
+          [procA, procB],
+        ]),
         equals([procA, procB]),
       );
       expect(
-        apiService.extractProcessList([[procA, procB]]),
+        apiService.extractProcessList([
+          [procA, procB],
+        ]),
         equals([procA, procB]),
       );
       expect(
@@ -183,17 +204,20 @@ void main() {
   });
 
   group('RealApiService Permissions Fix Script & ACL Contract Tests', () {
-    test('Generates complete shell script with fallback mount and pkg managers', () {
-      final script = RealApiService.getPermissionsFixScript();
+    test(
+      'Generates complete shell script with fallback mount and pkg managers',
+      () {
+        final script = RealApiService.getPermissionsFixScript();
 
-      expect(script, contains('/usr/share/rpcd/acl.d/'));
-      expect(script, contains('mount -t tmpfs tmpfs /usr/share/rpcd/acl.d'));
-      expect(script, contains('apk update'));
-      expect(script, contains('opkg update'));
-      expect(script, contains('luci-mod-rpc'));
-      expect(script, contains('rpcd-mod-iwinfo'));
-      expect(script, contains('/etc/init.d/rpcd restart'));
-    });
+        expect(script, contains('/usr/share/rpcd/acl.d/'));
+        expect(script, contains('mount -t tmpfs tmpfs /usr/share/rpcd/acl.d'));
+        expect(script, contains('apk update'));
+        expect(script, contains('opkg update'));
+        expect(script, contains('luci-mod-rpc'));
+        expect(script, contains('rpcd-mod-iwinfo'));
+        expect(script, contains('/etc/init.d/rpcd restart'));
+      },
+    );
 
     test('Full ACL JSON contains complete access permissions for YALA', () {
       expect(RealApiService.fullAclJson, contains('"read"'));

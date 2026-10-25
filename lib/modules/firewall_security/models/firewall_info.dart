@@ -221,13 +221,15 @@ class FirewallPortForwarding {
     final rawFamily = json['family']?.toString().toLowerCase() ?? 'any';
     final rawProto = json['proto']?.toString().toLowerCase() ?? 'tcp';
     final reflectionVal = json['reflection'];
-    final bool isReflection = reflectionVal == null ||
+    final bool isReflection =
+        reflectionVal == null ||
         reflectionVal == '1' ||
         reflectionVal == 1 ||
         reflectionVal == true ||
         reflectionVal == 'true';
     final enabledVal = json['enabled'];
-    final bool isEnabled = enabledVal == null ||
+    final bool isEnabled =
+        enabledVal == null ||
         (enabledVal != '0' &&
             enabledVal != 0 &&
             enabledVal != false &&
@@ -437,9 +439,7 @@ class FirewallCustomRule {
         rawSrcMac.map((e) => e.toString().toUpperCase().replaceAll('-', ':')),
       );
     } else if (rawSrcMac != null && rawSrcMac.toString().trim().isNotEmpty) {
-      parsedSrcMac.add(
-        rawSrcMac.toString().toUpperCase().replaceAll('-', ':'),
-      );
+      parsedSrcMac.add(rawSrcMac.toString().toUpperCase().replaceAll('-', ':'));
     }
 
     final rawProto = json['proto']?.toString().toLowerCase() ?? 'any';
@@ -460,8 +460,7 @@ class FirewallCustomRule {
       srcMac: parsedSrcMac,
       srcIp: json['src_ip']?.toString(),
       destIp: json['dest_ip']?.toString(),
-      destPort:
-          json['dest_port']?.toString() ?? json['dest_dport']?.toString(),
+      destPort: json['dest_port']?.toString() ?? json['dest_dport']?.toString(),
       family: rawFamily,
       position: json['.index'] is int ? json['.index'] as int : null,
       rawUciValues: Map<String, dynamic>.from(json),

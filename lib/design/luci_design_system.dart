@@ -374,13 +374,13 @@ class LuciBreakpoints {
   /// Use NavigationDrawer or persistent NavigationRail, 2+ column grids.
   static const double expanded = 840.0;
 
-  /// Returns true when the layout width is in the Medium or Expanded window class
-  /// and the available height is sufficient for vertical navigation rail display (≥ 600dp width & ≥ 400dp height),
+  /// Returns true when the smallest screen width is in the Medium or Expanded window class
+  /// and the available height is sufficient for vertical navigation rail display (≥ 600dp shortestSide & ≥ 400dp height),
   /// or when spanned across a dual-screen device (e.g. Apple Duo or foldables).
   static bool isTablet(BuildContext context) {
     if (isDualScreenSpanned(context)) return true;
     final size = MediaQuery.sizeOf(context);
-    return size.width >= compact && size.height >= 400.0;
+    return size.shortestSide >= compact && size.height >= 400.0;
   }
 
   /// Returns true if the device currently has an active physical hinge or fold (e.g. Apple Duo or foldables).

@@ -192,7 +192,8 @@ class SelfDeviceGuard {
 
     // Indirect broad lockout check:
     // If neither srcMac nor srcIp restricts the source host, rule matches ALL hosts in srcZone.
-    final isUnrestrictedSource = srcMac.isEmpty &&
+    final isUnrestrictedSource =
+        srcMac.isEmpty &&
         (srcIp == null ||
             srcIp.trim().isEmpty ||
             srcIp.trim() == '*' ||
@@ -205,19 +206,23 @@ class SelfDeviceGuard {
         final cleanDestZone = destZone?.trim().toLowerCase() ?? '';
         // Router input traffic has destZone empty or matching input, or inter-zone wildcard
         final isInputOrWildcard =
-            cleanDestZone.isEmpty || cleanDestZone == '*' || cleanDestZone == 'lan';
+            cleanDestZone.isEmpty ||
+            cleanDestZone == '*' ||
+            cleanDestZone == 'lan';
 
         if (isInputOrWildcard) {
           final isTcp = FirewallValidator.protocolsOverlap(proto, 'tcp');
           if (isTcp) {
             final effectiveMgmtPorts =
                 managementPorts ?? getDiscoveredManagementPorts(routerId);
-            final isDestPortManagement = destPort == null ||
+            final isDestPortManagement =
+                destPort == null ||
                 destPort.trim().isEmpty ||
                 destPort.trim() == '*' ||
                 destPort.trim().toLowerCase() == 'any' ||
-                effectiveMgmtPorts.any((p) =>
-                    FirewallValidator.portsOverlap(destPort, p.toString()));
+                effectiveMgmtPorts.any(
+                  (p) => FirewallValidator.portsOverlap(destPort, p.toString()),
+                );
             if (isDestPortManagement) {
               return true;
             }

@@ -407,9 +407,7 @@ class DashboardController {
           object: 'luci-rpc',
           method: 'getBoardJSON',
         );
-        if (luciRpcRes is List &&
-            luciRpcRes.isNotEmpty &&
-            luciRpcRes[0] == 0) {
+        if (luciRpcRes is List && luciRpcRes.isNotEmpty && luciRpcRes[0] == 0) {
           ubusObjects.add('luci-rpc');
           if (luciRpcRes.length > 1 && luciRpcRes[1] is Map) {
             probedBoardJson = Map<String, dynamic>.from(luciRpcRes[1] as Map);
@@ -477,13 +475,14 @@ class DashboardController {
       }
 
       final serviceKeys = rcServices.keys.map((k) => k.toLowerCase()).toSet();
-      hasAdGuardHome = serviceKeys.contains('adguardhome') ||
+      hasAdGuardHome =
+          serviceKeys.contains('adguardhome') ||
           uciPermissions.containsKey('adguardhome');
-      hasOdhcpd = serviceKeys.contains('odhcpd') ||
-          ubusObjects.contains('odhcpd');
-      hasCron = serviceKeys.contains('cron') ||
-          serviceKeys.contains('crond');
-      hasDropbear = serviceKeys.contains('dropbear') ||
+      hasOdhcpd =
+          serviceKeys.contains('odhcpd') || ubusObjects.contains('odhcpd');
+      hasCron = serviceKeys.contains('cron') || serviceKeys.contains('crond');
+      hasDropbear =
+          serviceKeys.contains('dropbear') ||
           uciPermissions.containsKey('dropbear');
 
       try {
@@ -2230,7 +2229,6 @@ class DashboardController {
         uciNetworkConfig: uciNetworkConfig,
         liveWireGuardData: liveWireGuardData,
       );
-
 
       final wirelessStationsMap = <String, dynamic>{};
       final wirelessDevs =

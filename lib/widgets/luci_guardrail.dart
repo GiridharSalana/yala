@@ -296,7 +296,8 @@ class LuciGuardrail {
     if (!context.mounted) return false;
 
     final theme = Theme.of(context);
-    final effectiveIconColor = iconColor ??
+    final effectiveIconColor =
+        iconColor ??
         (isDestructive ? theme.colorScheme.error : theme.colorScheme.primary);
 
     bool acknowledged = !requireAcknowledgement;

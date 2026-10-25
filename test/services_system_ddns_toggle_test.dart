@@ -179,9 +179,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [
-              appStateProvider.overrideWith((ref) => appState),
-            ],
+            overrides: [appStateProvider.overrideWith((ref) => appState)],
             child: const MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
@@ -196,21 +194,23 @@ void main() {
 
         // Find the instance tile AnimatedOpacity
         final animatedOpacities = tester
-            .widgetList<AnimatedOpacity>(
-              find.byType(AnimatedOpacity),
-            )
+            .widgetList<AnimatedOpacity>(find.byType(AnimatedOpacity))
             .toList();
         expect(animatedOpacities.any((ao) => ao.opacity == 1.0), isTrue);
 
         // Find switches on the screen
-        final switches =
-            tester.widgetList<Switch>(find.byType(Switch)).toList();
+        final switches = tester
+            .widgetList<Switch>(find.byType(Switch))
+            .toList();
         final instanceSwitch = switches.last;
         expect(instanceSwitch.value, isTrue);
         expect(instanceSwitch.onChanged, isNotNull);
 
         // Find "Test Config" button
-        final testConfigFinder = find.widgetWithText(OutlinedButton, 'Test Config');
+        final testConfigFinder = find.widgetWithText(
+          OutlinedButton,
+          'Test Config',
+        );
         expect(testConfigFinder, findsOneWidget);
         final testConfigBtn = tester.widget<OutlinedButton>(testConfigFinder);
         expect(testConfigBtn.onPressed, isNotNull);
@@ -232,21 +232,22 @@ void main() {
 
         // AnimatedOpacity should now be 0.45 (greyed out!)
         final disabledOpacities = tester
-            .widgetList<AnimatedOpacity>(
-              find.byType(AnimatedOpacity),
-            )
+            .widgetList<AnimatedOpacity>(find.byType(AnimatedOpacity))
             .toList();
         expect(disabledOpacities.any((ao) => ao.opacity == 0.45), isTrue);
 
         // Instance switch must still have value == true, BUT onChanged == null (disabled)
-        final disabledSwitches =
-            tester.widgetList<Switch>(find.byType(Switch)).toList();
+        final disabledSwitches = tester
+            .widgetList<Switch>(find.byType(Switch))
+            .toList();
         final disabledInstanceSwitch = disabledSwitches.last;
         expect(disabledInstanceSwitch.value, isTrue);
         expect(disabledInstanceSwitch.onChanged, isNull);
 
         // Test Config button should now be disabled (onPressed == null)
-        final disabledTestConfigBtn = tester.widget<OutlinedButton>(testConfigFinder);
+        final disabledTestConfigBtn = tester.widget<OutlinedButton>(
+          testConfigFinder,
+        );
         expect(disabledTestConfigBtn.onPressed, isNull);
 
         // Re-enable global DDNS
@@ -266,14 +267,13 @@ void main() {
 
         // Opacity should be back to 1.0 and switch enabled
         final reenabledOpacities = tester
-            .widgetList<AnimatedOpacity>(
-              find.byType(AnimatedOpacity),
-            )
+            .widgetList<AnimatedOpacity>(find.byType(AnimatedOpacity))
             .toList();
         expect(reenabledOpacities.any((ao) => ao.opacity == 1.0), isTrue);
 
-        final reenabledSwitches =
-            tester.widgetList<Switch>(find.byType(Switch)).toList();
+        final reenabledSwitches = tester
+            .widgetList<Switch>(find.byType(Switch))
+            .toList();
         expect(reenabledSwitches.last.value, isTrue);
         expect(reenabledSwitches.last.onChanged, isNotNull);
       },
@@ -315,9 +315,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [
-              appStateProvider.overrideWith((ref) => appState),
-            ],
+            overrides: [appStateProvider.overrideWith((ref) => appState)],
             child: const MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
@@ -328,7 +326,9 @@ void main() {
         await tester.pumpAndSettle();
 
         // Find the global switch (first Switch on screen)
-        final switchesBefore = tester.widgetList<Switch>(find.byType(Switch)).toList();
+        final switchesBefore = tester
+            .widgetList<Switch>(find.byType(Switch))
+            .toList();
         expect(switchesBefore.length, equals(2));
         final globalSwitch = switchesBefore.first;
         expect(globalSwitch.value, isTrue);
@@ -353,25 +353,41 @@ void main() {
         final switchFinder = find.byType(Switch).first;
         final spinnerCenter = tester.getCenter(spinnerFinder);
         final switchCenter = tester.getCenter(switchFinder);
-        expect(spinnerCenter.dx, greaterThan(switchCenter.dx),
-            reason: 'Loading spinner must be to the right of the switch');
+        expect(
+          spinnerCenter.dx,
+          greaterThan(switchCenter.dx),
+          reason: 'Loading spinner must be to the right of the switch',
+        );
 
         // 3. Switch is non-clickable during validation (onChanged is null)
-        final switchesInFlight = tester.widgetList<Switch>(find.byType(Switch)).toList();
-        expect(switchesInFlight.first.onChanged, isNull,
-            reason: 'Switch must be non-clickable during in-flight validation');
+        final switchesInFlight = tester
+            .widgetList<Switch>(find.byType(Switch))
+            .toList();
+        expect(
+          switchesInFlight.first.onChanged,
+          isNull,
+          reason: 'Switch must be non-clickable during in-flight validation',
+        );
 
         // 4. Switch is greyed out (opacity 0.55)
-        final opacities = tester.widgetList<AnimatedOpacity>(find.byType(AnimatedOpacity)).toList();
-        expect(opacities.any((ao) => ao.opacity == 0.55), isTrue,
-            reason: 'Switch must be dimmed with opacity 0.55 during in-flight validation');
+        final opacities = tester
+            .widgetList<AnimatedOpacity>(find.byType(AnimatedOpacity))
+            .toList();
+        expect(
+          opacities.any((ao) => ao.opacity == 0.55),
+          isTrue,
+          reason:
+              'Switch must be dimmed with opacity 0.55 during in-flight validation',
+        );
 
         // Allow mock toggle delay to complete and settle
         await tester.pumpAndSettle();
 
         // After completion: spinner is gone, switch is interactive again
         expect(find.byType(CircularProgressIndicator), findsNothing);
-        final switchesAfter = tester.widgetList<Switch>(find.byType(Switch)).toList();
+        final switchesAfter = tester
+            .widgetList<Switch>(find.byType(Switch))
+            .toList();
         expect(switchesAfter.first.onChanged, isNotNull);
         expect(switchesAfter.first.value, isFalse);
       },

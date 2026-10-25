@@ -90,20 +90,20 @@ class CakeTinStats {
 
   @override
   int get hashCode => Object.hash(
-        name,
-        thresholdBps,
-        targetMs,
-        intervalMs,
-        pkDelayMs,
-        avDelayMs,
-        spDelayMs,
-        backlogBytes,
-        backlogPackets,
-        droppedPackets,
-        sentPackets,
-        sentBytes,
-        ecnMarked,
-      );
+    name,
+    thresholdBps,
+    targetMs,
+    intervalMs,
+    pkDelayMs,
+    avDelayMs,
+    spDelayMs,
+    backlogBytes,
+    backlogPackets,
+    droppedPackets,
+    sentPackets,
+    sentBytes,
+    ecnMarked,
+  );
 }
 
 /// Represents real-time queue discipline telemetry for a specific network interface
@@ -277,26 +277,26 @@ class SqmQueueTelemetry {
 
   @override
   int get hashCode => Object.hash(
-        interfaceName,
-        qdisc,
-        handle,
-        root,
-        sentBytes,
-        sentPackets,
-        droppedPackets,
-        overlimits,
-        requeues,
-        backlogBytes,
-        backlogPackets,
-        memoryUsedBytes,
-        memoryLimitBytes,
-        capacityEstimateBps,
-        ecnMarked,
-        dropOverlimit,
-        maxPacket,
-        newFlowCount,
-        Object.hashAll(tinStats),
-      );
+    interfaceName,
+    qdisc,
+    handle,
+    root,
+    sentBytes,
+    sentPackets,
+    droppedPackets,
+    overlimits,
+    requeues,
+    backlogBytes,
+    backlogPackets,
+    memoryUsedBytes,
+    memoryLimitBytes,
+    capacityEstimateBps,
+    ecnMarked,
+    dropOverlimit,
+    maxPacket,
+    newFlowCount,
+    Object.hashAll(tinStats),
+  );
 }
 
 /// Precise operational classification of SQM state on the router.
@@ -413,8 +413,7 @@ class SqmState {
           hasSoftwareFlowOffload ?? this.hasSoftwareFlowOffload,
       hasHardwareFlowOffload:
           hasHardwareFlowOffload ?? this.hasHardwareFlowOffload,
-      telemetryByInterface:
-          telemetryByInterface ?? this.telemetryByInterface,
+      telemetryByInterface: telemetryByInterface ?? this.telemetryByInterface,
       previousTelemetryByInterface:
           previousTelemetryByInterface ?? this.previousTelemetryByInterface,
       isLoading: isLoading ?? this.isLoading,
@@ -439,26 +438,29 @@ class SqmState {
           hasSoftwareFlowOffload == other.hasSoftwareFlowOffload &&
           hasHardwareFlowOffload == other.hasHardwareFlowOffload &&
           mapEquals(telemetryByInterface, other.telemetryByInterface) &&
-          mapEquals(previousTelemetryByInterface, other.previousTelemetryByInterface) &&
+          mapEquals(
+            previousTelemetryByInterface,
+            other.previousTelemetryByInterface,
+          ) &&
           isLoading == other.isLoading &&
           isTelemetryPolling == other.isTelemetryPolling &&
           errorMessage == other.errorMessage;
 
   @override
   int get hashCode => Object.hash(
-        operatingState,
-        isInstalled,
-        isServiceRunning,
-        isServiceEnabled,
-        Object.hashAll(queues),
-        primaryWanInterface,
-        Object.hashAll(networkInterfaces),
-        hasSoftwareFlowOffload,
-        hasHardwareFlowOffload,
-        Object.hashAll(telemetryByInterface.entries),
-        Object.hashAll(previousTelemetryByInterface.entries),
-        isLoading,
-        isTelemetryPolling,
-        errorMessage,
-      );
+    operatingState,
+    isInstalled,
+    isServiceRunning,
+    isServiceEnabled,
+    Object.hashAll(queues),
+    primaryWanInterface,
+    Object.hashAll(networkInterfaces),
+    hasSoftwareFlowOffload,
+    hasHardwareFlowOffload,
+    Object.hashAll(telemetryByInterface.entries),
+    Object.hashAll(previousTelemetryByInterface.entries),
+    isLoading,
+    isTelemetryPolling,
+    errorMessage,
+  );
 }

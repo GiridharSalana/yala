@@ -19,7 +19,10 @@ import 'package:yala/utils/self_device_guard.dart';
 
 void main() {
   setUp(() {
-    SelfDeviceGuard.setMockLocalAddresses({'192.168.1.50', '00:11:22:33:44:55'});
+    SelfDeviceGuard.setMockLocalAddresses({
+      '192.168.1.50',
+      '00:11:22:33:44:55',
+    });
   });
 
   tearDown(() {
@@ -86,7 +89,7 @@ void main() {
     );
 
     testWidgets(
-      'Activates tablet mode only when both width >= 600 and height >= 400',
+      'Activates tablet mode only when both shortestSide >= 600 and height >= 400',
       (WidgetTester tester) async {
         tester.view.physicalSize = const Size(800, 600);
         tester.view.devicePixelRatio = 1.0;
@@ -110,6 +113,77 @@ void main() {
 
         expect(isTabletResult, isTrue);
         expect(isExpandedResult, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Preserves phone mode on Pixel 6 Pro and high-DPI phones in portrait and landscape',
+      (WidgetTester tester) async {
+        // Pixel 6 Pro default portrait (411 x 891)
+        tester.view.physicalSize = const Size(411, 891);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        late bool isTabletPortrait;
+        late bool isTabletLandscape;
+        late bool isTabletDensePortrait;
+        late bool isTabletDenseLandscape;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                isTabletPortrait = LuciBreakpoints.isTablet(context);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        // Pixel 6 Pro landscape (891 x 411) — must stay on phone navigation
+        tester.view.physicalSize = const Size(891, 411);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                isTabletLandscape = LuciBreakpoints.isTablet(context);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        // Pixel 6 Pro high-DPI / 485dp portrait (485 x 1040)
+        tester.view.physicalSize = const Size(485, 1040);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                isTabletDensePortrait = LuciBreakpoints.isTablet(context);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        // Pixel 6 Pro high-DPI landscape (1040 x 485)
+        tester.view.physicalSize = const Size(1040, 485);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) {
+                isTabletDenseLandscape = LuciBreakpoints.isTablet(context);
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+
+        expect(isTabletPortrait, isFalse);
+        expect(isTabletLandscape, isFalse);
+        expect(isTabletDensePortrait, isFalse);
+        expect(isTabletDenseLandscape, isFalse);
       },
     );
 

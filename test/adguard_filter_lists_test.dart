@@ -124,10 +124,7 @@ void main() {
             'last_updated': '2026-10-11T12:00:00Z',
           },
         ],
-        'user_rules': [
-          '||tracker.com^',
-          '@@||allowed.com^',
-        ],
+        'user_rules': ['||tracker.com^', '@@||allowed.com^'],
       };
 
       final status = AdGuardFilteringStatus.fromJson(json);
@@ -185,9 +182,13 @@ void main() {
       testDio = Dio(BaseOptions(baseUrl: 'http://192.168.1.1:3000'));
       testDio.httpClientAdapter = TestDioAdapter((options) async {
         capturedRequests.add(options);
-        return ResponseBody.fromString('OK', 200, headers: {
-          Headers.contentTypeHeader: [Headers.textPlainContentType],
-        });
+        return ResponseBody.fromString(
+          'OK',
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.textPlainContentType],
+          },
+        );
       });
 
       fakeStorage = FakeSecureStorageService();
@@ -200,86 +201,110 @@ void main() {
       );
     });
 
-    test('addFilterList sends POST /control/filtering/add_url with correct payload', () async {
-      final res = await apiService.addFilterList(
-        name: 'Test Filter',
-        url: 'https://example.com/rules.txt',
-        whitelist: false,
-      );
+    test(
+      'addFilterList sends POST /control/filtering/add_url with correct payload',
+      () async {
+        final res = await apiService.addFilterList(
+          name: 'Test Filter',
+          url: 'https://example.com/rules.txt',
+          whitelist: false,
+        );
 
-      expect(res.isSuccess, isTrue);
-      expect(capturedRequests.length, 1);
-      final req = capturedRequests.first;
-      expect(req.method, 'POST');
-      expect(req.path.endsWith('/control/filtering/add_url'), isTrue);
-      expect(req.data, {
-        'name': 'Test Filter',
-        'url': 'https://example.com/rules.txt',
-        'whitelist': false,
-      });
-    });
+        expect(res.isSuccess, isTrue);
+        expect(capturedRequests.length, 1);
+        final req = capturedRequests.first;
+        expect(req.method, 'POST');
+        expect(req.path.endsWith('/control/filtering/add_url'), isTrue);
+        expect(req.data, {
+          'name': 'Test Filter',
+          'url': 'https://example.com/rules.txt',
+          'whitelist': false,
+        });
+      },
+    );
 
-    test('setFilterList sends POST /control/filtering/set_url with correct payload', () async {
-      final res = await apiService.setFilterList(
-        url: 'https://example.com/old.txt',
-        name: 'Updated Name',
-        newUrl: 'https://example.com/new.txt',
-        enabled: true,
-        whitelist: true,
-      );
+    test(
+      'setFilterList sends POST /control/filtering/set_url with correct payload',
+      () async {
+        final res = await apiService.setFilterList(
+          url: 'https://example.com/old.txt',
+          name: 'Updated Name',
+          newUrl: 'https://example.com/new.txt',
+          enabled: true,
+          whitelist: true,
+        );
 
-      expect(res.isSuccess, isTrue);
-      expect(capturedRequests.length, 1);
-      final req = capturedRequests.first;
-      expect(req.method, 'POST');
-      expect(req.path.endsWith('/control/filtering/set_url'), isTrue);
-      expect(req.data, {
-        'url': 'https://example.com/old.txt',
-        'data': {
-          'name': 'Updated Name',
-          'url': 'https://example.com/new.txt',
-          'enabled': true,
-        },
-        'whitelist': true,
-      });
-    });
+        expect(res.isSuccess, isTrue);
+        expect(capturedRequests.length, 1);
+        final req = capturedRequests.first;
+        expect(req.method, 'POST');
+        expect(req.path.endsWith('/control/filtering/set_url'), isTrue);
+        expect(req.data, {
+          'url': 'https://example.com/old.txt',
+          'data': {
+            'name': 'Updated Name',
+            'url': 'https://example.com/new.txt',
+            'enabled': true,
+          },
+          'whitelist': true,
+        });
+      },
+    );
 
-    test('removeFilterList sends POST /control/filtering/remove_url with correct payload', () async {
-      final res = await apiService.removeFilterList(
-        url: 'https://example.com/remove.txt',
-        whitelist: false,
-      );
+    test(
+      'removeFilterList sends POST /control/filtering/remove_url with correct payload',
+      () async {
+        final res = await apiService.removeFilterList(
+          url: 'https://example.com/remove.txt',
+          whitelist: false,
+        );
 
-      expect(res.isSuccess, isTrue);
-      expect(capturedRequests.length, 1);
-      final req = capturedRequests.first;
-      expect(req.method, 'POST');
-      expect(req.path.endsWith('/control/filtering/remove_url'), isTrue);
-      expect(req.data, {
-        'url': 'https://example.com/remove.txt',
-        'whitelist': false,
-      });
-    });
+        expect(res.isSuccess, isTrue);
+        expect(capturedRequests.length, 1);
+        final req = capturedRequests.first;
+        expect(req.method, 'POST');
+        expect(req.path.endsWith('/control/filtering/remove_url'), isTrue);
+        expect(req.data, {
+          'url': 'https://example.com/remove.txt',
+          'whitelist': false,
+        });
+      },
+    );
 
-    test('refreshFilterLists refreshes blocklists and allowlists when whitelist is null', () async {
-      final res = await apiService.refreshFilterLists();
+    test(
+      'refreshFilterLists refreshes blocklists and allowlists when whitelist is null',
+      () async {
+        final res = await apiService.refreshFilterLists();
 
-      expect(res.isSuccess, isTrue);
-      expect(capturedRequests.length, 2);
-      expect(capturedRequests[0].path.endsWith('/control/filtering/refresh'), isTrue);
-      expect(capturedRequests[0].data, {'whitelist': false});
-      expect(capturedRequests[1].path.endsWith('/control/filtering/refresh'), isTrue);
-      expect(capturedRequests[1].data, {'whitelist': true});
-    });
+        expect(res.isSuccess, isTrue);
+        expect(capturedRequests.length, 2);
+        expect(
+          capturedRequests[0].path.endsWith('/control/filtering/refresh'),
+          isTrue,
+        );
+        expect(capturedRequests[0].data, {'whitelist': false});
+        expect(
+          capturedRequests[1].path.endsWith('/control/filtering/refresh'),
+          isTrue,
+        );
+        expect(capturedRequests[1].data, {'whitelist': true});
+      },
+    );
 
-    test('refreshFilterLists refreshes only specified category when whitelist is provided', () async {
-      final res = await apiService.refreshFilterLists(whitelist: true);
+    test(
+      'refreshFilterLists refreshes only specified category when whitelist is provided',
+      () async {
+        final res = await apiService.refreshFilterLists(whitelist: true);
 
-      expect(res.isSuccess, isTrue);
-      expect(capturedRequests.length, 1);
-      expect(capturedRequests[0].path.endsWith('/control/filtering/refresh'), isTrue);
-      expect(capturedRequests[0].data, {'whitelist': true});
-    });
+        expect(res.isSuccess, isTrue);
+        expect(capturedRequests.length, 1);
+        expect(
+          capturedRequests[0].path.endsWith('/control/filtering/refresh'),
+          isTrue,
+        );
+        expect(capturedRequests[0].data, {'whitelist': true});
+      },
+    );
   });
 
   group('MockAdGuardApiService In-Memory Filter Lists CRUD', () {
@@ -338,8 +363,9 @@ void main() {
       expect(mockApi.setFilterListCallCount, 1);
 
       final updatedRes = await mockApi.getFilteringStatus();
-      final item = updatedRes.data!.filterLists
-          .firstWhere((f) => f.url == 'https://adaway.org/hosts_v2.txt');
+      final item = updatedRes.data!.filterLists.firstWhere(
+        (f) => f.url == 'https://adaway.org/hosts_v2.txt',
+      );
       expect(item.name, 'AdAway Custom');
       expect(item.enabled, isFalse);
     });
@@ -356,7 +382,9 @@ void main() {
       final updatedRes = await mockApi.getFilteringStatus();
       expect(updatedRes.data!.filterLists.length, 1);
       expect(
-        updatedRes.data!.filterLists.any((f) => f.url == 'https://adaway.org/hosts.txt'),
+        updatedRes.data!.filterLists.any(
+          (f) => f.url == 'https://adaway.org/hosts.txt',
+        ),
         isFalse,
       );
     });
@@ -383,7 +411,9 @@ void main() {
       );
       container = ProviderContainer();
       controller = AdGuardController(
-        container.read(adguardControllerProvider('reviewer-mock-router').notifier).ref,
+        container
+            .read(adguardControllerProvider('reviewer-mock-router').notifier)
+            .ref,
         'reviewer-mock-router',
         apiServiceOverride: mockApi,
       );
@@ -487,7 +517,9 @@ void main() {
       ];
       container = ProviderContainer();
       controller = AdGuardController(
-        container.read(adguardControllerProvider('reviewer-mock-router').notifier).ref,
+        container
+            .read(adguardControllerProvider('reviewer-mock-router').notifier)
+            .ref,
         'reviewer-mock-router',
         apiServiceOverride: mockApi,
       );
@@ -498,7 +530,9 @@ void main() {
       container.dispose();
     });
 
-    testWidgets('renders tabs, list items, search, and toggle switch', (tester) async {
+    testWidgets('renders tabs, list items, search, and toggle switch', (
+      tester,
+    ) async {
       await controller.refresh();
 
       await tester.pumpWidget(
@@ -521,9 +555,18 @@ void main() {
 
       // Check dialog elements
       expect(find.byKey(const Key('agh_filter_lists_dialog')), findsOneWidget);
-      expect(find.byKey(const Key('agh_filter_lists_tab_blocklists')), findsOneWidget);
-      expect(find.byKey(const Key('agh_filter_lists_tab_allowlists')), findsOneWidget);
-      expect(find.byKey(const Key('agh_filter_lists_search_field')), findsOneWidget);
+      expect(
+        find.byKey(const Key('agh_filter_lists_tab_blocklists')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('agh_filter_lists_tab_allowlists')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('agh_filter_lists_search_field')),
+        findsOneWidget,
+      );
       expect(find.text('AdGuard DNS filter'), findsOneWidget);
       expect(find.text('AdAway Default Blocklist'), findsOneWidget);
 
@@ -546,13 +589,17 @@ void main() {
       expect(find.text('AdGuard DNS filter'), findsOneWidget);
 
       // Switch to Allowlists tab
-      await tester.tap(find.byKey(const Key('agh_filter_lists_tab_allowlists')));
+      await tester.tap(
+        find.byKey(const Key('agh_filter_lists_tab_allowlists')),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Custom Allow Rules'), findsOneWidget);
     });
 
-    testWidgets('Add dialog opens, fills curated preset, and submits', (tester) async {
+    testWidgets('Add dialog opens, fills curated preset, and submits', (
+      tester,
+    ) async {
       await controller.refresh();
 
       await tester.pumpWidget(
@@ -577,10 +624,15 @@ void main() {
       await tester.tap(find.byKey(const Key('agh_add_filter_list_button')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('agh_add_filter_list_dialog')), findsOneWidget);
+      expect(
+        find.byKey(const Key('agh_add_filter_list_dialog')),
+        findsOneWidget,
+      );
 
       // Tap preset chip 'OISD Basic'
-      await tester.tap(find.byKey(const Key('agh_filter_list_preset_OISD Basic')));
+      await tester.tap(
+        find.byKey(const Key('agh_filter_list_preset_OISD Basic')),
+      );
       await tester.pumpAndSettle();
 
       // Verify fields were auto-populated
@@ -597,95 +649,115 @@ void main() {
       expect(mockApi.addFilterListCallCount, 1);
     });
 
-    testWidgets('Remove list prompts confirmation dialog and executes removal', (tester) async {
-      await controller.refresh();
+    testWidgets(
+      'Remove list prompts confirmation dialog and executes removal',
+      (tester) async {
+        await controller.refresh();
 
-      await tester.pumpWidget(
-        _buildTestApp(
-          Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () => AdGuardFilterListsDialog.show(
-                context,
-                controller: controller,
+        await tester.pumpWidget(
+          _buildTestApp(
+            Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => AdGuardFilterListsDialog.show(
+                  context,
+                  controller: controller,
+                ),
+                child: const Text('Open Dialog'),
               ),
-              child: const Text('Open Dialog'),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Open Dialog'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Open Dialog'));
+        await tester.pumpAndSettle();
 
-      // Tap delete on AdAway
-      const deleteKey = Key('agh_filter_list_delete_https://adaway.org/hosts.txt');
-      expect(find.byKey(deleteKey), findsOneWidget);
-      await tester.tap(find.byKey(deleteKey));
-      await tester.pumpAndSettle();
+        // Tap delete on AdAway
+        const deleteKey = Key(
+          'agh_filter_list_delete_https://adaway.org/hosts.txt',
+        );
+        expect(find.byKey(deleteKey), findsOneWidget);
+        await tester.tap(find.byKey(deleteKey));
+        await tester.pumpAndSettle();
 
-      // Confirmation dialog displayed
-      expect(find.byKey(const Key('agh_delete_confirm_dialog')), findsOneWidget);
+        // Confirmation dialog displayed
+        expect(
+          find.byKey(const Key('agh_delete_confirm_dialog')),
+          findsOneWidget,
+        );
 
-      // Confirm deletion
-      await tester.tap(find.byKey(const Key('agh_delete_confirm_button')));
-      await tester.pumpAndSettle();
+        // Confirm deletion
+        await tester.tap(find.byKey(const Key('agh_delete_confirm_button')));
+        await tester.pumpAndSettle();
 
-      // Confirmation dialog dismissed and item removed
-      expect(find.byKey(const Key('agh_delete_confirm_dialog')), findsNothing);
-      expect(find.text('AdAway Default Blocklist'), findsNothing);
-      expect(mockApi.removeFilterListCallCount, 1);
-    });
+        // Confirmation dialog dismissed and item removed
+        expect(
+          find.byKey(const Key('agh_delete_confirm_dialog')),
+          findsNothing,
+        );
+        expect(find.text('AdAway Default Blocklist'), findsNothing);
+        expect(mockApi.removeFilterListCallCount, 1);
+      },
+    );
   });
 
   group('AdGuardFilteringCard Integration', () {
-    testWidgets('Metric tile and action button trigger onManageFilterLists callback', (tester) async {
-      bool manageFilterListsCalled = false;
-      bool manageUserRulesCalled = false;
+    testWidgets(
+      'Metric tile and action button trigger onManageFilterLists callback',
+      (tester) async {
+        bool manageFilterListsCalled = false;
+        bool manageUserRulesCalled = false;
 
-      const filteringStatus = AdGuardFilteringStatus(
-        enabled: true,
-        filterLists: [
-          AdGuardFilterList(
-            id: 1,
-            name: 'List 1',
-            rulesCount: 1000,
-            enabled: true,
-            lastUpdated: '2026-10-10',
+        const filteringStatus = AdGuardFilteringStatus(
+          enabled: true,
+          filterLists: [
+            AdGuardFilterList(
+              id: 1,
+              name: 'List 1',
+              rulesCount: 1000,
+              enabled: true,
+              lastUpdated: '2026-10-10',
+            ),
+          ],
+          userRules: ['||bad.com^'],
+          totalRulesCount: 1001,
+        );
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            AdGuardFilteringCard(
+              filtering: filteringStatus,
+              onManageFilterLists: () {
+                manageFilterListsCalled = true;
+              },
+              onManageUserRules: () {
+                manageUserRulesCalled = true;
+              },
+            ),
           ),
-        ],
-        userRules: ['||bad.com^'],
-        totalRulesCount: 1001,
-      );
+        );
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(
-        _buildTestApp(
-          AdGuardFilteringCard(
-            filtering: filteringStatus,
-            onManageFilterLists: () {
-              manageFilterListsCalled = true;
-            },
-            onManageUserRules: () {
-              manageUserRulesCalled = true;
-            },
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        // Tap Filter Lists metric tile
+        await tester.tap(find.byKey(const Key('agh_filter_lists_count')));
+        await tester.pumpAndSettle();
+        expect(manageFilterListsCalled, isTrue);
 
-      // Tap Filter Lists metric tile
-      await tester.tap(find.byKey(const Key('agh_filter_lists_count')));
-      await tester.pumpAndSettle();
-      expect(manageFilterListsCalled, isTrue);
+        // Redundant bottom buttons removed
+        expect(
+          find.byKey(const Key('agh_manage_filter_lists_button')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('agh_manage_user_rules_button')),
+          findsNothing,
+        );
 
-      // Redundant bottom buttons removed
-      expect(find.byKey(const Key('agh_manage_filter_lists_button')), findsNothing);
-      expect(find.byKey(const Key('agh_manage_user_rules_button')), findsNothing);
-
-      // Tap User Rules metric tile
-      await tester.tap(find.byKey(const Key('agh_user_rules_count')));
-      await tester.pumpAndSettle();
-      expect(manageUserRulesCalled, isTrue);
-    });
+        // Tap User Rules metric tile
+        await tester.tap(find.byKey(const Key('agh_user_rules_count')));
+        await tester.pumpAndSettle();
+        expect(manageUserRulesCalled, isTrue);
+      },
+    );
   });
 }

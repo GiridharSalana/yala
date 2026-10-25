@@ -63,7 +63,8 @@ class MockAdGuardApiService implements IAdGuardApiService, AdGuardApiService {
     const AdGuardFilterList(
       id: 1,
       name: 'AdGuard DNS filter',
-      url: 'https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt',
+      url:
+          'https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt',
       rulesCount: 65000,
       enabled: true,
       lastUpdated: '2026-10-07T12:00:00Z',
@@ -81,7 +82,6 @@ class MockAdGuardApiService implements IAdGuardApiService, AdGuardApiService {
   ];
 
   List<AdGuardFilterList> mockWhitelistFilters = [];
-
 
   AdGuardCredentials? _activeCredentials;
   bool _isAuthenticated = false;
@@ -154,8 +154,8 @@ class MockAdGuardApiService implements IAdGuardApiService, AdGuardApiService {
 
   @override
   HttpClientManager get httpClientManager => throw UnsupportedError(
-        'MockAdGuardApiService never invokes HttpClientManager',
-      );
+    'MockAdGuardApiService never invokes HttpClientManager',
+  );
 
   @override
   SecureStorageService? get secureStorageService => null;
@@ -364,8 +364,10 @@ class MockAdGuardApiService implements IAdGuardApiService, AdGuardApiService {
 
     const int totalQueries = 34812;
     const int blockedQueries = 5219;
-    final double blockRate =
-        AdGuardStats.calculateBlockRate(totalQueries, blockedQueries);
+    final double blockRate = AdGuardStats.calculateBlockRate(
+      totalQueries,
+      blockedQueries,
+    );
 
     return AdGuardApiResult.success(
       AdGuardStats(
@@ -378,7 +380,10 @@ class MockAdGuardApiService implements IAdGuardApiService, AdGuardApiService {
         topQueriedDomains: const [
           AdGuardTopItem(identifier: 'gateway.icloud.com', count: 4892),
           AdGuardTopItem(identifier: 'google.com', count: 3210),
-          AdGuardTopItem(identifier: 'connectivitycheck.android.com', count: 2154),
+          AdGuardTopItem(
+            identifier: 'connectivitycheck.android.com',
+            count: 2154,
+          ),
         ],
         topBlockedDomains: const [
           AdGuardTopItem(identifier: 'ads.google.com', count: 1840),
@@ -424,7 +429,8 @@ class MockAdGuardApiService implements IAdGuardApiService, AdGuardApiService {
       );
     }
 
-    final totalRules = mockFilterLists
+    final totalRules =
+        mockFilterLists
             .where((f) => f.enabled)
             .fold<int>(0, (sum, f) => sum + f.rulesCount) +
         mockWhitelistFilters
@@ -887,7 +893,9 @@ class MockAdGuardApiService implements IAdGuardApiService, AdGuardApiService {
     }
     if (whitelist == null || whitelist) {
       for (var i = 0; i < mockWhitelistFilters.length; i++) {
-        mockWhitelistFilters[i] = mockWhitelistFilters[i].copyWith(lastUpdated: now);
+        mockWhitelistFilters[i] = mockWhitelistFilters[i].copyWith(
+          lastUpdated: now,
+        );
       }
     }
 

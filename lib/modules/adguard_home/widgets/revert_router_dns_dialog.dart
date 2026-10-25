@@ -87,7 +87,9 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
   }
 
   Future<void> _applyRevert() async {
-    if (_preflight == null || !_preflight!.canProceed || _preflight!.targetRule == null) {
+    if (_preflight == null ||
+        !_preflight!.canProceed ||
+        _preflight!.targetRule == null) {
       return;
     }
 
@@ -133,9 +135,7 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
       ),
       content: SizedBox(
         width: 480,
-        child: SingleChildScrollView(
-          child: _buildContent(context),
-        ),
+        child: SingleChildScrollView(child: _buildContent(context)),
       ),
       actions: _buildActions(context),
     );
@@ -219,9 +219,7 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
           decoration: BoxDecoration(
             color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: colorScheme.error.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: colorScheme.error.withValues(alpha: 0.3)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,7 +235,10 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: colorScheme.errorContainer,
                       borderRadius: BorderRadius.circular(6),
@@ -317,15 +318,17 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.amber,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     l10n?.aghRevertDnsNoRemainingWarning ??
                         'No remaining upstream resolvers configured. Dnsmasq will fall back to ISP-assigned DNS from WAN interface.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 11,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
                   ),
                 ),
               ],
@@ -377,11 +380,13 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
     Key errorKey;
 
     if (p.isMissing) {
-      errorMessage = l10n?.aghRevertDnsMissingError ??
+      errorMessage =
+          l10n?.aghRevertDnsMissingError ??
           'No active dnsmasq forwarder rule targeting this AdGuard Home instance was found.';
       errorKey = const Key('agh_revert_dns_missing_error');
     } else if (p.isAmbiguous) {
-      errorMessage = l10n?.aghRevertDnsAmbiguousError ??
+      errorMessage =
+          l10n?.aghRevertDnsAmbiguousError ??
           'Multiple ambiguous forwarding rules targeting AdGuard Home were found. Please verify router settings in LuCI.';
       errorKey = const Key('agh_revert_dns_ambiguous_error');
     } else {
@@ -418,7 +423,9 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
                   Text(
                     '${l10n?.aghConfigureDnsCurrentUpstreams ?? 'Current Upstreams'}: ${p.currentServers.join(', ')}',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onErrorContainer.withValues(alpha: 0.8),
+                      color: colorScheme.onErrorContainer.withValues(
+                        alpha: 0.8,
+                      ),
                       fontFamily: 'monospace',
                     ),
                   ),
@@ -445,19 +452,22 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
       case AdGuardDnsConfigStatus.success:
         icon = Icons.check_circle_outline;
         iconColor = Colors.green;
-        statusTitle = l10n?.aghRevertDnsSuccess ??
+        statusTitle =
+            l10n?.aghRevertDnsSuccess ??
             'Router DNS forwarding removed successfully.';
         break;
       case AdGuardDnsConfigStatus.rolledBack:
         icon = Icons.history;
         iconColor = Colors.orange;
-        statusTitle = l10n?.aghConfigureDnsRolledBack ??
+        statusTitle =
+            l10n?.aghConfigureDnsRolledBack ??
             'Router reachability check failed. 30-second rollback watchdog restored previous configuration.';
         break;
       case AdGuardDnsConfigStatus.ambiguous:
         icon = Icons.help_outline;
         iconColor = Colors.amber;
-        statusTitle = l10n?.aghConfigureDnsAmbiguous ??
+        statusTitle =
+            l10n?.aghConfigureDnsAmbiguous ??
             'Configuration was applied, but confirmation response was ambiguous.';
         break;
       case AdGuardDnsConfigStatus.failed:
@@ -486,9 +496,7 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
           const SizedBox(height: 12),
           Text(
             '${l10n?.aghRevertDnsRemainingUpstreams ?? 'Remaining Upstreams'}: ${res.appliedServers.join(', ')}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontFamily: 'monospace',
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
           ),
         ],
       ],
@@ -541,9 +549,7 @@ class _RevertRouterDnsDialogState extends State<RevertRouterDnsDialog> {
           foregroundColor: Theme.of(context).colorScheme.onError,
         ),
         onPressed: (_preflight?.canProceed == true) ? _applyRevert : null,
-        child: Text(
-          l10n?.aghRevertDnsActionRemove ?? 'Remove Forwarding',
-        ),
+        child: Text(l10n?.aghRevertDnsActionRemove ?? 'Remove Forwarding'),
       ),
     ];
   }

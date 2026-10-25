@@ -48,11 +48,7 @@ class DhcpDnsCard extends ConsumerWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.dns_outlined,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.dns_outlined, size: 20, color: colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -71,8 +67,9 @@ class DhcpDnsCard extends ConsumerWidget {
                     vertical: 2.5,
                   ),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5),
+                    color: colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: colorScheme.outlineVariant.withValues(alpha: 0.25),
@@ -148,13 +145,13 @@ class DhcpDnsCard extends ConsumerWidget {
                   color: isRebindProtected
                       ? Colors.green
                       : (isDarkMode
-                          ? Colors.grey.shade400
-                          : Colors.grey.shade600),
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600),
                   valueColor: isRebindProtected
                       ? Colors.green
                       : (isDarkMode
-                          ? Colors.grey.shade400
-                          : Colors.grey.shade600),
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600),
                   isLoading: isCardLoading,
                   semanticsLabel:
                       '${l10n?.dhcpCardDnsRebind ?? "DNS Rebind"}: $rebindText',

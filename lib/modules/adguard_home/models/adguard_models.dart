@@ -169,7 +169,8 @@ class AdGuardStatus {
     }
     if (json.containsKey('version') && json['version'] is String) {
       final v = json['version'] as String;
-      if (v.isNotEmpty && (v.startsWith('v') || RegExp(r'\d+\.\d+').hasMatch(v))) {
+      if (v.isNotEmpty &&
+          (v.startsWith('v') || RegExp(r'\d+\.\d+').hasMatch(v))) {
         indicatorCount++;
       }
     }
@@ -184,11 +185,11 @@ class AdGuardStatus {
       final d = rawDuration.toInt();
       pauseDuration = d > 0 ? d : 0;
     } else if (json['protection_disabled_until'] != null) {
-      final untilDate =
-          AdGuardProtectionState.parseTimestamp(json['protection_disabled_until']);
+      final untilDate = AdGuardProtectionState.parseTimestamp(
+        json['protection_disabled_until'],
+      );
       if (untilDate != null) {
-        final diff =
-            untilDate.difference(now ?? DateTime.now()).inMilliseconds;
+        final diff = untilDate.difference(now ?? DateTime.now()).inMilliseconds;
         pauseDuration = diff > 0 ? diff : 0;
       }
     }
@@ -220,10 +221,7 @@ class AdGuardTopItem {
   final String identifier;
   final int count;
 
-  const AdGuardTopItem({
-    required this.identifier,
-    required this.count,
-  });
+  const AdGuardTopItem({required this.identifier, required this.count});
 
   @override
   bool operator ==(Object other) =>
@@ -413,8 +411,9 @@ class AdGuardStats {
       topBlockedDomains: parseTopList(json['top_blocked_domains']),
       topClients: parseTopList(json['top_clients']),
       dnsQueriesTrend: List.unmodifiable(parseTrend(json['dns_queries'])),
-      blockedFilteringTrend:
-          List.unmodifiable(parseTrend(json['blocked_filtering'])),
+      blockedFilteringTrend: List.unmodifiable(
+        parseTrend(json['blocked_filtering']),
+      ),
       timeUnits: json['time_units']?.toString() ?? 'hours',
       blockRatePercentage: calculateBlockRate(totalQueries, blocked),
     );
@@ -646,7 +645,7 @@ enum AdGuardTopologyMode {
   stopped,
 
   /// Topology could not be determined.
-  unknown;
+  unknown,
 }
 
 /// Granular routing and verification state for DNS topology.
@@ -673,7 +672,7 @@ enum AdGuardDnsRoutingStatus {
   misconfiguredOrUnavailable,
 
   /// Unable to infer or determine routing topology.
-  unknown;
+  unknown,
 }
 
 /// Detection status of IPv6 DNS advertisements and potential bypass paths.
@@ -688,7 +687,7 @@ enum Ipv6DnsStatus {
   unsupportedIpv6Listener,
 
   /// Router IPv6 configuration could not be reliably determined.
-  unableToVerify;
+  unableToVerify,
 }
 
 /// Detailed representation of the configured and detected DNS topology.
@@ -755,8 +754,9 @@ class AdGuardDnsTopology {
     final dmPort = dnsmasqPort ?? 53;
 
     // Check for IPv6 addresses in listener list
-    final hasIpv6 = adguardDnsAddresses.any((addr) =>
-        addr.contains(':') || addr == '::' || addr.startsWith('['));
+    final hasIpv6 = adguardDnsAddresses.any(
+      (addr) => addr.contains(':') || addr == '::' || addr.startsWith('['),
+    );
 
     // Check if router dnsmasq forwards queries to AdGuard
     final hasLocalForwarder = dnsmasqServers.any((s) {
@@ -767,7 +767,8 @@ class AdGuardDnsTopology {
           (aghPort == 53 && (trimmed == '127.0.0.1' || trimmed == '::1'));
     });
 
-    final hasExternalForwarder = (instanceType.isExternal &&
+    final hasExternalForwarder =
+        (instanceType.isExternal &&
             targetHost != null &&
             targetHost.trim().isNotEmpty)
         ? dnsmasqServers.any((s) {
@@ -780,8 +781,9 @@ class AdGuardDnsTopology {
           })
         : false;
 
-    final hasForwarder =
-        instanceType.isExternal ? hasExternalForwarder : hasLocalForwarder;
+    final hasForwarder = instanceType.isExternal
+        ? hasExternalForwarder
+        : hasLocalForwarder;
 
     // 1. Topology Mode evaluation
     AdGuardTopologyMode inferredMode;
@@ -839,12 +841,14 @@ class AdGuardDnsTopology {
 
     if (portConflict) {
       resolvedStatus = AdGuardDnsRoutingStatus.misconfiguredOrUnavailable;
-      misconfigReason = portConflictReason ??
+      misconfigReason =
+          portConflictReason ??
           'Port conflict detected: both AdGuard and dnsmasq are configured on port $aghPort.';
       evidence = misconfigReason;
     } else if (loopDetected) {
       resolvedStatus = AdGuardDnsRoutingStatus.misconfiguredOrUnavailable;
-      misconfigReason = loopReason ??
+      misconfigReason =
+          loopReason ??
           'Forwarding loop detected: AdGuard upstream forwards queries back to router resolver.';
       evidence = misconfigReason;
     } else if (!isApiReachable) {
@@ -1040,12 +1044,7 @@ class AdGuardDnsRevertPreflightResult {
 }
 
 /// Status outcome of a router DNS forwarding transaction.
-enum AdGuardDnsConfigStatus {
-  success,
-  failed,
-  rolledBack,
-  ambiguous,
-}
+enum AdGuardDnsConfigStatus { success, failed, rolledBack, ambiguous }
 
 /// Result of executing a router DNS configuration transaction.
 @immutable
@@ -1140,7 +1139,8 @@ class AdGuardCapabilities {
     // 2. Procd service entry in rc.list
     // 3. Init script on filesystem
     // 4. Running process in process list
-    final isInstalled = (status != null) ||
+    final isInstalled =
+        (status != null) ||
         hasServiceInRcList ||
         hasInitScript ||
         hasRunningProcess;
@@ -1233,7 +1233,8 @@ class AdGuardClient {
   factory AdGuardClient.fromJson(Map<String, dynamic> json) {
     return AdGuardClient(
       name: json['name']?.toString() ?? '',
-      ids: (json['ids'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      ids:
+          (json['ids'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       useGlobalSettings: json['use_global_settings'] != false,
       filteringEnabled: json['filtering_enabled'] != false,
       parentalEnabled: json['parental_enabled'] == true,
@@ -1241,33 +1242,36 @@ class AdGuardClient {
       safesearchEnabled: json['safesearch_enabled'] == true,
       useGlobalBlockedServices: json['use_global_blocked_services'] != false,
       blockedServices:
-          (json['blocked_services'] as List?)?.map((e) => e.toString()).toList() ??
-              const [],
-      upstreams: (json['upstreams'] as List?)
+          (json['blocked_services'] as List?)
               ?.map((e) => e.toString())
               .toList() ??
           const [],
-      rules: (json['rules'] as List?)?.map((e) => e.toString()).toList() ??
+      upstreams:
+          (json['upstreams'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
-      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
+      rules:
+          (json['rules'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
+      tags:
+          (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'ids': ids,
-        'use_global_settings': useGlobalSettings,
-        'filtering_enabled': filteringEnabled,
-        'parental_enabled': parentalEnabled,
-        'safebrowsing_enabled': safebrowsingEnabled,
-        'safesearch_enabled': safesearchEnabled,
-        'use_global_blocked_services': useGlobalBlockedServices,
-        'blocked_services': blockedServices,
-        'upstreams': upstreams,
-        'rules': rules,
-        'tags': tags,
-      };
+    'name': name,
+    'ids': ids,
+    'use_global_settings': useGlobalSettings,
+    'filtering_enabled': filteringEnabled,
+    'parental_enabled': parentalEnabled,
+    'safebrowsing_enabled': safebrowsingEnabled,
+    'safesearch_enabled': safesearchEnabled,
+    'use_global_blocked_services': useGlobalBlockedServices,
+    'blocked_services': blockedServices,
+    'upstreams': upstreams,
+    'rules': rules,
+    'tags': tags,
+  };
 
   AdGuardClient copyWith({
     String? name,
@@ -1310,7 +1314,8 @@ class AdGuardClient {
           listEquals(rules, other.rules);
 
   @override
-  int get hashCode => Object.hash(name, Object.hashAll(ids), Object.hashAll(rules));
+  int get hashCode =>
+      Object.hash(name, Object.hashAll(ids), Object.hashAll(rules));
 }
 
 /// Deployment target type for an AdGuard Home instance.
@@ -1414,14 +1419,14 @@ class AdGuardInstanceProfile {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'type': type.name,
-        'host': host,
-        'port': port,
-        'use_https': useHttps,
-        if (routerId != null) 'router_id': routerId,
-      };
+    'id': id,
+    'name': name,
+    'type': type.name,
+    'host': host,
+    'port': port,
+    'use_https': useHttps,
+    if (routerId != null) 'router_id': routerId,
+  };
 
   AdGuardInstanceProfile copyWith({
     String? id,
@@ -1460,4 +1465,3 @@ class AdGuardInstanceProfile {
   int get hashCode =>
       Object.hash(id, name, type, host, port, useHttps, routerId);
 }
-

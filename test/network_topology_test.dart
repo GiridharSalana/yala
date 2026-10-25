@@ -388,7 +388,9 @@ void main() {
         expect(switchVlan.ports.length, equals(5));
 
         // CPU port on switch0
-        final cpuPort = switchVlan.ports.firstWhere((p) => p.name == 'CPU (eth0)');
+        final cpuPort = switchVlan.ports.firstWhere(
+          (p) => p.name == 'CPU (eth0)',
+        );
         expect(cpuPort.isCpu, isTrue);
         expect(cpuPort.isWan, isFalse);
         expect(cpuPort.isTagged, isTrue);
@@ -491,8 +493,16 @@ void main() {
               'vlan': '1',
               'ports': '1 2 3 4 0t',
             },
-            'wan': {'.type': 'interface', 'device': 'eth1.835', 'proto': 'pppoe'},
-            'vpn_wan': {'.type': 'interface', 'device': 'wg0', 'proto': 'wireguard'},
+            'wan': {
+              '.type': 'interface',
+              'device': 'eth1.835',
+              'proto': 'pppoe',
+            },
+            'vpn_wan': {
+              '.type': 'interface',
+              'device': 'wg0',
+              'proto': 'wireguard',
+            },
           },
         };
 

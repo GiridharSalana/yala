@@ -16,31 +16,37 @@ void main() {
   });
 
   group('AppState Startup Hydration Tests', () {
-    test('AppState.instance.initializationFuture completes successfully', () async {
-      final appState = AppState.instance;
-      await appState.initializationFuture;
-      expect(appState.themeMode, isNotNull);
-      expect(appState.themePalette, isNotNull);
-    });
+    test(
+      'AppState.instance.initializationFuture completes successfully',
+      () async {
+        final appState = AppState.instance;
+        await appState.initializationFuture;
+        expect(appState.themeMode, isNotNull);
+        expect(appState.themePalette, isNotNull);
+      },
+    );
 
-    test('SessionController loading methods support notify=false without notifying listeners', () async {
-      final appState = AppState.instance;
-      int notificationCount = 0;
-      void listener() {
-        notificationCount++;
-      }
+    test(
+      'SessionController loading methods support notify=false without notifying listeners',
+      () async {
+        final appState = AppState.instance;
+        int notificationCount = 0;
+        void listener() {
+          notificationCount++;
+        }
 
-      appState.addListener(listener);
+        appState.addListener(listener);
 
-      // Call loadRouters with notify: false
-      await appState.loadRouters(notify: false);
-      expect(notificationCount, equals(0));
+        // Call loadRouters with notify: false
+        await appState.loadRouters(notify: false);
+        expect(notificationCount, equals(0));
 
-      // Call loadRouters with notify: true
-      await appState.loadRouters(notify: true);
-      expect(notificationCount, equals(1));
+        // Call loadRouters with notify: true
+        await appState.loadRouters(notify: true);
+        expect(notificationCount, equals(1));
 
-      appState.removeListener(listener);
-    });
+        appState.removeListener(listener);
+      },
+    );
   });
 }

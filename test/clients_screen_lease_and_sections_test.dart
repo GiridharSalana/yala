@@ -359,11 +359,7 @@ void main() {
           isDumbApClient: false,
         );
 
-        appState.clients = [
-          activeWired,
-          offlineWired,
-          wifiClient,
-        ];
+        appState.clients = [activeWired, offlineWired, wifiClient];
 
         await tester.pumpWidget(
           const ProviderScope(child: MaterialApp(home: ClientsScreen())),

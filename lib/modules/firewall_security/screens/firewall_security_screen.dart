@@ -302,6 +302,7 @@ class _FirewallSecurityScreenState
     );
 
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
     final titlePrefix = l10n?.firewallTitle ?? 'Firewall & Security';
     return PopScope(
       canPop: !_hasUnsavedChanges && !_isSaving,
@@ -315,8 +316,24 @@ class _FirewallSecurityScreenState
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(
-            '$titlePrefix (${backend == FirewallBackend.fw4 ? "fw4 / nftables" : "fw3 / iptables"})',
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                titlePrefix,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                backend == FirewallBackend.fw4
+                    ? 'fw4 / nftables'
+                    : 'fw3 / iptables',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
           ),
           actions: [
             if (_hasUnsavedChanges)
@@ -350,7 +367,8 @@ class _FirewallSecurityScreenState
                     const SizedBox(height: 8),
                     _buildSectionHeader(
                       context,
-                      'Advanced Settings',
+                      l10n?.firewallAdvancedSettingsTitle ??
+                          'Advanced Settings',
                       Icons.settings_outlined,
                     ),
                     const SizedBox(height: 12),
@@ -365,7 +383,8 @@ class _FirewallSecurityScreenState
                     const SizedBox(height: 16),
                     _buildSectionHeader(
                       context,
-                      'Routing & Flow Offloading',
+                      l10n?.firewallFlowOffloadingTitle ??
+                          'Routing & Flow Offloading',
                       Icons.speed_rounded,
                     ),
                     const SizedBox(height: 8),
@@ -388,6 +407,9 @@ class _FirewallSecurityScreenState
                           'Inter-Zone Forwarding Rules',
                       count: overview.forwardings.length,
                       subtitle:
+                          l10n?.firewallInterZonePoliciesCount(
+                            overview.forwardings.length,
+                          ) ??
                           '${overview.forwardings.length} inter-zone policies',
                       icon: Icons.alt_route_outlined,
                       iconColor: Colors.blue,
@@ -396,24 +418,27 @@ class _FirewallSecurityScreenState
                     ),
                     const SizedBox(height: 16),
                     LuciCollapsibleCard(
-                      title:
-                          l10n?.portForwardsTitle ??
-                          'Port Forwards',
+                      title: l10n?.portForwardsTitle ?? 'Port Forwards',
                       count: overview.portForwards.length,
                       subtitle:
+                          l10n?.firewallPortForwardsCount(
+                            overview.portForwards.length,
+                          ) ??
                           '${overview.portForwards.length} port forward rules',
                       icon: Icons.import_export_outlined,
                       iconColor: Colors.orange,
-                      childBuilder: (ctx) => _buildPortForwardingsList(
-                        context,
-                        overview,
-                      ),
+                      childBuilder: (ctx) =>
+                          _buildPortForwardingsList(context, overview),
                     ),
                     const SizedBox(height: 16),
                     LuciCollapsibleCard(
                       title: l10n?.customRulesTitle ?? 'Custom Firewall Rules',
                       count: overview.customRules.length,
-                      subtitle: '${overview.customRules.length} custom rules',
+                      subtitle:
+                          l10n?.firewallCustomRulesCount(
+                            overview.customRules.length,
+                          ) ??
+                          '${overview.customRules.length} custom rules',
                       icon: Icons.rule_outlined,
                       iconColor: Colors.teal,
                       childBuilder: (ctx) =>
@@ -549,8 +574,9 @@ class _FirewallSecurityScreenState
                     l10n?.firewallShieldActiveSubtitle ??
                         'Defending your home network against unauthorized incoming traffic.',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.75,
+                      ),
                     ),
                   ),
                 ],
@@ -575,119 +601,122 @@ class _FirewallSecurityScreenState
           Icons.bolt_outlined,
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Card(
-                elevation: 1,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(
-                    color: theme.colorScheme.outlineVariant
-                        .withValues(alpha: 0.5),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Card(
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: BorderSide(
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.5,
+                      ),
+                    ),
                   ),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => AddPortForwardDialog.show(context),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => AddPortForwardDialog.show(context),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.door_sliding_outlined,
+                              color: theme.colorScheme.onPrimaryContainer,
+                              size: 22,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.door_sliding_outlined,
-                            color: theme.colorScheme.onPrimaryContainer,
-                            size: 22,
+                          const SizedBox(height: 10),
+                          Text(
+                            l10n?.firewallOpenPortTitle ?? 'Open a Port',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          l10n?.firewallOpenPortTitle ?? 'Open a Port',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
+                          const SizedBox(height: 4),
+                          Text(
+                            l10n?.firewallOpenPortSubtitle ??
+                                'Allow external devices to reach an app on your network.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          l10n?.firewallOpenPortSubtitle ??
-                              'Allow external devices to reach an app on your network.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.7),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Card(
-                elevation: 1,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(
-                    color: theme.colorScheme.outlineVariant
-                        .withValues(alpha: 0.5),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Card(
+                  elevation: 1,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: BorderSide(
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.5,
+                      ),
+                    ),
                   ),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => BlockIncomingTrafficDialog.show(context),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => BlockIncomingTrafficDialog.show(context),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.errorContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.block_rounded,
+                              color: theme.colorScheme.onErrorContainer,
+                              size: 22,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.block_rounded,
-                            color: theme.colorScheme.onErrorContainer,
-                            size: 22,
+                          const SizedBox(height: 10),
+                          Text(
+                            l10n?.firewallBlockIncomingTitle ??
+                                'Block an Incoming Connection',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          l10n?.firewallBlockIncomingTitle ??
-                              'Block an Incoming Connection',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
+                          const SizedBox(height: 4),
+                          Text(
+                            l10n?.firewallBlockIncomingSubtitle ??
+                                'Prevent an external address or connection from reaching your network.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          l10n?.firewallBlockIncomingSubtitle ??
-                              'Prevent an external address or connection from reaching your network.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.7),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -722,6 +751,7 @@ class _FirewallSecurityScreenState
     BuildContext context,
     FirewallDefaultPolicy def,
   ) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -729,15 +759,26 @@ class _FirewallSecurityScreenState
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildPolicyRow('Default Input', def.input),
-            const Divider(),
-            _buildPolicyRow('Default Output', def.output),
-            const Divider(),
-            _buildPolicyRow('Default Forward', def.forward),
+            _buildPolicyRow(
+              l10n?.firewallDefaultInput ?? 'Default Input',
+              def.input,
+            ),
             const Divider(),
             _buildPolicyRow(
-              'SYN Flood Protection',
-              def.synFlood ? 'ENABLED' : 'DISABLED',
+              l10n?.firewallDefaultOutput ?? 'Default Output',
+              def.output,
+            ),
+            const Divider(),
+            _buildPolicyRow(
+              l10n?.firewallDefaultForward ?? 'Default Forward',
+              def.forward,
+            ),
+            const Divider(),
+            _buildPolicyRow(
+              l10n?.firewallSynFloodProtection ?? 'SYN Flood Protection',
+              def.synFlood
+                  ? (l10n?.firewallStatusEnabled ?? 'ENABLED')
+                  : (l10n?.firewallStatusDisabled ?? 'DISABLED'),
             ),
           ],
         ),
@@ -749,6 +790,7 @@ class _FirewallSecurityScreenState
     BuildContext context,
     FirewallDefaultPolicy def,
   ) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
 
     final currentSoftware = _stagedSoftwareFlowOffload ?? def.flowOffloading;
@@ -780,7 +822,8 @@ class _FirewallSecurityScreenState
                         children: [
                           Flexible(
                             child: Text(
-                              'Software Flow Offloading',
+                              l10n?.firewallSoftwareOffloadingTitle ??
+                                  'Software Flow Offloading',
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -794,7 +837,8 @@ class _FirewallSecurityScreenState
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Software-based packet offloading for routing/NAT. Reduces CPU load and boosts throughput, but bypasses SQM shaping.',
+                        l10n?.firewallSoftwareOffloadingSubtitle ??
+                            'Software-based packet offloading for routing/NAT. Reduces CPU load and boosts throughput, but bypasses SQM shaping.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                           height: 1.35,
@@ -826,7 +870,8 @@ class _FirewallSecurityScreenState
                           children: [
                             Flexible(
                               child: Text(
-                                'Hardware Flow Offloading',
+                                l10n?.firewallHardwareOffloadingTitle ??
+                                    'Hardware Flow Offloading',
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -840,7 +885,8 @@ class _FirewallSecurityScreenState
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Requires chipset hardware NAT support. Only active when Software Flow Offloading is enabled.',
+                          l10n?.firewallHardwareOffloadingSubtitle ??
+                              'Requires chipset hardware NAT support. Only active when Software Flow Offloading is enabled.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                             height: 1.35,
@@ -881,7 +927,8 @@ class _FirewallSecurityScreenState
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Flow offloading bypasses Traffic Control (tc). When enabled, SQM (Smart Queue Management) cannot shape forwarded traffic or mitigate bufferbloat.',
+                        l10n?.firewallFlowOffloadingSqmWarning ??
+                            'Flow offloading bypasses Traffic Control (tc). When enabled, SQM (Smart Queue Management) cannot shape forwarded traffic or mitigate bufferbloat.',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.amber.shade900,
@@ -919,6 +966,7 @@ class _FirewallSecurityScreenState
   }
 
   Widget _buildZoneCard(BuildContext context, FirewallZone zone) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final isWan = zone.name.toLowerCase().contains('wan');
 
@@ -981,16 +1029,26 @@ class _FirewallSecurityScreenState
             ),
             const SizedBox(height: 8),
             Text(
-              'Covered Networks: ${zone.networks.join(", ")}',
+              l10n?.firewallCoveredNetworks(zone.networks.join(", ")) ??
+                  'Covered Networks: ${zone.networks.join(", ")}',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const Divider(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildCompactRuleTile('Input', zone.input),
-                _buildCompactRuleTile('Output', zone.output),
-                _buildCompactRuleTile('Forward', zone.forward),
+                _buildCompactRuleTile(
+                  l10n?.firewallTileInput ?? 'Input',
+                  zone.input,
+                ),
+                _buildCompactRuleTile(
+                  l10n?.firewallTileOutput ?? 'Output',
+                  zone.output,
+                ),
+                _buildCompactRuleTile(
+                  l10n?.firewallTileForward ?? 'Forward',
+                  zone.forward,
+                ),
               ],
             ),
           ],
@@ -1081,10 +1139,8 @@ class _FirewallSecurityScreenState
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.add),
                 label: const Text('Add Port Forward'),
-                onPressed: () => AdvancedPortForwardDialog.show(
-                  context,
-                  overview: overview,
-                ),
+                onPressed: () =>
+                    AdvancedPortForwardDialog.show(context, overview: overview),
               ),
             ),
           ),
@@ -1101,9 +1157,9 @@ class _FirewallSecurityScreenState
         else
           ...pfs.map((pf) {
             final matchedClient = clients.cast<Client?>().firstWhere(
-                  (c) => c != null && c.ipAddress.trim() == pf.destIp.trim(),
-                  orElse: () => null,
-                );
+              (c) => c != null && c.ipAddress.trim() == pf.destIp.trim(),
+              orElse: () => null,
+            );
             final deviceName = matchedClient != null
                 ? ClientNamingHelper.getDisplayName(
                     matchedClient.macAddress,
@@ -1157,10 +1213,10 @@ class _FirewallSecurityScreenState
                     : null,
                 onTap: canModify
                     ? () => AdvancedPortForwardDialog.show(
-                          context,
-                          initialPortForward: pf,
-                          overview: overview,
-                        )
+                        context,
+                        initialPortForward: pf,
+                        overview: overview,
+                      )
                     : null,
               ),
             );
@@ -1169,9 +1225,7 @@ class _FirewallSecurityScreenState
     );
   }
 
-  Future<void> _confirmDeletePortForward(
-    FirewallPortForwarding pf,
-  ) async {
+  Future<void> _confirmDeletePortForward(FirewallPortForwarding pf) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1226,10 +1280,8 @@ class _FirewallSecurityScreenState
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.add_moderator_outlined),
                 label: const Text('Add Security Rule'),
-                onPressed: () => AdvancedCustomRuleDialog.show(
-                  context,
-                  overview: overview,
-                ),
+                onPressed: () =>
+                    AdvancedCustomRuleDialog.show(context, overview: overview),
               ),
             ),
           ),
@@ -1267,33 +1319,35 @@ class _FirewallSecurityScreenState
     required bool canModify,
   }) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isStaged = _stagedCustomRuleStates.containsKey(r.sectionKey);
-    final currentEnabled =
-        _stagedCustomRuleStates[r.sectionKey] ?? r.enabled;
+    final currentEnabled = _stagedCustomRuleStates[r.sectionKey] ?? r.enabled;
     final policyColor = _getPolicyColor(r.target);
 
     final trafficDetails = <String>[];
     if (r.destPort != null && r.destPort!.isNotEmpty) {
-      trafficDetails.add('Port: ${r.destPort}');
+      trafficDetails.add(
+        l10n?.firewallRulePort(r.destPort!) ?? 'Port: ${r.destPort}',
+      );
     }
     if (r.srcIp != null && r.srcIp!.isNotEmpty) {
-      trafficDetails.add('IP: ${r.srcIp}');
+      trafficDetails.add(l10n?.firewallRuleIp(r.srcIp!) ?? 'IP: ${r.srcIp}');
     }
     final trafficSuffix = trafficDetails.isNotEmpty
         ? ' (${trafficDetails.join(", ")})'
         : '';
     final flowText =
         '${r.srcZone.toUpperCase()} ➔ ${r.destZone.toUpperCase()}$trafficSuffix';
+    final originalStatus = r.enabled
+        ? (l10n?.firewallRuleStatusEnabled.toUpperCase() ?? 'ENABLED')
+        : (l10n?.firewallRuleStatusDisabled.toUpperCase() ?? 'DISABLED');
     final subtitleText = isStaged
-        ? '$flowText • Original: ${r.enabled ? "ENABLED" : "DISABLED"}'
+        ? '$flowText • ${l10n?.firewallRuleOriginalStatus(originalStatus) ?? "Original: $originalStatus"}'
         : flowText;
 
     Widget buildTargetBadge() {
       return Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 3,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: policyColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(6),
@@ -1329,20 +1383,14 @@ class _FirewallSecurityScreenState
 
     Widget buildStagedBadge() {
       return Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 6,
-          vertical: 1,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
         decoration: BoxDecoration(
           color: Colors.amber.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: Colors.amber.shade700,
-            width: 0.8,
-          ),
+          border: Border.all(color: Colors.amber.shade700, width: 0.8),
         ),
         child: Text(
-          'STAGED',
+          l10n?.chipStaged ?? 'STAGED',
           style: TextStyle(
             color: Colors.amber.shade900,
             fontWeight: FontWeight.bold,
@@ -1354,7 +1402,7 @@ class _FirewallSecurityScreenState
 
     final reorderUpButton = IconButton(
       icon: const Icon(Icons.arrow_upward, size: 18),
-      tooltip: 'Move up',
+      tooltip: l10n?.firewallRuleMoveUpTooltip ?? 'Move up',
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 32, height: 32),
@@ -1365,7 +1413,7 @@ class _FirewallSecurityScreenState
 
     final reorderDownButton = IconButton(
       icon: const Icon(Icons.arrow_downward, size: 18),
-      tooltip: 'Move down',
+      tooltip: l10n?.firewallRuleMoveDownTooltip ?? 'Move down',
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 32, height: 32),
@@ -1376,7 +1424,7 @@ class _FirewallSecurityScreenState
 
     final editButton = IconButton(
       icon: const Icon(Icons.edit_outlined, size: 18),
-      tooltip: 'Edit rule',
+      tooltip: l10n?.firewallRuleEditTooltip ?? 'Edit rule',
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 32, height: 32),
@@ -1389,7 +1437,7 @@ class _FirewallSecurityScreenState
 
     final deleteButton = IconButton(
       icon: const Icon(Icons.delete_outline, size: 18),
-      tooltip: 'Delete rule',
+      tooltip: l10n?.firewallRuleDeleteTooltip ?? 'Delete rule',
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 32, height: 32),
@@ -1406,9 +1454,7 @@ class _FirewallSecurityScreenState
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Container(
         decoration: BoxDecoration(
           color: isStaged
@@ -1423,13 +1469,16 @@ class _FirewallSecurityScreenState
           borderRadius: BorderRadius.circular(14),
           onTap: canModify
               ? () => AdvancedCustomRuleDialog.show(
-                    context,
-                    initialRule: r,
-                    overview: overview,
-                  )
+                  context,
+                  initialRule: r,
+                  overview: overview,
+                )
               : null,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14.0,
+              vertical: 12.0,
+            ),
             child: LayoutBuilder(
               builder: (ctx, constraints) {
                 final isWide = constraints.maxWidth >= 540;
@@ -1502,7 +1551,10 @@ class _FirewallSecurityScreenState
                           enableSwitch,
                           const SizedBox(width: 4),
                           Text(
-                            currentEnabled ? 'Enabled' : 'Disabled',
+                            currentEnabled
+                                ? (l10n?.firewallRuleStatusEnabled ?? 'Enabled')
+                                : (l10n?.firewallRuleStatusDisabled ??
+                                      'Disabled'),
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: currentEnabled
                                   ? LuciStatusColors.connected
@@ -1559,7 +1611,11 @@ class _FirewallSecurityScreenState
                       ],
                     ),
                     Padding(
-                      padding: const EdgeInsets.only(left: 30, top: 4, bottom: 6),
+                      padding: const EdgeInsets.only(
+                        left: 30,
+                        top: 4,
+                        bottom: 6,
+                      ),
                       child: Text(
                         subtitleText,
                         style: theme.textTheme.bodySmall?.copyWith(
@@ -1588,7 +1644,11 @@ class _FirewallSecurityScreenState
                               enableSwitch,
                               const SizedBox(width: 4),
                               Text(
-                                currentEnabled ? 'Enabled' : 'Disabled',
+                                currentEnabled
+                                    ? (l10n?.firewallRuleStatusEnabled ??
+                                          'Enabled')
+                                    : (l10n?.firewallRuleStatusDisabled ??
+                                          'Disabled'),
                                 style: theme.textTheme.labelMedium?.copyWith(
                                   color: currentEnabled
                                       ? LuciStatusColors.connected
@@ -1672,9 +1732,7 @@ class _FirewallSecurityScreenState
     }
   }
 
-  Future<void> _confirmDeleteCustomRule(
-    FirewallCustomRule r,
-  ) async {
+  Future<void> _confirmDeleteCustomRule(FirewallCustomRule r) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

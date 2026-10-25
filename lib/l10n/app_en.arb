@@ -420,6 +420,160 @@
   "@contactSupportSubtitle": {
     "description": "Subtitle for contact & support"
   },
+  "privacyPolicyTitle": "Privacy Policy",
+  "@privacyPolicyTitle": {
+    "description": "Title for privacy policy"
+  },
+  "privacyPolicySubtitle": "Read our local-first zero-telemetry policy",
+  "@privacyPolicySubtitle": {
+    "description": "Subtitle for privacy policy"
+  },
+  "licenseAttributionTitle": "License & Attribution (GPLv3)",
+  "@licenseAttributionTitle": {
+    "description": "Title for license & attribution"
+  },
+  "licenseAttributionSubtitle": "GNU General Public License v3.0 • Copyleft & Credits",
+  "@licenseAttributionSubtitle": {
+    "description": "Subtitle for license & attribution"
+  },
+  "openSourceLicensesTitle": "Open Source Licenses",
+  "@openSourceLicensesTitle": {
+    "description": "Title for open source licenses"
+  },
+  "openSourceLicensesSubtitle": "Third-party software notices and licenses",
+  "@openSourceLicensesSubtitle": {
+    "description": "Subtitle for open source licenses"
+  },
+  "routerSecuritySection": "ROUTER SECURITY & ACCESS",
+  "@routerSecuritySection": {
+    "description": "Section header for router security & access"
+  },
+  "changePasswordSubtitle": "Update root/admin password on active router",
+  "@changePasswordSubtitle": {
+    "description": "Subtitle for change password tile"
+  },
+  "rpcPermissionsVerified": "RPC permissions & execution modules verified",
+  "@rpcPermissionsVerified": {
+    "description": "Notice when RPC permissions are verified"
+  },
+  "rpcPermissionsMissingWarning": "Missing RPC permissions may restrict advanced router management features",
+  "@rpcPermissionsMissingWarning": {
+    "description": "Notice when RPC permissions are missing"
+  },
+  "actionManage": "Manage",
+  "@actionManage": {
+    "description": "Action button text to manage settings or permissions"
+  },
+  "actionAutoFix": "Auto-Fix",
+  "@actionAutoFix": {
+    "description": "Action button text to auto-fix permissions"
+  },
+  "rpcDialogVerifiedSubtitle": "Router RPC modules and backend execution permissions are verified and functioning properly.",
+  "@rpcDialogVerifiedSubtitle": {
+    "description": "Subtitle in RPC permissions dialog when everything is verified"
+  },
+  "rpcStatusLuciRpc": "LuCI RPC Modules",
+  "@rpcStatusLuciRpc": {
+    "description": "Status item title for LuCI RPC modules"
+  },
+  "rpcStatusBackendExec": "Backend Execution Permissions",
+  "@rpcStatusBackendExec": {
+    "description": "Status item title for backend execution permissions"
+  },
+  "rpcStatusBackendExecSub": "ubus session access to file.exec",
+  "@rpcStatusBackendExecSub": {
+    "description": "Status item subtitle for backend execution permissions"
+  },
+  "rpcStatusUciAccess": "UCI Configuration Access",
+  "@rpcStatusUciAccess": {
+    "description": "Status item title for UCI configuration access"
+  },
+  "rpcStatusUciAccessSub": "ubus session read/write access to uci",
+  "@rpcStatusUciAccessSub": {
+    "description": "Status item subtitle for UCI configuration access"
+  },
+  "rpcManualSetupScript": "Manual Setup / Verification Script",
+  "@rpcManualSetupScript": {
+    "description": "Card header for manual RPC setup script"
+  },
+  "rpcManualSshCommand": "Manual SSH Command",
+  "@rpcManualSshCommand": {
+    "description": "Card header for manual SSH command"
+  },
+  "rpcToastCommandCopied": "Command Copied",
+  "@rpcToastCommandCopied": {
+    "description": "Toast title when command is copied"
+  },
+  "rpcToastCommandCopiedSub": "Paste into router SSH terminal",
+  "@rpcToastCommandCopiedSub": {
+    "description": "Toast subtitle when command is copied"
+  },
+  "rpcBtnReverifyRepair": "Re-verify / Repair",
+  "@rpcBtnReverifyRepair": {
+    "description": "Button to re-verify or repair RPC permissions"
+  },
+  "rpcToastRechecking": "Re-checking router...",
+  "@rpcToastRechecking": {
+    "description": "Toast title when re-checking router"
+  },
+  "rpcToastVerifying": "Verifying RPC modules and permissions...",
+  "@rpcToastVerifying": {
+    "description": "Toast subtitle when re-checking router"
+  },
+  "rpcToastPermissionsVerified": "Permissions Verified",
+  "@rpcToastPermissionsVerified": {
+    "description": "Toast title when permissions verified"
+  },
+  "rpcToastPermissionsActive": "RPC modules and permissions are active.",
+  "@rpcToastPermissionsActive": {
+    "description": "Toast subtitle when permissions verified"
+  },
+  "rpcToastVerificationIncomplete": "Verification Incomplete",
+  "@rpcToastVerificationIncomplete": {
+    "description": "Toast title when verification incomplete"
+  },
+  "rpcToastCheckSshTerminal": "Please check your router SSH terminal.",
+  "@rpcToastCheckSshTerminal": {
+    "description": "Toast subtitle when verification incomplete"
+  },
+  "rpcToastFixingPermissions": "Fixing permissions...",
+  "@rpcToastFixingPermissions": {
+    "description": "Toast title when fixing permissions"
+  },
+  "rpcToastInstallingAcls": "Installing RPC packages & updating ACLs...",
+  "@rpcToastInstallingAcls": {
+    "description": "Toast subtitle when fixing permissions"
+  },
+  "rpcToastAutoFixApplied": "Auto-Fix Applied",
+  "@rpcToastAutoFixApplied": {
+    "description": "Toast title when auto-fix applied"
+  },
+  "rpcToastRpcModulesActive": "Router RPC modules are now active.",
+  "@rpcToastRpcModulesActive": {
+    "description": "Toast subtitle when auto-fix applied"
+  },
+  "rpcToastAutoFixFailed": "Auto-Fix Failed",
+  "@rpcToastAutoFixFailed": {
+    "description": "Toast title when auto-fix fails"
+  },
+  "rpcToastAutoFixFailedSub": "Could not complete RPC installation.",
+  "@rpcToastAutoFixFailedSub": {
+    "description": "Toast subtitle when auto-fix fails"
+  },
+  "loginFailedSession": "Failed to establish session with {target}.",
+  "@loginFailedSession": {
+    "description": "Error message when session could not be established with router",
+    "placeholders": {
+      "target": {
+        "type": "String",
+        "example": "ncxTest (192.168.1.1)"
+      }
+    }
+  },
+  "loginInvalidCredentials": "Login Failed: Invalid credentials or host unreachable.",
+  "@loginInvalidCredentials": {
+    "description": "Error message when login fails due to credentials or network unreachable"
+  },
   "dashboardSettingsTitle": "Dashboard Settings",
   "@dashboardSettingsTitle": {
     "description": "Title for dashboard settings screen"
@@ -3148,9 +3302,9 @@
       }
     }
   },
-  "servicesSysCronHeader": "System Scheduled Cron Jobs",
+  "servicesSysCronHeader": "Cron Jobs",
   "@servicesSysCronHeader": {
-    "description": "Header for system scheduled cron jobs"
+    "description": "Header for cron jobs"
   },
   "servicesSysBtnAddTask": "Add Task",
   "@servicesSysBtnAddTask": {
@@ -4100,6 +4254,44 @@
     "description": "Notice indicating app is running latest version",
     "placeholders": {
       "currentVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "checkForUpdatesSubtitleIpa": "Check for new iOS beta release builds on GitHub",
+  "@checkForUpdatesSubtitleIpa": {
+    "description": "Subtitle for updates tile on iOS IPA builds"
+  },
+  "updateAvailableIosBetaTitle": "iOS Beta Update Available",
+  "@updateAvailableIosBetaTitle": {
+    "description": "Dialog title when an iOS beta update is available"
+  },
+  "updateAvailableIosBetaDesc": "A new iOS beta version is available on GitHub Releases.",
+  "@updateAvailableIosBetaDesc": {
+    "description": "Description in update dialog for iOS beta releases"
+  },
+  "updateRedirectToRelease": "View Release",
+  "@updateRedirectToRelease": {
+    "description": "Button label to redirect user to the iOS beta GitHub release page"
+  },
+  "updateNoBetaReleasesFound": "No iOS beta releases found on GitHub.",
+  "@updateNoBetaReleasesFound": {
+    "description": "Error message when no iOS beta releases are found on GitHub"
+  },
+  "updateUpToDateIosDesc": "You are running the latest iOS beta version of Yala (v{currentVersion}).",
+  "@updateUpToDateIosDesc": {
+    "description": "Notice indicating current iOS beta version is up to date",
+    "placeholders": {
+      "currentVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "updateNoBetaUpdateRequired": "The latest iOS beta release on GitHub is v{latestVersion}. No update is required.",
+  "@updateNoBetaUpdateRequired": {
+    "description": "Notice indicating current iOS build is ahead of GitHub beta release",
+    "placeholders": {
+      "latestVersion": {
         "type": "String"
       }
     }
@@ -6885,11 +7077,11 @@
   "@firewallWizardInternalDevice": {
     "description": "Section label for internal device selection"
   },
-  "firewallWizardSelectDevice": "Select from connected devices",
+  "firewallWizardSelectDevice": "Connected Device",
   "@firewallWizardSelectDevice": {
     "description": "Option label to select connected device"
   },
-  "firewallWizardManualIp": "Enter IP address manually",
+  "firewallWizardManualIp": "Manual IP",
   "@firewallWizardManualIp": {
     "description": "Option label to manually enter IP"
   },
@@ -6930,6 +7122,18 @@
   "firewallBlockWhatToBlock": "What do you want to block?",
   "@firewallBlockWhatToBlock": {
     "description": "Prompt asking what to block"
+  },
+  "firewallBlockTabIp": "IP",
+  "@firewallBlockTabIp": {
+    "description": "Segment tab label for blocking IP address"
+  },
+  "firewallBlockTabPort": "Port",
+  "@firewallBlockTabPort": {
+    "description": "Segment tab label for blocking Port or Service"
+  },
+  "firewallBlockTabPreset": "Preset",
+  "@firewallBlockTabPreset": {
+    "description": "Segment tab label for blocking Common Threat preset"
   },
   "firewallBlockExternalIp": "External IP Address",
   "@firewallBlockExternalIp": {
@@ -7363,5 +7567,1707 @@
         "example": "2026-10-07 12:00"
       }
     }
+  },
+  "diagTabHealth": "Health & Diagnostic",
+  "@diagTabHealth": {
+    "description": "Tab title for root-cause health & diagnostics"
+  },
+  "diagBtnWhyBroken": "“Why Is My Internet Broken?” Diagnostic",
+  "@diagBtnWhyBroken": {
+    "description": "Button label to trigger root cause internet diagnostic"
+  },
+  "netDiagTitle": "Network Diagnostic",
+  "@netDiagTitle": {
+    "description": "App bar title for network diagnostic screen"
+  },
+  "netDiagSubtitleReady": "Perform automated, evidence-based root-cause analysis on router uplink, DNS resolution, default routes, IPv4, IPv6, and external reachability.",
+  "@netDiagSubtitleReady": {
+    "description": "Description explaining what network diagnostics check"
+  },
+  "netDiagRunningTitle": "Running Network Diagnostics...",
+  "@netDiagRunningTitle": {
+    "description": "Title when diagnostic analysis is currently executing"
+  },
+  "netDiagRunningSummary": "Gathering configuration and probing network paths...",
+  "@netDiagRunningSummary": {
+    "description": "Summary step when diagnostic is executing"
+  },
+  "netDiagReadyTitle": "Network Diagnostic Ready",
+  "@netDiagReadyTitle": {
+    "description": "Hero title when diagnostics are ready to run"
+  },
+  "netDiagHealthyTitle": "Network Healthy",
+  "@netDiagHealthyTitle": {
+    "description": "Hero title when all diagnostic checks pass"
+  },
+  "netDiagDegradedTitle": "Connectivity Degraded",
+  "@netDiagDegradedTitle": {
+    "description": "Hero title when network connectivity is degraded"
+  },
+  "netDiagSuspectedTitle": "Suspected Issue",
+  "@netDiagSuspectedTitle": {
+    "description": "Hero title when an issue is suspected"
+  },
+  "netDiagIssueDetectedTitle": "Connectivity Issue Detected",
+  "@netDiagIssueDetectedTitle": {
+    "description": "Hero title when connectivity failures are confirmed"
+  },
+  "netDiagTargetRouter": "Target: {name} ({ip})",
+  "@netDiagTargetRouter": {
+    "description": "Target router name and IP address",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagCollectedAt": "Collected at: {time} • Session ID: {id}",
+  "@netDiagCollectedAt": {
+    "description": "Timestamp and session id of diagnostic report",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagBtnRun": "Run Diagnostics",
+  "@netDiagBtnRun": {
+    "description": "Button to run network diagnostics"
+  },
+  "netDiagBtnRerun": "Rerun Diagnostics",
+  "@netDiagBtnRerun": {
+    "description": "Button to rerun network diagnostics"
+  },
+  "netDiagBtnCancel": "Cancel Analysis",
+  "@netDiagBtnCancel": {
+    "description": "Button to cancel ongoing network diagnostic analysis"
+  },
+  "netDiagBtnCancelling": "Cancelling...",
+  "@netDiagBtnCancelling": {
+    "description": "Label when diagnostic cancellation is in progress"
+  },
+  "netDiagBtnAnalyzing": "Analyzing...",
+  "@netDiagBtnAnalyzing": {
+    "description": "Label while diagnostic analysis is in progress"
+  },
+  "netDiagSectionFindings": "Root-Cause Findings & Hypotheses",
+  "@netDiagSectionFindings": {
+    "description": "Header for root cause findings section"
+  },
+  "netDiagSectionResults": "Diagnostic Test Results",
+  "@netDiagSectionResults": {
+    "description": "Header for diagnostic test results list"
+  },
+  "netDiagSectionScope": "Diagnostic Scope & Unverified Domains",
+  "@netDiagSectionScope": {
+    "description": "Header for unverified domains and limitations section"
+  },
+  "netDiagFilterShowIssuesOnly": "Show Issues Only ({count})",
+  "@netDiagFilterShowIssuesOnly": {
+    "description": "Filter chip label to show only failed or degraded tests",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "netDiagConfidenceHigh": "High Confidence",
+  "@netDiagConfidenceHigh": {
+    "description": "Badge label for high confidence finding"
+  },
+  "netDiagConfidenceModerate": "Moderate Confidence",
+  "@netDiagConfidenceModerate": {
+    "description": "Badge label for moderate confidence finding"
+  },
+  "netDiagConfidenceLow": "Low Confidence / Suspect",
+  "@netDiagConfidenceLow": {
+    "description": "Badge label for low confidence finding"
+  },
+  "netDiagSupportingEvidence": "Supporting Evidence / Observations:",
+  "@netDiagSupportingEvidence": {
+    "description": "Label for supporting evidence list"
+  },
+  "netDiagConflictingEvidence": "Conflicting / Mitigating Observations:",
+  "@netDiagConflictingEvidence": {
+    "description": "Label for contradictory evidence list"
+  },
+  "netDiagRecommendedActions": "Recommended Actions & Next Steps:",
+  "@netDiagRecommendedActions": {
+    "description": "Label for recommended steps list"
+  },
+  "netDiagWhyItMatters": "Why This Matters:",
+  "@netDiagWhyItMatters": {
+    "description": "Label explaining significance of test"
+  },
+  "netDiagSuggestedAction": "Suggested Action:",
+  "@netDiagSuggestedAction": {
+    "description": "Label for suggested action on failed test"
+  },
+  "netDiagScope": "Scope: {scope}",
+  "@netDiagScope": {
+    "description": "Scope label for test item",
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagObservedFacts": "Observed Facts / Evidence:",
+  "@netDiagObservedFacts": {
+    "description": "Label for observed facts"
+  },
+  "netDiagTechnicalFindings": "Technical Findings / Details:",
+  "@netDiagTechnicalFindings": {
+    "description": "Label for technical details section"
+  },
+  "netDiagExecutionDuration": "Execution Duration: {ms} ms",
+  "@netDiagExecutionDuration": {
+    "description": "Duration of test execution in milliseconds",
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "netDiagUnverifiedExplanation": "The diagnostic engine operates within the visibility boundaries of the router. Some failure domains require physical client verification, ISP-level inspection, or active traffic observation:",
+  "@netDiagUnverifiedExplanation": {
+    "description": "Explanation of unverified diagnostic areas"
+  },
+  "netDiagStatusHealthy": "Healthy",
+  "@netDiagStatusHealthy": {
+    "description": "Test status healthy"
+  },
+  "netDiagStatusDegraded": "Degraded",
+  "@netDiagStatusDegraded": {
+    "description": "Test status degraded"
+  },
+  "netDiagStatusSuspected": "Suspected",
+  "@netDiagStatusSuspected": {
+    "description": "Test status suspected"
+  },
+  "netDiagStatusFailureConfirmed": "Failure Confirmed",
+  "@netDiagStatusFailureConfirmed": {
+    "description": "Test status failure confirmed"
+  },
+  "netDiagStatusInconclusive": "Inconclusive",
+  "@netDiagStatusInconclusive": {
+    "description": "Test status inconclusive"
+  },
+  "netDiagStatusNotTested": "Not Tested",
+  "@netDiagStatusNotTested": {
+    "description": "Test status not tested"
+  },
+  "netDiagStatusUnsupported": "Unsupported",
+  "@netDiagStatusUnsupported": {
+    "description": "Test status unsupported"
+  },
+  "netDiagStatusNotApplicable": "Not Applicable",
+  "@netDiagStatusNotApplicable": {
+    "description": "Test status not applicable"
+  },
+  "settingsDataManagement": "DATA MANAGEMENT",
+  "@settingsDataManagement": {
+    "description": "Section header for data management in settings"
+  },
+  "settingsExportConfigTitle": "Export Configuration (JSON)",
+  "@settingsExportConfigTitle": {
+    "description": "Settings tile title to export configuration"
+  },
+  "settingsExportConfigSubtitle": "Export DDNS, DHCP leases, firewall rules, packages, cron jobs & more as JSON",
+  "@settingsExportConfigSubtitle": {
+    "description": "Settings tile subtitle describing exportable categories"
+  },
+  "jsonExportTitle": "Export Configuration",
+  "@jsonExportTitle": {
+    "description": "App bar title for export configuration screen"
+  },
+  "jsonExportBanner": "Export router configuration categories as JSON files. Sensitive fields such as passwords are automatically redacted before export. Data is sourced from the last dashboard refresh; installed packages require a live network call.",
+  "@jsonExportBanner": {
+    "description": "Information banner on json export screen"
+  },
+  "jsonExportSectionIndividual": "INDIVIDUAL EXPORTS",
+  "@jsonExportSectionIndividual": {
+    "description": "Section header for individual exports"
+  },
+  "jsonExportSectionAllInOne": "ALL-IN-ONE",
+  "@jsonExportSectionAllInOne": {
+    "description": "Section header for all-in-one export"
+  },
+  "jsonExportAllTitle": "Export All (JSON)",
+  "@jsonExportAllTitle": {
+    "description": "Title for all-in-one export card"
+  },
+  "jsonExportAllSubtitle": "Collects all 10 categories into a single structured JSON file. Installed packages require an active router session.",
+  "@jsonExportAllSubtitle": {
+    "description": "Subtitle for all-in-one export card"
+  },
+  "jsonExportBtnAll": "Export All (JSON)",
+  "@jsonExportBtnAll": {
+    "description": "Button to trigger full configuration export"
+  },
+  "jsonExportBtnExporting": "Exporting…",
+  "@jsonExportBtnExporting": {
+    "description": "Button label while exporting"
+  },
+  "jsonExportCatDdns": "DDNS Entries",
+  "@jsonExportCatDdns": {
+    "description": "Category title for DDNS"
+  },
+  "jsonExportCatDdnsSubtitle": "Dynamic DNS service configurations (passwords redacted)",
+  "@jsonExportCatDdnsSubtitle": {
+    "description": "Category subtitle for DDNS"
+  },
+  "jsonExportCatDhcp": "Static DHCP Leases",
+  "@jsonExportCatDhcp": {
+    "description": "Category title for static DHCP leases"
+  },
+  "jsonExportCatDhcpSubtitle": "Hostname → IP → MAC static lease mappings",
+  "@jsonExportCatDhcpSubtitle": {
+    "description": "Category subtitle for static DHCP leases"
+  },
+  "jsonExportCatFirewall": "Firewall Rules",
+  "@jsonExportCatFirewall": {
+    "description": "Category title for firewall rules"
+  },
+  "jsonExportCatFirewallSubtitle": "Custom traffic rules (non-system)",
+  "@jsonExportCatFirewallSubtitle": {
+    "description": "Category subtitle for firewall rules"
+  },
+  "jsonExportCatZoneForwarding": "Zone Forwarding",
+  "@jsonExportCatZoneForwarding": {
+    "description": "Category title for zone forwarding"
+  },
+  "jsonExportCatZoneForwardingSubtitle": "Firewall zone-to-zone forwarding definitions",
+  "@jsonExportCatZoneForwardingSubtitle": {
+    "description": "Category subtitle for zone forwarding"
+  },
+  "jsonExportCatPortForwarding": "Port Forwarding",
+  "@jsonExportCatPortForwarding": {
+    "description": "Category title for port forwarding"
+  },
+  "jsonExportCatPortForwardingSubtitle": "DNAT / port redirect rules",
+  "@jsonExportCatPortForwardingSubtitle": {
+    "description": "Category subtitle for port forwarding"
+  },
+  "jsonExportCatParentalControls": "Parental Control Profiles",
+  "@jsonExportCatParentalControls": {
+    "description": "Category title for parental control profiles"
+  },
+  "jsonExportCatParentalControlsSubtitle": "Local per-router parental control profiles",
+  "@jsonExportCatParentalControlsSubtitle": {
+    "description": "Category subtitle for parental control profiles"
+  },
+  "jsonExportCatInstalledPackages": "Installed Packages",
+  "@jsonExportCatInstalledPackages": {
+    "description": "Category title for installed packages"
+  },
+  "jsonExportCatInstalledPackagesSubtitle": "List of installed opkg / apk packages (live fetch)",
+  "@jsonExportCatInstalledPackagesSubtitle": {
+    "description": "Category subtitle for installed packages"
+  },
+  "jsonExportCatCronJobs": "Cron Jobs",
+  "@jsonExportCatCronJobs": {
+    "description": "Category title for cron jobs"
+  },
+  "jsonExportCatCronJobsSubtitle": "Scheduled cron entries from the router",
+  "@jsonExportCatCronJobsSubtitle": {
+    "description": "Category subtitle for cron jobs"
+  },
+  "jsonExportCatInitScripts": "Init Scripts",
+  "@jsonExportCatInitScripts": {
+    "description": "Category title for init scripts"
+  },
+  "jsonExportCatInitScriptsSubtitle": "rc.list init script enabled/disabled state",
+  "@jsonExportCatInitScriptsSubtitle": {
+    "description": "Category subtitle for init scripts"
+  },
+  "jsonExportCatDashboardSettings": "Dashboard Settings",
+  "@jsonExportCatDashboardSettings": {
+    "description": "Category title for dashboard settings"
+  },
+  "jsonExportCatDashboardSettingsSubtitle": "UI preferences: card order, visibility, shortcuts",
+  "@jsonExportCatDashboardSettingsSubtitle": {
+    "description": "Category subtitle for dashboard settings"
+  },
+  "jsonExportToastExporting": "Exporting {category}…",
+  "@jsonExportToastExporting": {
+    "description": "Toast message when category export begins",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "jsonExportToastBuilding": "Building full configuration export…",
+  "@jsonExportToastBuilding": {
+    "description": "Toast message while building all categories export"
+  },
+  "jsonExportToastFailed": "Export Failed",
+  "@jsonExportToastFailed": {
+    "description": "Toast error title when export fails"
+  },
+  "jsonExportToastNoData": "No Data",
+  "@jsonExportToastNoData": {
+    "description": "Toast error title when no data is available"
+  },
+  "jsonExportToastNoDataSubtitle": "{category}: no data available to export.",
+  "@jsonExportToastNoDataSubtitle": {
+    "description": "Toast error subtitle when no data is available for category",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "jsonExportToastExported": "{category} exported",
+  "@jsonExportToastExported": {
+    "description": "Toast success message when category export succeeds",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "jsonExportToastItemCount": "{count} item(s)",
+  "@jsonExportToastItemCount": {
+    "description": "Count of items exported",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "jsonExportToastFullExported": "Full configuration exported",
+  "@jsonExportToastFullExported": {
+    "description": "Toast success message when full export succeeds"
+  },
+  "jsonExportDialogTitle": "Configuration Exported",
+  "@jsonExportDialogTitle": {
+    "description": "Title of prompt dialog after export file saved"
+  },
+  "jsonExportDialogCategoryFileLabel": "{category} JSON",
+  "@jsonExportDialogCategoryFileLabel": {
+    "description": "File label in save prompt for single category",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "jsonExportDialogFullFileLabel": "Full Config JSON",
+  "@jsonExportDialogFullFileLabel": {
+    "description": "File label in save prompt for all categories"
+  },
+  "jsonExportToastSaveCancelled": "Save Cancelled",
+  "@jsonExportToastSaveCancelled": {
+    "description": "Toast error when user cancels save dialog"
+  },
+  "jsonExportToastSaveCancelledSubtitle": "File was not saved.",
+  "@jsonExportToastSaveCancelledSubtitle": {
+    "description": "Toast subtitle when user cancels save dialog"
+  },
+  "jsonExportToastError": "Export Error",
+  "@jsonExportToastError": {
+    "description": "Toast error title on exception"
+  },
+  "jsonExportTooltipExport": "Export {category}",
+  "@jsonExportTooltipExport": {
+    "description": "Tooltip for category export button",
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "diagTabSpeedTest": "Speed Test",
+  "@diagTabSpeedTest": {
+    "description": "Tab label for internet speed test"
+  },
+  "diagTabDnsLatency": "DNS Latency",
+  "@diagTabDnsLatency": {
+    "description": "Tab label for DNS latency benchmark"
+  },
+  "speedTestVantageTitle": "Router Internet Speed Test (WAN)",
+  "@speedTestVantageTitle": {
+    "description": "Title for router WAN speed test card"
+  },
+  "speedTestVantagePoint": "Vantage Point: Direct OpenWrt router WAN interface ({iface})",
+  "@speedTestVantagePoint": {
+    "description": "Vantage point bullet describing router WAN interface",
+    "placeholders": {
+      "iface": {
+        "type": "String"
+      }
+    }
+  },
+  "speedTestEndpoint": "Endpoint: Cloudflare Anycast edge (speed.cloudflare.com)",
+  "@speedTestEndpoint": {
+    "description": "Endpoint bullet describing Cloudflare server"
+  },
+  "speedTestParamMethodology": "Methodology: Multi-stage steady-state buffer warmup & sustained throughput measurement via LuCI RPC",
+  "@speedTestParamMethodology": {
+    "description": "Methodology bullet describing speed test process"
+  },
+  "speedTestParamIsolation": "Radio Isolation: Completely eliminates client device Wi-Fi or cellular skew",
+  "@speedTestParamIsolation": {
+    "description": "Radio isolation bullet"
+  },
+  "speedTestMetricDownload": "DOWNLOAD",
+  "@speedTestMetricDownload": {
+    "description": "Download throughput metric label"
+  },
+  "speedTestMetricUpload": "UPLOAD",
+  "@speedTestMetricUpload": {
+    "description": "Upload throughput metric label"
+  },
+  "speedTestMetricIdlePing": "Idle Ping",
+  "@speedTestMetricIdlePing": {
+    "description": "Idle ping latency metric label"
+  },
+  "speedTestMetricJitter": "Jitter",
+  "@speedTestMetricJitter": {
+    "description": "Latency jitter metric label"
+  },
+  "speedTestMetricLoadedPing": "Loaded Ping",
+  "@speedTestMetricLoadedPing": {
+    "description": "Loaded ping latency metric label"
+  },
+  "speedTestLoadedPingTooltip": "Latency measured during active network load",
+  "@speedTestLoadedPingTooltip": {
+    "description": "Tooltip explaining loaded latency measurement"
+  },
+  "speedTestBtnStart": "Start Router Speed Test",
+  "@speedTestBtnStart": {
+    "description": "Button to start router speed test"
+  },
+  "speedTestBtnRerun": "Run Router Speed Test Again",
+  "@speedTestBtnRerun": {
+    "description": "Button to rerun router speed test"
+  },
+  "speedTestBtnCancel": "Cancel Speed Test",
+  "@speedTestBtnCancel": {
+    "description": "Button to cancel speed test"
+  },
+  "speedTestPreparing": "Preparing test...",
+  "@speedTestPreparing": {
+    "description": "Status message while preparing test"
+  },
+  "speedTestSuccess": "Router speed test completed successfully",
+  "@speedTestSuccess": {
+    "description": "Status message when router speed test finishes"
+  },
+  "speedTestCancelled": "Speed test cancelled by user",
+  "@speedTestCancelled": {
+    "description": "Status message when speed test is cancelled"
+  },
+  "speedTestContextTitle": "Measurement Context & Limitations",
+  "@speedTestContextTitle": {
+    "description": "Context and methodology card header"
+  },
+  "speedTestContextBullet1": "Vantage point: OpenWrt Router WAN interface.",
+  "@speedTestContextBullet1": {
+    "description": "Context bullet 1"
+  },
+  "speedTestContextBullet2": "Server endpoint: Cloudflare Anycast (speed.cloudflare.com).",
+  "@speedTestContextBullet2": {
+    "description": "Context bullet 2"
+  },
+  "speedTestContextBullet3": "Measures direct throughput and latency from the router WAN interface to Cloudflare Anycast.",
+  "@speedTestContextBullet3": {
+    "description": "Context bullet 3"
+  },
+  "speedTestContextBullet4": "Completely eliminates device Wi-Fi or cellular radio interference.",
+  "@speedTestContextBullet4": {
+    "description": "Context bullet 4"
+  },
+  "speedTestLastTested": "Last tested: {timestamp}",
+  "@speedTestLastTested": {
+    "description": "Last tested timestamp label",
+    "placeholders": {
+      "timestamp": {
+        "type": "String"
+      }
+    }
+  },
+  "dnsBenchVantageHeader": "TEST VANTAGE POINT",
+  "@dnsBenchVantageHeader": {
+    "description": "Header for DNS vantage point selection"
+  },
+  "dnsBenchVantageDevice": "From This Device (Wi-Fi)",
+  "@dnsBenchVantageDevice": {
+    "description": "Vantage point from client device"
+  },
+  "dnsBenchVantageDeviceDesc": "Measures end-to-end response time experienced by your phone.",
+  "@dnsBenchVantageDeviceDesc": {
+    "description": "Description of client device vantage point"
+  },
+  "dnsBenchVantageRouter": "From Router (WAN)",
+  "@dnsBenchVantageRouter": {
+    "description": "Vantage point from router WAN"
+  },
+  "dnsBenchVantageRouterDesc": "Measures WAN query latency directly from the router to DNS servers.",
+  "@dnsBenchVantageRouterDesc": {
+    "description": "Description of router WAN vantage point"
+  },
+  "dnsBenchBtnRun": "Run DNS Benchmark",
+  "@dnsBenchBtnRun": {
+    "description": "Button to start DNS benchmark"
+  },
+  "dnsBenchBtnRerun": "Run DNS Benchmark Again",
+  "@dnsBenchBtnRerun": {
+    "description": "Button to rerun DNS benchmark"
+  },
+  "dnsBenchBtnCancel": "Cancel DNS Benchmark",
+  "@dnsBenchBtnCancel": {
+    "description": "Button to cancel DNS benchmark"
+  },
+  "dnsBenchCustomTitle": "Custom DNS Resolver",
+  "@dnsBenchCustomTitle": {
+    "description": "Title for custom DNS toggle"
+  },
+  "dnsBenchCustomSubtitle": "Benchmark your own DNS server alongside public providers",
+  "@dnsBenchCustomSubtitle": {
+    "description": "Subtitle for custom DNS toggle"
+  },
+  "dnsBenchCustomIpLabel": "DNS Server IP Address",
+  "@dnsBenchCustomIpLabel": {
+    "description": "Label for custom DNS IP text field"
+  },
+  "dnsBenchCustomIpHint": "e.g. 1.1.1.2 or 94.140.14.14",
+  "@dnsBenchCustomIpHint": {
+    "description": "Hint for custom DNS IP text field"
+  },
+  "dnsBenchCustomIpError": "Enter a valid IPv4 or IPv6 address",
+  "@dnsBenchCustomIpError": {
+    "description": "Error message for invalid IP format"
+  },
+  "dnsBenchRouterDnsTitle": "Current Router DNS",
+  "@dnsBenchRouterDnsTitle": {
+    "description": "Title for active router DNS comparator card"
+  },
+  "dnsBenchRouterDnsResolving": "Resolving router config...",
+  "@dnsBenchRouterDnsResolving": {
+    "description": "Status text while detecting router DNS config"
+  },
+  "dnsBenchRouterDnsLocalCache": "Local cache response via {endpoint}",
+  "@dnsBenchRouterDnsLocalCache": {
+    "description": "Subtitle explaining local forwarder response",
+    "placeholders": {
+      "endpoint": {
+        "type": "String"
+      }
+    }
+  },
+  "dnsBenchRouterDnsUpstream": "Direct upstream lookup from router",
+  "@dnsBenchRouterDnsUpstream": {
+    "description": "Subtitle explaining direct upstream lookup"
+  },
+  "dnsBenchPublicResolversHeader": "PUBLIC DNS RESOLVERS",
+  "@dnsBenchPublicResolversHeader": {
+    "description": "Header for public DNS resolvers list"
+  },
+  "dnsBenchSortLowestLatency": "Lowest latency",
+  "@dnsBenchSortLowestLatency": {
+    "description": "Sort badge label post-test"
+  },
+  "dnsBenchSortAlphabetical": "A-Z",
+  "@dnsBenchSortAlphabetical": {
+    "description": "Sort badge label pre-test"
+  },
+  "dnsBenchStatusUntested": "Untested",
+  "@dnsBenchStatusUntested": {
+    "description": "Status badge for untested DNS provider"
+  },
+  "dnsBenchStatusFastest": "Fastest measured in this test",
+  "@dnsBenchStatusFastest": {
+    "description": "Status badge for fastest DNS provider measured in test"
+  },
+  "dnsBenchStatusTesting": "Testing...",
+  "@dnsBenchStatusTesting": {
+    "description": "Status badge for provider currently being tested"
+  },
+  "dnsBenchStatusTimeout": "Timeout",
+  "@dnsBenchStatusTimeout": {
+    "description": "Status badge for provider query timeout"
+  },
+  "dnsBenchStatusFailed": "Failed",
+  "@dnsBenchStatusFailed": {
+    "description": "Status badge for provider query failure"
+  },
+  "dnsBenchDisclaimerTitle": "Fair Comparison & Protocol Notice",
+  "@dnsBenchDisclaimerTitle": {
+    "description": "Title for DNS benchmark disclaimer card"
+  },
+  "dnsBenchDisclaimer1": "• Query protocol: {protocol} for controlled domain lookups.",
+  "@dnsBenchDisclaimer1": {
+    "description": "Disclaimer bullet 1",
+    "placeholders": {
+      "protocol": {
+        "type": "String"
+      }
+    }
+  },
+  "dnsBenchDisclaimer2": "• Latency reflects the median response time under current network conditions.",
+  "@dnsBenchDisclaimer2": {
+    "description": "Disclaimer bullet 2"
+  },
+  "dnsBenchDisclaimer3": "• \"Fastest measured in this test\" highlights low network RTT, but overall DNS choice should also consider privacy policies, malware blocking, parental controls, and DNSSEC validation.",
+  "@dnsBenchDisclaimer3": {
+    "description": "Disclaimer bullet 3"
+  },
+  "dnsBenchLastTested": "Last tested: {timestamp}",
+  "@dnsBenchLastTested": {
+    "description": "Last tested timestamp label for DNS benchmark",
+    "placeholders": {
+      "timestamp": {
+        "type": "String"
+      }
+    }
+  },
+  "aghUnreachableTitle": "AdGuard Home Unreachable",
+  "@aghUnreachableTitle": {
+    "description": "Error title when AdGuard Home cannot be reached"
+  },
+  "aghNetworkErrorSubtitle": "Network connection failure communicating with AdGuard Home",
+  "@aghNetworkErrorSubtitle": {
+    "description": "Error subtitle for network connection failure"
+  },
+  "aghManagementTitle": "AdGuard Home Management",
+  "@aghManagementTitle": {
+    "description": "Title for setup guide card on unreachable screen"
+  },
+  "aghManagementGuide": "YALA manages existing AdGuard Home instances and does not install software on the router.\n\n• Router-local instance: Install and configure AdGuard Home independently (via SSH or your package manager), ensure the service is running, then tap Retry.\n• External instance: If running AdGuard Home on a Raspberry Pi, NAS, or server, add an external profile.",
+  "@aghManagementGuide": {
+    "description": "Setup guide instructions on unreachable screen"
+  },
+  "aghAddExternalProfile": "Add External Profile",
+  "@aghAddExternalProfile": {
+    "description": "Button to configure external AdGuard Home profile"
+  },
+  "aghAddExternalInstance": "Add External Instance",
+  "@aghAddExternalInstance": {
+    "description": "Menu option to add an external instance"
+  },
+  "aghEditCurrentProfile": "Edit Current Profile",
+  "@aghEditCurrentProfile": {
+    "description": "Menu option to edit the current profile"
+  },
+  "aghDeleteProfileTitle": "Delete Instance Profile?",
+  "@aghDeleteProfileTitle": {
+    "description": "Dialog title for profile deletion confirmation"
+  },
+  "netDiagSummaryHealthy": "Internet connection is operational. Router reachability and DNS resolution verified.",
+  "@netDiagSummaryHealthy": {
+    "description": "Summary when all core tests are healthy"
+  },
+  "netDiagFindingIpv4OnlyTitle": "IPv4-Only Network (IPv6 Not Configured)",
+  "@netDiagFindingIpv4OnlyTitle": {
+    "description": "Title for finding when IPv6 is not configured"
+  },
+  "netDiagFindingIpv4OnlyDesc": "The router is operating in IPv4-only mode. No global IPv6 prefix or gateway is assigned. This is normal for networks that do not utilize IPv6.",
+  "@netDiagFindingIpv4OnlyDesc": {
+    "description": "Description for IPv4-only finding"
+  },
+  "netDiagEvidenceNoIpv6": "No global unicast IPv6 address found on active interfaces.",
+  "@netDiagEvidenceNoIpv6": {
+    "description": "Evidence text for no IPv6"
+  },
+  "netDiagFindingRouterReachabilityTitle": "Router Internet Reachability Verified",
+  "@netDiagFindingRouterReachabilityTitle": {
+    "description": "Title for verified router reachability finding"
+  },
+  "netDiagFindingRouterReachabilityDesc": "The router successfully resolved external DNS and communicated with independent internet endpoints. If a specific device cannot access the internet, the issue is likely client-specific (e.g. Wi-Fi signal, static IP misconfiguration, or device firewall).",
+  "@netDiagFindingRouterReachabilityDesc": {
+    "description": "Description for verified router reachability finding"
+  },
+  "netDiagEvidenceAllProbesPassed": "All router-originated connectivity probes passed.",
+  "@netDiagEvidenceAllProbesPassed": {
+    "description": "Evidence that all router probes passed"
+  },
+  "netDiagEvidenceLanWanForwardingOk": "LAN-to-WAN forwarding policy verified in firewall configuration.",
+  "@netDiagEvidenceLanWanForwardingOk": {
+    "description": "Evidence that forwarding is allowed in firewall"
+  },
+  "netDiagTestMgmtTitle": "Router Management & API Reachability",
+  "@netDiagTestMgmtTitle": {
+    "description": "Title for router management check"
+  },
+  "netDiagTestMgmtDescHealthy": "Authenticated connection to router ubus/RPC daemon is active.",
+  "@netDiagTestMgmtDescHealthy": {
+    "description": "Healthy description for router management check"
+  },
+  "netDiagTestMgmtDescFailed": "Could not communicate with the router management API.",
+  "@netDiagTestMgmtDescFailed": {
+    "description": "Failed description for router management check"
+  },
+  "netDiagTestMgmtWhy": "API reachability is required to inspect router hardware, network interfaces, and diagnostic tools.",
+  "@netDiagTestMgmtWhy": {
+    "description": "Significance of router management check"
+  },
+  "netDiagTestUplinkTitle": "WAN Interface & Uplink State",
+  "@netDiagTestUplinkTitle": {
+    "description": "Title for WAN uplink check"
+  },
+  "netDiagTestUplinkDescUp": "Active uplink \"{iface}\" is up with protocol {proto}.",
+  "@netDiagTestUplinkDescUp": {
+    "description": "Active uplink status description",
+    "placeholders": {
+      "iface": {
+        "type": "String"
+      },
+      "proto": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagTestUplinkDescDown": "Uplink interface is down or disconnected.",
+  "@netDiagTestUplinkDescDown": {
+    "description": "Down description for WAN uplink check"
+  },
+  "netDiagTestUplinkWhy": "The uplink interface connects your router to the ISP modem, ONT, or upstream gateway.",
+  "@netDiagTestUplinkWhy": {
+    "description": "Significance of WAN uplink check"
+  },
+  "netDiagTestRouteTitle": "Default Route Verification",
+  "@netDiagTestRouteTitle": {
+    "description": "Title for default route check"
+  },
+  "netDiagTestRouteDescHealthy": "Default kernel route exists for outbound internet traffic.",
+  "@netDiagTestRouteDescHealthy": {
+    "description": "Healthy description for default route check"
+  },
+  "netDiagTestRouteDescFailed": "No default route (0.0.0.0/0) found in kernel routing table.",
+  "@netDiagTestRouteDescFailed": {
+    "description": "Failed description for default route check"
+  },
+  "netDiagTestRouteWhy": "A default route specifies the next-hop router that receives internet-bound packets.",
+  "@netDiagTestRouteWhy": {
+    "description": "Significance of default route check"
+  },
+  "netDiagTestGatewayTitle": "Gateway Reachability",
+  "@netDiagTestGatewayTitle": {
+    "description": "Title for gateway reachability check"
+  },
+  "netDiagTestGatewayDescReachable": "Upstream gateway ({gateway}) is reachable (RTT: {rtt} ms).",
+  "@netDiagTestGatewayDescReachable": {
+    "description": "Reachable description for gateway check",
+    "placeholders": {
+      "gateway": {
+        "type": "String"
+      },
+      "rtt": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagTestGatewayDescNoResponse": "Upstream gateway ({gateway}) did not respond to ICMP ping (may drop ICMP).",
+  "@netDiagTestGatewayDescNoResponse": {
+    "description": "No response description for gateway check",
+    "placeholders": {
+      "gateway": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagTestGatewayDescPppoe": "PPPoE point-to-point link uses interface routing without static gateway.",
+  "@netDiagTestGatewayDescPppoe": {
+    "description": "PPPoE gateway description"
+  },
+  "netDiagTestGatewayDescNoGw": "No upstream gateway IP could be verified from interface status.",
+  "@netDiagTestGatewayDescNoGw": {
+    "description": "No gateway IP description"
+  },
+  "netDiagTestGatewayWhy": "The gateway is the first upstream hop on the way to the wider internet.",
+  "@netDiagTestGatewayWhy": {
+    "description": "Significance of gateway reachability check"
+  },
+  "netDiagTestDnsTitle": "DNS Resolution Checks",
+  "@netDiagTestDnsTitle": {
+    "description": "Title for DNS resolution check"
+  },
+  "netDiagTestDnsDescHealthy": "DNS resolution is working properly across independent domains.",
+  "@netDiagTestDnsDescHealthy": {
+    "description": "Healthy description for DNS check"
+  },
+  "netDiagTestDnsDescFailed": "Router could not resolve test domains.",
+  "@netDiagTestDnsDescFailed": {
+    "description": "Failed description for DNS check"
+  },
+  "netDiagTestDnsWhy": "DNS converts human-readable domain names into IP addresses needed for routing.",
+  "@netDiagTestDnsWhy": {
+    "description": "Significance of DNS resolution check"
+  },
+  "netDiagTestIpv4Title": "IPv4 External Reachability",
+  "@netDiagTestIpv4Title": {
+    "description": "Title for IPv4 external reachability check"
+  },
+  "netDiagTestIpv4DescHealthy": "Direct IPv4 external connectivity verified across all test endpoints (min RTT: {rtt} ms).",
+  "@netDiagTestIpv4DescHealthy": {
+    "description": "Healthy description for IPv4 check",
+    "placeholders": {
+      "rtt": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagTestIpv4DescFailed": "External IPv4 endpoints unreachable from router.",
+  "@netDiagTestIpv4DescFailed": {
+    "description": "Failed description for IPv4 check"
+  },
+  "netDiagTestIpv4Why": "Verifies whether the router can successfully establish bidirectional communication with external IPv4 internet hosts.",
+  "@netDiagTestIpv4Why": {
+    "description": "Significance of IPv4 external reachability check"
+  },
+  "netDiagTestIpv6Title": "IPv6 External Reachability",
+  "@netDiagTestIpv6Title": {
+    "description": "Title for IPv6 external reachability check"
+  },
+  "netDiagTestIpv6DescNotConfigured": "IPv6 is not configured or enabled on this router (IPv4-only network).",
+  "@netDiagTestIpv6DescNotConfigured": {
+    "description": "Not configured description for IPv6 check"
+  },
+  "netDiagTestIpv6DescVerified": "Direct IPv6 external connectivity verified across test endpoints (min RTT: {rtt} ms).",
+  "@netDiagTestIpv6DescVerified": {
+    "description": "Verified description for IPv6 check",
+    "placeholders": {
+      "rtt": {
+        "type": "String"
+      }
+    }
+  },
+  "netDiagTestIpv6DescFailed": "IPv6 default route present, but external IPv6 endpoints unreachable.",
+  "@netDiagTestIpv6DescFailed": {
+    "description": "Failed description for IPv6 check"
+  },
+  "netDiagTestIpv6Why": "Ensures IPv6-capable devices can connect to modern dual-stack or IPv6-only internet services.",
+  "@netDiagTestIpv6Why": {
+    "description": "Significance of IPv6 external reachability check"
+  },
+  "netDiagTestForwardingTitle": "LAN Forwarding & NAT Policy",
+  "@netDiagTestForwardingTitle": {
+    "description": "Title for LAN forwarding check"
+  },
+  "netDiagTestForwardingDescHealthy": "LAN-to-WAN forwarding and NAT masquerading are permitted in firewall.",
+  "@netDiagTestForwardingDescHealthy": {
+    "description": "Healthy description for LAN forwarding check"
+  },
+  "netDiagTestForwardingDescFailed": "LAN-to-WAN forwarding is disabled or restricted in firewall configuration.",
+  "@netDiagTestForwardingDescFailed": {
+    "description": "Failed description for LAN forwarding check"
+  },
+  "netDiagTestForwardingWhy": "Firewall rules must allow LAN traffic to be forwarded and masqueraded onto WAN interfaces.",
+  "@netDiagTestForwardingWhy": {
+    "description": "Significance of LAN forwarding check"
+  },
+  "netDiagTestMtuTitle": "Path MTU & Fragmentation Check",
+  "@netDiagTestMtuTitle": {
+    "description": "Title for path MTU check"
+  },
+  "netDiagTestMtuDescHealthy": "Path MTU supports standard packet transmission without fragmentation bottlenecks.",
+  "@netDiagTestMtuDescHealthy": {
+    "description": "Healthy description for path MTU check"
+  },
+  "netDiagTestMtuDescFailed": "Path MTU check failed or dropped packets at standard MTU.",
+  "@netDiagTestMtuDescFailed": {
+    "description": "Failed description for path MTU check"
+  },
+  "netDiagTestMtuWhy": "Suboptimal MTU or dropped ICMP fragmentation needed packets causes stalls during large web transfers or VPN connections.",
+  "@netDiagTestMtuWhy": {
+    "description": "Significance of path MTU check"
+  },
+  "netDiagTestSkipped": "Skipped: {reason}",
+  "@netDiagTestSkipped": {
+    "description": "Explanation prefix for skipped diagnostic tests",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "firewallAdvancedSettingsTitle": "Advanced Settings",
+  "@firewallAdvancedSettingsTitle": {
+    "description": "Section title for Advanced Settings on firewall screen"
+  },
+  "firewallDefaultInput": "Default Input",
+  "@firewallDefaultInput": {
+    "description": "Default input policy label"
+  },
+  "firewallDefaultOutput": "Default Output",
+  "@firewallDefaultOutput": {
+    "description": "Default output policy label"
+  },
+  "firewallDefaultForward": "Default Forward",
+  "@firewallDefaultForward": {
+    "description": "Default forward policy label"
+  },
+  "firewallSynFloodProtection": "SYN Flood Protection",
+  "@firewallSynFloodProtection": {
+    "description": "SYN flood protection label"
+  },
+  "firewallStatusEnabled": "ENABLED",
+  "@firewallStatusEnabled": {
+    "description": "Status badge label for enabled policy"
+  },
+  "firewallStatusDisabled": "DISABLED",
+  "@firewallStatusDisabled": {
+    "description": "Status badge label for disabled policy"
+  },
+  "firewallFlowOffloadingTitle": "Routing & Flow Offloading",
+  "@firewallFlowOffloadingTitle": {
+    "description": "Section header for flow offloading"
+  },
+  "firewallSoftwareOffloadingTitle": "Software Flow Offloading",
+  "@firewallSoftwareOffloadingTitle": {
+    "description": "Title for software flow offloading switch"
+  },
+  "firewallSoftwareOffloadingSubtitle": "Software-based packet offloading for routing/NAT. Reduces CPU load and boosts throughput, but bypasses SQM shaping.",
+  "@firewallSoftwareOffloadingSubtitle": {
+    "description": "Subtitle explaining software flow offloading"
+  },
+  "firewallHardwareOffloadingTitle": "Hardware Flow Offloading",
+  "@firewallHardwareOffloadingTitle": {
+    "description": "Title for hardware flow offloading switch"
+  },
+  "firewallHardwareOffloadingSubtitle": "Requires chipset hardware NAT support. Only active when Software Flow Offloading is enabled.",
+  "@firewallHardwareOffloadingSubtitle": {
+    "description": "Subtitle explaining hardware flow offloading"
+  },
+  "firewallFlowOffloadingSqmWarning": "Flow offloading bypasses Traffic Control (tc). When enabled, SQM (Smart Queue Management) cannot shape forwarded traffic or mitigate bufferbloat.",
+  "@firewallFlowOffloadingSqmWarning": {
+    "description": "Warning notice when flow offloading is active with SQM"
+  },
+  "firewallCoveredNetworks": "Covered Networks: {networks}",
+  "@firewallCoveredNetworks": {
+    "description": "Networks covered by a firewall zone",
+    "placeholders": {
+      "networks": {
+        "type": "String"
+      }
+    }
+  },
+  "firewallTileInput": "Input",
+  "@firewallTileInput": {
+    "description": "Compact tile label for zone input policy"
+  },
+  "firewallTileOutput": "Output",
+  "@firewallTileOutput": {
+    "description": "Compact tile label for zone output policy"
+  },
+  "firewallTileForward": "Forward",
+  "@firewallTileForward": {
+    "description": "Compact tile label for zone forward policy"
+  },
+  "firewallInterZonePoliciesCount": "{count} inter-zone policies",
+  "@firewallInterZonePoliciesCount": {
+    "description": "Subtitle showing inter-zone forwardings count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "firewallPortForwardsCount": "{count} port forward rules",
+  "@firewallPortForwardsCount": {
+    "description": "Subtitle showing port forwards count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "firewallCustomRulesCount": "{count} custom rules",
+  "@firewallCustomRulesCount": {
+    "description": "Subtitle showing custom firewall rules count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "firewallRulePort": "Port: {port}",
+  "@firewallRulePort": {
+    "description": "Port traffic detail in custom rule subtitle",
+    "placeholders": {
+      "port": {
+        "type": "String"
+      }
+    }
+  },
+  "firewallRuleIp": "IP: {ip}",
+  "@firewallRuleIp": {
+    "description": "IP traffic detail in custom rule subtitle",
+    "placeholders": {
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "firewallRuleStatusEnabled": "Enabled",
+  "@firewallRuleStatusEnabled": {
+    "description": "Status text for enabled custom rule"
+  },
+  "firewallRuleStatusDisabled": "Disabled",
+  "@firewallRuleStatusDisabled": {
+    "description": "Status text for disabled custom rule"
+  },
+  "firewallRuleOriginalStatus": "Original: {status}",
+  "@firewallRuleOriginalStatus": {
+    "description": "Prefix showing original status of staged custom rule",
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "firewallRuleMoveUpTooltip": "Move up",
+  "@firewallRuleMoveUpTooltip": {
+    "description": "Tooltip for move up rule button"
+  },
+  "firewallRuleMoveDownTooltip": "Move down",
+  "@firewallRuleMoveDownTooltip": {
+    "description": "Tooltip for move down rule button"
+  },
+  "firewallRuleEditTooltip": "Edit rule",
+  "@firewallRuleEditTooltip": {
+    "description": "Tooltip for edit rule button"
+  },
+  "firewallRuleDeleteTooltip": "Delete rule",
+  "@firewallRuleDeleteTooltip": {
+    "description": "Tooltip for delete rule button"
+  },
+  "firewallEditRuleTitle": "Edit Security Rule",
+  "@firewallEditRuleTitle": {
+    "description": "Dialog title when editing a custom firewall rule"
+  },
+  "firewallAddRuleTitle": "Add Security Rule",
+  "@firewallAddRuleTitle": {
+    "description": "Dialog title when adding a custom firewall rule"
+  },
+  "firewallRuleNameLabel": "Rule Name *",
+  "@firewallRuleNameLabel": {
+    "description": "Form label for custom firewall rule name"
+  },
+  "firewallRuleNameHint": "e.g. Block IoT to WAN",
+  "@firewallRuleNameHint": {
+    "description": "Hint text for custom firewall rule name"
+  },
+  "firewallRuleNameRequired": "Please enter rule name.",
+  "@firewallRuleNameRequired": {
+    "description": "Validation error when rule name is empty"
+  },
+  "firewallRuleActionLabel": "Action / Target",
+  "@firewallRuleActionLabel": {
+    "description": "Dropdown label for rule target action"
+  },
+  "firewallSourceZoneLabel": "Source Zone",
+  "@firewallSourceZoneLabel": {
+    "description": "Dropdown label for source zone"
+  },
+  "firewallDestinationZoneLabel": "Destination Zone",
+  "@firewallDestinationZoneLabel": {
+    "description": "Dropdown label for destination zone"
+  },
+  "firewallZoneAny": "Any (*)",
+  "@firewallZoneAny": {
+    "description": "Dropdown option for wildcard zone"
+  },
+  "firewallSourceIpLabel": "Source IP / CIDR",
+  "@firewallSourceIpLabel": {
+    "description": "Form label for source IP or CIDR"
+  },
+  "firewallSourceIpHint": "e.g. 192.168.1.50 or /24",
+  "@firewallSourceIpHint": {
+    "description": "Hint text for source IP or CIDR"
+  },
+  "firewallSourceMacLabel": "Source MAC",
+  "@firewallSourceMacLabel": {
+    "description": "Form label for source MAC address"
+  },
+  "firewallDestIpLabel": "Destination IP / CIDR",
+  "@firewallDestIpLabel": {
+    "description": "Form label for destination IP or CIDR"
+  },
+  "firewallDestPortLabel": "Destination Port",
+  "@firewallDestPortLabel": {
+    "description": "Form label for destination port"
+  },
+  "firewallProtocolLabel": "Protocol",
+  "@firewallProtocolLabel": {
+    "description": "Dropdown label for network protocol"
+  },
+  "firewallIpFamilyLabel": "IP Family",
+  "@firewallIpFamilyLabel": {
+    "description": "Dropdown label for IP protocol family"
+  },
+  "firewallIpv6NotSupported": "IPv6 not supported",
+  "@firewallIpv6NotSupported": {
+    "description": "Helper text when IPv6 is not available"
+  },
+  "firewallFamilyAny": "Any (IPv4+IPv6)",
+  "@firewallFamilyAny": {
+    "description": "Dropdown option for dual-stack IP family"
+  },
+  "firewallFamilyIpv4Only": "IPv4 only",
+  "@firewallFamilyIpv4Only": {
+    "description": "Dropdown option for IPv4 only"
+  },
+  "firewallFamilyIpv6Only": "IPv6 only",
+  "@firewallFamilyIpv6Only": {
+    "description": "Dropdown option for IPv6 only"
+  },
+  "firewallRuleEnabledLabel": "Rule Enabled",
+  "@firewallRuleEnabledLabel": {
+    "description": "Switch label to enable or disable firewall rule"
+  },
+  "firewallRuleEnabledSubtitle": "Activate this security rule immediately",
+  "@firewallRuleEnabledSubtitle": {
+    "description": "Switch subtitle for firewall rule activation"
+  },
+  "firewallBtnCancel": "Cancel",
+  "@firewallBtnCancel": {
+    "description": "Button label to cancel dialog"
+  },
+  "firewallBtnSaveChanges": "Save Changes",
+  "@firewallBtnSaveChanges": {
+    "description": "Button label to save rule changes"
+  },
+  "firewallBtnCreateRule": "Create Rule",
+  "@firewallBtnCreateRule": {
+    "description": "Button label to create rule"
+  },
+  "wifiClientIsolationSubtitle": "Prevents connected Wi-Fi stations from directly communicating with each other",
+  "@wifiClientIsolationSubtitle": {
+    "description": "Subtitle explaining client isolation"
+  },
+  "wifiPmfHelperText": "Protection against deauthentication attacks",
+  "@wifiPmfHelperText": {
+    "description": "Helper text for PMF dropdown"
+  },
+  "wifiCipherHwSupported": "Hardware-supported ciphers",
+  "@wifiCipherHwSupported": {
+    "description": "Helper text for hardware-supported ciphers"
+  },
+  "wifiCipherAutoSelection": "Auto hardware selection",
+  "@wifiCipherAutoSelection": {
+    "description": "Helper text for auto hardware selection of cipher"
+  },
+  "macListHelperText": "One MAC per line or separated by comma/space",
+  "@macListHelperText": {
+    "description": "Helper text for MAC address list input"
+  },
+  "fastTransition80211kSubtitle": "Provides radio measurement reports to accelerate AP roaming decisions",
+  "@fastTransition80211kSubtitle": {
+    "description": "Subtitle for 802.11k radio resource management toggle"
+  },
+  "fastTransition80211vSubtitle": "Allows AP to guide stations to transition to optimal radios",
+  "@fastTransition80211vSubtitle": {
+    "description": "Subtitle for 802.11v BSS transition management toggle"
+  },
+
+  "upgradeCenterTitle": "Firmware Upgrade Center",
+  "@upgradeCenterTitle": {
+    "description": "Title for the Firmware Upgrade Center collapsible card"
+  },
+  "upgradeCenterSubtitleScanning": "Scanning router…",
+  "@upgradeCenterSubtitleScanning": {
+    "description": "Subtitle for the Firmware Upgrade Center card while the scan is in progress"
+  },
+  "upgradeCenterSubtitleReady": "Check for available firmware updates",
+  "@upgradeCenterSubtitleReady": {
+    "description": "Subtitle for the Firmware Upgrade Center card when scan data is available"
+  },
+  "upgradeScanInProgressLabel": "Running router compatibility scan…",
+  "@upgradeScanInProgressLabel": {
+    "description": "Label shown in the progress banner while the upgrade scan is running"
+  },
+  "upgradeScanIncompleteTitle": "Scan Incomplete",
+  "@upgradeScanIncompleteTitle": {
+    "description": "Title of the warning banner shown when a router scan completed only partially"
+  },
+  "upgradeScanIncompleteBody": "Some router probes failed. Compatibility data may be incomplete.",
+  "@upgradeScanIncompleteBody": {
+    "description": "Body of the warning banner shown when a router scan completed only partially"
+  },
+  "upgradeScanStaleTitle": "Scan data may be stale",
+  "@upgradeScanStaleTitle": {
+    "description": "Title of the warning banner shown when scan data is older than the freshness threshold"
+  },
+  "upgradeScanStaleBody": "Last scanned more than 5 minutes ago. Tap Refresh to update.",
+  "@upgradeScanStaleBody": {
+    "description": "Body of the warning banner shown when scan data is older than the freshness threshold"
+  },
+  "upgradeRefreshScanBtn": "Refresh Scan",
+  "@upgradeRefreshScanBtn": {
+    "description": "Label for the button that re-runs the router compatibility scan"
+  },
+  "upgradeCheckBtn": "Check for Firmware Upgrades",
+  "@upgradeCheckBtn": {
+    "description": "Label for the button that checks for available firmware upgrades"
+  },
+  "upgradeScanRowNotDetected": "Not detected",
+  "@upgradeScanRowNotDetected": {
+    "description": "Value label in a scan info row when the property could not be detected"
+  },
+  "upgradeScanRowUnknown": "Unknown",
+  "@upgradeScanRowUnknown": {
+    "description": "Value label in a scan info row when the property value is unknown"
+  },
+  "upgradeScanRowSysupgradeAvailable": "Available",
+  "@upgradeScanRowSysupgradeAvailable": {
+    "description": "Sysupgrade availability status: binary found on router"
+  },
+  "upgradeScanRowSysupgradeNotFound": "Not found",
+  "@upgradeScanRowSysupgradeNotFound": {
+    "description": "Sysupgrade availability status: binary not found on router"
+  },
+  "upgradeScanLabelModel": "Model",
+  "@upgradeScanLabelModel": {
+    "description": "Label for the router model row in the upgrade scan info section"
+  },
+  "upgradeScanLabelBoard": "Board",
+  "@upgradeScanLabelBoard": {
+    "description": "Label for the board name row in the upgrade scan info section"
+  },
+  "upgradeScanLabelFirmware": "Firmware",
+  "@upgradeScanLabelFirmware": {
+    "description": "Label for the firmware description row in the upgrade scan info section"
+  },
+  "upgradeScanLabelTarget": "Target",
+  "@upgradeScanLabelTarget": {
+    "description": "Label for the build target row in the upgrade scan info section"
+  },
+  "upgradeScanLabelArch": "Arch",
+  "@upgradeScanLabelArch": {
+    "description": "Label for the CPU architecture row in the upgrade scan info section"
+  },
+  "upgradeScanLabelPackageManager": "Package Manager",
+  "@upgradeScanLabelPackageManager": {
+    "description": "Label for the package manager row in the upgrade scan info section"
+  },
+  "upgradeScanLabelSysupgrade": "Sysupgrade",
+  "@upgradeScanLabelSysupgrade": {
+    "description": "Label for the sysupgrade availability row in the upgrade scan info section"
+  },
+  "upgradeScanLabelTmpSpace": "/tmp Space",
+  "@upgradeScanLabelTmpSpace": {
+    "description": "Label for the /tmp available space row in the upgrade scan info section"
+  },
+  "upgradeAvailStatusUpdateAvailable": "Update Available",
+  "@upgradeAvailStatusUpdateAvailable": {
+    "description": "Upgrade availability result: a newer compatible firmware is available"
+  },
+  "upgradeAvailStatusUpToDate": "Up to Date",
+  "@upgradeAvailStatusUpToDate": {
+    "description": "Upgrade availability result: current firmware is the latest available"
+  },
+  "upgradeAvailStatusManualCheckRequired": "Manual Check Required",
+  "@upgradeAvailStatusManualCheckRequired": {
+    "description": "Upgrade availability result: automatic check is not supported for this firmware source"
+  },
+  "upgradeAvailStatusVersionUnknown": "Current Version Unknown",
+  "@upgradeAvailStatusVersionUnknown": {
+    "description": "Upgrade availability result: the current firmware version could not be determined"
+  },
+  "upgradeAvailStatusCompatibilityUnverifiable": "Compatibility Unverifiable",
+  "@upgradeAvailStatusCompatibilityUnverifiable": {
+    "description": "Upgrade availability result: compatibility of an available image cannot be confirmed"
+  },
+  "upgradeAvailStatusNoMatchingImage": "No Matching Image Found",
+  "@upgradeAvailStatusNoMatchingImage": {
+    "description": "Upgrade availability result: no firmware image matched this device"
+  },
+  "upgradeAvailStatusSourceUnavailable": "Update Source Unavailable",
+  "@upgradeAvailStatusSourceUnavailable": {
+    "description": "Upgrade availability result: the firmware update source could not be reached"
+  },
+  "upgradeAvailStatusNotChecked": "Not Checked",
+  "@upgradeAvailStatusNotChecked": {
+    "description": "Upgrade availability result: the firmware upgrade check has not been run yet"
+  },
+  "upgradeAvailCurrentVersion": "Current: {version}",
+  "@upgradeAvailCurrentVersion": {
+    "description": "Shows the currently installed firmware version next to the availability status",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "readinessReportTitle": "Upgrade Readiness Report",
+  "@readinessReportTitle": {
+    "description": "Title for the upgrade readiness report collapsible card"
+  },
+  "readinessReportScanNotComplete": "Router scan not complete",
+  "@readinessReportScanNotComplete": {
+    "description": "Subtitle for the readiness report card when no scan data is available"
+  },
+  "readinessReportSummaryBlocking": "{count, plural, one{{count} blocking issue — flash not recommended} other{{count} blocking issues — flash not recommended}}",
+  "@readinessReportSummaryBlocking": {
+    "description": "Readiness summary shown when there are blocking issues",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "compact"
+      }
+    }
+  },
+  "readinessReportSummaryWarnings": "{count, plural, one{{count} warning — review before flashing} other{{count} warnings — review before flashing}}",
+  "@readinessReportSummaryWarnings": {
+    "description": "Readiness summary shown when there are warnings but no blocking issues",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "compact"
+      }
+    }
+  },
+  "readinessReportSummaryReady": "Ready to flash",
+  "@readinessReportSummaryReady": {
+    "description": "Readiness summary shown when no issues or warnings were found"
+  },
+  "readinessReportScanNotCompleteHint": "Router scan not yet complete. Refresh scan to generate readiness report.",
+  "@readinessReportScanNotCompleteHint": {
+    "description": "Body text in the readiness report when there is no scan data"
+  },
+  "readinessReportStaleDataTitle": "Based on stale scan data",
+  "@readinessReportStaleDataTitle": {
+    "description": "Title of the warning shown inside the readiness report when the scan is stale"
+  },
+  "readinessReportStaleDataBody": "Refresh the router scan for an up-to-date assessment.",
+  "@readinessReportStaleDataBody": {
+    "description": "Body of the warning shown inside the readiness report when the scan is stale"
+  },
+  "migrationNoticeTitle": "Package Migration Notice",
+  "@migrationNoticeTitle": {
+    "description": "Title for the package migration notice collapsible card"
+  },
+  "migrationTransitionOpkgToApk": "OPKG → APK transition detected",
+  "@migrationTransitionOpkgToApk": {
+    "description": "Migration transition label: OPKG to APK"
+  },
+  "migrationTransitionApkToOpkg": "APK → OPKG transition detected",
+  "@migrationTransitionApkToOpkg": {
+    "description": "Migration transition label: APK to OPKG"
+  },
+  "migrationTransitionMixed": "Mixed / vendor-specific package environment",
+  "@migrationTransitionMixed": {
+    "description": "Migration transition label: mixed or vendor-specific environment"
+  },
+  "migrationTransitionNone": "No package migration required",
+  "@migrationTransitionNone": {
+    "description": "Migration transition label: same package manager family"
+  },
+  "migrationTransitionUnknown": "Package migration status unknown",
+  "@migrationTransitionUnknown": {
+    "description": "Migration transition label: unknown transition"
+  },
+  "migrationInstalledPackagesLabel": "Installed packages ({count} detected):",
+  "@migrationInstalledPackagesLabel": {
+    "description": "Header for the installed package list in the migration notice section",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "migrationAfterUpgradeTitle": "After upgrade",
+  "@migrationAfterUpgradeTitle": {
+    "description": "Title of the informational banner shown after the package migration list"
+  },
+  "migrationAfterUpgradeBody": "Reinstall your required packages using the new package manager after the firmware upgrade is complete.",
+  "@migrationAfterUpgradeBody": {
+    "description": "Body of the informational banner shown after the package migration list"
+  },
+  "preservationImpactTitle": "Configuration Preservation Impact",
+  "@preservationImpactTitle": {
+    "description": "Title for the configuration preservation impact collapsible card"
+  },
+  "preservationNoItemsDetected": "No configuration items could be detected. The router scan may be incomplete.",
+  "@preservationNoItemsDetected": {
+    "description": "Body shown when no preservation items were detected"
+  },
+  "preservationPartialInventoryTitle": "Partial inventory",
+  "@preservationPartialInventoryTitle": {
+    "description": "Title of the warning banner shown when the preservation inventory is incomplete"
+  },
+  "preservationPartialInventoryBody": "Some configuration items could not be inspected. The list below may be incomplete.",
+  "@preservationPartialInventoryBody": {
+    "description": "Body of the warning banner shown when the preservation inventory is incomplete"
+  },
+  "preservationSensitivePath": "[sensitive — path redacted]",
+  "@preservationSensitivePath": {
+    "description": "Replacement text for file paths that are marked as sensitive in the preservation impact list"
+  },
+  "preservationSummaryNoItems": "No items detected",
+  "@preservationSummaryNoItems": {
+    "description": "Preservation summary shown when no items were detected in the inventory"
+  },
+  "preservationSummaryPreserved": "{count} preserved",
+  "@preservationSummaryPreserved": {
+    "description": "Part of the preservation summary: count of items that will be preserved",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "preservationSummaryConditional": "{count} conditional",
+  "@preservationSummaryConditional": {
+    "description": "Part of the preservation summary: count of items with conditional preservation",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "preservationSummaryUnknown": "{count} unknown",
+  "@preservationSummaryUnknown": {
+    "description": "Part of the preservation summary: count of items with unknown preservation outcome",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "preservationSummaryLost": "{count} lost",
+  "@preservationSummaryLost": {
+    "description": "Part of the preservation summary: count of items that will be lost after upgrade",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packageManagerLabelOpkg": "OPKG",
+  "@packageManagerLabelOpkg": {
+    "description": "Display label for the OPKG package manager"
+  },
+  "packageManagerLabelApk": "APK",
+  "@packageManagerLabelApk": {
+    "description": "Display label for the APK package manager"
+  },
+  "packageManagerLabelMixed": "OPKG + APK",
+  "@packageManagerLabelMixed": {
+    "description": "Display label for a mixed OPKG and APK environment"
+  },
+  "packageManagerLabelVendor": "Vendor-specific",
+  "@packageManagerLabelVendor": {
+    "description": "Display label for a vendor-specific package manager"
+  },
+  "packageManagerLabelNone": "None detected",
+  "@packageManagerLabelNone": {
+    "description": "Display label when no package manager was detected on the router"
+  },
+  "packageManagerLabelUnknown": "Unknown",
+  "@packageManagerLabelUnknown": {
+    "description": "Display label when the package manager could not be determined"
+  },
+  "upgradeAvailDownloadFirmware": "Download Firmware Image",
+  "@upgradeAvailDownloadFirmware": {
+    "description": "Button label to download the available firmware image"
+  },
+  "upgradeAvailCopyDownloadLink": "Copy Download Link",
+  "@upgradeAvailCopyDownloadLink": {
+    "description": "Button label to copy the firmware download URL"
+  },
+  "upgradeAvailCopySha256": "Copy SHA-256",
+  "@upgradeAvailCopySha256": {
+    "description": "Button label to copy SHA-256 checksum"
+  },
+  "upgradeAvailCopiedToast": "Copied to clipboard",
+  "@upgradeAvailCopiedToast": {
+    "description": "Toast message when a link or checksum is copied"
+  },
+  "upgradeAvailRetryCheck": "Retry Check",
+  "@upgradeAvailRetryCheck": {
+    "description": "Button to retry checking for updates"
+  },
+  "upgradeAvailImageDetails": "Firmware Image Details",
+  "@upgradeAvailImageDetails": {
+    "description": "Header for firmware image details section"
+  },
+  "preservationSearchHint": "Filter preserved files...",
+  "@preservationSearchHint": {
+    "description": "Hint for searching in preserved files"
+  },
+  "preservationAllCovered": "All detected configurations are covered by sysupgrade preservation.",
+  "@preservationAllCovered": {
+    "description": "Reassurance message when all configurations are preserved"
+  },
+  "preservationItemsRequiringAttention": "Items Requiring Attention",
+  "@preservationItemsRequiringAttention": {
+    "description": "Section header for configuration files requiring attention"
+  },
+  "preservationViewAllFiles": "View All Preserved Files ({count})",
+  "@preservationViewAllFiles": {
+    "description": "Toggle button to show all preserved files",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "preservationHideFiles": "Hide Preserved Files",
+  "@preservationHideFiles": {
+    "description": "Toggle button to hide preserved files"
+  },
+  "sysUpgradeInstallAction": "Install Upgrade (OpenWrt {version})",
+  "@sysUpgradeInstallAction": {
+    "description": "Button label to install available firmware upgrade",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "sysUpgradeInstallTitle": "Install Firmware Upgrade",
+  "@sysUpgradeInstallTitle": {
+    "description": "Dialog title for confirming firmware installation"
+  },
+  "sysUpgradeInstallReadyDesc": "An official OpenWrt upgrade ({version}) is ready to be installed directly on your router.",
+  "@sysUpgradeInstallReadyDesc": {
+    "description": "Description explaining the available official upgrade",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "sysUpgradeInstallTargetVersion": "Target Version",
+  "@sysUpgradeInstallTargetVersion": {
+    "description": "Label for target version in upgrade dialog"
+  },
+  "sysUpgradeInstallCurrentVersion": "Current Version",
+  "@sysUpgradeInstallCurrentVersion": {
+    "description": "Label for current version in upgrade dialog"
+  },
+  "sysUpgradeInstallImageFile": "Image File",
+  "@sysUpgradeInstallImageFile": {
+    "description": "Label for image file in upgrade dialog"
+  },
+  "sysUpgradeInstallDownloadSize": "Download Size",
+  "@sysUpgradeInstallDownloadSize": {
+    "description": "Label for download size in upgrade dialog"
+  },
+  "sysUpgradeKeepSettingsOption": "Keep settings and current configuration (-k)",
+  "@sysUpgradeKeepSettingsOption": {
+    "description": "Checkbox title to retain settings during upgrade"
+  },
+  "sysUpgradeKeepSettingsOptionDesc": "Retain network interfaces, Wi-Fi keys, and passwords.",
+  "@sysUpgradeKeepSettingsOptionDesc": {
+    "description": "Checkbox description explaining what keeping settings preserves"
+  },
+  "sysUpgradeForceOption": "Force upgrade (--force)",
+  "@sysUpgradeForceOption": {
+    "description": "Checkbox title to force upgrade"
+  },
+  "sysUpgradeForceOptionDesc": "Bypass architecture safety checks (not recommended).",
+  "@sysUpgradeForceOptionDesc": {
+    "description": "Checkbox description warning about forcing upgrade"
+  },
+  "sysUpgradeDoNotPowerOff": "Do NOT power off or disconnect the router during the upgrade.",
+  "@sysUpgradeDoNotPowerOff": {
+    "description": "Safety warning against powering off router during flash"
+  },
+  "sysUpgradeInstallNow": "Install Upgrade Now",
+  "@sysUpgradeInstallNow": {
+    "description": "Confirm button label to install upgrade"
+  },
+  "sysUpgradeDirectRouterDownload": "Instructing router to download firmware directly ({size})...",
+  "@sysUpgradeDirectRouterDownload": {
+    "description": "Status message when router is downloading firmware image directly",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "sysUpgradeDirectRouterDownloadSuccess": "Firmware downloaded directly onto router.",
+  "@sysUpgradeDirectRouterDownloadSuccess": {
+    "description": "Status message when direct router download succeeds"
+  },
+  "sysUpgradeFallbackStreaming": "Router direct download unavailable; streaming image from app to router...",
+  "@sysUpgradeFallbackStreaming": {
+    "description": "Status message when falling back to app-mediated streaming"
+  },
+  "sysUpgradeDownloadingImage": "Downloading OpenWrt {version} ({size})...",
+  "@sysUpgradeDownloadingImage": {
+    "description": "Status message when downloading firmware image in app",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "sysUpgradeVerifyingChecksum": "Verifying SHA-256 checksum...",
+  "@sysUpgradeVerifyingChecksum": {
+    "description": "Status message during SHA-256 verification"
+  },
+  "sysUpgradeChecksumMismatch": "SHA-256 checksum mismatch! Expected: {expected}, Computed: {computed}. Upgrade aborted for device safety.",
+  "@sysUpgradeChecksumMismatch": {
+    "description": "Error message when checksum verification fails",
+    "placeholders": {
+      "expected": {
+        "type": "String"
+      },
+      "computed": {
+        "type": "String"
+      }
+    }
+  },
+  "sysUpgradeTransferringImage": "Transferring image to router ({size} MB)...",
+  "@sysUpgradeTransferringImage": {
+    "description": "Status message during chunked upload to router",
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "sysUpgradeVerifyingRouterCompatibility": "Verifying compatibility on router (sysupgrade -t)...",
+  "@sysUpgradeVerifyingRouterCompatibility": {
+    "description": "Status message during router pre-flash validation"
+  },
+  "sysUpgradeValidationFailed": "Router pre-flash validation check failed: {reason}. Upgrade cancelled.",
+  "@sysUpgradeValidationFailed": {
+    "description": "Error message when router validation fails",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "sysUpgradeExecutingFlash": "Executing sysupgrade flash on router...",
+  "@sysUpgradeExecutingFlash": {
+    "description": "Status message when flash command is being sent to router"
+  },
+  "sysUpgradeRebootOnline": "Router is back online!",
+  "@sysUpgradeRebootOnline": {
+    "description": "Status title when router is back online after reboot"
+  },
+  "sysUpgradeRebootOnlineDesc": "The router has rebooted successfully into the new firmware. You can return to the dashboard now.",
+  "@sysUpgradeRebootOnlineDesc": {
+    "description": "Description when router has rebooted successfully"
+  },
+  "sysUpgradeReturnDashboard": "Return to Dashboard",
+  "@sysUpgradeReturnDashboard": {
+    "description": "Button to return to the dashboard after upgrade"
+  },
+  "sysUpgradeRouterNotActive": "Router connection is not active.",
+  "@sysUpgradeRouterNotActive": {
+    "description": "Toast error message when router connection is not active"
+  },
+  "sysUpgradeUrlNotFound": "Download URL not found for this upgrade.",
+  "@sysUpgradeUrlNotFound": {
+    "description": "Toast error message when download URL is missing"
   }
 }

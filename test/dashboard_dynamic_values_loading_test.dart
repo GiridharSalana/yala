@@ -43,12 +43,18 @@ void main() {
     RouterTemperature? temperature,
   }) {
     return {
-      'sysInfo': sysInfo ?? {
-        'uptime': 3600,
-        'memory': {'total': 256000000, 'free': 128000000, 'buffered': 10000000},
-        'load': [0.29, 0.20, 0.25],
-        'cpu': {'usage': 15.0},
-      },
+      'sysInfo':
+          sysInfo ??
+          {
+            'uptime': 3600,
+            'memory': {
+              'total': 256000000,
+              'free': 128000000,
+              'buffered': 10000000,
+            },
+            'load': [0.29, 0.20, 0.25],
+            'cpu': {'usage': 15.0},
+          },
       'boardInfo': {
         'hostname': 'OpenWrt-Router',
         'model': 'TP-Link Archer C60 v3',
@@ -106,7 +112,11 @@ void main() {
         createDashboardData(
           sysInfo: {
             'uptime': 45120, // 12h 32m
-            'memory': {'total': 100000000, 'free': 42000000, 'buffered': 0}, // 58%
+            'memory': {
+              'total': 100000000,
+              'free': 42000000,
+              'buffered': 0,
+            }, // 58%
             'load': [0.29, 0.20, 0.15],
             'cpu': {'usage': 15.0},
           },

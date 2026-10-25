@@ -1506,8 +1506,7 @@ class _SqmQueueCardState extends ConsumerState<SqmQueueCard> {
                       if (ecnMarks != null && ecnMarks > 0)
                         Expanded(
                           child: _buildTelemetryMetric(
-                            label:
-                                l10n?.modSqmTelemetryEcnLabel ?? 'ECN Marks',
+                            label: l10n?.modSqmTelemetryEcnLabel ?? 'ECN Marks',
                             value: '$ecnMarks',
                             theme: theme,
                           ),

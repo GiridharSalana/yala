@@ -987,18 +987,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final cpuLoadValue = isVitalsLoading
         ? ''
         : '${metrics.cpuUsagePercent.toStringAsFixed(0)}%';
-    final loadAvgValue = isVitalsLoading ? '' : metrics.load1m.toStringAsFixed(2);
+    final loadAvgValue = isVitalsLoading
+        ? ''
+        : metrics.load1m.toStringAsFixed(2);
     final memoryValue = isVitalsLoading
         ? ''
         : (metrics.totalMemoryBytes > 0
-            ? '${metrics.memoryUsagePercent.toStringAsFixed(0)}%'
-            : 'N/A');
+              ? '${metrics.memoryUsagePercent.toStringAsFixed(0)}%'
+              : 'N/A');
     final prefs = appState.dashboardPreferences;
     final tempValue = isVitalsLoading
         ? ''
-        : metrics.formattedTemperatureForUnit(
-            prefs.temperatureUnit,
-          );
+        : metrics.formattedTemperatureForUnit(prefs.temperatureUnit);
     final vitals = <Widget>[];
     final l10n = AppLocalizations.of(context);
     if (prefs.showCpuLoad) {

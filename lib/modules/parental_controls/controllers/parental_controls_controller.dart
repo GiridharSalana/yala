@@ -73,15 +73,19 @@ class ParentalControlsController {
     if (_isInitializing) return ParentalActionResult.ok;
     _isInitializing = true;
 
-    final isMock = appState.reviewerModeEnabled ||
+    final isMock =
+        appState.reviewerModeEnabled ||
         RouterService.isMockRouter(appState.selectedRouter);
 
     try {
       if (!isMock) {
         final key = _storageKeyFor(appState);
         var raw = await appState.secureRead(key);
-        if ((raw == null || raw.isEmpty) && appState.selectedRouter?.id != null) {
-          final legacy = await appState.secureRead('parental_controls_store_v1');
+        if ((raw == null || raw.isEmpty) &&
+            appState.selectedRouter?.id != null) {
+          final legacy = await appState.secureRead(
+            'parental_controls_store_v1',
+          );
           if (legacy != null && legacy.isNotEmpty) {
             raw = legacy;
           }

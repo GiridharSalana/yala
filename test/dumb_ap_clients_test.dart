@@ -55,10 +55,7 @@ class _FakeAggregationApiService implements IApiService {
     if (method == 'getDHCPLeases') {
       return [
         0,
-        {
-          'dhcp_leases': dhcpLeasesByIp[ipAddress] ?? [],
-          'dhcp6_leases': [],
-        },
+        {'dhcp_leases': dhcpLeasesByIp[ipAddress] ?? [], 'dhcp6_leases': []},
       ];
     }
     return [0, {}];
@@ -328,11 +325,7 @@ void main() {
         // Main router (10.0.0.1) has ncxS24 connected wirelessly
         fakeApi.wirelessStationsByIp['10.0.0.1'] = {
           'wlan0': [
-            {
-              'mac': 'AA:BB:CC:DD:EE:01',
-              'ssid': 'ncxRouter_5G',
-              'signal': -55,
-            },
+            {'mac': 'AA:BB:CC:DD:EE:01', 'ssid': 'ncxRouter_5G', 'signal': -55},
           ],
         };
         fakeApi.dhcpLeasesByIp['10.0.0.1'] = [
@@ -347,11 +340,7 @@ void main() {
         // Secondary AP (192.168.1.1) also observed the same MAC (e.g. in ARP or wireless)
         fakeApi.wirelessStationsByIp['192.168.1.1'] = {
           'wlan1': [
-            {
-              'mac': 'AA:BB:CC:DD:EE:01',
-              'ssid': 'ncxTest_2G',
-              'signal': -75,
-            },
+            {'mac': 'AA:BB:CC:DD:EE:01', 'ssid': 'ncxTest_2G', 'signal': -75},
           ],
         };
 
@@ -381,10 +370,7 @@ void main() {
 
         // Secondary AP (192.168.1.1) saw ncxLaptop on uplink WAN/ARP
         fakeApi.hostHintsByIp['192.168.1.1'] = {
-          'AA:BB:CC:DD:EE:02': {
-            'ip': '10.0.0.100',
-            'name': 'ncxLaptop',
-          },
+          'AA:BB:CC:DD:EE:02': {'ip': '10.0.0.100', 'name': 'ncxLaptop'},
         };
 
         final clients = await clientController.fetchAggregatedClients();
@@ -414,11 +400,7 @@ void main() {
         // Secondary AP (192.168.1.1) has the wireless association
         fakeApi.wirelessStationsByIp['192.168.1.1'] = {
           'wlan0': [
-            {
-              'mac': 'AA:BB:CC:DD:EE:03',
-              'ssid': 'ncxTest_5G',
-              'signal': -60,
-            },
+            {'mac': 'AA:BB:CC:DD:EE:03', 'ssid': 'ncxTest_5G', 'signal': -60},
           ],
         };
 
@@ -441,11 +423,7 @@ void main() {
 
         fakeApi.wirelessStationsByIp['192.168.1.1'] = {
           'wlan0': [
-            {
-              'mac': 'AA:BB:CC:DD:EE:04',
-              'ssid': 'ncxTest_2G',
-              'signal': -50,
-            },
+            {'mac': 'AA:BB:CC:DD:EE:04', 'ssid': 'ncxTest_2G', 'signal': -50},
           ],
         };
 

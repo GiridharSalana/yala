@@ -365,9 +365,7 @@ class DnsmasqConfig {
     }
     return DnsmasqConfig(
       localDomain: json['domain']?.toString() ?? 'lan',
-      upstreamDnsServers: servers.isNotEmpty
-          ? servers
-          : const ['ISP Default'],
+      upstreamDnsServers: servers.isNotEmpty ? servers : const ['ISP Default'],
       rebindProtection:
           json['rebind_protection'] == '1' || json['rebind_protection'] == true,
       domainNeeded: json['domainneeded'] == '1' || json['domainneeded'] == true,

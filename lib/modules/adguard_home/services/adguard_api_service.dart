@@ -136,7 +136,6 @@ class AdGuardApiService implements IAdGuardApiService {
   @override
   String get instanceId => _instanceId ?? routerId;
 
-
   final String host;
   final int port;
   final bool useHttps;
@@ -157,8 +156,8 @@ class AdGuardApiService implements IAdGuardApiService {
     HttpClientManager? httpClientManager,
     this.secureStorageService,
     this.dioOverride,
-  })  : _instanceId = instanceId,
-        httpClientManager = httpClientManager ?? HttpClientManager();
+  }) : _instanceId = instanceId,
+       httpClientManager = httpClientManager ?? HttpClientManager();
 
   @override
   bool get isAuthenticated => _isAuthenticated;
@@ -329,9 +328,7 @@ class AdGuardApiService implements IAdGuardApiService {
     Duration timeout = const Duration(seconds: 5),
   }) async {
     final uri = '$baseUrl$path';
-    final headers = <String, String>{
-      'Accept': 'application/json',
-    };
+    final headers = <String, String>{'Accept': 'application/json'};
     if (data != null) {
       headers['Content-Type'] = 'application/json';
     }
@@ -930,7 +927,8 @@ class AdGuardApiService implements IAdGuardApiService {
         AdGuardApiException(
           type: AdGuardApiErrorType.httpError,
           statusCode: response.statusCode,
-          message: 'HTTP error ${response.statusCode} from /control/clients/add',
+          message:
+              'HTTP error ${response.statusCode} from /control/clients/add',
         ),
       );
     } on AdGuardApiException catch (e) {
@@ -956,10 +954,7 @@ class AdGuardApiService implements IAdGuardApiService {
       final response = await _executeRequest(
         path: '/control/clients/update',
         method: 'POST',
-        data: {
-          'name': oldName,
-          'data': client.toJson(),
-        },
+        data: {'name': oldName, 'data': client.toJson()},
       );
 
       if (response.statusCode == 200) {
@@ -1061,11 +1056,7 @@ class AdGuardApiService implements IAdGuardApiService {
       final response = await _executeRequest(
         path: '/control/filtering/add_url',
         method: 'POST',
-        data: {
-          'name': name.trim(),
-          'url': url.trim(),
-          'whitelist': whitelist,
-        },
+        data: {'name': name.trim(), 'url': url.trim(), 'whitelist': whitelist},
       );
 
       if (response.statusCode == 200) {
@@ -1082,9 +1073,10 @@ class AdGuardApiService implements IAdGuardApiService {
 
       final errorMsg = response.data is String
           ? response.data.toString()
-          : (response.data is Map && (response.data as Map).containsKey('message')
-              ? (response.data as Map)['message'].toString()
-              : 'HTTP error ${response.statusCode} from /control/filtering/add_url');
+          : (response.data is Map &&
+                    (response.data as Map).containsKey('message')
+                ? (response.data as Map)['message'].toString()
+                : 'HTTP error ${response.statusCode} from /control/filtering/add_url');
 
       return AdGuardApiResult.failure(
         AdGuardApiException(
@@ -1144,9 +1136,10 @@ class AdGuardApiService implements IAdGuardApiService {
 
       final errorMsg = response.data is String
           ? response.data.toString()
-          : (response.data is Map && (response.data as Map).containsKey('message')
-              ? (response.data as Map)['message'].toString()
-              : 'HTTP error ${response.statusCode} from /control/filtering/set_url');
+          : (response.data is Map &&
+                    (response.data as Map).containsKey('message')
+                ? (response.data as Map)['message'].toString()
+                : 'HTTP error ${response.statusCode} from /control/filtering/set_url');
 
       return AdGuardApiResult.failure(
         AdGuardApiException(
@@ -1178,10 +1171,7 @@ class AdGuardApiService implements IAdGuardApiService {
       final response = await _executeRequest(
         path: '/control/filtering/remove_url',
         method: 'POST',
-        data: {
-          'url': url.trim(),
-          'whitelist': whitelist,
-        },
+        data: {'url': url.trim(), 'whitelist': whitelist},
       );
 
       if (response.statusCode == 200) {
@@ -1198,9 +1188,10 @@ class AdGuardApiService implements IAdGuardApiService {
 
       final errorMsg = response.data is String
           ? response.data.toString()
-          : (response.data is Map && (response.data as Map).containsKey('message')
-              ? (response.data as Map)['message'].toString()
-              : 'HTTP error ${response.statusCode} from /control/filtering/remove_url');
+          : (response.data is Map &&
+                    (response.data as Map).containsKey('message')
+                ? (response.data as Map)['message'].toString()
+                : 'HTTP error ${response.statusCode} from /control/filtering/remove_url');
 
       return AdGuardApiResult.failure(
         AdGuardApiException(
@@ -1247,9 +1238,10 @@ class AdGuardApiService implements IAdGuardApiService {
 
         final errorMsg = response.data is String
             ? response.data.toString()
-            : (response.data is Map && (response.data as Map).containsKey('message')
-                ? (response.data as Map)['message'].toString()
-                : 'HTTP error ${response.statusCode} from /control/filtering/refresh');
+            : (response.data is Map &&
+                      (response.data as Map).containsKey('message')
+                  ? (response.data as Map)['message'].toString()
+                  : 'HTTP error ${response.statusCode} from /control/filtering/refresh');
 
         return AdGuardApiResult.failure(
           AdGuardApiException(
@@ -1275,9 +1267,10 @@ class AdGuardApiService implements IAdGuardApiService {
         if (respBlock.statusCode != 200) {
           final errorMsg = respBlock.data is String
               ? respBlock.data.toString()
-              : (respBlock.data is Map && (respBlock.data as Map).containsKey('message')
-                  ? (respBlock.data as Map)['message'].toString()
-                  : 'HTTP error ${respBlock.statusCode} from /control/filtering/refresh');
+              : (respBlock.data is Map &&
+                        (respBlock.data as Map).containsKey('message')
+                    ? (respBlock.data as Map)['message'].toString()
+                    : 'HTTP error ${respBlock.statusCode} from /control/filtering/refresh');
           return AdGuardApiResult.failure(
             AdGuardApiException(
               type: AdGuardApiErrorType.httpError,
@@ -1303,9 +1296,10 @@ class AdGuardApiService implements IAdGuardApiService {
         if (respAllow.statusCode != 200) {
           final errorMsg = respAllow.data is String
               ? respAllow.data.toString()
-              : (respAllow.data is Map && (respAllow.data as Map).containsKey('message')
-                  ? (respAllow.data as Map)['message'].toString()
-                  : 'HTTP error ${respAllow.statusCode} from /control/filtering/refresh');
+              : (respAllow.data is Map &&
+                        (respAllow.data as Map).containsKey('message')
+                    ? (respAllow.data as Map)['message'].toString()
+                    : 'HTTP error ${respAllow.statusCode} from /control/filtering/refresh');
           return AdGuardApiResult.failure(
             AdGuardApiException(
               type: AdGuardApiErrorType.httpError,

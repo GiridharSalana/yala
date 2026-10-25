@@ -27,7 +27,9 @@ class RealAuthService implements IAuthService {
   int startPasswordTransition() {
     _authEpoch++;
     _isPasswordTransitionActive = true;
-    Logger.info('Auth epoch advanced to $_authEpoch: Password transition started');
+    Logger.info(
+      'Auth epoch advanced to $_authEpoch: Password transition started',
+    );
     return _authEpoch;
   }
 
@@ -43,14 +45,18 @@ class RealAuthService implements IAuthService {
     _sysauth = newToken;
     _ipAddress = ipAddress;
     _useHttps = useHttps;
-    Logger.info('Auth epoch advanced to $_authEpoch: Password transition completed');
+    Logger.info(
+      'Auth epoch advanced to $_authEpoch: Password transition completed',
+    );
   }
 
   @override
   void cancelPasswordTransition() {
     _authEpoch++;
     _isPasswordTransitionActive = false;
-    Logger.info('Auth epoch advanced to $_authEpoch: Password transition cancelled');
+    Logger.info(
+      'Auth epoch advanced to $_authEpoch: Password transition cancelled',
+    );
   }
 
   @override
@@ -66,7 +72,9 @@ class RealAuthService implements IAuthService {
 
   Future<String?> _renewSession(String ipAddress, bool useHttps) async {
     if (_isPasswordTransitionActive) {
-      Logger.info('Session renewal rejected: password transition active in epoch $_authEpoch');
+      Logger.info(
+        'Session renewal rejected: password transition active in epoch $_authEpoch',
+      );
       return null;
     }
     final capturedEpoch = _authEpoch;

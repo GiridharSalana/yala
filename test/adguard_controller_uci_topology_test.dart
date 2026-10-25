@@ -25,8 +25,7 @@ class TopologyTestMockAdGuardApiService implements IAdGuardApiService {
   @override
   Future<AdGuardConnectionStatus> testConnection({
     AdGuardCredentials? credentials,
-  }) async =>
-      AdGuardConnectionStatus.authenticated;
+  }) async => AdGuardConnectionStatus.authenticated;
 
   AdGuardStatus status;
   AdGuardStats stats;
@@ -127,7 +126,10 @@ class TopologyTestMockAdGuardApiService implements IAdGuardApiService {
   }
 
   @override
-  Future<AdGuardApiResult<bool>> updateClient(String oldName, AdGuardClient client) async {
+  Future<AdGuardApiResult<bool>> updateClient(
+    String oldName,
+    AdGuardClient client,
+  ) async {
     return AdGuardApiResult.success(true);
   }
 
@@ -143,8 +145,7 @@ class TopologyTestMockAdGuardApiService implements IAdGuardApiService {
     required String name,
     required String url,
     required bool whitelist,
-  }) async =>
-      AdGuardApiResult.success(true);
+  }) async => AdGuardApiResult.success(true);
 
   @override
   Future<AdGuardApiResult<bool>> setFilterList({
@@ -153,15 +154,13 @@ class TopologyTestMockAdGuardApiService implements IAdGuardApiService {
     required String newUrl,
     required bool enabled,
     required bool whitelist,
-  }) async =>
-      AdGuardApiResult.success(true);
+  }) async => AdGuardApiResult.success(true);
 
   @override
   Future<AdGuardApiResult<bool>> removeFilterList({
     required String url,
     required bool whitelist,
-  }) async =>
-      AdGuardApiResult.success(true);
+  }) async => AdGuardApiResult.success(true);
 
   @override
   Future<AdGuardApiResult<bool>> refreshFilterLists({bool? whitelist}) async =>
@@ -194,22 +193,25 @@ class TrackingFakeLuciApiService implements IApiService {
 
   Completer<void>? uciCallCompleter;
 
-  int get dhcpQueryCount => callLog.where(
+  int get dhcpQueryCount => callLog
+      .where(
         (c) =>
             c.object == 'uci' &&
             c.method == 'get' &&
             c.params?['config'] == 'dhcp',
-      ).length;
+      )
+      .length;
 
-  int get firewallQueryCount => callLog.where(
+  int get firewallQueryCount => callLog
+      .where(
         (c) =>
             c.object == 'uci' &&
             c.method == 'get' &&
             c.params?['config'] == 'firewall',
-      ).length;
+      )
+      .length;
 
-  int get totalUciCallCount =>
-      callLog.where((c) => c.object == 'uci').length;
+  int get totalUciCallCount => callLog.where((c) => c.object == 'uci').length;
 
   @override
   Future<dynamic> call(
@@ -221,11 +223,13 @@ class TrackingFakeLuciApiService implements IApiService {
     Map<String, dynamic>? params,
     BuildContext? context,
   }) async {
-    callLog.add(LuciCallRecord(
-      object: object,
-      method: method,
-      params: params != null ? Map<String, dynamic>.from(params) : null,
-    ));
+    callLog.add(
+      LuciCallRecord(
+        object: object,
+        method: method,
+        params: params != null ? Map<String, dynamic>.from(params) : null,
+      ),
+    );
 
     if (uciCallCompleter != null) {
       await uciCallCompleter!.future;
@@ -256,8 +260,8 @@ class TrackingFakeLuciApiService implements IApiService {
             '%CPU': '0.5%',
             '%MEM': '2.0%',
             'VSZ': '24000',
-          }
-        ]
+          },
+        ],
       };
     }
 
@@ -290,24 +294,27 @@ void main() {
   setUpAll(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-      return null;
-    });
+          return null;
+        });
   });
 
   group('AdGuardController — UCI Parser Unit Tests', () {
-    test('extractUciValues handles standard rpcd array-wrapped result format', () {
-      final input = [
-        0,
-        {
-          'values': {
-            'cfg01': {'.type': 'dnsmasq', 'port': '53'}
-          }
-        }
-      ];
-      final extracted = AdGuardController.extractUciValues(input);
-      expect(extracted, isNotNull);
-      expect(extracted!['cfg01']['port'], equals('53'));
-    });
+    test(
+      'extractUciValues handles standard rpcd array-wrapped result format',
+      () {
+        final input = [
+          0,
+          {
+            'values': {
+              'cfg01': {'.type': 'dnsmasq', 'port': '53'},
+            },
+          },
+        ];
+        final extracted = AdGuardController.extractUciValues(input);
+        expect(extracted, isNotNull);
+        expect(extracted!['cfg01']['port'], equals('53'));
+      },
+    );
 
     test('extractUciValues handles nested JSON-RPC result map', () {
       final input = {
@@ -315,10 +322,10 @@ void main() {
           0,
           {
             'values': {
-              'cfg02': {'.type': 'redirect', 'target': 'DNAT'}
-            }
-          }
-        ]
+              'cfg02': {'.type': 'redirect', 'target': 'DNAT'},
+            },
+          },
+        ],
       };
       final extracted = AdGuardController.extractUciValues(input);
       expect(extracted, isNotNull);
@@ -328,36 +335,43 @@ void main() {
     test('extractUciValues handles direct values map and raw sections', () {
       final inputValues = {
         'values': {
-          'cfg03': {'.type': 'dnsmasq', 'port': 5353}
-        }
+          'cfg03': {'.type': 'dnsmasq', 'port': 5353},
+        },
       };
       final extracted1 = AdGuardController.extractUciValues(inputValues);
       expect(extracted1?['cfg03']['port'], equals(5353));
 
       final inputRaw = {
-        'cfg04': {'.type': 'dnsmasq', 'port': 53}
+        'cfg04': {'.type': 'dnsmasq', 'port': 53},
       };
       final extracted2 = AdGuardController.extractUciValues(inputRaw);
       expect(extracted2?['cfg04']['port'], equals(53));
     });
 
-    test('extractUciValues safely returns null on malformed or empty responses', () {
-      expect(AdGuardController.extractUciValues(null), isNull);
-      expect(AdGuardController.extractUciValues([]), isNull);
-      expect(AdGuardController.extractUciValues({'result': []}), isNull);
-      expect(AdGuardController.extractUciValues('malformed string'), isNull);
-    });
+    test(
+      'extractUciValues safely returns null on malformed or empty responses',
+      () {
+        expect(AdGuardController.extractUciValues(null), isNull);
+        expect(AdGuardController.extractUciValues([]), isNull);
+        expect(AdGuardController.extractUciValues({'result': []}), isNull);
+        expect(AdGuardController.extractUciValues('malformed string'), isNull);
+      },
+    );
 
     test('parseDhcpUci parses numeric and string dnsmasq port correctly', () {
       final valuesNumeric = {
-        'cfg01': {'.type': 'dnsmasq', 'port': 5353, 'server': ['127.0.0.1#53']}
+        'cfg01': {
+          '.type': 'dnsmasq',
+          'port': 5353,
+          'server': ['127.0.0.1#53'],
+        },
       };
       final parsedNum = AdGuardController.parseDhcpUci(valuesNumeric);
       expect(parsedNum.dnsmasqPort, equals(5353));
       expect(parsedNum.dnsmasqServers, equals(['127.0.0.1#53']));
 
       final valuesString = {
-        'cfg02': {'.type': 'dnsmasq', 'port': '5353'}
+        'cfg02': {'.type': 'dnsmasq', 'port': '5353'},
       };
       final parsedStr = AdGuardController.parseDhcpUci(valuesString);
       expect(parsedStr.dnsmasqPort, equals(5353));
@@ -365,368 +379,402 @@ void main() {
 
     test('parseDhcpUci falls back to default port 53 when port is omitted', () {
       final values = {
-        'cfg01': {'.type': 'dnsmasq'}
+        'cfg01': {'.type': 'dnsmasq'},
       };
       final parsed = AdGuardController.parseDhcpUci(values);
       expect(parsed.dnsmasqPort, equals(53));
       expect(parsed.dnsmasqServers, isEmpty);
     });
 
-    test('parseDhcpUci handles single string server option and trims values', () {
-      final values = {
-        'cfg01': {
-          '.type': 'dnsmasq',
-          'server': ' 127.0.0.1#3000 ',
-        }
-      };
-      final parsed = AdGuardController.parseDhcpUci(values);
-      expect(parsed.dnsmasqServers, equals(['127.0.0.1#3000']));
-    });
+    test(
+      'parseDhcpUci handles single string server option and trims values',
+      () {
+        final values = {
+          'cfg01': {'.type': 'dnsmasq', 'server': ' 127.0.0.1#3000 '},
+        };
+        final parsed = AdGuardController.parseDhcpUci(values);
+        expect(parsed.dnsmasqServers, equals(['127.0.0.1#3000']));
+      },
+    );
 
     test('parseFirewallUci detects DNAT redirect on port 53', () {
       final values = {
-        'cfg01': {
-          '.type': 'redirect',
-          'target': 'DNAT',
-          'src_dport': '53',
-        }
+        'cfg01': {'.type': 'redirect', 'target': 'DNAT', 'src_dport': '53'},
       };
       expect(AdGuardController.parseFirewallUci(values), isTrue);
     });
 
-    test('parseFirewallUci handles omitted target defaulting to DNAT in OpenWrt', () {
-      final values = {
-        'cfg01': {
-          '.type': 'redirect',
-          'src_dport': 53,
-        }
-      };
-      expect(AdGuardController.parseFirewallUci(values), isTrue);
-    });
+    test(
+      'parseFirewallUci handles omitted target defaulting to DNAT in OpenWrt',
+      () {
+        final values = {
+          'cfg01': {'.type': 'redirect', 'src_dport': 53},
+        };
+        expect(AdGuardController.parseFirewallUci(values), isTrue);
+      },
+    );
 
-    test('parseFirewallUci handles comma-separated, space-separated, and list ports', () {
-      final valuesComma = {
-        'cfg01': {
-          '.type': 'redirect',
-          'target': 'DNAT',
-          'src_dport': '53, 5353',
-        }
-      };
-      expect(AdGuardController.parseFirewallUci(valuesComma), isTrue);
+    test(
+      'parseFirewallUci handles comma-separated, space-separated, and list ports',
+      () {
+        final valuesComma = {
+          'cfg01': {
+            '.type': 'redirect',
+            'target': 'DNAT',
+            'src_dport': '53, 5353',
+          },
+        };
+        expect(AdGuardController.parseFirewallUci(valuesComma), isTrue);
 
-      final valuesList = {
-        'cfg02': {
-          '.type': 'redirect',
-          'target': 'DNAT',
-          'src_dport': ['53', '5353'],
-        }
-      };
-      expect(AdGuardController.parseFirewallUci(valuesList), isTrue);
-    });
+        final valuesList = {
+          'cfg02': {
+            '.type': 'redirect',
+            'target': 'DNAT',
+            'src_dport': ['53', '5353'],
+          },
+        };
+        expect(AdGuardController.parseFirewallUci(valuesList), isTrue);
+      },
+    );
 
     test('parseFirewallUci ignores non-port-53 or non-DNAT rules', () {
       final valuesOtherPort = {
-        'cfg01': {
-          '.type': 'redirect',
-          'target': 'DNAT',
-          'src_dport': '80 443',
-        }
+        'cfg01': {'.type': 'redirect', 'target': 'DNAT', 'src_dport': '80 443'},
       };
       expect(AdGuardController.parseFirewallUci(valuesOtherPort), isFalse);
 
       final valuesAccept = {
-        'cfg02': {
-          '.type': 'redirect',
-          'target': 'ACCEPT',
-          'src_dport': '53',
-        }
+        'cfg02': {'.type': 'redirect', 'target': 'ACCEPT', 'src_dport': '53'},
       };
       expect(AdGuardController.parseFirewallUci(valuesAccept), isFalse);
     });
   });
 
   group('AdGuardController — Mode A/B/C Topology Inference', () {
-    test('Mode A (AdGuard Primary): dnsmasq relocated to 5353, AGH on 53', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'Mode A (AdGuard Primary): dnsmasq relocated to 5353, AGH on 53',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService()
-        ..dhcpResponse = [
-          0,
-          {
-            'values': {
-              'cfg01': {'.type': 'dnsmasq', 'port': '5353'}
-            }
-          }
-        ]
-        ..firewallResponse = [0, {'values': {}}];
+        final fakeLuci = TrackingFakeLuciApiService()
+          ..dhcpResponse = [
+            0,
+            {
+              'values': {
+                'cfg01': {'.type': 'dnsmasq', 'port': '5353'},
+              },
+            },
+          ]
+          ..firewallResponse = [
+            0,
+            {'values': {}},
+          ];
 
-      final mockApi = TopologyTestMockAdGuardApiService(
-        routerId: 'router-1',
-        status: const AdGuardStatus(
-          version: 'v0.107.52',
-          running: true,
-          protectionState: AdGuardProtectionState.enabled,
-          dnsAddresses: ['192.168.1.1'],
-          dnsPort: 53,
-          httpPort: 3000,
-        ),
-      );
+        final mockApi = TopologyTestMockAdGuardApiService(
+          routerId: 'router-1',
+          status: const AdGuardStatus(
+            version: 'v0.107.52',
+            running: true,
+            protectionState: AdGuardProtectionState.enabled,
+            dnsAddresses: ['192.168.1.1'],
+            dnsPort: 53,
+            httpPort: 3000,
+          ),
+        );
 
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('router-1').notifier).ref,
-        'router-1',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-        operationQueueOverride: RouterScopedOperationQueue.instance,
-      );
+        final controller = AdGuardController(
+          container.read(adguardControllerProvider('router-1').notifier).ref,
+          'router-1',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+          operationQueueOverride: RouterScopedOperationQueue.instance,
+        );
 
-      await controller.refresh();
+        await controller.refresh();
 
-      expect(controller.state.topology.mode,
-          equals(AdGuardTopologyMode.adguardPrimary));
-      expect(controller.state.topology.adguardDnsPort, equals(53));
-      expect(controller.state.topology.dnsmasqPort, equals(5353));
-      expect(controller.cachedDnsmasqPort, equals(5353));
-      expect(controller.cachedHasDnatRedirect, isFalse);
-      controller.dispose();
-    });
+        expect(
+          controller.state.topology.mode,
+          equals(AdGuardTopologyMode.adguardPrimary),
+        );
+        expect(controller.state.topology.adguardDnsPort, equals(53));
+        expect(controller.state.topology.dnsmasqPort, equals(5353));
+        expect(controller.cachedDnsmasqPort, equals(5353));
+        expect(controller.cachedHasDnatRedirect, isFalse);
+        controller.dispose();
+      },
+    );
 
-    test('Mode B (dnsmasq Forwarder): dnsmasq on 53 forwarding to AGH on 3000', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'Mode B (dnsmasq Forwarder): dnsmasq on 53 forwarding to AGH on 3000',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService()
-        ..dhcpResponse = [
-          0,
-          {
-            'values': {
-              'cfg01': {
-                '.type': 'dnsmasq',
-                'port': '53',
-                'server': ['127.0.0.1#3000']
-              }
-            }
-          }
-        ]
-        ..firewallResponse = [0, {'values': {}}];
+        final fakeLuci = TrackingFakeLuciApiService()
+          ..dhcpResponse = [
+            0,
+            {
+              'values': {
+                'cfg01': {
+                  '.type': 'dnsmasq',
+                  'port': '53',
+                  'server': ['127.0.0.1#3000'],
+                },
+              },
+            },
+          ]
+          ..firewallResponse = [
+            0,
+            {'values': {}},
+          ];
 
-      final mockApi = TopologyTestMockAdGuardApiService(
-        routerId: 'router-1',
-        status: const AdGuardStatus(
-          version: 'v0.107.52',
-          running: true,
-          protectionState: AdGuardProtectionState.enabled,
-          dnsAddresses: ['192.168.1.1'],
-          dnsPort: 3000,
-          httpPort: 8080,
-        ),
-      );
+        final mockApi = TopologyTestMockAdGuardApiService(
+          routerId: 'router-1',
+          status: const AdGuardStatus(
+            version: 'v0.107.52',
+            running: true,
+            protectionState: AdGuardProtectionState.enabled,
+            dnsAddresses: ['192.168.1.1'],
+            dnsPort: 3000,
+            httpPort: 8080,
+          ),
+        );
 
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('router-1').notifier).ref,
-        'router-1',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-        operationQueueOverride: RouterScopedOperationQueue.instance,
-      );
+        final controller = AdGuardController(
+          container.read(adguardControllerProvider('router-1').notifier).ref,
+          'router-1',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+          operationQueueOverride: RouterScopedOperationQueue.instance,
+        );
 
-      await controller.refresh();
+        await controller.refresh();
 
-      expect(controller.state.topology.mode,
-          equals(AdGuardTopologyMode.dnsmasqForwarder));
-      expect(controller.state.topology.adguardDnsPort, equals(3000));
-      expect(controller.state.topology.dnsmasqPort, equals(53));
-      expect(controller.cachedDnsmasqServers, equals(['127.0.0.1#3000']));
-      controller.dispose();
-    });
+        expect(
+          controller.state.topology.mode,
+          equals(AdGuardTopologyMode.dnsmasqForwarder),
+        );
+        expect(controller.state.topology.adguardDnsPort, equals(3000));
+        expect(controller.state.topology.dnsmasqPort, equals(53));
+        expect(controller.cachedDnsmasqServers, equals(['127.0.0.1#3000']));
+        controller.dispose();
+      },
+    );
 
-    test('Mode C (Firewall Redirect): Port 53 DNAT rule redirects to AGH on 3000', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'Mode C (Firewall Redirect): Port 53 DNAT rule redirects to AGH on 3000',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService()
-        ..dhcpResponse = [
-          0,
-          {
-            'values': {
-              'cfg01': {'.type': 'dnsmasq', 'port': '53'}
-            }
-          }
-        ]
-        ..firewallResponse = [
-          0,
-          {
-            'values': {
-              'cfg02': {
-                '.type': 'redirect',
-                'target': 'DNAT',
-                'src_dport': '53',
-              }
-            }
-          }
-        ];
+        final fakeLuci = TrackingFakeLuciApiService()
+          ..dhcpResponse = [
+            0,
+            {
+              'values': {
+                'cfg01': {'.type': 'dnsmasq', 'port': '53'},
+              },
+            },
+          ]
+          ..firewallResponse = [
+            0,
+            {
+              'values': {
+                'cfg02': {
+                  '.type': 'redirect',
+                  'target': 'DNAT',
+                  'src_dport': '53',
+                },
+              },
+            },
+          ];
 
-      final mockApi = TopologyTestMockAdGuardApiService(
-        routerId: 'router-1',
-        status: const AdGuardStatus(
-          version: 'v0.107.52',
-          running: true,
-          protectionState: AdGuardProtectionState.enabled,
-          dnsAddresses: ['192.168.1.1'],
-          dnsPort: 3000,
-          httpPort: 8080,
-        ),
-      );
+        final mockApi = TopologyTestMockAdGuardApiService(
+          routerId: 'router-1',
+          status: const AdGuardStatus(
+            version: 'v0.107.52',
+            running: true,
+            protectionState: AdGuardProtectionState.enabled,
+            dnsAddresses: ['192.168.1.1'],
+            dnsPort: 3000,
+            httpPort: 8080,
+          ),
+        );
 
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('router-1').notifier).ref,
-        'router-1',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-        operationQueueOverride: RouterScopedOperationQueue.instance,
-      );
+        final controller = AdGuardController(
+          container.read(adguardControllerProvider('router-1').notifier).ref,
+          'router-1',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+          operationQueueOverride: RouterScopedOperationQueue.instance,
+        );
 
-      await controller.refresh();
+        await controller.refresh();
 
-      expect(controller.state.topology.mode,
-          equals(AdGuardTopologyMode.firewallRedirect));
-      expect(controller.state.topology.hasFirewallRedirect, isTrue);
-      expect(controller.cachedHasDnatRedirect, isTrue);
-      controller.dispose();
-    });
+        expect(
+          controller.state.topology.mode,
+          equals(AdGuardTopologyMode.firewallRedirect),
+        );
+        expect(controller.state.topology.hasFirewallRedirect, isTrue);
+        expect(controller.cachedHasDnatRedirect, isTrue);
+        controller.dispose();
+      },
+    );
   });
 
   group('AdGuardController — 5-Minute Cache & Lifecycle Tests', () {
-    test('Cache Hit: Initial refresh queries UCI; second refresh within TTL skips UCI', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'Cache Hit: Initial refresh queries UCI; second refresh within TTL skips UCI',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService()
-        ..dhcpResponse = [
-          0,
-          {
-            'values': {
-              'cfg01': {'.type': 'dnsmasq', 'port': '5353'}
-            }
-          }
-        ]
-        ..firewallResponse = [0, {'values': {}}];
+        final fakeLuci = TrackingFakeLuciApiService()
+          ..dhcpResponse = [
+            0,
+            {
+              'values': {
+                'cfg01': {'.type': 'dnsmasq', 'port': '5353'},
+              },
+            },
+          ]
+          ..firewallResponse = [
+            0,
+            {'values': {}},
+          ];
 
-      final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('router-1').notifier).ref,
-        'router-1',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-        operationQueueOverride: RouterScopedOperationQueue.instance,
-      );
+        final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
+        final controller = AdGuardController(
+          container.read(adguardControllerProvider('router-1').notifier).ref,
+          'router-1',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+          operationQueueOverride: RouterScopedOperationQueue.instance,
+        );
 
-      // 1. Initial refresh: cache miss -> probes UCI
-      await controller.refresh();
-      expect(fakeLuci.dhcpQueryCount, equals(1));
-      expect(fakeLuci.firewallQueryCount, equals(1));
-      expect(controller.hasValidTopologyCache, isTrue);
-      final initialProbeTime = controller.topologyCacheProbedAt;
-      expect(initialProbeTime, isNotNull);
+        // 1. Initial refresh: cache miss -> probes UCI
+        await controller.refresh();
+        expect(fakeLuci.dhcpQueryCount, equals(1));
+        expect(fakeLuci.firewallQueryCount, equals(1));
+        expect(controller.hasValidTopologyCache, isTrue);
+        final initialProbeTime = controller.topologyCacheProbedAt;
+        expect(initialProbeTime, isNotNull);
 
-      // 2. Immediate second refresh (e.g. background poll): cache hit -> 0 additional UCI calls
-      await controller.refresh();
-      expect(fakeLuci.dhcpQueryCount, equals(1)); // Still 1!
-      expect(fakeLuci.firewallQueryCount, equals(1)); // Still 1!
-      expect(controller.topologyCacheProbedAt, equals(initialProbeTime));
+        // 2. Immediate second refresh (e.g. background poll): cache hit -> 0 additional UCI calls
+        await controller.refresh();
+        expect(fakeLuci.dhcpQueryCount, equals(1)); // Still 1!
+        expect(fakeLuci.firewallQueryCount, equals(1)); // Still 1!
+        expect(controller.topologyCacheProbedAt, equals(initialProbeTime));
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
 
-    test('Cache Miss / TTL Expiry: Expired cache (>5m) re-probes UCI', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'Cache Miss / TTL Expiry: Expired cache (>5m) re-probes UCI',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService()
-        ..dhcpResponse = [
-          0,
-          {
-            'values': {
-              'cfg01': {'.type': 'dnsmasq', 'port': '5353'}
-            }
-          }
-        ]
-        ..firewallResponse = [0, {'values': {}}];
+        final fakeLuci = TrackingFakeLuciApiService()
+          ..dhcpResponse = [
+            0,
+            {
+              'values': {
+                'cfg01': {'.type': 'dnsmasq', 'port': '5353'},
+              },
+            },
+          ]
+          ..firewallResponse = [
+            0,
+            {'values': {}},
+          ];
 
-      final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('router-1').notifier).ref,
-        'router-1',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-        operationQueueOverride: RouterScopedOperationQueue.instance,
-      );
+        final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
+        final controller = AdGuardController(
+          container.read(adguardControllerProvider('router-1').notifier).ref,
+          'router-1',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+          operationQueueOverride: RouterScopedOperationQueue.instance,
+        );
 
-      // Seed an expired cache from 6 minutes ago
-      final expiredTime = DateTime.now().toUtc().subtract(const Duration(minutes: 6));
-      controller.setCachedTopologyForTesting(
-        dnsmasqPort: 5353,
-        dnsmasqServers: [],
-        hasDnatRedirect: false,
-        probedAt: expiredTime,
-      );
+        // Seed an expired cache from 6 minutes ago
+        final expiredTime = DateTime.now().toUtc().subtract(
+          const Duration(minutes: 6),
+        );
+        controller.setCachedTopologyForTesting(
+          dnsmasqPort: 5353,
+          dnsmasqServers: [],
+          hasDnatRedirect: false,
+          probedAt: expiredTime,
+        );
 
-      expect(controller.hasValidTopologyCache, isFalse);
+        expect(controller.hasValidTopologyCache, isFalse);
 
-      // Refresh triggers fresh UCI probe due to TTL expiry
-      await controller.refresh();
-      expect(fakeLuci.dhcpQueryCount, equals(1));
-      expect(fakeLuci.firewallQueryCount, equals(1));
-      expect(controller.hasValidTopologyCache, isTrue);
-      expect(controller.topologyCacheProbedAt!.isAfter(expiredTime), isTrue);
+        // Refresh triggers fresh UCI probe due to TTL expiry
+        await controller.refresh();
+        expect(fakeLuci.dhcpQueryCount, equals(1));
+        expect(fakeLuci.firewallQueryCount, equals(1));
+        expect(controller.hasValidTopologyCache, isTrue);
+        expect(controller.topologyCacheProbedAt!.isAfter(expiredTime), isTrue);
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
 
-    test('forceTopologyProbe: true forces UCI probe even on fresh cache (<5m)', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'forceTopologyProbe: true forces UCI probe even on fresh cache (<5m)',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService()
-        ..dhcpResponse = [
-          0,
-          {
-            'values': {
-              'cfg01': {'.type': 'dnsmasq', 'port': '5353'}
-            }
-          }
-        ]
-        ..firewallResponse = [0, {'values': {}}];
+        final fakeLuci = TrackingFakeLuciApiService()
+          ..dhcpResponse = [
+            0,
+            {
+              'values': {
+                'cfg01': {'.type': 'dnsmasq', 'port': '5353'},
+              },
+            },
+          ]
+          ..firewallResponse = [
+            0,
+            {'values': {}},
+          ];
 
-      final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('router-1').notifier).ref,
-        'router-1',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-        operationQueueOverride: RouterScopedOperationQueue.instance,
-      );
+        final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
+        final controller = AdGuardController(
+          container.read(adguardControllerProvider('router-1').notifier).ref,
+          'router-1',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+          operationQueueOverride: RouterScopedOperationQueue.instance,
+        );
 
-      // Seed a fresh cache from 1 minute ago
-      final freshTime = DateTime.now().toUtc().subtract(const Duration(minutes: 1));
-      controller.setCachedTopologyForTesting(
-        dnsmasqPort: 5353,
-        dnsmasqServers: [],
-        hasDnatRedirect: false,
-        probedAt: freshTime,
-      );
+        // Seed a fresh cache from 1 minute ago
+        final freshTime = DateTime.now().toUtc().subtract(
+          const Duration(minutes: 1),
+        );
+        controller.setCachedTopologyForTesting(
+          dnsmasqPort: 5353,
+          dnsmasqServers: [],
+          hasDnatRedirect: false,
+          probedAt: freshTime,
+        );
 
-      expect(controller.hasValidTopologyCache, isTrue);
+        expect(controller.hasValidTopologyCache, isTrue);
 
-      // Manual refresh with forceTopologyProbe: true must bypass valid cache
-      await controller.refresh(forceTopologyProbe: true);
-      expect(fakeLuci.dhcpQueryCount, equals(1));
-      expect(fakeLuci.firewallQueryCount, equals(1));
-      expect(controller.topologyCacheProbedAt!.isAfter(freshTime), isTrue);
+        // Manual refresh with forceTopologyProbe: true must bypass valid cache
+        await controller.refresh(forceTopologyProbe: true);
+        expect(fakeLuci.dhcpQueryCount, equals(1));
+        expect(fakeLuci.firewallQueryCount, equals(1));
+        expect(controller.topologyCacheProbedAt!.isAfter(freshTime), isTrue);
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
 
     test('dispose() clears the in-memory topology cache', () async {
       final container = ProviderContainer();
@@ -737,11 +785,14 @@ void main() {
           0,
           {
             'values': {
-              'cfg01': {'.type': 'dnsmasq', 'port': '5353'}
-            }
-          }
+              'cfg01': {'.type': 'dnsmasq', 'port': '5353'},
+            },
+          },
         ]
-        ..firewallResponse = [0, {'values': {}}];
+        ..firewallResponse = [
+          0,
+          {'values': {}},
+        ];
 
       final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
       final controller = AdGuardController(
@@ -761,179 +812,220 @@ void main() {
       expect(controller.cachedDnsmasqPort, isNull);
     });
 
-    test('Router isolation: separate controllers maintain independent caches', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'Router isolation: separate controllers maintain independent caches',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuciA = TrackingFakeLuciApiService()
-        ..dhcpResponse = [
-          0,
-          {
-            'values': {
-              'cfg01': {'.type': 'dnsmasq', 'port': '5353'}
-            }
-          }
-        ];
-      final fakeLuciB = TrackingFakeLuciApiService()
-        ..dhcpResponse = [
-          0,
-          {
-            'values': {
-              'cfg01': {'.type': 'dnsmasq', 'port': '53'}
-            }
-          }
-        ];
+        final fakeLuciA = TrackingFakeLuciApiService()
+          ..dhcpResponse = [
+            0,
+            {
+              'values': {
+                'cfg01': {'.type': 'dnsmasq', 'port': '5353'},
+              },
+            },
+          ];
+        final fakeLuciB = TrackingFakeLuciApiService()
+          ..dhcpResponse = [
+            0,
+            {
+              'values': {
+                'cfg01': {'.type': 'dnsmasq', 'port': '53'},
+              },
+            },
+          ];
 
-      final mockApiA = TopologyTestMockAdGuardApiService(routerId: 'router-A');
-      final mockApiB = TopologyTestMockAdGuardApiService(routerId: 'router-B');
+        final mockApiA = TopologyTestMockAdGuardApiService(
+          routerId: 'router-A',
+        );
+        final mockApiB = TopologyTestMockAdGuardApiService(
+          routerId: 'router-B',
+        );
 
-      final controllerA = AdGuardController(
-        container.read(adguardControllerProvider('router-A').notifier).ref,
-        'router-A',
-        apiServiceOverride: mockApiA,
-        luciApiServiceOverride: fakeLuciA,
-      );
-      final controllerB = AdGuardController(
-        container.read(adguardControllerProvider('router-B').notifier).ref,
-        'router-B',
-        apiServiceOverride: mockApiB,
-        luciApiServiceOverride: fakeLuciB,
-      );
+        final controllerA = AdGuardController(
+          container.read(adguardControllerProvider('router-A').notifier).ref,
+          'router-A',
+          apiServiceOverride: mockApiA,
+          luciApiServiceOverride: fakeLuciA,
+        );
+        final controllerB = AdGuardController(
+          container.read(adguardControllerProvider('router-B').notifier).ref,
+          'router-B',
+          apiServiceOverride: mockApiB,
+          luciApiServiceOverride: fakeLuciB,
+        );
 
-      await controllerA.refresh();
-      await controllerB.refresh();
+        await controllerA.refresh();
+        await controllerB.refresh();
 
-      expect(controllerA.cachedDnsmasqPort, equals(5353));
-      expect(controllerB.cachedDnsmasqPort, equals(53));
+        expect(controllerA.cachedDnsmasqPort, equals(5353));
+        expect(controllerB.cachedDnsmasqPort, equals(53));
 
-      controllerA.dispose();
-      controllerB.dispose();
-    });
+        controllerA.dispose();
+        controllerB.dispose();
+      },
+    );
   });
 
   group('AdGuardController — Failure Resilience & Safety Invariants', () {
-    test('UCI RPC failure falls back to safe defaults without failing refresh', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'UCI RPC failure falls back to safe defaults without failing refresh',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService()
-        ..throwOnDhcp = true
-        ..throwOnFirewall = true;
+        final fakeLuci = TrackingFakeLuciApiService()
+          ..throwOnDhcp = true
+          ..throwOnFirewall = true;
 
-      final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('router-1').notifier).ref,
-        'router-1',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-        operationQueueOverride: RouterScopedOperationQueue.instance,
-      );
+        final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
+        final controller = AdGuardController(
+          container.read(adguardControllerProvider('router-1').notifier).ref,
+          'router-1',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+          operationQueueOverride: RouterScopedOperationQueue.instance,
+        );
 
-      // Refresh must succeed despite UCI probe failure
-      await controller.refresh();
+        // Refresh must succeed despite UCI probe failure
+        await controller.refresh();
 
-      expect(controller.state.connectionStatus,
-          equals(AdGuardConnectionStatus.authenticated));
-      expect(controller.state.status, isNotNull);
-      // Safe defaults applied
-      expect(controller.state.topology.dnsmasqPort, equals(53));
-      expect(controller.state.topology.forwarders, isEmpty);
-      expect(controller.state.topology.hasFirewallRedirect, isFalse);
+        expect(
+          controller.state.connectionStatus,
+          equals(AdGuardConnectionStatus.authenticated),
+        );
+        expect(controller.state.status, isNotNull);
+        // Safe defaults applied
+        expect(controller.state.topology.dnsmasqPort, equals(53));
+        expect(controller.state.topology.forwarders, isEmpty);
+        expect(controller.state.topology.hasFirewallRedirect, isFalse);
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
 
-    test('UCI RPC failure preserves previously cached topology if available', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'UCI RPC failure preserves previously cached topology if available',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService()
-        ..throwOnDhcp = true
-        ..throwOnFirewall = true;
+        final fakeLuci = TrackingFakeLuciApiService()
+          ..throwOnDhcp = true
+          ..throwOnFirewall = true;
 
-      final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('router-1').notifier).ref,
-        'router-1',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-        operationQueueOverride: RouterScopedOperationQueue.instance,
-      );
+        final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
+        final controller = AdGuardController(
+          container.read(adguardControllerProvider('router-1').notifier).ref,
+          'router-1',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+          operationQueueOverride: RouterScopedOperationQueue.instance,
+        );
 
-      // Seed valid cache
-      controller.setCachedTopologyForTesting(
-        dnsmasqPort: 5353,
-        dnsmasqServers: ['127.0.0.1#53'],
-        hasDnatRedirect: true,
-        probedAt: DateTime.now().toUtc(),
-      );
+        // Seed valid cache
+        controller.setCachedTopologyForTesting(
+          dnsmasqPort: 5353,
+          dnsmasqServers: ['127.0.0.1#53'],
+          hasDnatRedirect: true,
+          probedAt: DateTime.now().toUtc(),
+        );
 
-      // Refresh with forced probe that fails
-      await controller.refresh(forceTopologyProbe: true);
+        // Refresh with forced probe that fails
+        await controller.refresh(forceTopologyProbe: true);
 
-      expect(controller.state.connectionStatus,
-          equals(AdGuardConnectionStatus.authenticated));
-      expect(controller.state.topology.dnsmasqPort, equals(5353));
-      expect(controller.state.topology.forwarders, equals(['127.0.0.1#53']));
-      expect(controller.state.topology.hasFirewallRedirect, isTrue);
+        expect(
+          controller.state.connectionStatus,
+          equals(AdGuardConnectionStatus.authenticated),
+        );
+        expect(controller.state.topology.dnsmasqPort, equals(5353));
+        expect(controller.state.topology.forwarders, equals(['127.0.0.1#53']));
+        expect(controller.state.topology.hasFirewallRedirect, isTrue);
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
 
-    test('Reviewer Mode Isolation: Zero UCI calls made even with forceTopologyProbe: true', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'Reviewer Mode Isolation: Zero UCI calls made even with forceTopologyProbe: true',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService();
-      final mockApi = TopologyTestMockAdGuardApiService(
-        routerId: 'reviewer-mock-router',
-      );
+        final fakeLuci = TrackingFakeLuciApiService();
+        final mockApi = TopologyTestMockAdGuardApiService(
+          routerId: 'reviewer-mock-router',
+        );
 
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('reviewer-mock-router').notifier).ref,
-        'reviewer-mock-router',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-      );
+        final controller = AdGuardController(
+          container
+              .read(adguardControllerProvider('reviewer-mock-router').notifier)
+              .ref,
+          'reviewer-mock-router',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+        );
 
-      await controller.refresh(forceTopologyProbe: true);
+        await controller.refresh(forceTopologyProbe: true);
 
-      // ZERO UCI calls under any circumstance
-      expect(fakeLuci.totalUciCallCount, equals(0));
-      expect(fakeLuci.dhcpQueryCount, equals(0));
-      expect(fakeLuci.firewallQueryCount, equals(0));
+        // ZERO UCI calls under any circumstance
+        expect(fakeLuci.totalUciCallCount, equals(0));
+        expect(fakeLuci.dhcpQueryCount, equals(0));
+        expect(fakeLuci.firewallQueryCount, equals(0));
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
 
-    test('Read-only guarantee: Controller NEVER calls mutating uci operations', () async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+    test(
+      'Read-only guarantee: Controller NEVER calls mutating uci operations',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
 
-      final fakeLuci = TrackingFakeLuciApiService()
-        ..dhcpResponse = [0, {'values': {}}]
-        ..firewallResponse = [0, {'values': {}}];
+        final fakeLuci = TrackingFakeLuciApiService()
+          ..dhcpResponse = [
+            0,
+            {'values': {}},
+          ]
+          ..firewallResponse = [
+            0,
+            {'values': {}},
+          ];
 
-      final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
-      final controller = AdGuardController(
-        container.read(adguardControllerProvider('router-1').notifier).ref,
-        'router-1',
-        apiServiceOverride: mockApi,
-        luciApiServiceOverride: fakeLuci,
-      );
+        final mockApi = TopologyTestMockAdGuardApiService(routerId: 'router-1');
+        final controller = AdGuardController(
+          container.read(adguardControllerProvider('router-1').notifier).ref,
+          'router-1',
+          apiServiceOverride: mockApi,
+          luciApiServiceOverride: fakeLuci,
+        );
 
-      await controller.refresh(forceTopologyProbe: true);
+        await controller.refresh(forceTopologyProbe: true);
 
-      final mutatingMethods = ['set', 'add', 'delete', 'commit', 'apply', 'revert'];
-      for (final call in fakeLuci.callLog) {
-        if (call.object == 'uci') {
-          expect(mutatingMethods.contains(call.method), isFalse,
-              reason: 'Forbidden UCI mutation method called: ${call.method}');
-          expect(call.method, equals('get'));
+        final mutatingMethods = [
+          'set',
+          'add',
+          'delete',
+          'commit',
+          'apply',
+          'revert',
+        ];
+        for (final call in fakeLuci.callLog) {
+          if (call.object == 'uci') {
+            expect(
+              mutatingMethods.contains(call.method),
+              isFalse,
+              reason: 'Forbidden UCI mutation method called: ${call.method}',
+            );
+            expect(call.method, equals('get'));
+          }
         }
-      }
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
   });
 }

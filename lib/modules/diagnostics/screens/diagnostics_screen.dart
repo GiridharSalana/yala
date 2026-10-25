@@ -17,6 +17,10 @@ import '../models/internet_reachability.dart';
 import '../models/ping_result.dart';
 import '../models/routing_neighbor_info.dart';
 import '../models/traceroute_result.dart';
+import '../widgets/speed_test_view.dart';
+import '../widgets/dns_benchmark_view.dart';
+import 'package:yala/modules/network_diagnostic/screens/network_diagnostic_screen.dart';
+import 'package:yala/modules/network_diagnostic/controllers/network_diagnostic_controller.dart';
 import 'package:yala/l10n/app_localizations.dart';
 
 class DiagnosticsScreen extends ConsumerStatefulWidget {
@@ -54,7 +58,7 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
     _tabController.addListener(_handleTabChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
@@ -121,6 +125,18 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
                     ),
                     tabs: [
                       Tab(
+                        icon: const Icon(Icons.troubleshoot_rounded, size: 20),
+                        text: l10n?.diagTabHealth ?? 'Health & Diagnostic',
+                      ),
+                      Tab(
+                        icon: const Icon(Icons.speed_rounded, size: 20),
+                        text: l10n?.diagTabSpeedTest ?? 'Speed Test',
+                      ),
+                      Tab(
+                        icon: const Icon(Icons.timer_outlined, size: 20),
+                        text: l10n?.diagTabDnsLatency ?? 'DNS Latency',
+                      ),
+                      Tab(
                         icon: const Icon(Icons.network_ping, size: 20),
                         text: l10n?.diagTabPing ?? 'Ping',
                       ),
@@ -151,6 +167,9 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
         body: TabBarView(
           controller: _tabController,
           children: [
+            const NetworkDiagnosticView(showAppBar: false),
+            const SpeedTestView(),
+            const DnsBenchmarkView(),
             _buildPingTab(context, state),
             _buildTracerouteTab(context, state),
             _buildDnsTab(context, state),
@@ -350,6 +369,32 @@ class _DiagnosticsScreenState extends ConsumerState<DiagnosticsScreen>
                 ],
               ),
             ],
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.primaryContainer,
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+                minimumSize: const Size.fromHeight(40),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(Icons.troubleshoot_rounded, size: 18),
+              label: Text(
+                l10n?.diagBtnWhyBroken ??
+                    '“Why Is My Internet Broken?” Diagnostic',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              onPressed: () {
+                _tabController.animateTo(0);
+                ref
+                    .read(networkDiagnosticControllerProvider.notifier)
+                    .runDiagnostics();
+              },
+            ),
           ],
         ),
       ),

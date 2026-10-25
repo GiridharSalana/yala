@@ -22,59 +22,72 @@ void main() {
       AppConfig.debugIsFdroidBuild = null;
     });
 
-    test('All 18 Geist and Geist Mono font weights and OFL.txt exist in assets', () async {
-      final fontFiles = [
-        'assets/fonts/Geist-Thin.ttf',
-        'assets/fonts/Geist-ExtraLight.ttf',
-        'assets/fonts/Geist-Light.ttf',
-        'assets/fonts/Geist-Regular.ttf',
-        'assets/fonts/Geist-Medium.ttf',
-        'assets/fonts/Geist-SemiBold.ttf',
-        'assets/fonts/Geist-Bold.ttf',
-        'assets/fonts/Geist-ExtraBold.ttf',
-        'assets/fonts/Geist-Black.ttf',
-        'assets/fonts/GeistMono-Thin.ttf',
-        'assets/fonts/GeistMono-ExtraLight.ttf',
-        'assets/fonts/GeistMono-Light.ttf',
-        'assets/fonts/GeistMono-Regular.ttf',
-        'assets/fonts/GeistMono-Medium.ttf',
-        'assets/fonts/GeistMono-SemiBold.ttf',
-        'assets/fonts/GeistMono-Bold.ttf',
-        'assets/fonts/GeistMono-ExtraBold.ttf',
-        'assets/fonts/GeistMono-Black.ttf',
-      ];
+    test(
+      'All 18 Geist and Geist Mono font weights and OFL.txt exist in assets',
+      () async {
+        final fontFiles = [
+          'assets/fonts/Geist-Thin.ttf',
+          'assets/fonts/Geist-ExtraLight.ttf',
+          'assets/fonts/Geist-Light.ttf',
+          'assets/fonts/Geist-Regular.ttf',
+          'assets/fonts/Geist-Medium.ttf',
+          'assets/fonts/Geist-SemiBold.ttf',
+          'assets/fonts/Geist-Bold.ttf',
+          'assets/fonts/Geist-ExtraBold.ttf',
+          'assets/fonts/Geist-Black.ttf',
+          'assets/fonts/GeistMono-Thin.ttf',
+          'assets/fonts/GeistMono-ExtraLight.ttf',
+          'assets/fonts/GeistMono-Light.ttf',
+          'assets/fonts/GeistMono-Regular.ttf',
+          'assets/fonts/GeistMono-Medium.ttf',
+          'assets/fonts/GeistMono-SemiBold.ttf',
+          'assets/fonts/GeistMono-Bold.ttf',
+          'assets/fonts/GeistMono-ExtraBold.ttf',
+          'assets/fonts/GeistMono-Black.ttf',
+        ];
 
-      for (final fontFile in fontFiles) {
-        final byteData = await rootBundle.load(fontFile);
-        expect(
-          byteData.lengthInBytes,
-          greaterThan(10000),
-          reason: 'Font $fontFile must be a non-empty TTF file',
+        for (final fontFile in fontFiles) {
+          final byteData = await rootBundle.load(fontFile);
+          expect(
+            byteData.lengthInBytes,
+            greaterThan(10000),
+            reason: 'Font $fontFile must be a non-empty TTF file',
+          );
+        }
+
+        final licenseString = await rootBundle.loadString(
+          'assets/fonts/OFL.txt',
         );
-      }
+        expect(licenseString, contains('SIL OPEN FONT LICENSE Version 1.1'));
+        expect(licenseString, contains('The Geist Project Authors'));
+      },
+    );
 
-      final licenseString = await rootBundle.loadString('assets/fonts/OFL.txt');
-      expect(licenseString, contains('SIL OPEN FONT LICENSE Version 1.1'));
-      expect(licenseString, contains('The Geist Project Authors'));
-    });
+    test(
+      'GoogleFonts config allowRuntimeFetching can be disabled for offline compliance',
+      () {
+        GoogleFonts.config.allowRuntimeFetching = false;
+        expect(GoogleFonts.config.allowRuntimeFetching, isFalse);
+      },
+    );
 
-    test('GoogleFonts config allowRuntimeFetching can be disabled for offline compliance', () {
-      GoogleFonts.config.allowRuntimeFetching = false;
-      expect(GoogleFonts.config.allowRuntimeFetching, isFalse);
-    });
+    test(
+      'AppConfig.isFdroidBuild defaults to false and respects debugIsFdroidBuild override',
+      () {
+        AppConfig.debugIsFdroidBuild = null;
+        expect(AppConfig.isFdroidBuild, isFalse);
 
-    test('AppConfig.isFdroidBuild defaults to false and respects debugIsFdroidBuild override', () {
-      AppConfig.debugIsFdroidBuild = null;
-      expect(AppConfig.isFdroidBuild, isFalse);
+        AppConfig.debugIsFdroidBuild = true;
+        expect(AppConfig.isFdroidBuild, isTrue);
 
-      AppConfig.debugIsFdroidBuild = true;
-      expect(AppConfig.isFdroidBuild, isTrue);
+        AppConfig.debugIsFdroidBuild = false;
+        expect(AppConfig.isFdroidBuild, isFalse);
+      },
+    );
 
-      AppConfig.debugIsFdroidBuild = false;
-      expect(AppConfig.isFdroidBuild, isFalse);
-    });
-
-    testWidgets('Update checker is visible when isFdroidBuild is false', (tester) async {
+    testWidgets('Update checker is visible when isFdroidBuild is false', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(800, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -103,42 +116,46 @@ void main() {
       expect(updateTile, findsOneWidget);
     });
 
-    testWidgets('Update checker is completely hidden when isFdroidBuild is true', (tester) async {
-      tester.view.physicalSize = const Size(800, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.resetPhysicalSize);
+    testWidgets(
+      'Update checker is completely hidden when isFdroidBuild is true',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
 
-      SharedPreferences.setMockInitialValues({});
-      AppConfig.debugIsFdroidBuild = true;
-      final appState = AppState.instance;
+        SharedPreferences.setMockInitialValues({});
+        AppConfig.debugIsFdroidBuild = true;
+        final appState = AppState.instance;
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [appStateProvider.overrideWith((ref) => appState)],
-          child: const MaterialApp(home: SettingsScreen()),
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [appStateProvider.overrideWith((ref) => appState)],
+            child: const MaterialApp(home: SettingsScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('APP UPDATES'), findsNothing);
-      expect(find.text('Check for Updates'), findsNothing);
-    });
+        expect(find.text('APP UPDATES'), findsNothing);
+        expect(find.text('Check for Updates'), findsNothing);
+      },
+    );
 
-    testWidgets('UpdateCheckerService.checkForUpdates no-ops when isFdroidBuild is true', (tester) async {
-      AppConfig.debugIsFdroidBuild = true;
+    testWidgets(
+      'UpdateCheckerService.checkForUpdates no-ops when isFdroidBuild is true',
+      (tester) async {
+        AppConfig.debugIsFdroidBuild = true;
 
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: Text('Test')),
-        ),
-      );
-      final context = tester.element(find.text('Test'));
+        await tester.pumpWidget(
+          const MaterialApp(home: Scaffold(body: Text('Test'))),
+        );
+        final context = tester.element(find.text('Test'));
 
-      // Should return immediately without displaying progress dialog or throwing
-      await UpdateCheckerService.checkForUpdates(context);
-      await tester.pump();
+        // Should return immediately without displaying progress dialog or throwing
+        await UpdateCheckerService.checkForUpdates(context);
+        await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsNothing);
-    });
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+      },
+    );
   });
 }

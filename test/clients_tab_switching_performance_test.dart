@@ -44,7 +44,10 @@ class MockApiService implements IApiService {
     Map<String, dynamic> params,
   ) async {
     if (method == 'getDHCPLeases') {
-      return [0, {'dhcp_leases': dhcpLeases}];
+      return [
+        0,
+        {'dhcp_leases': dhcpLeases},
+      ];
     }
     return [0, {}];
   }
@@ -60,7 +63,10 @@ class MockApiService implements IApiService {
     BuildContext? context,
   }) async {
     if (method == 'getDHCPLeases') {
-      return [0, {'dhcp_leases': dhcpLeases}];
+      return [
+        0,
+        {'dhcp_leases': dhcpLeases},
+      ];
     }
     return [0, {}];
   }
@@ -252,7 +258,8 @@ void main() {
         ];
         final mockAuth = MockAuthService();
         final appState = AppState.instance;
-        final routerService = appState.routerService ?? RouterService(isReviewerMode: true);
+        final routerService =
+            appState.routerService ?? RouterService(isReviewerMode: true);
 
         final r1 = model.Router(
           id: 'switch_test_router_1',

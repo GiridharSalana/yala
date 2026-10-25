@@ -443,8 +443,8 @@ class StorageMonitoringScreen extends ConsumerWidget {
                   percent > 90
                       ? Colors.red
                       : (percent > 75
-                          ? Colors.orange
-                          : theme.colorScheme.tertiary),
+                            ? Colors.orange
+                            : theme.colorScheme.tertiary),
                 ),
               ),
             ),
@@ -619,8 +619,8 @@ class StorageMonitoringScreen extends ConsumerWidget {
             item.isExternal
                 ? Icons.usb_rounded
                 : (item.isTmp
-                    ? Icons.folder_zip_outlined
-                    : Icons.sd_storage_outlined),
+                      ? Icons.folder_zip_outlined
+                      : Icons.sd_storage_outlined),
             color: item.isExternal
                 ? theme.colorScheme.onTertiaryContainer
                 : theme.colorScheme.onPrimaryContainer,

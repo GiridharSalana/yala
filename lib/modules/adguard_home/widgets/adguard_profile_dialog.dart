@@ -250,7 +250,8 @@ class _AdGuardProfileDialogState extends State<AdGuardProfileDialog> {
     });
 
     try {
-      final profileId = widget.initialProfile?.id ??
+      final profileId =
+          widget.initialProfile?.id ??
           'ext_${DateTime.now().millisecondsSinceEpoch}';
       final profile = AdGuardInstanceProfile.external(
         id: profileId,
@@ -282,9 +283,9 @@ class _AdGuardProfileDialogState extends State<AdGuardProfileDialog> {
         setState(() {
           _isSaving = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save profile: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save profile: $e')));
       }
     }
   }
@@ -462,7 +463,9 @@ class _AdGuardProfileDialogState extends State<AdGuardProfileDialog> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.electrical_services_rounded),
-                  label: Text(_isTesting ? 'Testing Connection...' : 'Test Connection'),
+                  label: Text(
+                    _isTesting ? 'Testing Connection...' : 'Test Connection',
+                  ),
                 ),
 
                 if (_testStatus != null && _testMessage != null) ...[
@@ -474,10 +477,14 @@ class _AdGuardProfileDialogState extends State<AdGuardProfileDialog> {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: _getTestStatusColor(_testStatus!).withValues(alpha: 0.12),
+                      color: _getTestStatusColor(
+                        _testStatus!,
+                      ).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: _getTestStatusColor(_testStatus!).withValues(alpha: 0.4),
+                        color: _getTestStatusColor(
+                          _testStatus!,
+                        ).withValues(alpha: 0.4),
                       ),
                     ),
                     child: Row(

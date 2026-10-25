@@ -350,7 +350,8 @@ class MountPointItem {
 
     // 3. Root directory (/) is inbuilt router system storage UNLESS explicitly running Extroot on an external drive
     if (mountLower == '/') {
-      final isExternalExtroot = devLower.contains('/dev/sd') ||
+      final isExternalExtroot =
+          devLower.contains('/dev/sd') ||
           devLower.contains('/dev/nvme') ||
           RegExp(r'(^|/)sd[a-z][0-9]*').hasMatch(devLower) ||
           RegExp(r'(^|/)nvme[0-9]').hasMatch(devLower);
@@ -359,7 +360,8 @@ class MountPointItem {
 
     // 4. Overlay directory (/overlay) is inbuilt internal flash UNLESS running Extroot on an external drive
     if (mountLower == '/overlay') {
-      final isExternalExtroot = devLower.contains('/dev/sd') ||
+      final isExternalExtroot =
+          devLower.contains('/dev/sd') ||
           devLower.contains('/dev/nvme') ||
           RegExp(r'(^|/)sd[a-z][0-9]*').hasMatch(devLower) ||
           RegExp(r'(^|/)nvme[0-9]').hasMatch(devLower);
@@ -377,7 +379,8 @@ class MountPointItem {
     // 6. External SD card slots (e.g. mmcblk1 or mmc mounted under /mnt or /media)
     if (devLower.contains('mmcblk1') ||
         (devLower.contains('mmcblk') &&
-            (mountLower.startsWith('/mnt') || mountLower.startsWith('/media')))) {
+            (mountLower.startsWith('/mnt') ||
+                mountLower.startsWith('/media')))) {
       return true;
     }
 

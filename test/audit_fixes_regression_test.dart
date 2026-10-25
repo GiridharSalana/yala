@@ -181,7 +181,13 @@ void main() {
 
         final wedInside = DateTime(2026, 11, 11, 15, 30); // Wednesday
         final wedOutside = DateTime(2026, 11, 11, 18, 00); // Wednesday
-        final thuInside = DateTime(2026, 11, 12, 15, 30); // Thursday (not active)
+        final thuInside = DateTime(
+          2026,
+          11,
+          12,
+          15,
+          30,
+        ); // Thursday (not active)
         expect(daytimeSchedule.isTimeInBlockWindow(wedInside), isTrue);
         expect(daytimeSchedule.isTimeInBlockWindow(wedOutside), isFalse);
         expect(daytimeSchedule.isTimeInBlockWindow(thuInside), isFalse);
@@ -258,7 +264,8 @@ void main() {
           throughputControllerRef: () => null,
           dashboardPreferencesRef: () => DashboardPreferences(),
           reviewerModeRef: () => false,
-          tryAutoLogin: ({bool force = false, bool fetchDashboard = true}) async => false,
+          tryAutoLogin:
+              ({bool force = false, bool fetchDashboard = true}) async => false,
           fetchPublicIps: () async {},
           setPublicIps: (v4, v6) {},
           setConnectionStatus: (status) {},
@@ -280,80 +287,81 @@ void main() {
               'l3_device': 'eth0',
               'device': 'eth0',
             },
-            <dynamic, dynamic>{
-              'interface': 'guest',
-              'device': 'wlan0-1',
-            },
+            <dynamic, dynamic>{'interface': 'guest', 'device': 'wlan0-1'},
           ],
         };
 
-        controller.setDashboardDataForTesting({
-          'interfaceDump': dynamicDump,
-        });
+        controller.setDashboardDataForTesting({'interfaceDump': dynamicDump});
 
         expect(controller.getDeviceNameForInterface('lan'), equals('br-lan'));
         expect(controller.getDeviceNameForInterface('wan'), equals('eth0'));
-        expect(controller.getDeviceNameForInterface('guest'), equals('wlan0-1'));
+        expect(
+          controller.getDeviceNameForInterface('guest'),
+          equals('wlan0-1'),
+        );
       });
     });
 
     group('4. Multi-Router Credential Isolation in Session Controller', () {
-      test('tryAutoLogin uses selected router credentials instead of empty values', () async {
-        final router1 = model.Router(
-          id: 'r1',
-          ipAddress: '192.168.1.1',
-          username: 'root',
-          password: 'Password1',
-          useHttps: false,
-        );
-        final router2 = model.Router(
-          id: 'r2',
-          ipAddress: '10.0.0.1',
-          username: 'admin',
-          password: 'Password2',
-          useHttps: true,
-        );
+      test(
+        'tryAutoLogin uses selected router credentials instead of empty values',
+        () async {
+          final router1 = model.Router(
+            id: 'r1',
+            ipAddress: '192.168.1.1',
+            username: 'root',
+            password: 'Password1',
+            useHttps: false,
+          );
+          final router2 = model.Router(
+            id: 'r2',
+            ipAddress: '10.0.0.1',
+            username: 'admin',
+            password: 'Password2',
+            useHttps: true,
+          );
 
-        final fakeRouterService = FakeRouterService(
-          initialRouters: [router1, router2],
-        );
-        final fakeAuthService = FakeAuthService();
-        final fakeApiService = FakeApiService();
+          final fakeRouterService = FakeRouterService(
+            initialRouters: [router1, router2],
+          );
+          final fakeAuthService = FakeAuthService();
+          final fakeApiService = FakeApiService();
 
-        final sessionController = SessionController(
-          initialReviewerMode: false,
-          apiServiceRef: () => fakeApiService,
-          authServiceRef: () => fakeAuthService,
-          routerServiceRef: () => fakeRouterService,
-          secureStorageServiceRef: () => SecureStorageService(),
-          httpClientManagerRef: () => HttpClientManager(),
-          dashboardControllerRef: () => null,
-          cancelThroughputTimer: () {},
-          startThroughputTimer: () {},
-          fetchDashboardData: ({bool force = false}) async {},
-          initializeServices: () {},
-          setLoadingState: (_) {},
-          setErrorState: (_) {},
-          notifyListeners: () {},
-        );
+          final sessionController = SessionController(
+            initialReviewerMode: false,
+            apiServiceRef: () => fakeApiService,
+            authServiceRef: () => fakeAuthService,
+            routerServiceRef: () => fakeRouterService,
+            secureStorageServiceRef: () => SecureStorageService(),
+            httpClientManagerRef: () => HttpClientManager(),
+            dashboardControllerRef: () => null,
+            cancelThroughputTimer: () {},
+            startThroughputTimer: () {},
+            fetchDashboardData: ({bool force = false}) async {},
+            initializeServices: () {},
+            setLoadingState: (_) {},
+            setErrorState: (_) {},
+            notifyListeners: () {},
+          );
 
-        // Router 1 selected initially
-        await sessionController.tryAutoLogin();
-        expect(fakeAuthService.lastPassedIp, equals('192.168.1.1'));
-        expect(fakeAuthService.lastPassedUser, equals('root'));
-        expect(fakeAuthService.lastPassedPass, equals('Password1'));
-        expect(fakeAuthService.lastPassedHttps, isFalse);
+          // Router 1 selected initially
+          await sessionController.tryAutoLogin();
+          expect(fakeAuthService.lastPassedIp, equals('192.168.1.1'));
+          expect(fakeAuthService.lastPassedUser, equals('root'));
+          expect(fakeAuthService.lastPassedPass, equals('Password1'));
+          expect(fakeAuthService.lastPassedHttps, isFalse);
 
-        // Now select Router 2
-        await fakeRouterService.selectRouter('r2');
-        await sessionController.tryAutoLogin(force: true);
+          // Now select Router 2
+          await fakeRouterService.selectRouter('r2');
+          await sessionController.tryAutoLogin(force: true);
 
-        // Credential bleed prevented: Router 2's specific credentials used
-        expect(fakeAuthService.lastPassedIp, equals('10.0.0.1'));
-        expect(fakeAuthService.lastPassedUser, equals('admin'));
-        expect(fakeAuthService.lastPassedPass, equals('Password2'));
-        expect(fakeAuthService.lastPassedHttps, isTrue);
-      });
+          // Credential bleed prevented: Router 2's specific credentials used
+          expect(fakeAuthService.lastPassedIp, equals('10.0.0.1'));
+          expect(fakeAuthService.lastPassedUser, equals('admin'));
+          expect(fakeAuthService.lastPassedPass, equals('Password2'));
+          expect(fakeAuthService.lastPassedHttps, isTrue);
+        },
+      );
     });
   });
 }

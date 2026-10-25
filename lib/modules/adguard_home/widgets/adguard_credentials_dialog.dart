@@ -13,10 +13,7 @@ import '../models/adguard_api_models.dart';
 class AdGuardCredentialsDialog extends StatefulWidget {
   final AdGuardController controller;
 
-  const AdGuardCredentialsDialog({
-    super.key,
-    required this.controller,
-  });
+  const AdGuardCredentialsDialog({super.key, required this.controller});
 
   static Future<bool?> show(
     BuildContext context, {
@@ -71,10 +68,7 @@ class _AdGuardCredentialsDialogState extends State<AdGuardCredentialsDialog> {
     });
 
     try {
-      final creds = AdGuardCredentials(
-        username: username,
-        password: password,
-      );
+      final creds = AdGuardCredentials(username: username, password: password);
       final success = await widget.controller.setCredentials(creds);
       if (!mounted) return;
       if (!success) {
@@ -168,7 +162,9 @@ class _AdGuardCredentialsDialogState extends State<AdGuardCredentialsDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
+          onPressed: _isSubmitting
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: Text(l10n?.actionCancel ?? 'Cancel'),
         ),
         FilledButton(

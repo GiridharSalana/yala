@@ -155,12 +155,11 @@ class AdGuardState {
     String routerId, {
     AdGuardInstanceProfile? activeProfile,
     List<AdGuardInstanceProfile> profiles = const [],
-  }) =>
-      AdGuardState(
-        routerId: routerId,
-        activeProfile: activeProfile,
-        profiles: profiles,
-      );
+  }) => AdGuardState(
+    routerId: routerId,
+    activeProfile: activeProfile,
+    profiles: profiles,
+  );
 
   AdGuardState copyWith({
     AdGuardConnectionStatus? connectionStatus,
@@ -216,8 +215,9 @@ class AdGuardState {
       isMutatingDns: isMutatingDns ?? this.isMutatingDns,
       isMutatingFilterLists:
           isMutatingFilterLists ?? this.isMutatingFilterLists,
-      activeProfile:
-          clearActiveProfile ? null : (activeProfile ?? this.activeProfile),
+      activeProfile: clearActiveProfile
+          ? null
+          : (activeProfile ?? this.activeProfile),
       profiles: profiles ?? this.profiles,
       status: clearStatus ? null : (status ?? this.status),
       stats: clearStats ? null : (stats ?? this.stats),
@@ -232,13 +232,14 @@ class AdGuardState {
       lastSuccessfulRefresh:
           lastSuccessfulRefresh ?? this.lastSuccessfulRefresh,
       statsPeriod: statsPeriod ?? this.statsPeriod,
-      generalError:
-          clearGeneralError ? null : (generalError ?? this.generalError),
-      statusError:
-          clearStatusError ? null : (statusError ?? this.statusError),
+      generalError: clearGeneralError
+          ? null
+          : (generalError ?? this.generalError),
+      statusError: clearStatusError ? null : (statusError ?? this.statusError),
       statsError: clearStatsError ? null : (statsError ?? this.statsError),
-      filteringError:
-          clearFilteringError ? null : (filteringError ?? this.filteringError),
+      filteringError: clearFilteringError
+          ? null
+          : (filteringError ?? this.filteringError),
       processTelemetryError: clearProcessTelemetryError
           ? null
           : (processTelemetryError ?? this.processTelemetryError),
@@ -303,11 +304,13 @@ class DefaultConnectivityChecker implements IConnectivityChecker {
       return true;
     }
     try {
-      final interfaces = await NetworkInterface.list(includeLoopback: false)
-          .timeout(const Duration(seconds: 1), onTimeout: () => []);
+      final interfaces = await NetworkInterface.list(
+        includeLoopback: false,
+      ).timeout(const Duration(seconds: 1), onTimeout: () => []);
       if (interfaces.isNotEmpty) return true;
-      final loopbacks = await NetworkInterface.list(includeLoopback: true)
-          .timeout(const Duration(seconds: 1), onTimeout: () => []);
+      final loopbacks = await NetworkInterface.list(
+        includeLoopback: true,
+      ).timeout(const Duration(seconds: 1), onTimeout: () => []);
       return loopbacks.isNotEmpty;
     } catch (_) {
       return true;
@@ -408,7 +411,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
       odhcpdIpv6Dns: List.unmodifiable(odhcpdIpv6Dns),
       raDnsEnabled: raDnsEnabled,
       isIndeterminateIpv6: isIndeterminateIpv6,
-      routerInterfaceIpv6Addresses: List.unmodifiable(routerInterfaceIpv6Addresses),
+      routerInterfaceIpv6Addresses: List.unmodifiable(
+        routerInterfaceIpv6Addresses,
+      ),
       probedAt: probedAt,
     );
   }
@@ -438,20 +443,17 @@ class AdGuardController extends StateNotifier<AdGuardState>
     IAuthService? authServiceOverride,
     SecureStorageService? secureStorageOverride,
     IConnectivityChecker? connectivityCheckerOverride,
-  })  : _apiServiceOverride = apiServiceOverride,
-        _operationQueueOverride = operationQueueOverride,
-        _luciApiServiceOverride = luciApiServiceOverride,
-        _authServiceOverride = authServiceOverride,
-        _secureStorageOverride = secureStorageOverride,
-        _connectivityCheckerOverride = connectivityCheckerOverride,
-        super(
-          _sessionCache[initialProfile?.id ?? 'local_$routerId'] ??
-              _sessionCache[routerId] ??
-              AdGuardState.initial(
-                routerId,
-                activeProfile: initialProfile,
-              ),
-        ) {
+  }) : _apiServiceOverride = apiServiceOverride,
+       _operationQueueOverride = operationQueueOverride,
+       _luciApiServiceOverride = luciApiServiceOverride,
+       _authServiceOverride = authServiceOverride,
+       _secureStorageOverride = secureStorageOverride,
+       _connectivityCheckerOverride = connectivityCheckerOverride,
+       super(
+         _sessionCache[initialProfile?.id ?? 'local_$routerId'] ??
+             _sessionCache[routerId] ??
+             AdGuardState.initial(routerId, activeProfile: initialProfile),
+       ) {
     try {
       WidgetsBinding.instance.addObserver(this);
     } catch (_) {}
@@ -570,14 +572,12 @@ class AdGuardController extends StateNotifier<AdGuardState>
       final hasLocal = storedProfiles.any(
         (p) => p.id == defaultLocal.id || p.routerId == routerId,
       );
-      final allProfiles = [
-        if (!hasLocal) defaultLocal,
-        ...storedProfiles,
-      ];
+      final allProfiles = [if (!hasLocal) defaultLocal, ...storedProfiles];
 
       // Restore persisted active profile ID with strict router-context isolation
-      final savedActiveId =
-          await _secureStorage?.getActiveAdGuardProfileId(routerId);
+      final savedActiveId = await _secureStorage?.getActiveAdGuardProfileId(
+        routerId,
+      );
       AdGuardInstanceProfile? targetActive;
 
       if (savedActiveId != null) {
@@ -594,8 +594,7 @@ class AdGuardController extends StateNotifier<AdGuardState>
         }
       }
 
-      final currentActive =
-          targetActive ?? state.activeProfile ?? defaultLocal;
+      final currentActive = targetActive ?? state.activeProfile ?? defaultLocal;
       final cached = _sessionCache[currentActive.id];
       if (cached != null) {
         state = cached.copyWith(
@@ -641,14 +640,15 @@ class AdGuardController extends StateNotifier<AdGuardState>
         isRefreshing: true,
       );
     } else {
-      state = AdGuardState.initial(
-        routerId,
-        activeProfile: profile,
-        profiles: state.profiles,
-      ).copyWith(
-        isLoading: true,
-        connectionStatus: AdGuardConnectionStatus.discovering,
-      );
+      state =
+          AdGuardState.initial(
+            routerId,
+            activeProfile: profile,
+            profiles: state.profiles,
+          ).copyWith(
+            isLoading: true,
+            connectionStatus: AdGuardConnectionStatus.discovering,
+          );
     }
 
     await refresh();
@@ -667,9 +667,7 @@ class AdGuardController extends StateNotifier<AdGuardState>
   }) async {
     if (_disposed || !mounted) return;
     await _secureStorage?.saveAdGuardProfile(profile);
-    if (username != null &&
-        password != null &&
-        username.trim().isNotEmpty) {
+    if (username != null && password != null && username.trim().isNotEmpty) {
       await _secureStorage?.saveAdGuardCredentialsForInstance(
         profile.id,
         username.trim(),
@@ -688,9 +686,7 @@ class AdGuardController extends StateNotifier<AdGuardState>
   }) async {
     if (_disposed || !mounted) return;
     await _secureStorage?.saveAdGuardProfile(profile);
-    if (username != null &&
-        username.trim().isNotEmpty &&
-        password != null) {
+    if (username != null && username.trim().isNotEmpty && password != null) {
       await _secureStorage?.saveAdGuardCredentialsForInstance(
         profile.id,
         username.trim(),
@@ -732,7 +728,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
       return AdGuardConnectionStatus.authenticated;
     }
     final probeId = 'temp_probe_${DateTime.now().millisecondsSinceEpoch}';
-    final tempService = _apiServiceOverride ??
+    final tempService =
+        _apiServiceOverride ??
         AdGuardApiService(
           routerId: routerId,
           instanceId: probeId,
@@ -758,8 +755,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
     _cachedApiService = null;
     _cachedApiServiceKey = null;
 
-    final savedActiveId =
-        await _secureStorage?.getActiveAdGuardProfileId(routerId);
+    final savedActiveId = await _secureStorage?.getActiveAdGuardProfileId(
+      routerId,
+    );
     if (savedActiveId == profileId) {
       await _secureStorage?.clearActiveAdGuardProfileId(routerId);
     }
@@ -1021,7 +1019,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
       }
 
       AdGuardDnsTopology buildUnreachableTopology() {
-        final profType = state.activeProfile?.type ??
+        final profType =
+            state.activeProfile?.type ??
             (state.isExternal
                 ? AdGuardInstanceType.externalHost
                 : AdGuardInstanceType.localRouter);
@@ -1029,12 +1028,14 @@ class AdGuardController extends StateNotifier<AdGuardState>
             state.activeProfile?.host ?? (state.isExternal ? '' : '127.0.0.1');
 
         return AdGuardDnsTopology.infer(
-          adguardDnsPort: state.status?.dnsPort ?? state.topology.adguardDnsPort,
+          adguardDnsPort:
+              state.status?.dnsPort ?? state.topology.adguardDnsPort,
           dnsmasqPort:
               _cachedUciTopology?.dnsmasqPort ?? state.topology.dnsmasqPort,
           dnsmasqServers:
               _cachedUciTopology?.dnsmasqServers ?? state.topology.forwarders,
-          hasDnatRedirect: _cachedUciTopology?.hasDnatRedirect ??
+          hasDnatRedirect:
+              _cachedUciTopology?.hasDnatRedirect ??
               state.topology.hasFirewallRedirect,
           adguardDnsAddresses: state.status?.dnsAddresses ?? const [],
           isDnsRunning: false,
@@ -1045,8 +1046,7 @@ class AdGuardController extends StateNotifier<AdGuardState>
           totalQueries: 0,
           odhcpdIpv6Dns: _cachedUciTopology?.odhcpdIpv6Dns ?? const [],
           raDnsEnabled: _cachedUciTopology?.raDnsEnabled,
-          isIndeterminateIpv6:
-              _cachedUciTopology?.isIndeterminateIpv6 ?? true,
+          isIndeterminateIpv6: _cachedUciTopology?.isIndeterminateIpv6 ?? true,
           routerIp: _currentRouter?.ipAddress,
         );
       }
@@ -1078,7 +1078,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
           isLoading: false,
           isRefreshing: false,
           connectionStatus: AdGuardConnectionStatus.invalidEndpoint,
-          statusError: statusResult.error?.message ??
+          statusError:
+              statusResult.error?.message ??
               'Response is not genuine AdGuard Home',
           topology: unreachTop,
           capabilities: state.capabilities.copyWith(
@@ -1095,7 +1096,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
         _consecutiveFailures++;
         final retryAfter = statusResult.error?.retryAfter;
         final errType = statusResult.error?.type;
-        final connStatus = (errType == AdGuardApiErrorType.networkFailure ||
+        final connStatus =
+            (errType == AdGuardApiErrorType.networkFailure ||
                 errType == AdGuardApiErrorType.timeout ||
                 errType == AdGuardApiErrorType.rateLimited ||
                 errType == AdGuardApiErrorType.serviceUnavailable)
@@ -1121,7 +1123,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
       final validStatus = statusResult.data!;
 
       // Evaluate whether UCI topology probing is required
-      final bool isCacheValid = _cachedUciTopology != null &&
+      final bool isCacheValid =
+          _cachedUciTopology != null &&
           !_cachedUciTopology!.isExpired(topologyCacheTtl);
       final bool shouldProbeTopology =
           !_isReviewerMode && (forceTopologyProbe || !isCacheValid);
@@ -1139,8 +1142,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
       await Future.wait([
         // Stats fetch with active period duration
         () async {
-          final statsRes =
-              await api.getStats(recent: state.statsPeriod.duration);
+          final statsRes = await api.getStats(
+            recent: state.statsPeriod.duration,
+          );
           if (statsRes.isSuccess && statsRes.data != null) {
             fetchedStats = statsRes.data;
           } else {
@@ -1180,11 +1184,14 @@ class AdGuardController extends StateNotifier<AdGuardState>
         }(),
 
         // UCI DNS topology probe (if needed)
-        if (shouldProbeTopology && (!state.isExternal || _currentRouter != null))
+        if (shouldProbeTopology &&
+            (!state.isExternal || _currentRouter != null))
           () async {
             try {
-              freshlyProbedTopology =
-                  await _fetchDnsUciConfig(cycleEpoch, capturedRouterId);
+              freshlyProbedTopology = await _fetchDnsUciConfig(
+                cycleEpoch,
+                capturedRouterId,
+              );
             } catch (e) {
               Logger.warning(
                 'AdGuardController[$capturedRouterId]: UCI topology probe exception: $e',
@@ -1218,7 +1225,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
           _cachedUciTopology?.odhcpdIpv6Dns ?? const <String>[];
       final effectiveRaDns = _cachedUciTopology?.raDnsEnabled;
       final effectiveIndeterminateIpv6 =
-          _cachedUciTopology?.isIndeterminateIpv6 ?? (_cachedUciTopology == null);
+          _cachedUciTopology?.isIndeterminateIpv6 ??
+          (_cachedUciTopology == null);
 
       // Evaluate port conflict (Mode collision)
       bool portConflict = false;
@@ -1233,11 +1241,13 @@ class AdGuardController extends StateNotifier<AdGuardState>
       }
 
       final activeProf = state.activeProfile;
-      final profType = activeProf?.type ??
+      final profType =
+          activeProf?.type ??
           (state.isExternal
               ? AdGuardInstanceType.externalHost
               : AdGuardInstanceType.localRouter);
-      final profHost = activeProf?.host ?? (state.isExternal ? '' : '127.0.0.1');
+      final profHost =
+          activeProf?.host ?? (state.isExternal ? '' : '127.0.0.1');
 
       // Infer DNS topology mode and 8 routing states
       final inferredTopology = AdGuardDnsTopology.infer(
@@ -1288,7 +1298,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
             );
 
       // Check whether partial telemetry degradation occurred
-      final bool isDegraded = statsErrorMsg != null ||
+      final bool isDegraded =
+          statsErrorMsg != null ||
           filteringErrorMsg != null ||
           (!state.isExternal && processErrorMsg != null);
 
@@ -1371,7 +1382,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
     }
 
     // 2. Check session cache for effective instance ID or router ID
-    final cached = _sessionCache[state.effectiveInstanceId] ??
+    final cached =
+        _sessionCache[state.effectiveInstanceId] ??
         _sessionCache[routerId] ??
         _sessionCache['local_$routerId'];
     if (cached != null && cached.status != null) {
@@ -1388,7 +1400,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
 
     // 4. Check if we should attempt discovery:
     // If router has local capability OR active/stored profile is external
-    final hasExternal = state.isExternal ||
+    final hasExternal =
+        state.isExternal ||
         state.profiles.any((p) => p.type == AdGuardInstanceType.externalHost);
     if (!hasRouterCapability && !hasExternal) {
       // No local router capability and no external profiles configured:
@@ -2019,7 +2032,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
       } else {
         state = state.copyWith(
           isManagingService: false,
-          serviceActionError: 'Failed to execute $action on AdGuard Home service',
+          serviceActionError:
+              'Failed to execute $action on AdGuard Home service',
         );
         return false;
       }
@@ -2104,7 +2118,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
 
       if (servicesMap != null) {
         final serviceName = state.capabilities.serviceName ?? 'adguardhome';
-        final meta = servicesMap[serviceName] ??
+        final meta =
+            servicesMap[serviceName] ??
             servicesMap['adguardhome'] ??
             servicesMap['AdGuardHome'];
         if (meta is Map) {
@@ -2300,8 +2315,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
     }
     if (payload is Map) {
       if (payload['values'] is Map) {
-        return (payload['values'] as Map)
-            .map((k, v) => MapEntry(k.toString(), v));
+        return (payload['values'] as Map).map(
+          (k, v) => MapEntry(k.toString(), v),
+        );
       }
       return payload.map((k, v) => MapEntry(k.toString(), v));
     }
@@ -2315,9 +2331,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
     List<String> odhcpdIpv6Dns,
     bool? raDnsEnabled,
     bool isIndeterminateIpv6,
-  }) parseDhcpUci(
-    Map<String, dynamic> values,
-  ) {
+  })
+  parseDhcpUci(Map<String, dynamic> values) {
     int port = 53;
     final List<String> servers = [];
     final List<String> ipv6Dns = [];
@@ -2425,7 +2440,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
     int targetPort,
     bool isLocalOnly,
     bool isMalformed,
-  }) parseDnsmasqServerRule(String raw) {
+  })
+  parseDnsmasqServerRule(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) {
       return (
@@ -2559,7 +2575,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
     int targetPort,
     bool isBlockOnly,
     bool isMalformed,
-  }) parseAdguardConditionalUpstream(String raw) {
+  })
+  parseAdguardConditionalUpstream(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) {
       return (
@@ -2713,11 +2730,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
 
   /// Normalizes addresses and detects potential infinite DNS forwarding loops.
   @visibleForTesting
-  static ({
-    bool loopDetected,
-    bool isWarningOnly,
-    String? loopReason,
-  }) detectForwardingLoop({
+  static ({bool loopDetected, bool isWarningOnly, String? loopReason})
+  detectForwardingLoop({
     required List<String> adguardUpstreams,
     required String? routerIp,
     List<String> routerIpv6Addresses = const [],
@@ -2748,11 +2762,16 @@ class AdGuardController extends StateNotifier<AdGuardState>
         ],
     };
 
-    ({bool loopDetected, bool isWarningOnly, String? loopReason})? advisoryWarning;
+    ({bool loopDetected, bool isWarningOnly, String? loopReason})?
+    advisoryWarning;
 
     for (final raw in adguardUpstreams) {
       final trimmed = raw.trim();
-      if (trimmed.isEmpty || trimmed.startsWith('#') || trimmed.startsWith('!')) continue;
+      if (trimmed.isEmpty ||
+          trimmed.startsWith('#') ||
+          trimmed.startsWith('!')) {
+        continue;
+      }
 
       // Handle domain-specific conditional forwarders (e.g. [/lan/]192.168.1.1:53 or /lan/127.0.0.1#53)
       if (trimmed.startsWith('[/') || trimmed.startsWith('/')) {
@@ -2775,11 +2794,17 @@ class AdGuardController extends StateNotifier<AdGuardState>
         if (normalizedRouterIps.contains(normHost) ||
             normalizedRouterIps.contains(parsed.targetHost!.toLowerCase())) {
           if (parsed.targetPort == dnsmasqPort) {
-            final domainsLabel = parsed.domains != null ? ' "${parsed.domains}"' : '';
+            final domainsLabel = parsed.domains != null
+                ? ' "${parsed.domains}"'
+                : '';
             final reason =
                 'AdGuard conditional upstream "$trimmed" forwards$domainsLabel queries back to router resolver on port $dnsmasqPort. '
                 'Configuring router DNS to forward to AdGuard creates a circular forwarding loop for these domains.';
-            return (loopDetected: true, isWarningOnly: false, loopReason: reason);
+            return (
+              loopDetected: true,
+              isWarningOnly: false,
+              loopReason: reason,
+            );
           } else {
             advisoryWarning ??= (
               loopDetected: false,
@@ -2821,7 +2846,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
       } else if (addressPart.contains('#')) {
         final hashIdx = addressPart.indexOf('#');
         host = addressPart.substring(0, hashIdx).trim();
-        final parsedPort = int.tryParse(addressPart.substring(hashIdx + 1).trim());
+        final parsedPort = int.tryParse(
+          addressPart.substring(hashIdx + 1).trim(),
+        );
         if (parsedPort != null) port = parsedPort;
       } else {
         // Check if addressPart is an unbracketed IPv6 literal (e.g. 2001:db8::1 or 2001:db8:0:0:0:0:0:1)
@@ -2837,7 +2864,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
           // host:port (IPv4 or hostname with port)
           final colonIdx = addressPart.lastIndexOf(':');
           final candidateHost = addressPart.substring(0, colonIdx).trim();
-          final candidatePort = int.tryParse(addressPart.substring(colonIdx + 1).trim());
+          final candidatePort = int.tryParse(
+            addressPart.substring(colonIdx + 1).trim(),
+          );
           if (candidatePort != null) {
             host = candidateHost;
             port = candidatePort;
@@ -2910,7 +2939,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
     bool isHostname = false;
 
     // Check if host is raw IP or hostname
-    final isIpv4 = RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(host);
+    final isIpv4 = RegExp(
+      r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$',
+    ).hasMatch(host);
     final isIpv6 = host.contains(':');
     if (!isIpv4 && !isIpv6) {
       isHostname = true;
@@ -2954,7 +2985,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
         if (routerIpv6List.isEmpty &&
             upstreamsRes.data!.any((u) {
               final trimmed = u.trim();
-              if (trimmed.startsWith('#') || trimmed.startsWith('!')) return false;
+              if (trimmed.startsWith('#') || trimmed.startsWith('!')) {
+                return false;
+              }
               if (trimmed.contains('[') && trimmed.contains(']')) return true;
               final withoutProto = trimmed.contains('://')
                   ? trimmed.substring(trimmed.indexOf('://') + 3)
@@ -3112,9 +3145,12 @@ class AdGuardController extends StateNotifier<AdGuardState>
             final p = parseDnsmasqServerRule(trimmed);
             if (p.isLocalOnly || p.targetHost == null) return false;
             final h = p.targetHost!.toLowerCase();
-            final isSameHost = h == targetHostNorm ||
-                (targetHostNorm == '127.0.0.1' && (h == 'localhost' || h == '127.0.0.1' || h == '::1')) ||
-                (targetHostNorm == 'localhost' && (h == '127.0.0.1' || h == '::1')) ||
+            final isSameHost =
+                h == targetHostNorm ||
+                (targetHostNorm == '127.0.0.1' &&
+                    (h == 'localhost' || h == '127.0.0.1' || h == '::1')) ||
+                (targetHostNorm == 'localhost' &&
+                    (h == '127.0.0.1' || h == '::1')) ||
                 (normalizeHost(h) == normalizeHost(targetHostNorm));
             return isSameHost && p.targetPort == targetPortNorm;
           }
@@ -3125,7 +3161,10 @@ class AdGuardController extends StateNotifier<AdGuardState>
               .toList();
 
           final List<String> newServers = preserveExistingAsFallback
-              ? [targetForwarder, ...originalServers.where((s) => !targetsAdGuard(s))]
+              ? [
+                  targetForwarder,
+                  ...originalServers.where((s) => !targetsAdGuard(s)),
+                ]
               : [targetForwarder, ...conditionalRules];
 
           // 3. Stage changes with uci.set (passes staged uncommitted delta to uciApply)
@@ -3146,7 +3185,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
             if (setRes is List && setRes.isNotEmpty && setRes[0] != 0) {
               return const AdGuardDnsConfigResult(
                 status: AdGuardDnsConfigStatus.failed,
-                message: 'Failed to stage dnsmasq forwarder configuration in UCI.',
+                message:
+                    'Failed to stage dnsmasq forwarder configuration in UCI.',
               );
             }
           } catch (e) {
@@ -3181,7 +3221,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
             } catch (_) {}
             return const AdGuardDnsConfigResult(
               status: AdGuardDnsConfigStatus.failed,
-              message: 'Router rejected configuration apply. Staged changes reverted.',
+              message:
+                  'Router rejected configuration apply. Staged changes reverted.',
               wasRolledBack: true,
             );
           }
@@ -3196,7 +3237,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
               object: 'system',
               method: 'board',
             );
-            if (pingRes is List && pingRes.isNotEmpty && (pingRes[0] == 0 || pingRes[0] == 5)) {
+            if (pingRes is List &&
+                pingRes.isNotEmpty &&
+                (pingRes[0] == 0 || pingRes[0] == 5)) {
               reachabilityOk = true;
             } else if (pingRes is Map) {
               reachabilityOk = true;
@@ -3216,7 +3259,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
             } catch (_) {}
             return const AdGuardDnsConfigResult(
               status: AdGuardDnsConfigStatus.rolledBack,
-              message: 'Router reachability check failed after apply. 30-second rollback watchdog triggered.',
+              message:
+                  'Router reachability check failed after apply. 30-second rollback watchdog triggered.',
               wasRolledBack: true,
             );
           }
@@ -3237,9 +3281,13 @@ class AdGuardController extends StateNotifier<AdGuardState>
               final rawServer = readValues['values'] is Map
                   ? (readValues['values'] as Map)['server']
                   : readValues['server'];
-              if (rawServer is List && rawServer.map((e) => e.toString().trim()).contains(targetForwarder)) {
+              if (rawServer is List &&
+                  rawServer
+                      .map((e) => e.toString().trim())
+                      .contains(targetForwarder)) {
                 configVerified = true;
-              } else if (rawServer is String && rawServer.trim() == targetForwarder) {
+              } else if (rawServer is String &&
+                  rawServer.trim() == targetForwarder) {
                 configVerified = true;
               }
             }
@@ -3258,7 +3306,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
             } catch (_) {}
             return const AdGuardDnsConfigResult(
               status: AdGuardDnsConfigStatus.failed,
-              message: 'Configuration verification readback failed. Changes reverted.',
+              message:
+                  'Configuration verification readback failed. Changes reverted.',
               wasRolledBack: true,
             );
           }
@@ -3278,7 +3327,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
           if (!confirmed) {
             return const AdGuardDnsConfigResult(
               status: AdGuardDnsConfigStatus.ambiguous,
-              message: 'Configuration was applied and verified, but confirmation returned an ambiguous response. Please verify router status.',
+              message:
+                  'Configuration was applied and verified, but confirmation returned an ambiguous response. Please verify router status.',
             );
           }
 
@@ -3397,11 +3447,11 @@ class AdGuardController extends StateNotifier<AdGuardState>
       final p = parseDnsmasqServerRule(trimmed);
       if (p.isLocalOnly || p.targetHost == null) return false;
       final h = p.targetHost!.toLowerCase();
-      final isSameHost = h == targetHostNorm ||
+      final isSameHost =
+          h == targetHostNorm ||
           (targetHostNorm == '127.0.0.1' &&
               (h == 'localhost' || h == '127.0.0.1' || h == '::1')) ||
-          (targetHostNorm == 'localhost' &&
-              (h == '127.0.0.1' || h == '::1')) ||
+          (targetHostNorm == 'localhost' && (h == '127.0.0.1' || h == '::1')) ||
           (normalizeHost(h) == normalizeHost(targetHostNorm));
       return isSameHost && p.targetPort == targetPortNorm;
     }
@@ -3429,8 +3479,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
     }
 
     final matchedRule = matchingRules.first;
-    final remainingServers =
-        currentServers.where((s) => s != matchedRule).toList();
+    final remainingServers = currentServers
+        .where((s) => s != matchedRule)
+        .toList();
     final warnings = <String>[];
     if (remainingServers.isEmpty) {
       warnings.add(
@@ -3551,7 +3602,8 @@ class AdGuardController extends StateNotifier<AdGuardState>
             final p = parseDnsmasqServerRule(trimmed);
             if (p.isLocalOnly || p.targetHost == null) return false;
             final h = p.targetHost!.toLowerCase();
-            final isSameHost = h == targetHostNorm ||
+            final isSameHost =
+                h == targetHostNorm ||
                 (targetHostNorm == '127.0.0.1' &&
                     (h == 'localhost' || h == '127.0.0.1' || h == '::1')) ||
                 (targetHostNorm == 'localhost' &&
@@ -3561,7 +3613,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
           }
 
           final matchingRules = originalServers
-              .where((s) => s.trim() == targetForwarder.trim() || targetsAdGuard(s))
+              .where(
+                (s) => s.trim() == targetForwarder.trim() || targetsAdGuard(s),
+              )
               .toList();
 
           if (matchingRules.isEmpty) {
@@ -3583,8 +3637,9 @@ class AdGuardController extends StateNotifier<AdGuardState>
           final matchedRule = matchingRules.first;
 
           // 3. Compute remaining servers (preserve all other rules verbatim in order)
-          final newServers =
-              originalServers.where((s) => s != matchedRule).toList();
+          final newServers = originalServers
+              .where((s) => s != matchedRule)
+              .toList();
 
           // 4. Stage changes with uci.set
           try {
@@ -3714,11 +3769,12 @@ class AdGuardController extends StateNotifier<AdGuardState>
               }
 
               // Verify target forwarder is absent
-              final targetStillPresent = verifiedServers
-                  .any((s) => s == matchedRule || targetsAdGuard(s));
+              final targetStillPresent = verifiedServers.any(
+                (s) => s == matchedRule || targetsAdGuard(s),
+              );
               // Verify all newServers are present in verifiedServers and length matches
-              final allRemainingPresent = newServers
-                      .every((s) => verifiedServers.contains(s)) &&
+              final allRemainingPresent =
+                  newServers.every((s) => verifiedServers.contains(s)) &&
                   verifiedServers.length == newServers.length;
 
               if (!targetStillPresent &&
@@ -3799,7 +3855,7 @@ class AdGuardController extends StateNotifier<AdGuardState>
 }
 
 /// Router-scoped autoDispose family provider for [AdGuardController].
-final adguardControllerProvider = StateNotifierProvider.autoDispose.family<
-    AdGuardController, AdGuardState, String>((ref, routerId) {
-  return AdGuardController(ref, routerId);
-});
+final adguardControllerProvider = StateNotifierProvider.autoDispose
+    .family<AdGuardController, AdGuardState, String>((ref, routerId) {
+      return AdGuardController(ref, routerId);
+    });

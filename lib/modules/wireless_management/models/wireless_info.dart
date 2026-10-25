@@ -119,7 +119,8 @@ enum WifiSecurityMode {
     final description = (iwinfoEnc?['description']?.toString() ?? '')
         .toUpperCase();
     final rawEnabled = iwinfoEnc?['enabled'];
-    final enabled = rawEnabled == null ||
+    final enabled =
+        rawEnabled == null ||
         rawEnabled == true ||
         rawEnabled == 1 ||
         rawEnabled == '1' ||
@@ -904,7 +905,8 @@ class WirelessRadio {
         ? Map<String, dynamic>.from(json['iwinfo'] as Map)
         : <String, dynamic>{};
     final rawUp = json['up'];
-    final up = rawUp == null ||
+    final up =
+        rawUp == null ||
         rawUp == true ||
         rawUp == 1 ||
         rawUp == '1' ||
@@ -1079,10 +1081,10 @@ class WirelessOverview {
       assocData = data['wirelessStations'] as Map<String, dynamic>?;
 
       final wirelessMap = (data['wireless'] is Map
-              ? data['wireless'] as Map
-              : (data['wirelessInterfaces'] is Map
-                  ? data['wirelessInterfaces'] as Map
-                  : null));
+          ? data['wireless'] as Map
+          : (data['wirelessInterfaces'] is Map
+                ? data['wirelessInterfaces'] as Map
+                : null));
       if (wirelessMap != null && wirelessMap.isNotEmpty) {
         wirelessMap.forEach((radioName, radioData) {
           if (radioData is Map) {

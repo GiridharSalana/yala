@@ -75,7 +75,11 @@ class AdGuardFilteringCard extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, size: 20, color: Colors.amber.shade900),
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 20,
+                color: Colors.amber.shade900,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -114,11 +118,7 @@ class AdGuardFilteringCard extends StatelessWidget {
             // Header with non-interactive status chip
             Row(
               children: [
-                Icon(
-                  Icons.tune_rounded,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.tune_rounded, size: 20, color: colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -140,7 +140,9 @@ class AdGuardFilteringCard extends StatelessWidget {
                         : colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isEnabled ? Colors.green : colorScheme.outlineVariant,
+                      color: isEnabled
+                          ? Colors.green
+                          : colorScheme.outlineVariant,
                       width: 0.8,
                     ),
                   ),
@@ -159,7 +161,8 @@ class AdGuardFilteringCard extends StatelessWidget {
                       Text(
                         isEnabled
                             ? (l10n?.aghFilteringActive ?? 'Filtering Active')
-                            : (l10n?.aghFilteringDisabled ?? 'Filtering Disabled'),
+                            : (l10n?.aghFilteringDisabled ??
+                                  'Filtering Disabled'),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: isEnabled
                               ? Colors.green.shade800
@@ -235,7 +238,8 @@ class AdGuardFilteringCard extends StatelessWidget {
                       value: '$enabledLists / $totalLists',
                       subtitle: onManageFilterLists != null
                           ? (l10n?.aghManageFilterLists ?? 'Manage lists')
-                          : (l10n?.aghFilterListsTotal ?? 'Active / Total lists'),
+                          : (l10n?.aghFilterListsTotal ??
+                                'Active / Total lists'),
                       keyName: 'agh_filter_lists_count',
                       icon: Icons.format_list_bulleted_rounded,
                       color: colorScheme.primary,

@@ -230,7 +230,10 @@ port no	mac addr		is local?	ageing timer
 
       expect(fdbMacs, contains('D8:3A:DD:6D:52:21'));
       expect(fdbMacs, contains('92:61:E9:EC:B2:50'));
-      expect(fdbMacs, isNot(contains('C0:06:C3:47:D6:82'))); // router local bridge port excluded
+      expect(
+        fdbMacs,
+        isNot(contains('C0:06:C3:47:D6:82')),
+      ); // router local bridge port excluded
     });
 
     test(
@@ -313,28 +316,31 @@ port no	mac addr		is local?	ageing timer
       },
     );
 
-    test('secondary router wired client is marked as Dumb AP and not dropped', () {
-      const isRouterDumbAp = true; // non-selected router
+    test(
+      'secondary router wired client is marked as Dumb AP and not dropped',
+      () {
+        const isRouterDumbAp = true; // non-selected router
 
-      // Rule: both wired and wireless clients on non-selected router become Dumb AP clients
-      const isClientDumbAp = isRouterDumbAp;
-      const clientApName = 'ncxRouter';
+        // Rule: both wired and wireless clients on non-selected router become Dumb AP clients
+        const isClientDumbAp = isRouterDumbAp;
+        const clientApName = 'ncxRouter';
 
-      final client = Client(
-        ipAddress: '10.0.0.2',
-        macAddress: 'E4:A8:DF:CA:41:8C',
-        hostname: 'ncxLinux',
-        connectionType: ConnectionType.wired,
-        isDumbApClient: isClientDumbAp,
-        apName: clientApName,
-        isConnected: true,
-      );
+        final client = Client(
+          ipAddress: '10.0.0.2',
+          macAddress: 'E4:A8:DF:CA:41:8C',
+          hostname: 'ncxLinux',
+          connectionType: ConnectionType.wired,
+          isDumbApClient: isClientDumbAp,
+          apName: clientApName,
+          isConnected: true,
+        );
 
-      expect(client.isDumbApClient, isTrue);
-      expect(client.apName, 'ncxRouter');
-      expect(client.connectionType, ConnectionType.wired);
-      expect(client.isConnected, isTrue);
-    });
+        expect(client.isDumbApClient, isTrue);
+        expect(client.apName, 'ncxRouter');
+        expect(client.connectionType, ConnectionType.wired);
+        expect(client.isConnected, isTrue);
+      },
+    );
 
     test(
       'merging inactive main entry with active secondary wired client preserves wired type and marks Dumb AP',
@@ -364,7 +370,9 @@ port no	mac addr		is local?	ageing timer
 
         const isMainRouter = false;
         final clientActiveOnSecondaryAp =
-            !isMainRouter && activeOnSecondary.isDumbApClient && activeOnSecondary.isConnected;
+            !isMainRouter &&
+            activeOnSecondary.isDumbApClient &&
+            activeOnSecondary.isConnected;
 
         final bool isDumb;
         final String? apName;
@@ -374,7 +382,8 @@ port no	mac addr		is local?	ageing timer
             existingOnMain.connectionType != ConnectionType.wireless) {
           isDumb = true;
           apName = activeOnSecondary.apName;
-          preferredConnType = (activeOnSecondary.connectionType == ConnectionType.wireless ||
+          preferredConnType =
+              (activeOnSecondary.connectionType == ConnectionType.wireless ||
                   existingOnMain.connectionType == ConnectionType.wireless)
               ? ConnectionType.wireless
               : ConnectionType.wired;
@@ -388,7 +397,8 @@ port no	mac addr		is local?	ageing timer
           isDumbApClient: isDumb,
           apName: apName,
           connectionType: preferredConnType,
-          isConnected: existingOnMain.isConnected || activeOnSecondary.isConnected,
+          isConnected:
+              existingOnMain.isConnected || activeOnSecondary.isConnected,
         );
 
         expect(merged.isDumbApClient, isTrue);

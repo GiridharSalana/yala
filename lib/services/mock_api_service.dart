@@ -1941,10 +1941,12 @@ class MockApiService implements IApiService {
         !listEquals(currentOrder, expectedRuleOrder)) {
       return false;
     }
-    final targetIdx =
-        _mockCustomRules.indexWhere((r) => r.sectionKey == targetSectionKey);
-    final siblingIdx =
-        _mockCustomRules.indexWhere((r) => r.sectionKey == siblingSectionKey);
+    final targetIdx = _mockCustomRules.indexWhere(
+      (r) => r.sectionKey == targetSectionKey,
+    );
+    final siblingIdx = _mockCustomRules.indexWhere(
+      (r) => r.sectionKey == siblingSectionKey,
+    );
     if (targetIdx == -1 || siblingIdx == -1) return false;
     final temp = _mockCustomRules[targetIdx];
     _mockCustomRules[targetIdx] = _mockCustomRules[siblingIdx];

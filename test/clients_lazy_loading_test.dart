@@ -64,10 +64,7 @@ class _FakeLazyApiService implements IApiService {
     if (method == 'getDHCPLeases') {
       return [
         0,
-        {
-          'dhcp_leases': dhcpLeasesByIp[ipAddress] ?? [],
-          'dhcp6_leases': [],
-        },
+        {'dhcp_leases': dhcpLeasesByIp[ipAddress] ?? [], 'dhcp6_leases': []},
       ];
     }
     return [0, {}];
@@ -154,11 +151,7 @@ void main() {
         // Main router (10.0.0.1) responds immediately with 1 wireless client
         fakeApi.wirelessStationsByIp['10.0.0.1'] = {
           'wlan0': [
-            {
-              'mac': '11:22:33:44:55:01',
-              'ssid': 'ncxRouter_5G',
-              'signal': -50,
-            },
+            {'mac': '11:22:33:44:55:01', 'ssid': 'ncxRouter_5G', 'signal': -50},
           ],
         };
         fakeApi.dhcpLeasesByIp['10.0.0.1'] = [
@@ -176,11 +169,7 @@ void main() {
 
         fakeApi.wirelessStationsByIp['192.168.1.1'] = {
           'wlan0': [
-            {
-              'mac': '11:22:33:44:55:02',
-              'ssid': 'ncxTest_2G',
-              'signal': -60,
-            },
+            {'mac': '11:22:33:44:55:02', 'ssid': 'ncxTest_2G', 'signal': -60},
           ],
         };
         fakeApi.dhcpLeasesByIp['10.0.0.1']!.add({
@@ -237,8 +226,7 @@ void main() {
         expect(dumbClient.isDumbApClient, isTrue);
         expect(dumbClient.apName, 'ncxTest');
 
-        final dumbCount =
-            finalClients.where((c) => c.isDumbApClient).length;
+        final dumbCount = finalClients.where((c) => c.isDumbApClient).length;
         expect(dumbCount, 1);
         expect(clientUpdatedCallbacksCount, 2);
       },

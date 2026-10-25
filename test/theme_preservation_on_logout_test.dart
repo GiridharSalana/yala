@@ -36,28 +36,31 @@ void main() {
     expect(appState.useDynamicTheme, isTrue);
   });
 
-  test('Theme mode and theme palette are preserved across reviewer mode toggles', () async {
-    final appState = AppState.instance;
+  test(
+    'Theme mode and theme palette are preserved across reviewer mode toggles',
+    () async {
+      final appState = AppState.instance;
 
-    await appState.setThemeMode(ThemeMode.light);
-    await appState.setThemePalette(AppThemePalette.dynamicTheme);
+      await appState.setThemeMode(ThemeMode.light);
+      await appState.setThemePalette(AppThemePalette.dynamicTheme);
 
-    expect(appState.themeMode, equals(ThemeMode.light));
-    expect(appState.themePalette, equals(AppThemePalette.dynamicTheme));
+      expect(appState.themeMode, equals(ThemeMode.light));
+      expect(appState.themePalette, equals(AppThemePalette.dynamicTheme));
 
-    // Enable reviewer mode
-    await appState.setReviewerMode(true);
-    expect(appState.themeMode, equals(ThemeMode.light));
-    expect(appState.themePalette, equals(AppThemePalette.dynamicTheme));
+      // Enable reviewer mode
+      await appState.setReviewerMode(true);
+      expect(appState.themeMode, equals(ThemeMode.light));
+      expect(appState.themePalette, equals(AppThemePalette.dynamicTheme));
 
-    // Disable reviewer mode
-    await appState.setReviewerMode(false);
-    expect(appState.themeMode, equals(ThemeMode.light));
-    expect(appState.themePalette, equals(AppThemePalette.dynamicTheme));
+      // Disable reviewer mode
+      await appState.setReviewerMode(false);
+      expect(appState.themeMode, equals(ThemeMode.light));
+      expect(appState.themePalette, equals(AppThemePalette.dynamicTheme));
 
-    // Logout
-    await appState.logout();
-    expect(appState.themeMode, equals(ThemeMode.light));
-    expect(appState.themePalette, equals(AppThemePalette.dynamicTheme));
-  });
+      // Logout
+      await appState.logout();
+      expect(appState.themeMode, equals(ThemeMode.light));
+      expect(appState.themePalette, equals(AppThemePalette.dynamicTheme));
+    },
+  );
 }

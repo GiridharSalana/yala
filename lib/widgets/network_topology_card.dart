@@ -46,8 +46,9 @@ class NetworkTopologyCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(7),
                     decoration: BoxDecoration(
-                      color:
-                          colorScheme.primaryContainer.withValues(alpha: 0.13),
+                      color: colorScheme.primaryContainer.withValues(
+                        alpha: 0.13,
+                      ),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -435,11 +436,7 @@ class NetworkTopologyCard extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              portIcon,
-              size: 14,
-              color: badgeColor,
-            ),
+            Icon(portIcon, size: 14, color: badgeColor),
             const SizedBox(width: 5),
             Text(
               port.name,

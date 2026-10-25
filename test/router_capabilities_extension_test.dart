@@ -35,33 +35,36 @@ void main() {
       expect(conservative.hasUciConfirm, isTrue);
     });
 
-    test('hasUciApply and hasUciConfirm reflect ubus methods when probed successfully', () {
-      final capsWithUci = RouterCapabilities(
-        routerId: 'probed-router',
-        ubusObjects: {'uci'},
-        ubusMethods: {
-          'uci': ['apply', 'confirm', 'get', 'set'],
-        },
-        probedAt: DateTime.now(),
-        probeFailed: false,
-      );
+    test(
+      'hasUciApply and hasUciConfirm reflect ubus methods when probed successfully',
+      () {
+        final capsWithUci = RouterCapabilities(
+          routerId: 'probed-router',
+          ubusObjects: {'uci'},
+          ubusMethods: {
+            'uci': ['apply', 'confirm', 'get', 'set'],
+          },
+          probedAt: DateTime.now(),
+          probeFailed: false,
+        );
 
-      expect(capsWithUci.hasUciApply, isTrue);
-      expect(capsWithUci.hasUciConfirm, isTrue);
+        expect(capsWithUci.hasUciApply, isTrue);
+        expect(capsWithUci.hasUciConfirm, isTrue);
 
-      final capsWithoutUciApply = RouterCapabilities(
-        routerId: 'restricted-router',
-        ubusObjects: {'uci'},
-        ubusMethods: {
-          'uci': ['get', 'set', 'commit'],
-        },
-        probedAt: DateTime.now(),
-        probeFailed: false,
-      );
+        final capsWithoutUciApply = RouterCapabilities(
+          routerId: 'restricted-router',
+          ubusObjects: {'uci'},
+          ubusMethods: {
+            'uci': ['get', 'set', 'commit'],
+          },
+          probedAt: DateTime.now(),
+          probeFailed: false,
+        );
 
-      expect(capsWithoutUciApply.hasUciApply, isFalse);
-      expect(capsWithoutUciApply.hasUciConfirm, isFalse);
-    });
+        expect(capsWithoutUciApply.hasUciApply, isFalse);
+        expect(capsWithoutUciApply.hasUciConfirm, isFalse);
+      },
+    );
 
     test('toJson and fromJson preserve Phase 0 capability flags', () {
       final original = RouterCapabilities(
@@ -97,27 +100,32 @@ void main() {
       expect(deserialized.hasUciConfirm, isTrue);
     });
 
-    test('fromJson handles legacy or missing Phase 0 capability fields gracefully', () {
-      final legacyJson = {
-        'routerId': 'legacy-router',
-        'ubusObjects': ['uci'],
-        'ubusMethods': {'uci': ['get']},
-        'packageEngine': 'opkg',
-        'firewallBackend': 'fw4',
-        'networkModel': 'dsa',
-        'releaseVersion': '23.05.0',
-        'boardName': 'generic',
-        'probedAt': '2026-01-01T00:00:00.000Z',
-        'probeFailed': false,
-      };
+    test(
+      'fromJson handles legacy or missing Phase 0 capability fields gracefully',
+      () {
+        final legacyJson = {
+          'routerId': 'legacy-router',
+          'ubusObjects': ['uci'],
+          'ubusMethods': {
+            'uci': ['get'],
+          },
+          'packageEngine': 'opkg',
+          'firewallBackend': 'fw4',
+          'networkModel': 'dsa',
+          'releaseVersion': '23.05.0',
+          'boardName': 'generic',
+          'probedAt': '2026-01-01T00:00:00.000Z',
+          'probeFailed': false,
+        };
 
-      final deserialized = RouterCapabilities.fromJson(legacyJson);
-      expect(deserialized.hasAdGuardHome, isFalse);
-      expect(deserialized.hasOdhcpd, isFalse);
-      expect(deserialized.hasCron, isFalse);
-      expect(deserialized.hasDropbear, isFalse);
-      expect(deserialized.supportsIpv6InternetFirewall, isFalse);
-    });
+        final deserialized = RouterCapabilities.fromJson(legacyJson);
+        expect(deserialized.hasAdGuardHome, isFalse);
+        expect(deserialized.hasOdhcpd, isFalse);
+        expect(deserialized.hasCron, isFalse);
+        expect(deserialized.hasDropbear, isFalse);
+        expect(deserialized.supportsIpv6InternetFirewall, isFalse);
+      },
+    );
 
     test('copyWith properly overrides Phase 0 capability flags', () {
       final base = RouterCapabilities.mock();

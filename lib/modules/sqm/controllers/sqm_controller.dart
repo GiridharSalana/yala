@@ -33,7 +33,7 @@ class SqmController extends StateNotifier<SqmState> {
   final IApiService? _apiServiceOverride;
   final SqmTelemetryService? _telemetryServiceOverride;
   final Future<RpcResult<String>> Function(String packageName)?
-      _packageInstallerOverride;
+  _packageInstallerOverride;
 
   Timer? _telemetryTimer;
   int _fetchEpoch = 0;
@@ -63,11 +63,11 @@ class SqmController extends StateNotifier<SqmState> {
     IApiService? apiServiceOverride,
     SqmTelemetryService? telemetryServiceOverride,
     Future<RpcResult<String>> Function(String packageName)?
-        packageInstallerOverride,
-  })  : _apiServiceOverride = apiServiceOverride,
-        _telemetryServiceOverride = telemetryServiceOverride,
-        _packageInstallerOverride = packageInstallerOverride,
-        super(_sessionCache[routerId] ?? SqmState.initial());
+    packageInstallerOverride,
+  }) : _apiServiceOverride = apiServiceOverride,
+       _telemetryServiceOverride = telemetryServiceOverride,
+       _packageInstallerOverride = packageInstallerOverride,
+       super(_sessionCache[routerId] ?? SqmState.initial());
 
   // ── Dependency Accessors ──────────────────────────────────────────────────
 
@@ -145,7 +145,10 @@ class SqmController extends StateNotifier<SqmState> {
 
     try {
       if (_isReviewerMode) {
-        _populateReviewerModeState(currentEpoch, forceTelemetry: forceTelemetry);
+        _populateReviewerModeState(
+          currentEpoch,
+          forceTelemetry: forceTelemetry,
+        );
         return;
       }
 
@@ -160,13 +163,7 @@ class SqmController extends StateNotifier<SqmState> {
 
       final results = await Future.wait([
         _apiService
-            .call(
-              ip,
-              sysauth,
-              useHttps,
-              object: 'rc',
-              method: 'list',
-            )
+            .call(ip, sysauth, useHttps, object: 'rc', method: 'list')
             .then(
               (val) {
                 rcSuccess = true;
@@ -206,7 +203,9 @@ class SqmController extends StateNotifier<SqmState> {
               params: {'config': 'firewall'},
             )
             .catchError((e) {
-              if (kDebugMode) debugPrint('firewall flow offload probe failed: $e');
+              if (kDebugMode) {
+                debugPrint('firewall flow offload probe failed: $e');
+              }
               return null;
             }),
         _apiService
@@ -252,10 +251,12 @@ class SqmController extends StateNotifier<SqmState> {
       if (servicesMap != null && servicesMap['sqm'] is Map) {
         servicePresent = true;
         final sqmMeta = servicesMap['sqm'] as Map;
-        serviceRunning = sqmMeta['running'] == true ||
+        serviceRunning =
+            sqmMeta['running'] == true ||
             sqmMeta['running'] == 1 ||
             sqmMeta['running'] == '1';
-        serviceEnabled = sqmMeta['enabled'] == true ||
+        serviceEnabled =
+            sqmMeta['enabled'] == true ||
             sqmMeta['enabled'] == 1 ||
             sqmMeta['enabled'] == '1';
       }
@@ -280,7 +281,8 @@ class SqmController extends StateNotifier<SqmState> {
         uciConfigFound = true;
         uciValues.forEach((key, val) {
           if (val is Map) {
-            final isQueue = val['.type'] == 'queue' ||
+            final isQueue =
+                val['.type'] == 'queue' ||
                 val['interface'] != null ||
                 val['download'] != null ||
                 val['qdisc'] != null;
@@ -312,10 +314,12 @@ class SqmController extends StateNotifier<SqmState> {
       if (fwValues != null) {
         for (final sec in fwValues.values) {
           if (sec is Map && sec['.type'] == 'defaults') {
-            softwareOffload = sec['flow_offloading'] == '1' ||
+            softwareOffload =
+                sec['flow_offloading'] == '1' ||
                 sec['flow_offloading'] == 1 ||
                 sec['flow_offloading'] == true;
-            hardwareOffload = sec['flow_offloading_hw'] == '1' ||
+            hardwareOffload =
+                sec['flow_offloading_hw'] == '1' ||
                 sec['flow_offloading_hw'] == 1 ||
                 sec['flow_offloading_hw'] == true;
             break;
@@ -332,7 +336,8 @@ class SqmController extends StateNotifier<SqmState> {
         if (ifacesList is List) {
           for (final item in ifacesList) {
             if (item is Map) {
-              final ifname = item['device']?.toString() ??
+              final ifname =
+                  item['device']?.toString() ??
                   item['l3_device']?.toString() ??
                   item['interface']?.toString();
               if (ifname != null && ifname.isNotEmpty) {
@@ -354,7 +359,8 @@ class SqmController extends StateNotifier<SqmState> {
         }
       }
 
-      final isInstalled = servicePresent || uciConfigFound || parsedQueues.isNotEmpty;
+      final isInstalled =
+          servicePresent || uciConfigFound || parsedQueues.isNotEmpty;
 
       // 5. Operating state classification
       SqmOperatingState opState;
@@ -377,8 +383,12 @@ class SqmController extends StateNotifier<SqmState> {
         isServiceRunning: serviceRunning,
         isServiceEnabled: serviceEnabled,
         queues: List.unmodifiable(parsedQueues),
-        primaryWanInterface: primaryWan ?? (parsedQueues.isNotEmpty ? parsedQueues.first.interface : 'eth0'),
-        networkInterfaces: List.unmodifiable(discoveredInterfaces.toList()..sort()),
+        primaryWanInterface:
+            primaryWan ??
+            (parsedQueues.isNotEmpty ? parsedQueues.first.interface : 'eth0'),
+        networkInterfaces: List.unmodifiable(
+          discoveredInterfaces.toList()..sort(),
+        ),
         hasSoftwareFlowOffload: softwareOffload,
         hasHardwareFlowOffload: hardwareOffload,
         telemetryByInterface: state.telemetryByInterface,
@@ -559,7 +569,9 @@ class SqmController extends StateNotifier<SqmState> {
       state = state.copyWith(
         operatingState: currentOpState,
         telemetryByInterface: Map.unmodifiable(updatedTelemetry),
-        previousTelemetryByInterface: Map.unmodifiable(state.telemetryByInterface),
+        previousTelemetryByInterface: Map.unmodifiable(
+          state.telemetryByInterface,
+        ),
         lastUpdated: DateTime.now(),
       );
       _sessionCache[routerId] = state;
@@ -612,8 +624,9 @@ class SqmController extends StateNotifier<SqmState> {
     final useHttps = router?.useHttps ?? false;
 
     if (_isReviewerMode) {
-      final updatedQueues =
-          state.queues.where((q) => q.name != queueName).toList();
+      final updatedQueues = state.queues
+          .where((q) => q.name != queueName)
+          .toList();
       state = state.copyWith(queues: List.unmodifiable(updatedQueues));
       return true;
     }
@@ -642,8 +655,9 @@ class SqmController extends StateNotifier<SqmState> {
       state = state.copyWith(
         isServiceRunning: enable,
         isServiceEnabled: enable,
-        operatingState:
-            enable ? SqmOperatingState.active : SqmOperatingState.inactive,
+        operatingState: enable
+            ? SqmOperatingState.active
+            : SqmOperatingState.inactive,
       );
       return true;
     }
@@ -705,39 +719,39 @@ class SqmController extends StateNotifier<SqmState> {
     try {
       return await RouterScopedOperationQueue.instance
           .runLocked<RpcResult<String>>(
-        routerId: routerId,
-        domain: '*',
-        timeout: const Duration(seconds: 15),
-        action: () async {
-          RpcResult<String> res;
-          if (_packageInstallerOverride != null) {
-            res = await _packageInstallerOverride(packageName);
-          } else if (_isReviewerMode) {
-            res = RpcResult.success(
-              'Installed $packageName successfully (Reviewer Mode)',
-            );
-            _populateReviewerModeState(_fetchEpoch);
-            return res;
-          } else {
-            final appState = ref?.read(appStateProvider);
-            if (appState == null) {
-              return RpcResult.failed('AppState is unavailable');
-            }
-            res = await appState.installPackage(packageName);
-          }
+            routerId: routerId,
+            domain: '*',
+            timeout: const Duration(seconds: 15),
+            action: () async {
+              RpcResult<String> res;
+              if (_packageInstallerOverride != null) {
+                res = await _packageInstallerOverride(packageName);
+              } else if (_isReviewerMode) {
+                res = RpcResult.success(
+                  'Installed $packageName successfully (Reviewer Mode)',
+                );
+                _populateReviewerModeState(_fetchEpoch);
+                return res;
+              } else {
+                final appState = ref?.read(appStateProvider);
+                if (appState == null) {
+                  return RpcResult.failed('AppState is unavailable');
+                }
+                res = await appState.installPackage(packageName);
+              }
 
-          if (res.isSuccess) {
-            final appState = ref?.read(appStateProvider);
-            if (appState != null) {
-              try {
-                await appState.redetectCapabilities();
-              } catch (_) {}
-            }
-            await refresh(forceTelemetry: false);
-          }
-          return res;
-        },
-      );
+              if (res.isSuccess) {
+                final appState = ref?.read(appStateProvider);
+                if (appState != null) {
+                  try {
+                    await appState.redetectCapabilities();
+                  } catch (_) {}
+                }
+                await refresh(forceTelemetry: false);
+              }
+              return res;
+            },
+          );
     } finally {
       if (!_disposed &&
           _activeScreenSessions > 0 &&
@@ -764,5 +778,5 @@ class SqmController extends StateNotifier<SqmState> {
 /// Scoped provider for SQM controller per router instance.
 final sqmControllerProvider = StateNotifierProvider.autoDispose
     .family<SqmController, SqmState, String>((ref, routerId) {
-  return SqmController(routerId, ref: ref);
-});
+      return SqmController(routerId, ref: ref);
+    });

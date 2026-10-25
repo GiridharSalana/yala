@@ -15,7 +15,7 @@ class DiagnosticsModule extends LuciModule {
 
   @override
   String get description =>
-      'Connectivity test, ping, traceroute, DNS lookup & full report export';
+      'Automated root-cause diagnostic ("Why Is My Internet Broken?"), ping, traceroute & DNS';
 
   @override
   IconData get icon => Icons.troubleshoot_rounded;

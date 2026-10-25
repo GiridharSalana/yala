@@ -26,40 +26,97 @@ void main() {
       expect(NetworkActionsController.validateHostname('router1'), isNull);
       expect(NetworkActionsController.validateHostname('a'), isNull);
       expect(NetworkActionsController.validateHostname('0'), isNull);
-      expect(NetworkActionsController.validateHostname('wrt3200acm-01'), isNull);
+      expect(
+        NetworkActionsController.validateHostname('wrt3200acm-01'),
+        isNull,
+      );
       expect(NetworkActionsController.validateHostname('a' * 63), isNull);
-      expect(NetworkActionsController.validateHostname('  OpenWrt  '), isNull); // trimmed
+      expect(
+        NetworkActionsController.validateHostname('  OpenWrt  '),
+        isNull,
+      ); // trimmed
     });
 
     test('Empty or whitespace-only hostnames fail with empty reason', () {
       expect(NetworkActionsController.validateHostname(null), equals('empty'));
       expect(NetworkActionsController.validateHostname(''), equals('empty'));
       expect(NetworkActionsController.validateHostname('   '), equals('empty'));
-      expect(NetworkActionsController.validateHostname('\t\n'), equals('empty'));
+      expect(
+        NetworkActionsController.validateHostname('\t\n'),
+        equals('empty'),
+      );
     });
 
     test('Hostnames longer than 63 characters fail with too_long reason', () {
-      expect(NetworkActionsController.validateHostname('a' * 64), equals('too_long'));
-      expect(NetworkActionsController.validateHostname('router-' * 15), equals('too_long'));
+      expect(
+        NetworkActionsController.validateHostname('a' * 64),
+        equals('too_long'),
+      );
+      expect(
+        NetworkActionsController.validateHostname('router-' * 15),
+        equals('too_long'),
+      );
     });
 
-    test('Hostnames with leading or trailing hyphens fail with hyphen_edge reason', () {
-      expect(NetworkActionsController.validateHostname('-openwrt'), equals('hyphen_edge'));
-      expect(NetworkActionsController.validateHostname('openwrt-'), equals('hyphen_edge'));
-      expect(NetworkActionsController.validateHostname('-openwrt-'), equals('hyphen_edge'));
-      expect(NetworkActionsController.validateHostname('-'), equals('hyphen_edge'));
-    });
+    test(
+      'Hostnames with leading or trailing hyphens fail with hyphen_edge reason',
+      () {
+        expect(
+          NetworkActionsController.validateHostname('-openwrt'),
+          equals('hyphen_edge'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('openwrt-'),
+          equals('hyphen_edge'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('-openwrt-'),
+          equals('hyphen_edge'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('-'),
+          equals('hyphen_edge'),
+        );
+      },
+    );
 
-    test('Hostnames with invalid characters fail with invalid_characters reason', () {
-      expect(NetworkActionsController.validateHostname('open_wrt'), equals('invalid_characters'));
-      expect(NetworkActionsController.validateHostname('open.wrt'), equals('invalid_characters'));
-      expect(NetworkActionsController.validateHostname('open wrt'), equals('invalid_characters'));
-      expect(NetworkActionsController.validateHostname('router@home'), equals('invalid_characters'));
-      expect(NetworkActionsController.validateHostname('router#1'), equals('invalid_characters'));
-      expect(NetworkActionsController.validateHostname('router!'), equals('invalid_characters'));
-      expect(NetworkActionsController.validateHostname('router:80'), equals('invalid_characters'));
-      expect(NetworkActionsController.validateHostname('router/lan'), equals('invalid_characters'));
-    });
+    test(
+      'Hostnames with invalid characters fail with invalid_characters reason',
+      () {
+        expect(
+          NetworkActionsController.validateHostname('open_wrt'),
+          equals('invalid_characters'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('open.wrt'),
+          equals('invalid_characters'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('open wrt'),
+          equals('invalid_characters'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('router@home'),
+          equals('invalid_characters'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('router#1'),
+          equals('invalid_characters'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('router!'),
+          equals('invalid_characters'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('router:80'),
+          equals('invalid_characters'),
+        );
+        expect(
+          NetworkActionsController.validateHostname('router/lan'),
+          equals('invalid_characters'),
+        );
+      },
+    );
   });
 
   group('MockApiService Hostname Updates', () {
@@ -104,10 +161,15 @@ void main() {
       expect(ok, isTrue);
 
       // Last known hostname updated
-      expect(appState.selectedRouter?.lastKnownHostname, equals('Reviewer-Router-01'));
+      expect(
+        appState.selectedRouter?.lastKnownHostname,
+        equals('Reviewer-Router-01'),
+      );
 
       // Unchanged hostname returns true without error
-      final unchangedOk = await appState.updateRouterHostname('Reviewer-Router-01');
+      final unchangedOk = await appState.updateRouterHostname(
+        'Reviewer-Router-01',
+      );
       expect(unchangedOk, isTrue);
 
       // Cleanup
@@ -117,55 +179,64 @@ void main() {
   });
 
   group('EditHostnameDialog Widget Tests', () {
-    testWidgets('Renders dialog with current hostname and enforces live validation', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () => showDialog(
-                  context: context,
-                  builder: (_) => const EditHostnameDialog(
-                    currentHostname: 'Initial-Host',
+    testWidgets(
+      'Renders dialog with current hostname and enforces live validation',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (_) => const EditHostnameDialog(
+                      currentHostname: 'Initial-Host',
+                    ),
                   ),
+                  child: const Text('Open Dialog'),
                 ),
-                child: const Text('Open Dialog'),
               ),
             ),
           ),
-        ),
-      );
+        );
 
-      // Open dialog
-      await tester.tap(find.text('Open Dialog'));
-      await tester.pumpAndSettle();
+        // Open dialog
+        await tester.tap(find.text('Open Dialog'));
+        await tester.pumpAndSettle();
 
-      // Verify dialog elements
-      expect(find.text('Edit Router Hostname'), findsOneWidget);
-      expect(find.text('Initial-Host'), findsNWidgets(2)); // in chip and in TextFormField
+        // Verify dialog elements
+        expect(find.text('Edit Router Hostname'), findsOneWidget);
+        expect(
+          find.text('Initial-Host'),
+          findsNWidgets(2),
+        ); // in chip and in TextFormField
 
-      // Enter empty hostname -> shows error
-      final textFormField = find.byType(TextFormField);
-      await tester.enterText(textFormField, '');
-      await tester.pumpAndSettle();
-      expect(find.text('Hostname cannot be empty'), findsOneWidget);
+        // Enter empty hostname -> shows error
+        final textFormField = find.byType(TextFormField);
+        await tester.enterText(textFormField, '');
+        await tester.pumpAndSettle();
+        expect(find.text('Hostname cannot be empty'), findsOneWidget);
 
-      // Save button should be disabled when invalid
-      final saveButton = find.widgetWithText(ElevatedButton, 'Save');
-      expect(tester.widget<ElevatedButton>(saveButton).onPressed, isNull);
+        // Save button should be disabled when invalid
+        final saveButton = find.widgetWithText(ElevatedButton, 'Save');
+        expect(tester.widget<ElevatedButton>(saveButton).onPressed, isNull);
 
-      // Enter hostname with invalid edge hyphen
-      await tester.enterText(textFormField, 'bad-name-');
-      await tester.pumpAndSettle();
-      expect(find.text('Hostname cannot start or end with a hyphen'), findsOneWidget);
-      expect(tester.widget<ElevatedButton>(saveButton).onPressed, isNull);
+        // Enter hostname with invalid edge hyphen
+        await tester.enterText(textFormField, 'bad-name-');
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Hostname cannot start or end with a hyphen'),
+          findsOneWidget,
+        );
+        expect(tester.widget<ElevatedButton>(saveButton).onPressed, isNull);
 
-      // Enter valid hostname
-      await tester.enterText(textFormField, 'good-host-1');
-      await tester.pumpAndSettle();
-      expect(tester.widget<ElevatedButton>(saveButton).onPressed, isNotNull);
-    });
+        // Enter valid hostname
+        await tester.enterText(textFormField, 'good-host-1');
+        await tester.pumpAndSettle();
+        expect(tester.widget<ElevatedButton>(saveButton).onPressed, isNotNull);
+      },
+    );
   });
 }

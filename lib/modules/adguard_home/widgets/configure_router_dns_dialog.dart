@@ -133,9 +133,7 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
       ),
       content: SizedBox(
         width: 480,
-        child: SingleChildScrollView(
-          child: _buildContent(context),
-        ),
+        child: SingleChildScrollView(child: _buildContent(context)),
       ),
       actions: _buildActions(context),
     );
@@ -232,8 +230,10 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: p.isExternal
                           ? colorScheme.secondaryContainer
@@ -333,16 +333,17 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded,
-                    color: Colors.amber, size: 20),
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.amber,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     l10n?.aghConfigureDnsHostnameWarning ??
                         'Warning: Destination is a hostname. Using a static IP is recommended to prevent bootstrap resolution failures.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 11,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
                   ),
                 ),
               ],
@@ -356,7 +357,11 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
             final advisoryWarnings = p.warnings.where((w) {
               if (p.loopDetected && w == p.loopReason) return false;
               if (p.portConflict && w == p.portConflictReason) return false;
-              if (p.isHostname && (w.toLowerCase().contains('hostname') || w == l10n?.aghConfigureDnsHostnameWarning)) return false;
+              if (p.isHostname &&
+                  (w.toLowerCase().contains('hostname') ||
+                      w == l10n?.aghConfigureDnsHostnameWarning)) {
+                return false;
+              }
               return true;
             }).toList();
 
@@ -370,13 +375,18 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: Colors.amber.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: Colors.amber, size: 20),
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.amber,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -426,7 +436,8 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
                   value: false,
                   contentPadding: EdgeInsets.zero,
                   title: Text(
-                    l10n?.aghConfigureDnsModeExclusive ?? 'Exclusive Forwarding',
+                    l10n?.aghConfigureDnsModeExclusive ??
+                        'Exclusive Forwarding',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -497,16 +508,17 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
             ),
             child: Row(
               children: [
-                Icon(Icons.shield_outlined,
-                    size: 16, color: colorScheme.primary),
+                Icon(
+                  Icons.shield_outlined,
+                  size: 16,
+                  color: colorScheme.primary,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     l10n?.aghConfigureDnsRollbackNotice ??
                         'Protected by 30-second automatic router rollback watchdog.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 11,
-                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
                   ),
                 ),
               ],
@@ -530,17 +542,20 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
     if (res.isSuccess) {
       icon = Icons.check_circle_outline;
       iconColor = Colors.green;
-      statusTitle = l10n?.aghConfigureDnsSuccess ??
+      statusTitle =
+          l10n?.aghConfigureDnsSuccess ??
           'Router DNS forwarding configured successfully.';
     } else if (res.isRolledBack) {
       icon = Icons.history;
       iconColor = Colors.orange;
-      statusTitle = l10n?.aghConfigureDnsRolledBack ??
+      statusTitle =
+          l10n?.aghConfigureDnsRolledBack ??
           'Router reachability check failed. Rollback watchdog restored configuration.';
     } else if (res.isAmbiguous) {
       icon = Icons.help_outline;
       iconColor = Colors.amber;
-      statusTitle = l10n?.aghConfigureDnsAmbiguous ??
+      statusTitle =
+          l10n?.aghConfigureDnsAmbiguous ??
           'Configuration outcome was ambiguous. Please check router status.';
     } else {
       icon = Icons.error_outline;
@@ -565,16 +580,19 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
           const SizedBox(height: 12),
           Text(
             '${l10n?.aghConfigureDnsNewUpstreams ?? 'New Upstreams'}: ${res.appliedServers.join(', ')}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontFamily: 'monospace',
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
           ),
         ],
         if (res.isSuccess && _preflight != null) ...[
           () {
             final resultWarnings = _preflight!.warnings.where((w) {
-              if (_preflight!.loopDetected && w == _preflight!.loopReason) return false;
-              if (_preflight!.portConflict && w == _preflight!.portConflictReason) return false;
+              if (_preflight!.loopDetected && w == _preflight!.loopReason) {
+                return false;
+              }
+              if (_preflight!.portConflict &&
+                  w == _preflight!.portConflictReason) {
+                return false;
+              }
               return true;
             }).toList();
 
@@ -588,13 +606,18 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: Colors.amber.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: Colors.amber, size: 18),
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.amber,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -605,7 +628,9 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
                               padding: const EdgeInsets.only(bottom: 2),
                               child: Text(
                                 w,
-                                key: const Key('agh_dns_result_advisory_warning_text'),
+                                key: const Key(
+                                  'agh_dns_result_advisory_warning_text',
+                                ),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontSize: 11,
                                   color: colorScheme.onSurface,
@@ -635,10 +660,7 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
     if (_result != null) {
       return [
         if (!_result!.isSuccess)
-          TextButton(
-            onPressed: _loadPreflight,
-            child: const Text('Retry'),
-          ),
+          TextButton(onPressed: _loadPreflight, child: const Text('Retry')),
         FilledButton(
           key: const Key('agh_dns_config_done_btn'),
           onPressed: () => Navigator.of(context).pop(_result!.isSuccess),
@@ -655,10 +677,10 @@ class _ConfigureRouterDnsDialogState extends State<ConfigureRouterDnsDialog> {
       ),
       FilledButton(
         key: const Key('agh_apply_dns_btn'),
-        onPressed: (_preflight?.canProceed == true) ? _applyConfiguration : null,
-        child: Text(
-          l10n?.aghConfigureDnsActionApply ?? 'Apply Configuration',
-        ),
+        onPressed: (_preflight?.canProceed == true)
+            ? _applyConfiguration
+            : null,
+        child: Text(l10n?.aghConfigureDnsActionApply ?? 'Apply Configuration'),
       ),
     ];
   }

@@ -18,11 +18,7 @@ class AdGuardDashboardCard extends ConsumerStatefulWidget {
   final String? routerId;
   final VoidCallback? onTap;
 
-  const AdGuardDashboardCard({
-    super.key,
-    this.routerId,
-    this.onTap,
-  });
+  const AdGuardDashboardCard({super.key, this.routerId, this.onTap});
 
   @override
   ConsumerState<AdGuardDashboardCard> createState() =>
@@ -51,12 +47,14 @@ class _AdGuardDashboardCardState extends ConsumerState<AdGuardDashboardCard> {
   }
 
   void _triggerHydration() {
-    final effectiveRouterId = widget.routerId ??
+    final effectiveRouterId =
+        widget.routerId ??
         ref.read(appStateProvider).selectedRouter?.id ??
         'default';
     final caps = ref.read(routerCapabilitiesProvider);
-    final controller =
-        ref.read(adguardControllerProvider(effectiveRouterId).notifier);
+    final controller = ref.read(
+      adguardControllerProvider(effectiveRouterId).notifier,
+    );
     controller.hydrateDashboardIfNeeded(
       hasRouterCapability: caps?.hasAdGuardHome ?? false,
     );
@@ -64,7 +62,8 @@ class _AdGuardDashboardCardState extends ConsumerState<AdGuardDashboardCard> {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveRouterId = widget.routerId ??
+    final effectiveRouterId =
+        widget.routerId ??
         ref.watch(appStateProvider).selectedRouter?.id ??
         'default';
 
@@ -72,7 +71,8 @@ class _AdGuardDashboardCardState extends ConsumerState<AdGuardDashboardCard> {
     final caps = state.capabilities;
 
     // Strict capability & connection status visibility gate
-    final bool isVisible = caps.isInstalled &&
+    final bool isVisible =
+        caps.isInstalled &&
         caps.isDnsOperational &&
         caps.isApiReachable &&
         caps.isApiAuthenticated &&
@@ -99,8 +99,8 @@ class _AdGuardDashboardCardState extends ConsumerState<AdGuardDashboardCard> {
     final String statusText = isEnabled
         ? (l10n?.aghProtectionEnabled ?? 'Protection Enabled')
         : (isPaused
-            ? (l10n?.aghProtectionPaused ?? 'Protection Paused')
-            : (l10n?.aghProtectionDisabled ?? 'Protection Disabled'));
+              ? (l10n?.aghProtectionPaused ?? 'Protection Paused')
+              : (l10n?.aghProtectionDisabled ?? 'Protection Disabled'));
 
     final totalQueries = state.stats?.numDnsQueries ?? 0;
     final blockedQueries = state.stats?.numBlockedFiltering ?? 0;
@@ -113,13 +113,13 @@ class _AdGuardDashboardCardState extends ConsumerState<AdGuardDashboardCard> {
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: widget.onTap ??
+        onTap:
+            widget.onTap ??
             () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => AdGuardHomeScreen(
-                    routerId: effectiveRouterId,
-                  ),
+                  builder: (context) =>
+                      AdGuardHomeScreen(routerId: effectiveRouterId),
                 ),
               );
             },

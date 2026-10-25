@@ -65,20 +65,20 @@ class SetPasswordRpcResponse {
   final String? message;
 
   const SetPasswordRpcResponse.success()
-      : isSuccess = true,
-        isRejected = false,
-        isNetworkError = false,
-        message = null;
+    : isSuccess = true,
+      isRejected = false,
+      isNetworkError = false,
+      message = null;
 
   const SetPasswordRpcResponse.rejected([this.message])
-      : isSuccess = false,
-        isRejected = true,
-        isNetworkError = false;
+    : isSuccess = false,
+      isRejected = true,
+      isNetworkError = false;
 
   const SetPasswordRpcResponse.networkError([this.message])
-      : isSuccess = false,
-        isRejected = false,
-        isNetworkError = true;
+    : isSuccess = false,
+      isRejected = false,
+      isNetworkError = true;
 }
 
 /// API service interface for LuCI RPC communication.
@@ -195,11 +195,7 @@ abstract class IApiService {
     bool rollback = true,
     int timeout = 30,
   });
-  Future<bool> uciConfirm(
-    String ipAddress,
-    String sysauth,
-    bool useHttps,
-  );
+  Future<bool> uciConfirm(String ipAddress, String sysauth, bool useHttps);
   Future<SetPasswordRpcResponse> setRouterPassword(
     String ipAddress,
     String sysauth,

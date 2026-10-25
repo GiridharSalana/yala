@@ -12,11 +12,7 @@ import 'package:yala/modules/firewall_security/utils/firewall_validator.dart';
 import 'package:yala/utils/self_device_guard.dart';
 import 'package:yala/widgets/luci_toast.dart';
 
-enum BlockTargetType {
-  externalIp,
-  portOrService,
-  commonApp,
-}
+enum BlockTargetType { externalIp, portOrService, commonApp }
 
 class CommonThreatPreset {
   final String name;
@@ -147,7 +143,8 @@ class _BlockIncomingTrafficDialogState
     final canModify = appState.capabilities?.canModifyFirewall ?? true;
     if (!canModify) {
       setState(() {
-        _errorMessage = loc?.firewallReadOnlyNotice ??
+        _errorMessage =
+            loc?.firewallReadOnlyNotice ??
             'Read-only access: Changes cannot be applied on this router account.';
       });
       return;
@@ -159,12 +156,13 @@ class _BlockIncomingTrafficDialogState
       isReviewerMode: appState.reviewerModeEnabled,
     );
 
-    final resolvedDest = _preflightResult?.resolvedDestZone ??
-        overview.primaryLanZoneName;
+    final resolvedDest =
+        _preflightResult?.resolvedDestZone ?? overview.primaryLanZoneName;
 
     if (resolvedDest == null || resolvedDest.isEmpty) {
       setState(() {
-        _errorMessage = loc?.firewallBlockUnableToDetermineDesc ??
+        _errorMessage =
+            loc?.firewallBlockUnableToDetermineDesc ??
             'Unable to determine safe destination zone for incoming block rule.';
       });
       return;
@@ -179,7 +177,9 @@ class _BlockIncomingTrafficDialogState
       case BlockTargetType.externalIp:
         final targetIp = _ipController.text.trim();
         if (!FirewallValidator.isValidIpOrCidr(targetIp)) {
-          setState(() => _errorMessage = 'Please enter a valid IP address or CIDR.');
+          setState(
+            () => _errorMessage = 'Please enter a valid IP address or CIDR.',
+          );
           return;
         }
 
@@ -191,7 +191,8 @@ class _BlockIncomingTrafficDialogState
         );
         if (!safe || !mounted) return;
 
-        ruleName = 'Block_Incoming_${targetIp.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+        ruleName =
+            'Block_Incoming_${targetIp.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
         srcIp = targetIp;
         break;
 
@@ -201,13 +202,15 @@ class _BlockIncomingTrafficDialogState
           setState(() => _errorMessage = 'Please enter a port or port range.');
           return;
         }
-        ruleName = 'Block_Incoming_Port_${rawPort.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+        ruleName =
+            'Block_Incoming_Port_${rawPort.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
         destPort = rawPort;
         proto = _portProto;
         break;
 
       case BlockTargetType.commonApp:
-        ruleName = 'Block_Incoming_${_selectedCommonThreat.name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
+        ruleName =
+            'Block_Incoming_${_selectedCommonThreat.name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}';
         destPort = _selectedCommonThreat.port;
         proto = _selectedCommonThreat.proto;
         break;
@@ -259,10 +262,7 @@ class _BlockIncomingTrafficDialogState
     return AlertDialog(
       title: Row(
         children: [
-          Icon(
-            Icons.block_rounded,
-            color: theme.colorScheme.error,
-          ),
+          Icon(Icons.block_rounded, color: theme.colorScheme.error),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -290,39 +290,37 @@ class _BlockIncomingTrafficDialogState
                 const SizedBox(height: 8),
 
                 // Target Type Selector
-                SegmentedButton<BlockTargetType>(
-                  segments: [
-                    ButtonSegment(
-                      value: BlockTargetType.externalIp,
-                      label: Text(
-                        loc?.firewallBlockExternalIp ?? 'IP',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      icon: const Icon(Icons.public_outlined),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<BlockTargetType>(
+                    showSelectedIcon: false,
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                     ),
-                    ButtonSegment(
-                      value: BlockTargetType.portOrService,
-                      label: Text(
-                        loc?.firewallBlockPortOrService ?? 'Port',
-                        overflow: TextOverflow.ellipsis,
+                    segments: [
+                      ButtonSegment(
+                        value: BlockTargetType.externalIp,
+                        label: Text(loc?.firewallBlockTabIp ?? 'IP'),
+                        icon: const Icon(Icons.public_outlined, size: 18),
                       ),
-                      icon: const Icon(Icons.numbers_outlined),
-                    ),
-                    ButtonSegment(
-                      value: BlockTargetType.commonApp,
-                      label: Text(
-                        loc?.firewallBlockCommonApp ?? 'Preset',
-                        overflow: TextOverflow.ellipsis,
+                      ButtonSegment(
+                        value: BlockTargetType.portOrService,
+                        label: Text(loc?.firewallBlockTabPort ?? 'Port'),
+                        icon: const Icon(Icons.numbers_outlined, size: 18),
                       ),
-                      icon: const Icon(Icons.security_outlined),
-                    ),
-                  ],
-                  selected: {_targetType},
-                  onSelectionChanged: (set) {
-                    if (set.isNotEmpty) {
-                      _onTargetTypeChanged(set.first);
-                    }
-                  },
+                      ButtonSegment(
+                        value: BlockTargetType.commonApp,
+                        label: Text(loc?.firewallBlockTabPreset ?? 'Preset'),
+                        icon: const Icon(Icons.security_outlined, size: 18),
+                      ),
+                    ],
+                    selected: {_targetType},
+                    onSelectionChanged: (set) {
+                      if (set.isNotEmpty) {
+                        _onTargetTypeChanged(set.first);
+                      }
+                    },
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -359,7 +357,8 @@ class _BlockIncomingTrafficDialogState
                         child: TextFormField(
                           controller: _portController,
                           decoration: InputDecoration(
-                            labelText: loc?.firewallBlockPortOrService ??
+                            labelText:
+                                loc?.firewallBlockPortOrService ??
                                 'Port or Service',
                             hintText: '8080 or 8000-8080',
                             border: const OutlineInputBorder(),
@@ -370,8 +369,9 @@ class _BlockIncomingTrafficDialogState
                               if (val == null || val.trim().isEmpty) {
                                 return 'Enter port';
                               }
-                              final ranges =
-                                  FirewallValidator.parsePortRanges(val);
+                              final ranges = FirewallValidator.parsePortRanges(
+                                val,
+                              );
                               if (ranges.isEmpty) {
                                 return 'Invalid port';
                               }
@@ -477,8 +477,9 @@ class _BlockIncomingTrafficDialogState
                             loc?.firewallBlockAlreadyBlockedDesc ??
                                 'This connection is already blocked by your router\'s default firewall protection.',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.85),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.85,
+                              ),
                             ),
                           ),
                         ],
@@ -520,8 +521,9 @@ class _BlockIncomingTrafficDialogState
                             loc?.firewallBlockCurrentlyAllowedDesc ??
                                 'This connection is currently permitted through your router by an active rule or port forward. Blocking it will override existing access.',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.85),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.85,
+                              ),
                             ),
                           ),
                         ],
@@ -531,7 +533,9 @@ class _BlockIncomingTrafficDialogState
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer.withValues(alpha: 0.4),
+                        color: theme.colorScheme.errorContainer.withValues(
+                          alpha: 0.4,
+                        ),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: theme.colorScheme.error),
                       ),
@@ -563,8 +567,9 @@ class _BlockIncomingTrafficDialogState
                             loc?.firewallBlockUnableToDetermineDesc ??
                                 'The firewall protection status for this connection could not be safely verified. To avoid creating unintended rules, please verify your router configuration.',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.85),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.85,
+                              ),
                             ),
                           ),
                         ],
@@ -610,7 +615,9 @@ class _BlockIncomingTrafficDialogState
       ),
       actions: [
         TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
+          onPressed: _isSubmitting
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: Text(
             _preflightResult?.isAlreadyBlocked == true
                 ? (loc?.btnOk ?? 'OK')
@@ -619,7 +626,9 @@ class _BlockIncomingTrafficDialogState
         ),
         if (_preflightResult?.isAlreadyBlocked == true)
           TextButton(
-            onPressed: _isSubmitting ? null : () => _handleBlock(forceExplicit: true),
+            onPressed: _isSubmitting
+                ? null
+                : () => _handleBlock(forceExplicit: true),
             child: Text(
               loc?.firewallBlockCreateAnyway ?? 'Create Explicit Rule Anyway',
               style: TextStyle(color: theme.colorScheme.error),
@@ -627,7 +636,8 @@ class _BlockIncomingTrafficDialogState
           )
         else
           ElevatedButton(
-            onPressed: (_isSubmitting || _preflightResult?.isUnableToDetermine == true)
+            onPressed:
+                (_isSubmitting || _preflightResult?.isUnableToDetermine == true)
                 ? null
                 : () => _handleBlock(),
             style: ElevatedButton.styleFrom(

@@ -45,8 +45,7 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _activeRouterId = _resolveRouterId();
-      _controller =
-          ref.read(sqmControllerProvider(_activeRouterId!).notifier);
+      _controller = ref.read(sqmControllerProvider(_activeRouterId!).notifier);
       _controller?.refresh(forceTelemetry: true);
       _controller?.startLiveTelemetry();
     });
@@ -60,8 +59,9 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
         if (!mounted) return;
         _controller?.stopLiveTelemetry();
         _activeRouterId = _resolveRouterId();
-        _controller =
-            ref.read(sqmControllerProvider(_activeRouterId!).notifier);
+        _controller = ref.read(
+          sqmControllerProvider(_activeRouterId!).notifier,
+        );
         _controller?.refresh(forceTelemetry: true);
         _controller?.startLiveTelemetry();
       });
@@ -90,7 +90,8 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
   Future<void> _openInstallDialog(BuildContext context) async {
     final l10n = AppLocalizations.of(context);
     final appState = ref.read(appStateProvider);
-    final SqmController controller = _controller ??
+    final SqmController controller =
+        _controller ??
         ref.read(
           sqmControllerProvider(_activeRouterId ?? _resolveRouterId()).notifier,
         );
@@ -155,12 +156,12 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
                   child: Text(
                     isStorageError
                         ? (isReadOnlyError
-                            ? 'Filesystem is Read-Only'
-                            : 'Insufficient Storage Space')
+                              ? 'Filesystem is Read-Only'
+                              : 'Insufficient Storage Space')
                         : (isOomError
-                            ? 'Memory Exhaustion (OOM)'
-                            : (l10n?.pkgExecutionOutputTitle ??
-                                  'Installation Output')),
+                              ? 'Memory Exhaustion (OOM)'
+                              : (l10n?.pkgExecutionOutputTitle ??
+                                    'Installation Output')),
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),
@@ -458,9 +459,9 @@ class _SqmScreenState extends ConsumerState<SqmScreen> {
     final sqmState = ref.watch(sqmControllerProvider(routerId));
     final overview = SqmOverview.fromSqmState(sqmState);
 
-    final isInitialLoading =
-        sqmState.isLoading && sqmState.lastUpdated == null;
-    final isDiscoveryFailed = !sqmState.isLoading &&
+    final isInitialLoading = sqmState.isLoading && sqmState.lastUpdated == null;
+    final isDiscoveryFailed =
+        !sqmState.isLoading &&
         !overview.isInstalled &&
         sqmState.errorMessage != null;
 

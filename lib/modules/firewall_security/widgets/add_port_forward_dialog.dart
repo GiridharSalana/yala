@@ -14,12 +14,7 @@ import 'package:yala/utils/client_naming_helper.dart';
 import 'package:yala/utils/self_device_guard.dart';
 import 'package:yala/widgets/luci_toast.dart';
 
-enum PortForwardPreset {
-  plex,
-  minecraft,
-  webServer,
-  custom,
-}
+enum PortForwardPreset { plex, minecraft, webServer, custom }
 
 /// Simple "Open a Port" wizard dialog.
 class AddPortForwardDialog extends ConsumerStatefulWidget {
@@ -174,7 +169,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
     final canModify = appState.capabilities?.canModifyFirewall ?? true;
     if (!canModify) {
       setState(() {
-        _validationError = loc?.firewallReadOnlyNotice ??
+        _validationError =
+            loc?.firewallReadOnlyNotice ??
             'Read-only access: Changes cannot be applied on this router account.';
       });
       return;
@@ -220,7 +216,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
     );
     if (conflict.hasConflict) {
       setState(() {
-        _validationError = loc?.firewallConflictPortInUse ??
+        _validationError =
+            loc?.firewallConflictPortInUse ??
             'This port is already being used by another rule.';
       });
       return;
@@ -237,7 +234,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
     );
     if (safety.isUnsafe) {
       setState(() {
-        _validationError = loc?.firewallConflictManagementPort ??
+        _validationError =
+            loc?.firewallConflictManagementPort ??
             'This port is reserved for router administration. Exposing it externally is not permitted.';
       });
       return;
@@ -289,10 +287,7 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
     return AlertDialog(
       title: Row(
         children: [
-          Icon(
-            Icons.door_sliding_outlined,
-            color: theme.colorScheme.primary,
-          ),
+          Icon(Icons.door_sliding_outlined, color: theme.colorScheme.primary),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -336,18 +331,21 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                     ),
                     DropdownMenuItem(
                       value: PortForwardPreset.minecraft,
-                      child:
-                          Text(_getPresetName(loc, PortForwardPreset.minecraft)),
+                      child: Text(
+                        _getPresetName(loc, PortForwardPreset.minecraft),
+                      ),
                     ),
                     DropdownMenuItem(
                       value: PortForwardPreset.webServer,
-                      child:
-                          Text(_getPresetName(loc, PortForwardPreset.webServer)),
+                      child: Text(
+                        _getPresetName(loc, PortForwardPreset.webServer),
+                      ),
                     ),
                     DropdownMenuItem(
                       value: PortForwardPreset.custom,
-                      child:
-                          Text(_getPresetName(loc, PortForwardPreset.custom)),
+                      child: Text(
+                        _getPresetName(loc, PortForwardPreset.custom),
+                      ),
                     ),
                   ],
                   onChanged: (val) {
@@ -398,8 +396,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                           loc?.firewallOpensTcpBothPorts ??
                               'Opens TCP ports 80 and 443',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.8),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.8,
+                            ),
                           ),
                         ),
                       ],
@@ -431,7 +430,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                         child: TextFormField(
                           controller: _customExternalPortController,
                           decoration: InputDecoration(
-                            labelText: loc?.firewallWizardExternalPort ??
+                            labelText:
+                                loc?.firewallWizardExternalPort ??
                                 'External Port',
                             border: const OutlineInputBorder(),
                           ),
@@ -440,8 +440,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                             if (val == null || val.trim().isEmpty) {
                               return 'Enter port';
                             }
-                            final ranges =
-                                FirewallValidator.parsePortRanges(val);
+                            final ranges = FirewallValidator.parsePortRanges(
+                              val,
+                            );
                             if (ranges.isEmpty) {
                               return 'Invalid port';
                             }
@@ -454,7 +455,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                         child: TextFormField(
                           controller: _customInternalPortController,
                           decoration: InputDecoration(
-                            labelText: loc?.firewallWizardInternalPort ??
+                            labelText:
+                                loc?.firewallWizardInternalPort ??
                                 'Internal Port',
                             hintText: 'Same as external',
                             border: const OutlineInputBorder(),
@@ -501,42 +503,35 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                 const SizedBox(height: 8),
 
                 // Device Selection Mode Segment
-                Row(
-                  children: [
-                    Expanded(
-                      child: ChoiceChip(
-                        label: Text(
-                          loc?.firewallWizardSelectDevice ??
-                              'Select from connected devices',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        selected: !_useManualIp,
-                        onSelected: validClients.isEmpty
-                            ? null
-                            : (selected) {
-                                if (selected) {
-                                  setState(() => _useManualIp = false);
-                                }
-                              },
-                      ),
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<bool>(
+                    showSelectedIcon: false,
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ChoiceChip(
+                    segments: [
+                      ButtonSegment<bool>(
+                        value: false,
+                        icon: const Icon(Icons.devices_outlined, size: 18),
                         label: Text(
-                          loc?.firewallWizardManualIp ??
-                              'Enter IP address manually',
-                          overflow: TextOverflow.ellipsis,
+                          loc?.firewallWizardSelectDevice ?? 'Connected Device',
                         ),
-                        selected: _useManualIp,
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() => _useManualIp = true);
-                          }
-                        },
+                        enabled: validClients.isNotEmpty,
                       ),
-                    ),
-                  ],
+                      ButtonSegment<bool>(
+                        value: true,
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: Text(loc?.firewallWizardManualIp ?? 'Manual IP'),
+                      ),
+                    ],
+                    selected: {_useManualIp},
+                    onSelectionChanged: (newSelection) {
+                      if (newSelection.isNotEmpty) {
+                        setState(() => _useManualIp = newSelection.first);
+                      }
+                    },
+                  ),
                 ),
                 const SizedBox(height: 12),
 
@@ -551,7 +546,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                     )
                   else
                     DropdownButtonFormField<Client>(
-                      initialValue: _selectedClient != null &&
+                      initialValue:
+                          _selectedClient != null &&
                               validClients.contains(_selectedClient)
                           ? _selectedClient
                           : validClients.first,
@@ -581,7 +577,8 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
                   TextFormField(
                     controller: _manualIpController,
                     decoration: InputDecoration(
-                      labelText: loc?.firewallWizardManualIpLabel ??
+                      labelText:
+                          loc?.firewallWizardManualIpLabel ??
                           'Internal Device IP',
                       hintText: '192.168.1.100',
                       border: const OutlineInputBorder(),
@@ -638,7 +635,9 @@ class _AddPortForwardDialogState extends ConsumerState<AddPortForwardDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
+          onPressed: _isSubmitting
+              ? null
+              : () => Navigator.of(context).pop(false),
           child: Text(loc?.btnCancel ?? 'Cancel'),
         ),
         ElevatedButton(

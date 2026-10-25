@@ -198,10 +198,7 @@ void main() {
                     'wifinet1': {
                       '.type': 'wifi-iface',
                       'macfilter': 'allow',
-                      'maclist': [
-                        '48:EF:1C:23:B8:7C',
-                        '2C:BE:EB:62:28:DC',
-                      ],
+                      'maclist': ['48:EF:1C:23:B8:7C', '2C:BE:EB:62:28:DC'],
                     },
                     'wifinet2': {
                       '.type': 'wifi-iface',
@@ -269,7 +266,10 @@ void main() {
         final testApi = _TestableRealApiService(
           onCall: (object, method, params) async {
             if (object == 'uci' && method == 'get') {
-              return [0, {'values': firewallValues}];
+              return [
+                0,
+                {'values': firewallValues},
+              ];
             }
             if (object == 'uci' && method == 'add') {
               final secKey = 'rule_ban_${firewallValues.length + 1}';
@@ -277,7 +277,10 @@ void main() {
                 '.type': 'rule',
                 ...params?['values'] as Map<String, dynamic>,
               };
-              return [0, {'section': secKey}];
+              return [
+                0,
+                {'section': secKey},
+              ];
             }
             if (object == 'uci' && method == 'set') {
               final sec = params?['section'] as String;
@@ -295,7 +298,10 @@ void main() {
             if (object == 'uci' && method == 'commit') return [0];
             if (object == 'rc' && method == 'init') return [0];
             if (object == 'file' && method == 'exec') {
-              return [0, {'code': 0, 'stdout': ''}];
+              return [
+                0,
+                {'code': 0, 'stdout': ''},
+              ];
             }
             return [0];
           },
@@ -313,7 +319,10 @@ void main() {
         expect(firewallValues.length, equals(1));
         final secKey1 = firewallValues.keys.first;
         expect(firewallValues[secKey1]['name'], equals('Ban_Client_List'));
-        expect(firewallValues[secKey1]['src_mac'], equals(['02:AA:BB:CC:DD:01']));
+        expect(
+          firewallValues[secKey1]['src_mac'],
+          equals(['02:AA:BB:CC:DD:01']),
+        );
 
         // 2. Ban second wired client -> must update the SAME rule
         final res2 = await testApi.banWirelessClient(
@@ -338,7 +347,10 @@ void main() {
         );
         expect(unban1, isTrue);
         expect(firewallValues.length, equals(1)); // Still exists
-        expect(firewallValues[secKey1]['src_mac'], equals(['02:AA:BB:CC:DD:02']));
+        expect(
+          firewallValues[secKey1]['src_mac'],
+          equals(['02:AA:BB:CC:DD:02']),
+        );
 
         // 4. Unban second wired client -> rule is removed
         final unban2 = await testApi.unbanWirelessClient(
@@ -359,13 +371,11 @@ class _TestableRealApiService extends RealApiService {
     String object,
     String method,
     Map<String, dynamic>? params,
-  ) onCall;
+  )
+  onCall;
   final List<String> mockObjects;
 
-  _TestableRealApiService({
-    required this.onCall,
-    required this.mockObjects,
-  });
+  _TestableRealApiService({required this.onCall, required this.mockObjects});
 
   @override
   Future<List<String>> listUbusObjects(

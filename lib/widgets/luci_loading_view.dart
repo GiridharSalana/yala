@@ -48,7 +48,8 @@ class LuciLoadingView extends StatefulWidget {
       l10n?.loadingCaption3 ?? 'Negotiating with packets…',
       l10n?.loadingCaption4 ?? 'Counting queues. No, not the supermarket kind…',
       l10n?.loadingCaption5 ?? 'Convincing latency to calm down…',
-      l10n?.loadingCaption6 ?? 'Checking whether everything is where it should be…',
+      l10n?.loadingCaption6 ??
+          'Checking whether everything is where it should be…',
       l10n?.loadingCaption7 ?? 'Waiting for the router to finish thinking…',
       l10n?.loadingCaption8 ?? 'Consulting the packet gods…',
     ];
@@ -147,7 +148,8 @@ class _LuciLoadingViewState extends State<LuciLoadingView> {
             const SizedBox(height: LuciSpacing.sm),
           ],
           Center(
-            child: widget.indicator ??
+            child:
+                widget.indicator ??
                 const SizedBox(
                   width: 24,
                   height: 24,
@@ -160,10 +162,8 @@ class _LuciLoadingViewState extends State<LuciLoadingView> {
             child: Center(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: child,
-                ),
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
                 child: Text(
                   currentCaption,
                   key: ValueKey<int>(_currentIndex),

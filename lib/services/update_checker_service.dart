@@ -11,16 +11,25 @@ import 'package:url_launcher/url_launcher_string.dart';
 import 'package:yala/config/app_config.dart';
 import 'package:yala/l10n/app_localizations.dart';
 
-/// Manages manual update checks against GitHub Releases for the Community build flavor.
+/// Manages manual update checks against GitHub Releases.
+/// For iOS IPA sideloadable builds, it checks for the latest iOS beta release.
+/// For standard/Android Community builds, it checks for the latest stable release.
 class UpdateCheckerService {
   @visibleForTesting
   static String get githubReleasesUrl => AppConfig.githubReleasesApiUrl;
 
   /// Performs a manual check for updates on GitHub Releases and displays an interactive dialog.
-  static Future<void> checkForUpdates(BuildContext context) async {
+  /// For IPA builds, it checks for the latest iOS beta release and provides a redirect to the release page.
+  /// For non-IPA builds, it checks for the latest stable release and provides a download button.
+  static Future<void> checkForUpdates(
+    BuildContext context, {
+    bool? isIpa,
+    http.Client? client,
+  }) async {
     if (AppConfig.isFdroidBuild) {
       return;
     }
+    final isIpaBuild = isIpa ?? AppConfig.isIpaBuild;
     final l10n = AppLocalizations.of(context);
     // Display progress dialog
     unawaited(
@@ -49,12 +58,14 @@ class UpdateCheckerService {
       final info = await PackageInfo.fromPlatform();
       final currentVersionStr = info.version.trim();
 
-      final response = await http
+      final httpClient = client ?? http.Client();
+      final response = await httpClient
           .get(
             Uri.parse(githubReleasesUrl),
             headers: {
               'Accept': 'application/vnd.github.v3+json',
-              'User-Agent': 'YetAnotherLuCIApp/${info.version}',
+              'User-Agent':
+                  'YetAnotherLuCIApp/${info.version}${isIpaBuild ? " (iOS-IPA)" : ""}',
             },
           )
           .timeout(const Duration(seconds: 10));
@@ -68,15 +79,13 @@ class UpdateCheckerService {
         Map<String, dynamic>? latestRelease;
 
         if (rawData is List && rawData.isNotEmpty) {
-          final validReleases = rawData
-              .whereType<Map<String, dynamic>>()
-              .where((r) => r['draft'] != true)
-              .toList();
-          if (validReleases.isNotEmpty) {
-            latestRelease = validReleases.first;
-          }
+          latestRelease = selectTargetRelease(rawData, isIpaBuild: isIpaBuild);
         } else if (rawData is Map<String, dynamic>) {
-          latestRelease = rawData;
+          if (isIpaBuild) {
+            if (isIpaBetaRelease(rawData)) latestRelease = rawData;
+          } else {
+            if (isStableRelease(rawData)) latestRelease = rawData;
+          }
         }
 
         if (latestRelease != null) {
@@ -106,6 +115,7 @@ class UpdateCheckerService {
               latestVersion: latestVersionStr,
               releaseNotes: releaseNotes,
               downloadUrl: htmlUrl,
+              isIpaBuild: isIpaBuild,
             );
           } else if (comparison > 0) {
             // Current local build is newer than latest GitHub release (unreleased/dev build)
@@ -113,16 +123,25 @@ class UpdateCheckerService {
               context,
               currentVersion: currentVersionStr,
               latestGithubVersion: latestVersionStr,
+              isIpaBuild: isIpaBuild,
             );
           } else {
             // Versions match exactly
-            showUpToDateDialog(context, currentVersion: currentVersionStr);
+            showUpToDateDialog(
+              context,
+              currentVersion: currentVersionStr,
+              isIpaBuild: isIpaBuild,
+            );
           }
         } else {
           if (!context.mounted) return;
           _showErrorDialog(
             context,
-            l10n?.updateNoReleasesFound ?? 'No releases found on GitHub.',
+            isIpaBuild
+                ? (l10n?.updateNoBetaReleasesFound ??
+                      'No iOS beta releases found on GitHub.')
+                : (l10n?.updateNoReleasesFound ??
+                      'No releases found on GitHub.'),
           );
         }
       } else {
@@ -149,6 +168,71 @@ class UpdateCheckerService {
     }
   }
 
+  /// Returns true if a release represents an iOS IPA beta release.
+  @visibleForTesting
+  static bool isIpaBetaRelease(Map<String, dynamic> release) {
+    if (release['draft'] == true) return false;
+    final tagName = (release['tag_name'] as String? ?? '').trim().toLowerCase();
+    final releaseName = (release['name'] as String? ?? '').trim().toLowerCase();
+    final isPrerelease = release['prerelease'] == true;
+    final assets = release['assets'] as List? ?? [];
+    final hasIpaAsset = assets.any(
+      (a) =>
+          a is Map &&
+          (a['name'] as String? ?? '').toLowerCase().endsWith('.ipa'),
+    );
+
+    final isBeta =
+        isPrerelease ||
+        tagName.contains('beta') ||
+        releaseName.contains('beta');
+    final isIosOrIpa =
+        tagName.contains('ipa') ||
+        tagName.contains('ios') ||
+        releaseName.contains('ios') ||
+        releaseName.contains('ipa') ||
+        hasIpaAsset;
+
+    return isBeta && isIosOrIpa;
+  }
+
+  /// Returns true if a release represents a stable release (non-beta, non-prerelease, non-IPA).
+  @visibleForTesting
+  static bool isStableRelease(Map<String, dynamic> release) {
+    if (release['draft'] == true) return false;
+    if (release['prerelease'] == true) return false;
+    final tagName = (release['tag_name'] as String? ?? '').trim().toLowerCase();
+    final releaseName = (release['name'] as String? ?? '').trim().toLowerCase();
+    if (tagName.contains('beta') || releaseName.contains('beta')) return false;
+    if (isIpaBetaRelease(release)) return false;
+    return true;
+  }
+
+  /// Selects the target release from GitHub release list.
+  /// For IPA builds: selects the latest iOS beta release.
+  /// For standard/Android builds: selects the latest stable release.
+  @visibleForTesting
+  static Map<String, dynamic>? selectTargetRelease(
+    List<dynamic> releases, {
+    required bool isIpaBuild,
+  }) {
+    final validReleases = releases.whereType<Map<String, dynamic>>().where(
+      (r) => r['draft'] != true,
+    );
+
+    if (isIpaBuild) {
+      for (final r in validReleases) {
+        if (isIpaBetaRelease(r)) return r;
+      }
+      return null;
+    } else {
+      for (final r in validReleases) {
+        if (isStableRelease(r)) return r;
+      }
+      return null;
+    }
+  }
+
   /// Compares two semver strings (current vs latest).
   /// Returns:
   /// - Negative integer if current < latest (update available)
@@ -160,8 +244,6 @@ class UpdateCheckerService {
 
     final currentClean = current.split('+').first.split('-').first.trim();
     final latestClean = latest.split('+').first.split('-').first.trim();
-
-    if (currentClean == latestClean) return 0;
 
     final currentParts = currentClean
         .split('.')
@@ -182,6 +264,22 @@ class UpdateCheckerService {
       if (cPart < lPart) return -1;
       if (cPart > lPart) return 1;
     }
+
+    if (currentClean == latestClean) {
+      // If base versions are identical, compare build numbers if both have '+'
+      final currentBuild = current.contains('+')
+          ? int.tryParse(current.split('+').last)
+          : null;
+      final latestBuild = latest.contains('+')
+          ? int.tryParse(latest.split('+').last)
+          : null;
+      if (currentBuild != null &&
+          latestBuild != null &&
+          currentBuild != latestBuild) {
+        return currentBuild.compareTo(latestBuild);
+      }
+    }
+
     return 0;
   }
 
@@ -192,6 +290,7 @@ class UpdateCheckerService {
     required String latestVersion,
     required String releaseNotes,
     required String downloadUrl,
+    bool isIpaBuild = false,
   }) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
@@ -228,14 +327,14 @@ class UpdateCheckerService {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       Text(
-                        'v$currentVersion',
+                        '${currentVersion.startsWith("v") ? "" : "v"}$currentVersion',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(width: 8),
                       const Icon(Icons.arrow_forward_rounded, size: 16),
                       const SizedBox(width: 8),
                       Text(
-                        'v$latestVersion',
+                        '${latestVersion.startsWith("v") ? "" : "v"}$latestVersion',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -275,8 +374,15 @@ class UpdateCheckerService {
                 mode: LaunchMode.externalApplication,
               );
             },
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: Text(l10n?.updateDownload ?? 'Download'),
+            icon: Icon(
+              isIpaBuild ? Icons.open_in_new_rounded : Icons.download_rounded,
+              size: 18,
+            ),
+            label: Text(
+              isIpaBuild
+                  ? (l10n?.updateRedirectToRelease ?? 'View Release')
+                  : (l10n?.updateDownload ?? 'Download'),
+            ),
           ),
         ],
       ),
@@ -287,6 +393,7 @@ class UpdateCheckerService {
   static void showUpToDateDialog(
     BuildContext context, {
     required String currentVersion,
+    bool isIpaBuild = false,
   }) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
@@ -324,6 +431,7 @@ class UpdateCheckerService {
     BuildContext context, {
     required String currentVersion,
     required String latestGithubVersion,
+    bool isIpaBuild = false,
   }) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);

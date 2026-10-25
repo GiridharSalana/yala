@@ -13,7 +13,7 @@ class AdGuardProtectionCard extends StatelessWidget {
   final bool isMutating;
   final String? actionError;
   final Future<void> Function({required bool enabled, Duration? duration})
-      onSetProtection;
+  onSetProtection;
 
   const AdGuardProtectionCard({
     super.key,
@@ -29,7 +29,8 @@ class AdGuardProtectionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final protectionState = status?.protectionState ?? AdGuardProtectionState.disabled;
+    final protectionState =
+        status?.protectionState ?? AdGuardProtectionState.disabled;
     final isEnabled = protectionState == AdGuardProtectionState.enabled;
     final isPaused = protectionState == AdGuardProtectionState.paused;
 
@@ -40,11 +41,13 @@ class AdGuardProtectionCard extends StatelessWidget {
     final String stateLabel = isEnabled
         ? (l10n?.aghProtectionEnabled ?? 'Protection Enabled')
         : (isPaused
-            ? (l10n?.aghProtectionPaused ?? 'Protection Paused')
-            : (l10n?.aghProtectionDisabled ?? 'Protection Disabled'));
+              ? (l10n?.aghProtectionPaused ?? 'Protection Paused')
+              : (l10n?.aghProtectionDisabled ?? 'Protection Disabled'));
 
     String? pauseTimeText;
-    if (isPaused && status?.pauseDurationMs != null && status!.pauseDurationMs > 0) {
+    if (isPaused &&
+        status?.pauseDurationMs != null &&
+        status!.pauseDurationMs > 0) {
       final totalSeconds = (status!.pauseDurationMs / 1000).round();
       final minutes = totalSeconds ~/ 60;
       final seconds = totalSeconds % 60;
@@ -101,7 +104,10 @@ class AdGuardProtectionCard extends StatelessWidget {
             if (!isEnabled) ...[
               // Tri-state banner container (shown when paused or disabled)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: stateColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
@@ -163,7 +169,9 @@ class AdGuardProtectionCard extends StatelessWidget {
                     onPressed: isMutating
                         ? null
                         : () async {
-                            final duration = await AdGuardPauseDialog.show(context);
+                            final duration = await AdGuardPauseDialog.show(
+                              context,
+                            );
                             if (duration != null) {
                               await onSetProtection(
                                 enabled: false,
@@ -179,7 +187,10 @@ class AdGuardProtectionCard extends StatelessWidget {
               const SizedBox(height: 12),
               Container(
                 key: const Key('agh_protection_error_banner'),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: colorScheme.errorContainer.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(10),

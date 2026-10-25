@@ -20,22 +20,18 @@ class SqmDashboardCard extends ConsumerWidget {
   final String? routerId;
   final VoidCallback? onTap;
 
-  const SqmDashboardCard({
-    super.key,
-    this.routerId,
-    this.onTap,
-  });
+  const SqmDashboardCard({super.key, this.routerId, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final effectiveRouterId = routerId ??
-        ref.watch(appStateProvider).selectedRouter?.id ??
-        'default';
+    final effectiveRouterId =
+        routerId ?? ref.watch(appStateProvider).selectedRouter?.id ?? 'default';
 
     final state = ref.watch(sqmControllerProvider(effectiveRouterId));
 
     // Visibility gate: strictly hide when SQM is not installed, inactive, or unconfigured
-    final bool isVisible = state.isInstalled &&
+    final bool isVisible =
+        state.isInstalled &&
         state.operatingState != SqmOperatingState.notInstalled &&
         state.operatingState != SqmOperatingState.inactive &&
         state.queues.isNotEmpty;
@@ -141,13 +137,12 @@ class SqmDashboardCard extends ConsumerWidget {
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: onTap ??
+        onTap:
+            onTap ??
             () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => SqmScreen(
-                    routerId: effectiveRouterId,
-                  ),
+                  builder: (context) => SqmScreen(routerId: effectiveRouterId),
                 ),
               );
             },
@@ -235,8 +230,10 @@ class SqmDashboardCard extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Container(
                   key: const Key('sqm_dashboard_card_conflict_banner'),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade900.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -303,8 +300,10 @@ class SqmDashboardCard extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Container(
                   key: const Key('sqm_dashboard_card_recent_drops_badge'),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade900.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(6),

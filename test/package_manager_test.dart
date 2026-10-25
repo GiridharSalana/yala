@@ -607,7 +607,9 @@ L:MIT
       expect(apkError.isInsufficientStorage, isTrue);
       expect(
         apkError.userFriendlyPackageError,
-        equals('Insufficient storage space on router (No space left on device).'),
+        equals(
+          'Insufficient storage space on router (No space left on device).',
+        ),
       );
 
       final opkgError = RpcResult<String>.failed(
@@ -619,7 +621,9 @@ L:MIT
       expect(opkgError.isInsufficientStorage, isTrue);
       expect(
         opkgError.userFriendlyPackageError,
-        equals('Insufficient storage space on router (No space left on device).'),
+        equals(
+          'Insufficient storage space on router (No space left on device).',
+        ),
       );
 
       final normalError = RpcResult<String>.failed(
@@ -633,39 +637,48 @@ L:MIT
       );
     });
 
-    test('fromUbusResponse and classifyExecResult recognize ubus timeout code 7', () {
-      final ubusTimeout = RpcResult.fromUbusResponse<String>(
-        [7],
-        (d) => d.toString(),
-      );
-      expect(ubusTimeout.status, equals(RpcCallStatus.failed));
-      expect(ubusTimeout.errorCode, equals(7));
-      expect(ubusTimeout.errorMessage, contains('timed out on router (ubus error 7)'));
+    test(
+      'fromUbusResponse and classifyExecResult recognize ubus timeout code 7',
+      () {
+        final ubusTimeout = RpcResult.fromUbusResponse<String>([
+          7,
+        ], (d) => d.toString());
+        expect(ubusTimeout.status, equals(RpcCallStatus.failed));
+        expect(ubusTimeout.errorCode, equals(7));
+        expect(
+          ubusTimeout.errorMessage,
+          contains('timed out on router (ubus error 7)'),
+        );
 
-      final execTimeout = RpcResult.classifyExecResult<String>(
-        [7],
-        (d) => d.toString(),
-      );
-      expect(execTimeout.status, equals(RpcCallStatus.failed));
-      expect(execTimeout.errorCode, equals(7));
-      expect(execTimeout.errorMessage, contains('timed out on router (ubus error 7)'));
-    });
+        final execTimeout = RpcResult.classifyExecResult<String>([
+          7,
+        ], (d) => d.toString());
+        expect(execTimeout.status, equals(RpcCallStatus.failed));
+        expect(execTimeout.errorCode, equals(7));
+        expect(
+          execTimeout.errorMessage,
+          contains('timed out on router (ubus error 7)'),
+        );
+      },
+    );
 
-    test('PackageController.getFreeDiskSpace returns mock bytes in reviewer mode', () async {
-      final controller = PackageController(
-        apiServiceRef: () => null,
-        authServiceRef: () => null,
-        routerServiceRef: () => null,
-        capabilitiesRef: () => null,
-        reviewerModeRef: () => true,
-        refreshDashboard: () async {},
-        redetectCapabilities: () async {},
-      );
+    test(
+      'PackageController.getFreeDiskSpace returns mock bytes in reviewer mode',
+      () async {
+        final controller = PackageController(
+          apiServiceRef: () => null,
+          authServiceRef: () => null,
+          routerServiceRef: () => null,
+          capabilitiesRef: () => null,
+          reviewerModeRef: () => true,
+          refreshDashboard: () async {},
+          redetectCapabilities: () async {},
+        );
 
-      final freeSpace = await controller.getFreeDiskSpace();
-      expect(freeSpace, isNotNull);
-      expect(freeSpace, equals(50 * 1024 * 1024));
-    });
+        final freeSpace = await controller.getFreeDiskSpace();
+        expect(freeSpace, isNotNull);
+        expect(freeSpace, equals(50 * 1024 * 1024));
+      },
+    );
   });
 }
-

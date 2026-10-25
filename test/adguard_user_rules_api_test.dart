@@ -25,23 +25,26 @@ void main() {
       expect(res.data!.userRules, contains('@@||allowed.workplace.com^'));
     });
 
-    test('sets user rules successfully and preserves them in getFilteringStatus', () async {
-      final newRules = [
-        '||tiktok.com^',
-        '||doubleclick.net^',
-        '@@||workplace.com^',
-      ];
+    test(
+      'sets user rules successfully and preserves them in getFilteringStatus',
+      () async {
+        final newRules = [
+          '||tiktok.com^',
+          '||doubleclick.net^',
+          '@@||workplace.com^',
+        ];
 
-      final setRes = await api.setUserRules(newRules);
-      expect(setRes.isSuccess, isTrue);
-      expect(setRes.data, isTrue);
-      expect(api.setUserRulesCallCount, 1);
+        final setRes = await api.setUserRules(newRules);
+        expect(setRes.isSuccess, isTrue);
+        expect(setRes.data, isTrue);
+        expect(api.setUserRulesCallCount, 1);
 
-      final statusRes = await api.getFilteringStatus();
-      expect(statusRes.isSuccess, isTrue);
-      expect(statusRes.data!.userRules, equals(newRules));
-      expect(statusRes.data!.totalRulesCount, 77500 + newRules.length);
-    });
+        final statusRes = await api.getFilteringStatus();
+        expect(statusRes.isSuccess, isTrue);
+        expect(statusRes.data!.userRules, equals(newRules));
+        expect(statusRes.data!.totalRulesCount, 77500 + newRules.length);
+      },
+    );
 
     test('simulates network failure when setting user rules', () async {
       api.simulateNetworkFailure = true;
@@ -72,14 +75,17 @@ void main() {
       expect(res.error!.statusCode, 502);
     });
 
-    test('requires authentication when requiresAuth is true and unauthenticated', () async {
-      final authedApi = MockAdGuardApiService(requiresAuth: true);
-      expect(authedApi.isAuthenticated, isFalse);
+    test(
+      'requires authentication when requiresAuth is true and unauthenticated',
+      () async {
+        final authedApi = MockAdGuardApiService(requiresAuth: true);
+        expect(authedApi.isAuthenticated, isFalse);
 
-      final res = await authedApi.setUserRules(['||blocked.com^']);
-      expect(res.isSuccess, isFalse);
-      expect(res.isAuthRequired, isTrue);
-    });
+        final res = await authedApi.setUserRules(['||blocked.com^']);
+        expect(res.isSuccess, isFalse);
+        expect(res.isAuthRequired, isTrue);
+      },
+    );
   });
 
   group('MockAdGuardApiService - Clients API', () {

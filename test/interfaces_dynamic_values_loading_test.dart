@@ -53,10 +53,7 @@ void main() {
               'ipv6-address': [
                 {'address': 'fd00::1', 'mask': 64},
               ],
-            'stats': {
-              'rx_bytes': 1048576,
-              'tx_bytes': 2097152,
-            },
+            'stats': {'rx_bytes': 1048576, 'tx_bytes': 2097152},
           },
           {
             'interface': 'wan',
@@ -71,10 +68,7 @@ void main() {
               {'target': '0.0.0.0', 'mask': 0, 'nexthop': '10.0.0.1'},
             ],
             'dns-server': ['10.0.0.1', '1.1.1.1'],
-            'stats': {
-              'rx_bytes': 5242880,
-              'tx_bytes': 10485760,
-            },
+            'stats': {'rx_bytes': 5242880, 'tx_bytes': 10485760},
           },
         ],
       },
@@ -121,11 +115,7 @@ void main() {
 
       await tester.pumpWidget(
         const ProviderScope(
-          child: MaterialApp(
-            home: Scaffold(
-              body: InterfacesScreen(),
-            ),
-          ),
+          child: MaterialApp(home: Scaffold(body: InterfacesScreen())),
         ),
       );
       await tester.pump();
@@ -173,11 +163,7 @@ void main() {
 
       await tester.pumpWidget(
         const ProviderScope(
-          child: MaterialApp(
-            home: Scaffold(
-              body: InterfacesScreen(),
-            ),
-          ),
+          child: MaterialApp(home: Scaffold(body: InterfacesScreen())),
         ),
       );
       await tester.pumpAndSettle();
@@ -211,11 +197,7 @@ void main() {
 
       await tester.pumpWidget(
         const ProviderScope(
-          child: MaterialApp(
-            home: Scaffold(
-              body: InterfacesScreen(),
-            ),
-          ),
+          child: MaterialApp(home: Scaffold(body: InterfacesScreen())),
         ),
       );
       await tester.pumpAndSettle();

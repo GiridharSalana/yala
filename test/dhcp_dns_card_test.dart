@@ -51,10 +51,7 @@ void main() {
               textScaler: TextScaler.linear(textScale),
             ),
             child: const Center(
-              child: SizedBox(
-                width: 360,
-                child: DhcpDnsCard(),
-              ),
+              child: SizedBox(width: 360, child: DhcpDnsCard()),
             ),
           ),
         ),
@@ -185,10 +182,7 @@ void main() {
 
       // Large accessibility font scale (1.5x)
       await tester.pumpWidget(
-        buildTestWidget(
-          size: const Size(360, 640),
-          textScale: 1.5,
-        ),
+        buildTestWidget(size: const Size(360, 640), textScale: 1.5),
       );
       await tester.pumpAndSettle();
 
@@ -205,7 +199,8 @@ void main() {
       expect(
         leasesPos.dy < forwarderPos.dy,
         isTrue,
-        reason: 'Active Leases should be in top row and DNS Forwarders in bottom row in 2x2 grid',
+        reason:
+            'Active Leases should be in top row and DNS Forwarders in bottom row in 2x2 grid',
       );
 
       expect(tester.takeException(), isNull);

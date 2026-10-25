@@ -164,18 +164,18 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
                     _isStorageReadOnly
                         ? Icons.error_outline_rounded
                         : (isLowStorage
-                            ? Icons.warning_amber_rounded
-                            : (_availableBytes == null
-                                ? Icons.help_outline_rounded
-                                : Icons.storage_rounded)),
+                              ? Icons.warning_amber_rounded
+                              : (_availableBytes == null
+                                    ? Icons.help_outline_rounded
+                                    : Icons.storage_rounded)),
                     size: 16,
                     color: _isStorageReadOnly
                         ? LuciColors.error
                         : (isLowStorage
-                            ? LuciStatusColors.warning
-                            : (_availableBytes == null
-                                ? theme.colorScheme.onSurfaceVariant
-                                : LuciStatusColors.connected)),
+                              ? LuciStatusColors.warning
+                              : (_availableBytes == null
+                                    ? theme.colorScheme.onSurfaceVariant
+                                    : LuciStatusColors.connected)),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -183,8 +183,8 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
                       _isLoadingStorage
                           ? 'Checking storage in $_targetMountPath...'
                           : (_availableBytes != null
-                              ? 'Free space in $_targetMountPath: ${_formatBytes(_availableBytes!)}'
-                              : 'Free space in $_targetMountPath: Unavailable'),
+                                ? 'Free space in $_targetMountPath: ${_formatBytes(_availableBytes!)}'
+                                : 'Free space in $_targetMountPath: Unavailable'),
                       style: theme.textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -427,4 +427,3 @@ class _SqmInstallDialogState extends ConsumerState<SqmInstallDialog> {
     );
   }
 }
-

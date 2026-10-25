@@ -91,17 +91,16 @@ void main() {
 
         await tester.pumpWidget(
           buildTestWidget(
-            const AddSsidDialog(
-              radios: [mockRadio],
-              targetRadio: mockRadio,
-            ),
+            const AddSsidDialog(radios: [mockRadio], targetRadio: mockRadio),
           ),
         );
         await pumpFrames(tester);
 
         // Find primary button
-        final createBtnFinder =
-            find.widgetWithText(ElevatedButton, 'Create Wi-Fi Network');
+        final createBtnFinder = find.widgetWithText(
+          ElevatedButton,
+          'Create Wi-Fi Network',
+        );
         expect(createBtnFinder, findsOneWidget);
 
         // Initial empty SSID -> Disabled
@@ -126,7 +125,7 @@ void main() {
         expect(find.textContaining('Summary'), findsOneWidget);
 
         // Advanced settings should remain collapsed by default
-        expect(find.text('Client Isolation'), findsNothing);
+        expect(find.text('Isolate Wireless Clients'), findsNothing);
       },
     );
 
@@ -142,17 +141,16 @@ void main() {
 
         await tester.pumpWidget(
           buildTestWidget(
-            const AddSsidDialog(
-              radios: [mockRadio],
-              targetRadio: mockRadio,
-            ),
+            const AddSsidDialog(radios: [mockRadio], targetRadio: mockRadio),
           ),
         );
         await pumpFrames(tester);
 
         // Advanced Settings header is visible
-        final advancedTileFinder =
-            find.widgetWithText(ExpansionTile, 'Advanced Settings');
+        final advancedTileFinder = find.widgetWithText(
+          ExpansionTile,
+          'Advanced Settings',
+        );
         expect(advancedTileFinder, findsOneWidget);
 
         // Before expansion, advanced fields are NOT visible
@@ -172,8 +170,11 @@ void main() {
         expect(find.text('IP & DHCP Settings'), findsOneWidget);
 
         // Key controls within groups are rendered
-        expect(find.text('Client Isolation'), findsOneWidget);
-        expect(find.text('802.11r Fast BSS Transition'), findsOneWidget);
+        expect(find.text('Isolate Wireless Clients'), findsOneWidget);
+        expect(
+          find.textContaining('802.11r Fast BSS Transition'),
+          findsOneWidget,
+        );
       },
     );
 
@@ -189,10 +190,7 @@ void main() {
 
         await tester.pumpWidget(
           buildTestWidget(
-            const AddSsidDialog(
-              radios: [mockRadio],
-              targetRadio: mockRadio,
-            ),
+            const AddSsidDialog(radios: [mockRadio], targetRadio: mockRadio),
           ),
         );
         await pumpFrames(tester);
@@ -203,8 +201,9 @@ void main() {
         await pumpFrames(tester);
 
         // Change Security Protocol to Open ('none')
-        final securityDropdown =
-            find.byType(DropdownButtonFormField<String>).at(1);
+        final securityDropdown = find
+            .byType(DropdownButtonFormField<String>)
+            .at(1);
         await tester.tap(securityDropdown);
         await tester.pumpAndSettle();
 
@@ -231,14 +230,15 @@ void main() {
         expect(checkboxFinder, findsOneWidget);
 
         // Create button must be DISABLED until checkbox is checked
-        final createBtnFinder =
-            find.widgetWithText(ElevatedButton, 'Create Wi-Fi Network');
+        final createBtnFinder = find.widgetWithText(
+          ElevatedButton,
+          'Create Wi-Fi Network',
+        );
         var btn = tester.widget<ElevatedButton>(createBtnFinder);
         expect(
           btn.onPressed,
           isNull,
-          reason:
-              'Submit must be blocked without open-network confirmation',
+          reason: 'Submit must be blocked without open-network confirmation',
         );
 
         // Check confirmation checkbox
@@ -277,27 +277,31 @@ void main() {
 
         await tester.pumpWidget(
           buildTestWidget(
-            const AddSsidDialog(
-              radios: [mockRadio],
-              targetRadio: mockRadio,
-            ),
+            const AddSsidDialog(radios: [mockRadio], targetRadio: mockRadio),
           ),
         );
         await pumpFrames(tester);
 
         // Expand Advanced Settings to view IP & DHCP Settings
-        final advancedTile = find.widgetWithText(ExpansionTile, 'Advanced Settings');
+        final advancedTile = find.widgetWithText(
+          ExpansionTile,
+          'Advanced Settings',
+        );
         await tester.tap(advancedTile);
         await pumpFrames(tester, count: 15);
 
         // Mandatory warning should mention default network 'lan'
         expect(
-          find.text('These settings apply to all devices connected to the lan network, not only this Wi-Fi network.'),
+          find.text(
+            'These settings apply to all devices connected to the lan network, not only this Wi-Fi network.',
+          ),
           findsOneWidget,
         );
 
         // Change Network Interface to 'guest'
-        final networkDropdown = find.byType(DropdownButtonFormField<String>).first;
+        final networkDropdown = find
+            .byType(DropdownButtonFormField<String>)
+            .first;
         await tester.tap(networkDropdown);
         await tester.pumpAndSettle();
 
@@ -306,7 +310,9 @@ void main() {
 
         // Warning banner must now dynamically reference 'guest'
         expect(
-          find.text('These settings apply to all devices connected to the guest network, not only this Wi-Fi network.'),
+          find.text(
+            'These settings apply to all devices connected to the guest network, not only this Wi-Fi network.',
+          ),
           findsOneWidget,
         );
       },
@@ -324,16 +330,15 @@ void main() {
 
         await tester.pumpWidget(
           buildTestWidget(
-            const AddSsidDialog(
-              radios: [mockRadio],
-              targetRadio: mockRadio,
-            ),
+            const AddSsidDialog(radios: [mockRadio], targetRadio: mockRadio),
           ),
         );
         await pumpFrames(tester);
 
         // Open security dropdown
-        final securityDropdown = find.byType(DropdownButtonFormField<String>).at(1);
+        final securityDropdown = find
+            .byType(DropdownButtonFormField<String>)
+            .at(1);
         await tester.tap(securityDropdown);
         await tester.pumpAndSettle();
 
@@ -371,11 +376,18 @@ void main() {
         expect(find.text('Home_WiFi'), findsOneWidget);
 
         // Save & Apply button is disabled initially
-        final saveBtnFinder = find.widgetWithText(ElevatedButton, 'Save & Apply');
+        final saveBtnFinder = find.widgetWithText(
+          ElevatedButton,
+          'Save & Apply',
+        );
         expect(saveBtnFinder, findsOneWidget);
 
         var saveBtn = tester.widget<ElevatedButton>(saveBtnFinder);
-        expect(saveBtn.onPressed, isNull, reason: 'Save button must be disabled when no edits were made');
+        expect(
+          saveBtn.onPressed,
+          isNull,
+          reason: 'Save button must be disabled when no edits were made',
+        );
 
         // Modify SSID name
         final ssidFieldFinder = find.byType(TextFormField).first;
@@ -383,17 +395,28 @@ void main() {
         await pumpFrames(tester);
 
         saveBtn = tester.widget<ElevatedButton>(saveBtnFinder);
-        expect(saveBtn.onPressed, isNotNull, reason: 'Save button must be enabled when SSID changed');
+        expect(
+          saveBtn.onPressed,
+          isNotNull,
+          reason: 'Save button must be enabled when SSID changed',
+        );
 
         // Revert SSID back
         await tester.enterText(ssidFieldFinder, 'Home_WiFi');
         await pumpFrames(tester);
 
         saveBtn = tester.widget<ElevatedButton>(saveBtnFinder);
-        expect(saveBtn.onPressed, isNull, reason: 'Save button must revert to disabled');
+        expect(
+          saveBtn.onPressed,
+          isNull,
+          reason: 'Save button must revert to disabled',
+        );
 
         // Expand Advanced Settings in EditSsidDialog
-        final advancedTile = find.widgetWithText(ExpansionTile, 'Advanced Settings');
+        final advancedTile = find.widgetWithText(
+          ExpansionTile,
+          'Advanced Settings',
+        );
         await tester.tap(advancedTile);
         await pumpFrames(tester, count: 15);
 
@@ -405,7 +428,9 @@ void main() {
 
         // Network-wide warning banner must also be present
         expect(
-          find.text('These settings apply to all devices connected to the lan network, not only this Wi-Fi network.'),
+          find.text(
+            'These settings apply to all devices connected to the lan network, not only this Wi-Fi network.',
+          ),
           findsOneWidget,
         );
       },
@@ -423,10 +448,7 @@ void main() {
 
         await tester.pumpWidget(
           buildTestWidget(
-            const AddSsidDialog(
-              radios: [mockRadio],
-              targetRadio: mockRadio,
-            ),
+            const AddSsidDialog(radios: [mockRadio], targetRadio: mockRadio),
           ),
         );
         await pumpFrames(tester);
@@ -447,7 +469,8 @@ void main() {
         expect(
           submitBtn.onPressed,
           isNull,
-          reason: 'Submit button must be disabled for duplicate SSID on the same radio',
+          reason:
+              'Submit button must be disabled for duplicate SSID on the same radio',
         );
 
         // Changing to a unique SSID name immediately enables the submit button
@@ -464,4 +487,3 @@ void main() {
     );
   });
 }
-

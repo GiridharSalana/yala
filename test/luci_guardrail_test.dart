@@ -21,7 +21,9 @@ void main() {
   }
 
   group('LuciGuardrail.confirmCriticalOperation Tests', () {
-    testWidgets('Displays title, description, and hazard details', (tester) async {
+    testWidgets('Displays title, description, and hazard details', (
+      tester,
+    ) async {
       bool? dialogResult;
 
       await tester.pumpWidget(
@@ -61,7 +63,9 @@ void main() {
       expect(dialogResult, isFalse);
     });
 
-    testWidgets('Direct confirmation without requirement returns true', (tester) async {
+    testWidgets('Direct confirmation without requirement returns true', (
+      tester,
+    ) async {
       bool? dialogResult;
 
       await tester.pumpWidget(
@@ -89,48 +93,51 @@ void main() {
       expect(dialogResult, isTrue);
     });
 
-    testWidgets('Enforces acknowledgment checkbox before enabling confirm button', (tester) async {
-      bool? dialogResult;
+    testWidgets(
+      'Enforces acknowledgment checkbox before enabling confirm button',
+      (tester) async {
+        bool? dialogResult;
 
-      await tester.pumpWidget(
-        buildTestHost((ctx) async {
-          dialogResult = await LuciGuardrail.confirmCriticalOperation(
-            ctx,
-            title: 'Reset Credentials',
-            description: 'Admin password will be wiped.',
-            confirmLabel: 'Apply Reset',
-            cancelLabel: 'Cancel',
-            requireAcknowledgement: true,
-            acknowledgementLabel: 'I acknowledge the risk',
-          );
-          return dialogResult;
-        }),
-      );
+        await tester.pumpWidget(
+          buildTestHost((ctx) async {
+            dialogResult = await LuciGuardrail.confirmCriticalOperation(
+              ctx,
+              title: 'Reset Credentials',
+              description: 'Admin password will be wiped.',
+              confirmLabel: 'Apply Reset',
+              cancelLabel: 'Cancel',
+              requireAcknowledgement: true,
+              acknowledgementLabel: 'I acknowledge the risk',
+            );
+            return dialogResult;
+          }),
+        );
 
-      await tester.tap(find.text('Trigger Guardrail'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Trigger Guardrail'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('I acknowledge the risk'), findsOneWidget);
+        expect(find.text('I acknowledge the risk'), findsOneWidget);
 
-      // Confirm button is present but disabled
-      final confirmFinder = find.widgetWithText(FilledButton, 'Apply Reset');
-      expect(confirmFinder, findsOneWidget);
-      FilledButton button = tester.widget<FilledButton>(confirmFinder);
-      expect(button.onPressed, isNull);
+        // Confirm button is present but disabled
+        final confirmFinder = find.widgetWithText(FilledButton, 'Apply Reset');
+        expect(confirmFinder, findsOneWidget);
+        FilledButton button = tester.widget<FilledButton>(confirmFinder);
+        expect(button.onPressed, isNull);
 
-      // Tap acknowledgment checkbox
-      await tester.tap(find.text('I acknowledge the risk'));
-      await tester.pumpAndSettle();
+        // Tap acknowledgment checkbox
+        await tester.tap(find.text('I acknowledge the risk'));
+        await tester.pumpAndSettle();
 
-      // Confirm button should now be enabled
-      button = tester.widget<FilledButton>(confirmFinder);
-      expect(button.onPressed, isNotNull);
+        // Confirm button should now be enabled
+        button = tester.widget<FilledButton>(confirmFinder);
+        expect(button.onPressed, isNotNull);
 
-      // Tap confirm button
-      await tester.tap(confirmFinder);
-      await tester.pumpAndSettle();
+        // Tap confirm button
+        await tester.tap(confirmFinder);
+        await tester.pumpAndSettle();
 
-      expect(dialogResult, isTrue);
-    });
+        expect(dialogResult, isTrue);
+      },
+    );
   });
 }

@@ -187,7 +187,9 @@ class SqmOverview {
       for (final dev in netDevices) {
         if (dev is Map && dev['name'] != null) {
           final name = dev['name'].toString().trim();
-          if (name.isNotEmpty && !name.startsWith('lo') && !name.startsWith('sit')) {
+          if (name.isNotEmpty &&
+              !name.startsWith('lo') &&
+              !name.startsWith('sit')) {
             ifaceList.add(name);
           }
         } else if (dev is String && dev.isNotEmpty) {
@@ -221,14 +223,14 @@ class SqmOverview {
     detectedWan ??= ifaceList.contains('pppoe-wan')
         ? 'pppoe-wan'
         : ifaceList.contains('wan')
-            ? 'wan'
-            : ifaceList.contains('br-lan')
-                ? 'br-lan' // Dumb AP fallback
-                : ifaceList.contains('eth1')
-                    ? 'eth1'
-                    : ifaceList.contains('eth0')
-                        ? 'eth0'
-                        : ifaceList.first;
+        ? 'wan'
+        : ifaceList.contains('br-lan')
+        ? 'br-lan' // Dumb AP fallback
+        : ifaceList.contains('eth1')
+        ? 'eth1'
+        : ifaceList.contains('eth0')
+        ? 'eth0'
+        : ifaceList.first;
 
     // 2. Check service status from initScripts or services
     bool serviceRunning = false;

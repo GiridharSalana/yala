@@ -152,10 +152,10 @@ class ClientController {
   _computeStationVitals(String mac, Map<String, dynamic> station) {
     final rxMap = station['rx'] is Map ? (station['rx'] as Map) : null;
     final txMap = station['tx'] is Map ? (station['tx'] as Map) : null;
-    final bytesMap =
-        station['bytes'] is Map ? (station['bytes'] as Map) : null;
-    final packetsMap =
-        station['packets'] is Map ? (station['packets'] as Map) : null;
+    final bytesMap = station['bytes'] is Map ? (station['bytes'] as Map) : null;
+    final packetsMap = station['packets'] is Map
+        ? (station['packets'] as Map)
+        : null;
     final rateMap = station['rate'] is Map ? (station['rate'] as Map) : null;
 
     final rxBytes = _extractInt(
@@ -342,9 +342,7 @@ class ClientController {
       if (a.isConnected != b.isConnected) {
         return a.isConnected ? -1 : 1;
       }
-      return a.displayName.toLowerCase().compareTo(
-        b.displayName.toLowerCase(),
-      );
+      return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
     });
     return list;
   }
@@ -395,7 +393,8 @@ class ClientController {
           // Client is actively connected to the secondary Dumb AP (wireless or wired)
           isDumb = true;
           apName = c.apName;
-          preferredConnType = (c.connectionType == ConnectionType.wireless ||
+          preferredConnType =
+              (c.connectionType == ConnectionType.wireless ||
                   existing.connectionType == ConnectionType.wireless)
               ? ConnectionType.wireless
               : ConnectionType.wired;
@@ -440,9 +439,9 @@ class ClientController {
               : (existing.apName ?? c.apName);
           preferredConnType =
               (existing.connectionType == ConnectionType.wireless ||
-                      c.connectionType == ConnectionType.wireless)
-                  ? ConnectionType.wireless
-                  : existing.connectionType;
+                  c.connectionType == ConnectionType.wireless)
+              ? ConnectionType.wireless
+              : existing.connectionType;
           preferredSsid = existing.ssid ?? c.ssid;
           preferredIface = existing.wirelessIface ?? c.wirelessIface;
           signalDbm = c.signalDbm ?? existing.signalDbm;
@@ -845,10 +844,7 @@ class ClientController {
             method: 'exec',
             params: {'command': command, 'params': args, 'args': args},
           );
-          if (res is List &&
-              res.length > 1 &&
-              res[0] == 0 &&
-              res[1] is Map) {
+          if (res is List && res.length > 1 && res[0] == 0 && res[1] is Map) {
             final data = res[1] as Map;
             final stdout = data['stdout']?.toString() ?? '';
             if (stdout.isNotEmpty) return stdout;
@@ -964,16 +960,12 @@ class ClientController {
         await Future.wait(
           ifaces.map((iface) async {
             final iwDump =
-                await execRouterCmd('iw', [
-                  'dev',
-                  iface,
-                  'station',
-                  'dump',
-                ]) ??
+                await execRouterCmd('iw', ['dev', iface, 'station', 'dump']) ??
                 await execRouterCmd('iwinfo', [iface, 'assoclist']);
             if (iwDump != null && iwDump.isNotEmpty) {
-              final macRegex =
-                  RegExp(r'([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})');
+              final macRegex = RegExp(
+                r'([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})',
+              );
               for (final match in macRegex.allMatches(iwDump)) {
                 final m = match.group(0);
                 if (m != null) {
@@ -1051,12 +1043,13 @@ class ClientController {
       final isSelectedMainRouter =
           router.id == _routerService?.selectedRouter?.id;
 
-      final isRouterDumbAp = !isSelectedMainRouter &&
+      final isRouterDumbAp =
+          !isSelectedMainRouter &&
           ((hasNoDhcp && otherRouters.isNotEmpty) ||
-           (hasNoDhcp && normalizedWireless.isNotEmpty) ||
-           (hasNoDhcp && hasApName) ||
-           (hasApName && otherRouters.isNotEmpty) ||
-           otherRouters.isNotEmpty);
+              (hasNoDhcp && normalizedWireless.isNotEmpty) ||
+              (hasNoDhcp && hasApName) ||
+              (hasApName && otherRouters.isNotEmpty) ||
+              otherRouters.isNotEmpty);
 
       final wanDevices = <String>{};
       final wanIps = <String>{};
@@ -1168,19 +1161,11 @@ class ClientController {
       bool usedIpNeigh = false;
       try {
         final neighV4Str =
-            await execRouterCmd('/sbin/ip', [
-              '-4',
-              'neigh',
-              'show',
-            ]) ??
+            await execRouterCmd('/sbin/ip', ['-4', 'neigh', 'show']) ??
             await execRouterCmd('ip', ['-4', 'neigh', 'show']) ??
             await execRouterCmd('ip', ['neigh', 'show']);
         final neighV6Str =
-            await execRouterCmd('/sbin/ip', [
-              '-6',
-              'neigh',
-              'show',
-            ]) ??
+            await execRouterCmd('/sbin/ip', ['-6', 'neigh', 'show']) ??
             await execRouterCmd('ip', ['-6', 'neigh', 'show']);
 
         final combined = [
@@ -1198,10 +1183,7 @@ class ClientController {
       final fdbMacs = <String>{};
       try {
         final fdbStr =
-            await execRouterCmd('/sbin/bridge', [
-              'fdb',
-              'show',
-            ]) ??
+            await execRouterCmd('/sbin/bridge', ['fdb', 'show']) ??
             await execRouterCmd('bridge', ['fdb', 'show']);
         if (fdbStr != null && fdbStr.trim().isNotEmpty) {
           final macRegex = RegExp(r'([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})');
@@ -1224,7 +1206,9 @@ class ClientController {
             final macRegex = RegExp(r'([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})');
             for (final line in brctlStr.split('\n')) {
               final lower = line.toLowerCase();
-              if (lower.contains('yes')) continue; // Skip router's own bridge ports (is local? yes)
+              if (lower.contains('yes')) {
+                continue; // Skip router's own bridge ports (is local? yes)
+              }
               final match = macRegex.firstMatch(line);
               if (match != null) {
                 final m = match.group(0);
@@ -1255,10 +1239,7 @@ class ClientController {
           if (shouldProbe && probeIps.isNotEmpty) {
             final cmd =
                 'for ip in ${probeIps.join(' ')}; do ping -c 1 -W 1 \$ip >/dev/null 2>&1 & done; wait; ip neigh show';
-            final probedNeighStr = await execRouterCmd('sh', [
-              '-c',
-              cmd,
-            ]);
+            final probedNeighStr = await execRouterCmd('sh', ['-c', cmd]);
             if (probedNeighStr != null && probedNeighStr.trim().isNotEmpty) {
               neighClients.clear();
               neighClients.addAll(parseIpNeighOutput(probedNeighStr));
@@ -1273,9 +1254,7 @@ class ClientController {
       // Fallback: /proc/net/arp
       if (!usedIpNeigh || neighClients.isEmpty) {
         try {
-          final arpStr = await execRouterCmd('cat', [
-            '/proc/net/arp',
-          ]);
+          final arpStr = await execRouterCmd('cat', ['/proc/net/arp']);
           if (arpStr != null && arpStr.isNotEmpty) {
             for (final line in arpStr.split('\n')) {
               final trimmed = line.trim();
@@ -1520,8 +1499,11 @@ class ClientController {
               final hintV6 = info['ip6addrs'] as List?;
               if (hintV6 != null) {
                 for (final v in hintV6) {
-                  final cleanV =
-                      v.toString().split('/')[0].trim().toLowerCase();
+                  final cleanV = v
+                      .toString()
+                      .split('/')[0]
+                      .trim()
+                      .toLowerCase();
                   if (cleanV6Addrs.contains(cleanV)) {
                     matchedMac = normMac(hMac);
                     break;
@@ -1586,22 +1568,21 @@ class ClientController {
             final isWireless = normalizedWireless.contains(finalMac);
             final staticName = hostHints[finalMac]?['staticLeaseName']
                 ?.toString();
-            final isStaticEntry =
-                hostHints[finalMac]?['isStaticLease'] == true;
+            final isStaticEntry = hostHints[finalMac]?['isStaticLease'] == true;
             final vitals = vitalsMap[finalMac];
-            final resolvedNeighIp = neighClients.firstWhere(
-              (n) =>
-                  normMac(n['macaddr'] as String? ?? '') == finalMac &&
-                  !(n['ipaddr'] as String? ?? '').contains(':'),
-              orElse: () => <String, dynamic>{},
-            )['ipaddr']?.toString();
+            final resolvedNeighIp = neighClients
+                .firstWhere(
+                  (n) =>
+                      normMac(n['macaddr'] as String? ?? '') == finalMac &&
+                      !(n['ipaddr'] as String? ?? '').contains(':'),
+                  orElse: () => <String, dynamic>{},
+                )['ipaddr']
+                ?.toString();
             clientMap[finalMac] = Client(
               ipAddress: resolvedNeighIp ?? 'N/A',
               macAddress: finalMac,
               hostname:
-                  (hostname != null &&
-                      hostname.isNotEmpty &&
-                      hostname != '*')
+                  (hostname != null && hostname.isNotEmpty && hostname != '*')
                   ? hostname
                   : finalMac,
               connectionType: isWireless
@@ -1889,7 +1870,8 @@ class ClientController {
             _recentWiredActiveTime[macN] = now;
           } else {
             final lastSeen = _recentWiredActiveTime[macN];
-            final hasKnownIp = (resolvedIp != 'N/A' && resolvedIp.isNotEmpty) ||
+            final hasKnownIp =
+                (resolvedIp != 'N/A' && resolvedIp.isNotEmpty) ||
                 (c.ipv6Addresses != null && c.ipv6Addresses!.isNotEmpty);
             if ((hasActiveLease || isStaticLease || hasKnownIp) &&
                 lastSeen != null &&
@@ -1923,8 +1905,7 @@ class ClientController {
 
         if (isConnected || hasActiveLease || isStaticLease) {
           final isClientDumbAp = isRouterDumbAp;
-          final clientApName =
-              isClientDumbAp ? router.displayName : null;
+          final clientApName = isClientDumbAp ? router.displayName : null;
           final vitals = vitalsMap[macN];
           processedClients.add(
             c.copyWith(

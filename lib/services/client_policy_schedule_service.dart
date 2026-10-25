@@ -133,7 +133,8 @@ class ClientPolicyScheduleService {
     _cache[normMac] = record;
 
     try {
-      final prefs = injectedPrefs ?? _prefs ?? await SharedPreferences.getInstance();
+      final prefs =
+          injectedPrefs ?? _prefs ?? await SharedPreferences.getInstance();
       _prefs = prefs;
       final key = '$keyPrefix$normMac';
       await prefs
@@ -153,7 +154,8 @@ class ClientPolicyScheduleService {
     _cache.remove(normMac);
 
     try {
-      final prefs = injectedPrefs ?? _prefs ?? await SharedPreferences.getInstance();
+      final prefs =
+          injectedPrefs ?? _prefs ?? await SharedPreferences.getInstance();
       _prefs = prefs;
       final key = '$keyPrefix$normMac';
       await prefs

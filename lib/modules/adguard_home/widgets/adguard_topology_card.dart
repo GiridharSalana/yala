@@ -38,14 +38,15 @@ class AdGuardTopologyCard extends StatelessWidget {
         break;
       case AdGuardTopologyMode.dnsmasqForwarder:
         modeName =
-            l10n?.aghTopologyModeDnsmasqUpstream ?? 'Dnsmasq -> AdGuard (Upstream)';
+            l10n?.aghTopologyModeDnsmasqUpstream ??
+            'Dnsmasq -> AdGuard (Upstream)';
         break;
       case AdGuardTopologyMode.firewallRedirect:
-        modeName =
-            l10n?.aghTopologyModeRedirect ?? 'Port Forward / Redirect';
+        modeName = l10n?.aghTopologyModeRedirect ?? 'Port Forward / Redirect';
         break;
       case AdGuardTopologyMode.standalone:
-        modeName = topology.routingStatus == AdGuardDnsRoutingStatus.externalStandalone
+        modeName =
+            topology.routingStatus == AdGuardDnsRoutingStatus.externalStandalone
             ? (l10n?.aghRoutingExternalStandalone ?? 'External Standalone')
             : (l10n?.aghTopologyModeCustom ?? 'Custom / Non-Standard');
         break;
@@ -69,7 +70,8 @@ class AdGuardTopologyCard extends StatelessWidget {
         routingStatusFg = colorScheme.onSurfaceVariant;
         break;
       case AdGuardDnsRoutingStatus.serviceRunningOnly:
-        routingStatusName = l10n?.aghRoutingServiceRunning ?? 'Service Running Only';
+        routingStatusName =
+            l10n?.aghRoutingServiceRunning ?? 'Service Running Only';
         routingStatusBg = colorScheme.surfaceContainerHighest;
         routingStatusFg = colorScheme.onSurfaceVariant;
         break;
@@ -130,17 +132,21 @@ class AdGuardTopologyCard extends StatelessWidget {
         break;
       case Ipv6DnsStatus.unableToVerify:
         ipv6StatusName =
-            l10n?.aghIpv6UnableToVerify ?? 'Unable to verify IPv6 advertisement';
+            l10n?.aghIpv6UnableToVerify ??
+            'Unable to verify IPv6 advertisement';
         ipv6Color = colorScheme.onSurfaceVariant;
         break;
     }
 
-    final forwardersStr =
-        topology.forwarders.isNotEmpty ? topology.forwarders.join(', ') : 'None';
+    final forwardersStr = topology.forwarders.isNotEmpty
+        ? topology.forwarders.join(', ')
+        : 'None';
 
     final isForwarded =
-        topology.routingStatus == AdGuardDnsRoutingStatus.routerForwardingVerified ||
-        topology.routingStatus == AdGuardDnsRoutingStatus.routerForwardingUnverified ||
+        topology.routingStatus ==
+            AdGuardDnsRoutingStatus.routerForwardingVerified ||
+        topology.routingStatus ==
+            AdGuardDnsRoutingStatus.routerForwardingUnverified ||
         topology.routingStatus == AdGuardDnsRoutingStatus.clientUsageVerified;
 
     return Card(
@@ -155,11 +161,7 @@ class AdGuardTopologyCard extends StatelessWidget {
             // Header
             Row(
               children: [
-                Icon(
-                  Icons.hub_outlined,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.hub_outlined, size: 20, color: colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -170,9 +172,14 @@ class AdGuardTopologyCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
-                    color: topology.routingStatus == AdGuardDnsRoutingStatus.externalStandalone
+                    color:
+                        topology.routingStatus ==
+                            AdGuardDnsRoutingStatus.externalStandalone
                         ? colorScheme.surfaceContainerHighest
                         : colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(8),
@@ -181,7 +188,9 @@ class AdGuardTopologyCard extends StatelessWidget {
                     modeName,
                     key: const Key('agh_topology_mode_badge'),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: topology.routingStatus == AdGuardDnsRoutingStatus.externalStandalone
+                      color:
+                          topology.routingStatus ==
+                              AdGuardDnsRoutingStatus.externalStandalone
                           ? colorScheme.onSurfaceVariant
                           : colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.bold,
@@ -204,7 +213,10 @@ class AdGuardTopologyCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: routingStatusBg,
                     borderRadius: BorderRadius.circular(8),
@@ -234,7 +246,9 @@ class AdGuardTopologyCard extends StatelessWidget {
               const SizedBox(height: 8),
               _buildRow(
                 context,
-                label: topology.routingStatus == AdGuardDnsRoutingStatus.externalStandalone
+                label:
+                    topology.routingStatus ==
+                        AdGuardDnsRoutingStatus.externalStandalone
                     ? 'Router Dnsmasq Port'
                     : 'Dnsmasq Port',
                 value: '${topology.dnsmasqPort}',
@@ -293,7 +307,9 @@ class AdGuardTopologyCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                  color: colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.35,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: colorScheme.outlineVariant.withValues(alpha: 0.25),
@@ -333,7 +349,9 @@ class AdGuardTopologyCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: colorScheme.outlineVariant.withValues(alpha: 0.3),
@@ -363,7 +381,7 @@ class AdGuardTopologyCard extends StatelessWidget {
               ),
             ),
 
-              // Configure Router DNS Action Button
+            // Configure Router DNS Action Button
             if (controller != null && routerId != null) ...[
               const SizedBox(height: 14),
               SizedBox(
@@ -377,8 +395,10 @@ class AdGuardTopologyCard extends StatelessWidget {
                   ),
                   label: Text(
                     isForwarded
-                        ? (l10n?.aghReconfigureRouterDns ?? 'Reconfigure Router DNS')
-                        : (l10n?.aghConfigureRouterDns ?? 'Configure Router DNS'),
+                        ? (l10n?.aghReconfigureRouterDns ??
+                              'Reconfigure Router DNS')
+                        : (l10n?.aghConfigureRouterDns ??
+                              'Configure Router DNS'),
                   ),
                   onPressed: () {
                     ConfigureRouterDnsDialog.show(
@@ -457,4 +477,3 @@ class AdGuardTopologyCard extends StatelessWidget {
     );
   }
 }
-

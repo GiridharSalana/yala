@@ -101,7 +101,8 @@ class NetworkAccessPolicy {
 
   /// Returns true if this device is effectively blocked either globally or across both IPv4 and IPv6.
   bool get isEffectivelyBlocked =>
-      !effectiveInternetAccess || (!effectiveIpv4Access && !effectiveIpv6Access);
+      !effectiveInternetAccess ||
+      (!effectiveIpv4Access && !effectiveIpv6Access);
 
   /// Returns true if IPv4 is specifically blocked while IPv6 remains allowed.
   bool get isIpv4OnlyBlocked =>

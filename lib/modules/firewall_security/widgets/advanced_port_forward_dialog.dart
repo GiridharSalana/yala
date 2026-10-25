@@ -168,7 +168,8 @@ class _AdvancedPortForwardDialogState
       destZone: _destZone,
       destIp: _destIpController.text.trim(),
       family: _family,
-      existingReflection: widget.initialPortForward?.rawUciValues['reflection']?.toString(),
+      existingReflection: widget.initialPortForward?.rawUciValues['reflection']
+          ?.toString(),
       existingReflectionSrc: rawUci?['reflection_src']?.toString(),
       existingReflectionZones: rzList,
     );
@@ -237,7 +238,8 @@ class _AdvancedPortForwardDialogState
     final canModify = appState.capabilities?.canModifyFirewall ?? true;
     if (!canModify) {
       setState(() {
-        _validationError = loc?.firewallReadOnlyNotice ??
+        _validationError =
+            loc?.firewallReadOnlyNotice ??
             'Read-only access: Changes cannot be applied on this router account.';
       });
       return;
@@ -255,8 +257,8 @@ class _AdvancedPortForwardDialogState
     final reflectionEval = _evaluateReflection();
     final effectiveReflection =
         reflectionEval.status == NatReflectionStatus.supported
-            ? _reflection
-            : false;
+        ? _reflection
+        : false;
 
     // Build rawUciValues preserving unmanaged UCI keys if editing
     final preservedRawValues = Map<String, dynamic>.from(
@@ -287,8 +289,7 @@ class _AdvancedPortForwardDialogState
     );
     if (conflict.hasConflict) {
       setState(() {
-        _validationError =
-            loc?.firewallConflictPortInUse ?? conflict.reason;
+        _validationError = loc?.firewallConflictPortInUse ?? conflict.reason;
       });
       return;
     }
@@ -304,7 +305,8 @@ class _AdvancedPortForwardDialogState
     );
     if (safety.isUnsafe) {
       setState(() {
-        _validationError = loc?.firewallConflictManagementPort ??
+        _validationError =
+            loc?.firewallConflictManagementPort ??
             'This port is reserved for router administration. Exposing it externally is not permitted.';
       });
       return;
@@ -558,8 +560,7 @@ class _AdvancedPortForwardDialogState
                           }
                           final clean = v.trim();
                           final isV4 = FirewallValidator.isValidIpv4(clean);
-                          final isV6 =
-                              Ipv6AddressUtil.tryParse(clean) != null;
+                          final isV6 = Ipv6AddressUtil.tryParse(clean) != null;
                           if (!isV4 && !isV6) {
                             return 'Please enter a valid IPv4 or IPv6 address.';
                           }
@@ -597,22 +598,13 @@ class _AdvancedPortForwardDialogState
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(
-                            value: 'tcp',
-                            child: Text('TCP'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'udp',
-                            child: Text('UDP'),
-                          ),
+                          DropdownMenuItem(value: 'tcp', child: Text('TCP')),
+                          DropdownMenuItem(value: 'udp', child: Text('UDP')),
                           DropdownMenuItem(
                             value: 'tcp udp',
                             child: Text('TCP + UDP'),
                           ),
-                          DropdownMenuItem(
-                            value: 'any',
-                            child: Text('Any'),
-                          ),
+                          DropdownMenuItem(value: 'any', child: Text('Any')),
                         ],
                         onChanged: (val) {
                           if (val != null) setState(() => _proto = val);
@@ -691,7 +683,9 @@ class _AdvancedPortForwardDialogState
                     borderRadius: BorderRadius.circular(10),
                     color: canUseReflection
                         ? null
-                        : theme.colorScheme.errorContainer.withValues(alpha: 0.1),
+                        : theme.colorScheme.errorContainer.withValues(
+                            alpha: 0.1,
+                          ),
                   ),
                   child: Column(
                     children: [
@@ -724,7 +718,9 @@ class _AdvancedPortForwardDialogState
                 // Enabled Toggle
                 SwitchListTile.adaptive(
                   title: const Text('Rule Enabled'),
-                  subtitle: const Text('Activate this port forward rule immediately'),
+                  subtitle: const Text(
+                    'Activate this port forward rule immediately',
+                  ),
                   value: _enabled,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (val) => setState(() => _enabled = val),

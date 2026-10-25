@@ -136,6 +136,12 @@ class RouterService {
     }
   }
 
+  /// Clears in-memory routers state immediately (useful for testing and session reset).
+  void clearAllRoutersInMemory() {
+    _routers.clear();
+    _selectedRouter = null;
+  }
+
   /// Persists router credentials to secure storage.
   /// First updates in memory to ensure consistent active state.
   Future<void> persistRouterCredentials(model.Router router) async {

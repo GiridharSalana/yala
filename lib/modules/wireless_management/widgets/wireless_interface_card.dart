@@ -283,18 +283,19 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                             scale: 0.85,
                             child: Switch(
                               value: effectiveEnabled,
-                              onChanged: (hasWriteAccess &&
+                              onChanged:
+                                  (hasWriteAccess &&
                                       widget.isRadioEnabled &&
                                       !widget.isPending)
                                   ? widget.onToggleEnabled
                                   : (!hasWriteAccess
-                                      ? (val) {
-                                          context.showToastError(
-                                            l10n?.readOnlyWirelessToggle ??
-                                                'Read-only session: wireless interface toggle is disabled.',
-                                          );
-                                        }
-                                      : null),
+                                        ? (val) {
+                                            context.showToastError(
+                                              l10n?.readOnlyWirelessToggle ??
+                                                  'Read-only session: wireless interface toggle is disabled.',
+                                            );
+                                          }
+                                        : null),
                             ),
                           ),
                         ),
@@ -488,7 +489,8 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.all(3),
                           constraints: const BoxConstraints(),
-                          onPressed: (widget.isRadioEnabled && !widget.isPending)
+                          onPressed:
+                              (widget.isRadioEnabled && !widget.isPending)
                               ? () {
                                   if (!hasWriteAccess) {
                                     context.showToastError(
@@ -509,7 +511,8 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.all(3),
                           constraints: const BoxConstraints(),
-                          onPressed: (widget.isRadioEnabled && !widget.isPending)
+                          onPressed:
+                              (widget.isRadioEnabled && !widget.isPending)
                               ? () => _showQrCodeDialog(context)
                               : null,
                         ),
@@ -529,7 +532,8 @@ class _WirelessInterfaceCardState extends ConsumerState<WirelessInterfaceCard> {
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.all(3),
                           constraints: const BoxConstraints(),
-                          onPressed: (widget.isRadioEnabled && !widget.isPending)
+                          onPressed:
+                              (widget.isRadioEnabled && !widget.isPending)
                               ? () {
                                   if (!hasWriteAccess) {
                                     context.showToastError(

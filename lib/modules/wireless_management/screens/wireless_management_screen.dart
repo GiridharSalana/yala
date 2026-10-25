@@ -528,7 +528,9 @@ class _WirelessManagementScreenState
                       ? (l10n?.statusActive ?? 'ACTIVE')
                       : (l10n?.statusDisabled ?? 'DISABLED'),
                   style: TextStyle(
-                    color: isRadioActive ? LuciStatusColors.connected : Colors.red,
+                    color: isRadioActive
+                        ? LuciStatusColors.connected
+                        : Colors.red,
                     fontWeight: FontWeight.bold,
                     fontSize: 10,
                   ),
@@ -791,8 +793,6 @@ class _WirelessManagementScreenState
       }
     }
 
-
-
     final l10n = AppLocalizations.of(context);
     if (!enable && isConnectedToThisSsid) {
       final proceed = await showDialog<bool>(
@@ -933,8 +933,6 @@ class _WirelessManagementScreenState
       }
     }
   }
-
-
 
   Widget _buildStationsList(
     BuildContext context,

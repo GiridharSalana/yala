@@ -25,12 +25,13 @@ class AdGuardCredentials {
 
   /// Serializes credentials for storage in FlutterSecureStorage (`agh_creds_${router.id}`).
   Map<String, dynamic> toJson() => {
-        'username': username,
-        'password': password,
-        'useRouterCredentials': useRouterCredentials,
-        'updatedAt': updatedAt?.toIso8601String() ??
-            DateTime.now().toUtc().toIso8601String(),
-      };
+    'username': username,
+    'password': password,
+    'useRouterCredentials': useRouterCredentials,
+    'updatedAt':
+        updatedAt?.toIso8601String() ??
+        DateTime.now().toUtc().toIso8601String(),
+  };
 
   /// Deserializes credentials from JSON storage.
   factory AdGuardCredentials.fromJson(Map<String, dynamic> json) =>
@@ -85,19 +86,19 @@ class AdGuardConfig {
   });
 
   Map<String, dynamic> toJson() => {
-        'customHost': customHost,
-        'customPort': customPort,
-        'useHttps': useHttps,
-        'pollingIntervalSeconds': pollingIntervalSeconds,
-      };
+    'customHost': customHost,
+    'customPort': customPort,
+    'useHttps': useHttps,
+    'pollingIntervalSeconds': pollingIntervalSeconds,
+  };
 
   factory AdGuardConfig.fromJson(Map<String, dynamic> json) => AdGuardConfig(
-        customHost: json['customHost']?.toString(),
-        customPort: (json['customPort'] as num?)?.toInt() ?? 3000,
-        useHttps: json['useHttps'] == true,
-        pollingIntervalSeconds:
-            (json['pollingIntervalSeconds'] as num?)?.toInt() ?? 10,
-      );
+    customHost: json['customHost']?.toString(),
+    customPort: (json['customPort'] as num?)?.toInt() ?? 3000,
+    useHttps: json['useHttps'] == true,
+    pollingIntervalSeconds:
+        (json['pollingIntervalSeconds'] as num?)?.toInt() ?? 10,
+  );
 
   @override
   String toString() =>
@@ -179,11 +180,7 @@ class AdGuardApiResult<T> {
   final AdGuardApiException? error;
   final bool isSuccess;
 
-  const AdGuardApiResult._({
-    this.data,
-    this.error,
-    required this.isSuccess,
-  });
+  const AdGuardApiResult._({this.data, this.error, required this.isSuccess});
 
   /// Creates a successful API result containing [data].
   factory AdGuardApiResult.success(T data) =>
@@ -196,15 +193,14 @@ class AdGuardApiResult<T> {
   /// Helper factory for HTTP 401 authentication required.
   factory AdGuardApiResult.authRequired([
     String message = 'AdGuard Home authentication required',
-  ]) =>
-      AdGuardApiResult._(
-        error: AdGuardApiException(
-          type: AdGuardApiErrorType.authRequired,
-          statusCode: 401,
-          message: message,
-        ),
-        isSuccess: false,
-      );
+  ]) => AdGuardApiResult._(
+    error: AdGuardApiException(
+      type: AdGuardApiErrorType.authRequired,
+      statusCode: 401,
+      message: message,
+    ),
+    isSuccess: false,
+  );
 
   /// Whether this result indicates authentication is required or rejected.
   bool get isAuthRequired => error?.type == AdGuardApiErrorType.authRequired;

@@ -45,8 +45,7 @@ class AdGuardTopListsBottomSheet extends StatefulWidget {
       _AdGuardTopListsBottomSheetState();
 }
 
-class _AdGuardTopListsBottomSheetState
-    extends State<AdGuardTopListsBottomSheet>
+class _AdGuardTopListsBottomSheetState extends State<AdGuardTopListsBottomSheet>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
@@ -145,15 +144,18 @@ class _AdGuardTopListsBottomSheetState
               tabs: [
                 Tab(
                   key: const Key('agh_top_sheet_tab_blocked'),
-                  text: '${l10n?.aghTopBlocked ?? 'Blocked'} (${topBlocked.length})',
+                  text:
+                      '${l10n?.aghTopBlocked ?? 'Blocked'} (${topBlocked.length})',
                 ),
                 Tab(
                   key: const Key('agh_top_sheet_tab_queried'),
-                  text: '${l10n?.aghTopQueried ?? 'Queried'} (${topQueried.length})',
+                  text:
+                      '${l10n?.aghTopQueried ?? 'Queried'} (${topQueried.length})',
                 ),
                 Tab(
                   key: const Key('agh_top_sheet_tab_clients'),
-                  text: '${l10n?.aghTopClients ?? 'Clients'} (${topClients.length})',
+                  text:
+                      '${l10n?.aghTopClients ?? 'Clients'} (${topClients.length})',
                 ),
               ],
             ),
@@ -162,13 +164,17 @@ class _AdGuardTopListsBottomSheetState
 
           // Search Field
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 4.0,
+            ),
             child: TextField(
               key: const Key('agh_top_lists_sheet_search_field'),
               controller: _searchController,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                hintText: l10n?.aghSearchDomainsOrClients ??
+                hintText:
+                    l10n?.aghSearchDomainsOrClients ??
                     'Search domains or clients...',
                 isDense: true,
                 filled: true,
@@ -201,21 +207,27 @@ class _AdGuardTopListsBottomSheetState
               children: [
                 _buildSheetList(
                   context,
-                  items: topBlocked.map((e) => (name: e.identifier, count: e.count)).toList(),
+                  items: topBlocked
+                      .map((e) => (name: e.identifier, count: e.count))
+                      .toList(),
                   emptyMessage: l10n?.aghNoData ?? 'No data available',
                   keyPrefix: 'agh_sheet_top_blocked',
                   barColor: Colors.red.shade400,
                 ),
                 _buildSheetList(
                   context,
-                  items: topQueried.map((e) => (name: e.identifier, count: e.count)).toList(),
+                  items: topQueried
+                      .map((e) => (name: e.identifier, count: e.count))
+                      .toList(),
                   emptyMessage: l10n?.aghNoData ?? 'No data available',
                   keyPrefix: 'agh_sheet_top_queried',
                   barColor: colorScheme.primary,
                 ),
                 _buildSheetList(
                   context,
-                  items: topClients.map((e) => (name: e.identifier, count: e.count)).toList(),
+                  items: topClients
+                      .map((e) => (name: e.identifier, count: e.count))
+                      .toList(),
                   emptyMessage: l10n?.aghNoData ?? 'No data available',
                   keyPrefix: 'agh_sheet_top_clients',
                   barColor: Colors.teal.shade400,
@@ -241,7 +253,9 @@ class _AdGuardTopListsBottomSheetState
 
     final filtered = _searchQuery.isEmpty
         ? items
-        : items.where((e) => e.name.toLowerCase().contains(_searchQuery)).toList();
+        : items
+              .where((e) => e.name.toLowerCase().contains(_searchQuery))
+              .toList();
 
     if (filtered.isEmpty) {
       return Center(

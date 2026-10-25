@@ -21,11 +21,13 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:yala/config/app_config.dart';
 import 'package:yala/widgets/luci_toast.dart';
+import 'package:yala/utils/logger.dart';
+import 'package:yala/config/app_config.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Prevent runtime font fetching from Google servers (e.g. fonts.gstatic.com)
@@ -33,15 +35,16 @@ void main() {
   GoogleFonts.config.allowRuntimeFetching = false;
 
   // Modern Android Edge-to-Edge System Bar Integration
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Register SIL Open Font License (OFL) for bundled Geist and Geist Mono fonts
   LicenseRegistry.addLicense(() async* {
     final license = await rootBundle.loadString('assets/fonts/OFL.txt');
-    yield LicenseEntryWithLineBreaks(
-      ['google_fonts', 'Geist', 'Geist Mono'],
-      license,
-    );
+    yield LicenseEntryWithLineBreaks([
+      'google_fonts',
+      'Geist',
+      'Geist Mono',
+    ], license);
   });
 
   // Register YALA's GPLv3 copyleft license and copyright attributions in Flutter LicenseRegistry
@@ -72,6 +75,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.''',
 
   // Enable semantics early so AccessibilityNodeInfo reports scrollable to OEM screenshot engines immediately
   SemanticsBinding.instance.ensureSemantics();
+
+  // Pre-hydrate app preferences and Monet dynamic colors before building Frame 1 to eliminate theme flicker
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await AppState.preHydrate(prefs: prefs);
+  } catch (e, stack) {
+    Logger.exception('Pre-hydration failed in main()', e, stack);
+  }
 
   runApp(const ProviderScope(child: LuCIApp()));
 }
@@ -131,20 +142,27 @@ class LuCIApp extends ConsumerWidget {
       appStateProvider.select((s) => s.themePalette),
     );
     final appLocale = ref.watch(appStateProvider.select((s) => s.locale));
+    final preloadedLight = ref.watch(
+      appStateProvider.select((s) => s.preloadedLightDynamic),
+    );
+    final preloadedDark = ref.watch(
+      appStateProvider.select((s) => s.preloadedDarkDynamic),
+    );
     final useDynamicTheme = themePalette == AppThemePalette.dynamicTheme;
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        final effectiveLightDynamic =
+            lightDynamic ?? preloadedLight ?? LuciTheme.fallbackDynamicLight;
+        final effectiveDarkDynamic =
+            darkDynamic ?? preloadedDark ?? LuciTheme.fallbackDynamicDark;
+
         final lightTheme = LuciTheme.buildLightTheme(
-          dynamicColorScheme: useDynamicTheme
-              ? (lightDynamic ?? LuciTheme.fallbackDynamicLight)
-              : null,
+          dynamicColorScheme: useDynamicTheme ? effectiveLightDynamic : null,
           palette: themePalette,
         );
         final darkTheme = LuciTheme.buildDarkTheme(
-          dynamicColorScheme: useDynamicTheme
-              ? (darkDynamic ?? LuciTheme.fallbackDynamicDark)
-              : null,
+          dynamicColorScheme: useDynamicTheme ? effectiveDarkDynamic : null,
           palette: themePalette,
         );
 

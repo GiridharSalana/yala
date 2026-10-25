@@ -60,7 +60,9 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
-                title: Text(l10n?.renameRouterDialogTitle ?? 'Edit Router Profile'),
+                title: Text(
+                  l10n?.renameRouterDialogTitle ?? 'Edit Router Profile',
+                ),
                 content: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 400),
                   child: AutofillGroup(
@@ -73,18 +75,26 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                           children: [
                             Text(
                               'Update locally saved credentials and settings for this profile.',
-                              style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
-                              ),
+                              style: Theme.of(ctx).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      ctx,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
                             ),
                             const SizedBox(height: 16),
                             TextFormField(
                               controller: nameController,
                               decoration: InputDecoration(
-                                labelText: l10n?.manageRouterProfileName ?? 'Profile Name (Optional)',
+                                labelText:
+                                    l10n?.manageRouterProfileName ??
+                                    'Profile Name (Optional)',
                                 border: const OutlineInputBorder(),
-                                prefixIcon: const Icon(Icons.label_outline_rounded),
-                                helperText: l10n?.manageRouterProfileNameHint ??
+                                prefixIcon: const Icon(
+                                  Icons.label_outline_rounded,
+                                ),
+                                helperText:
+                                    l10n?.manageRouterProfileNameHint ??
                                     'e.g. Home Lab, Living Room, Travel Router',
                                 suffixIcon: (nameController.text.isNotEmpty)
                                     ? IconButton(
@@ -94,7 +104,9 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                             nameController.clear();
                                           });
                                         },
-                                        tooltip: l10n?.manageRouterClearName ?? 'Clear Name',
+                                        tooltip:
+                                            l10n?.manageRouterClearName ??
+                                            'Clear Name',
                                       )
                                     : null,
                               ),
@@ -104,10 +116,13 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                             TextFormField(
                               controller: ipController,
                               decoration: InputDecoration(
-                                labelText: l10n?.routerAddressLabel ?? 'Router Address',
+                                labelText:
+                                    l10n?.routerAddressLabel ??
+                                    'Router Address',
                                 border: const OutlineInputBorder(),
                                 prefixIcon: const Icon(Icons.router_outlined),
-                                helperText: 'e.g. 192.168.1.1, router.local:8080, https://192.168.1.1',
+                                helperText:
+                                    'e.g. 192.168.1.1, router.local:8080, https://192.168.1.1',
                               ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
@@ -115,7 +130,8 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                 }
                                 final parsed = UrlParser.parse(value.trim());
                                 if (!parsed.isValid) {
-                                  return parsed.error ?? 'Invalid address format';
+                                  return parsed.error ??
+                                      'Invalid address format';
                                 }
                                 return null;
                               },
@@ -130,8 +146,9 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                 prefixIcon: const Icon(Icons.person_outline),
                                 helperText: 'Default is usually root',
                               ),
-                              validator: (v) =>
-                                  v == null || v.trim().isEmpty ? 'Required' : null,
+                              validator: (v) => v == null || v.trim().isEmpty
+                                  ? 'Required'
+                                  : null,
                               autofillHints: const [AutofillHints.username],
                             ),
                             const SizedBox(height: 16),
@@ -151,7 +168,9 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                   onPressed: () => setDialogState(
                                     () => obscureText = !obscureText,
                                   ),
-                                  tooltip: obscureText ? 'Hide password' : 'Show password',
+                                  tooltip: obscureText
+                                      ? 'Hide password'
+                                      : 'Show password',
                                 ),
                               ),
                               obscureText: obscureText,
@@ -162,22 +181,32 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(ctx).colorScheme.errorContainer.withValues(alpha: 1),
+                                  color: Theme.of(ctx)
+                                      .colorScheme
+                                      .errorContainer
+                                      .withValues(alpha: 1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.error_outline,
-                                      color: Theme.of(ctx).colorScheme.onErrorContainer,
+                                      color: Theme.of(
+                                        ctx,
+                                      ).colorScheme.onErrorContainer,
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
                                         errorMessage!,
-                                        style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                                          color: Theme.of(ctx).colorScheme.onErrorContainer,
-                                        ),
+                                        style: Theme.of(ctx)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color: Theme.of(
+                                                ctx,
+                                              ).colorScheme.onErrorContainer,
+                                            ),
                                       ),
                                     ),
                                   ],
@@ -192,7 +221,9 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                 ),
                 actions: [
                   TextButton(
-                    onPressed: isSaving ? null : () => Navigator.pop(ctx, false),
+                    onPressed: isSaving
+                        ? null
+                        : () => Navigator.pop(ctx, false),
                     child: Text(l10n?.actionCancel ?? 'Cancel'),
                   ),
                   FilledButton(
@@ -207,19 +238,26 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                             final parsedUrl = UrlParser.parse(input);
                             if (!parsedUrl.isValid) {
                               setDialogState(() {
-                                errorMessage = parsedUrl.error ?? 'Invalid address format';
+                                errorMessage =
+                                    parsedUrl.error ?? 'Invalid address format';
                               });
                               return;
                             }
 
                             final hostWithPort = parsedUrl.hostWithPort;
                             final useHttps = parsedUrl.useHttps;
-                            final newId = RouterService.generateId(hostWithPort, user, useHttps);
+                            final newId = RouterService.generateId(
+                              hostWithPort,
+                              user,
+                              useHttps,
+                            );
 
                             // Collision check: if changing to another existing profile
-                            if (newId != router.id && appState.routers.any((r) => r.id == newId)) {
+                            if (newId != router.id &&
+                                appState.routers.any((r) => r.id == newId)) {
                               setDialogState(() {
-                                errorMessage = 'A profile with this address and username already exists.';
+                                errorMessage =
+                                    'A profile with this address and username already exists.';
                               });
                               return;
                             }
@@ -230,7 +268,8 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                             });
 
                             try {
-                              final customName = nameController.text.trim().isEmpty
+                              final customName =
+                                  nameController.text.trim().isEmpty
                                   ? null
                                   : nameController.text.trim();
 
@@ -244,7 +283,10 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                                 clearName: customName == null,
                               );
 
-                              await appState.updateRouter(updatedRouter, oldId: router.id);
+                              await appState.updateRouter(
+                                updatedRouter,
+                                oldId: router.id,
+                              );
                               if (ctx.mounted) {
                                 Navigator.pop(ctx, true);
                               }
@@ -763,14 +805,16 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
             IconButton(
               icon: const Icon(Icons.file_download_outlined),
               tooltip:
-                  l10n?.manageRouterImportTooltip ?? 'Import Profiles from JSON',
+                  l10n?.manageRouterImportTooltip ??
+                  'Import Profiles from JSON',
               onPressed: () => _importProfiles(context, appState),
             ),
             if (routers.isNotEmpty)
               IconButton(
                 icon: const Icon(Icons.file_upload_outlined),
                 tooltip:
-                    l10n?.manageRouterExportTooltip ?? 'Export Profiles as JSON',
+                    l10n?.manageRouterExportTooltip ??
+                    'Export Profiles as JSON',
                 onPressed: () => _exportProfiles(context, appState),
               ),
           ],
@@ -785,10 +829,14 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.tertiaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.tertiary.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
@@ -803,7 +851,9 @@ class _ManageRoutersScreenState extends ConsumerState<ManageRoutersScreen> {
                     child: Text(
                       'Reviewer Mode Active: Profiles displayed here are in demo mode. Any added or modified profiles will not be saved permanently or exported.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onTertiaryContainer,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onTertiaryContainer,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

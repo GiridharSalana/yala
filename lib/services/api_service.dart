@@ -1519,9 +1519,7 @@ class RealApiService implements IApiService {
             'Access denied (permission error)',
           );
         } else {
-          return SetPasswordRpcResponse.rejected(
-            'ubus error code: ${res[0]}',
-          );
+          return SetPasswordRpcResponse.rejected('ubus error code: ${res[0]}');
         }
       } else if (res is Map) {
         if (res['result'] == true) {
@@ -1854,7 +1852,9 @@ class RealApiService implements IApiService {
       );
       final reloadOk = _execSucceeded(reloadRes);
       if (!reloadOk) {
-        Logger.debug('toggleWirelessRadio: wifi reload returned non-zero code for $radioName');
+        Logger.debug(
+          'toggleWirelessRadio: wifi reload returned non-zero code for $radioName',
+        );
       }
 
       // Authoritative verification query against router UCI
@@ -1873,7 +1873,8 @@ class RealApiService implements IApiService {
           if (values is Map) {
             final verifiedDisabled = values['disabled']?.toString();
             final expectedDisabled = enabled ? '0' : '1';
-            if (verifiedDisabled != null && verifiedDisabled != expectedDisabled) {
+            if (verifiedDisabled != null &&
+                verifiedDisabled != expectedDisabled) {
               Logger.warning(
                 'toggleWirelessRadio: validation mismatch for $radioName. Expected disabled=$expectedDisabled, got $verifiedDisabled',
               );
@@ -3168,8 +3169,8 @@ uci commit parental
       }
       final String sectionName =
           (matchedSection != null && matchedSection.isNotEmpty)
-              ? matchedSection
-              : interface;
+          ? matchedSection
+          : interface;
       if (matchedSection == null || matchedSection.isEmpty) {
         await _ensureUciSection(
           ipAddress,
@@ -3194,11 +3195,7 @@ uci commit parental
         useHttps,
         object: 'uci',
         method: 'set',
-        params: {
-          'config': 'dhcp',
-          'section': sectionName,
-          'values': strValues,
-        },
+        params: {'config': 'dhcp', 'section': sectionName, 'values': strValues},
         context: mountedContext(context),
       );
       if (setRes is List && setRes.isNotEmpty && setRes[0] != 0) {
@@ -4312,7 +4309,8 @@ fi
                 },
                 context: mountedContext(context),
               );
-            } else if (targetSecKey != null && !currentMacs.contains(macUpper)) {
+            } else if (targetSecKey != null &&
+                !currentMacs.contains(macUpper)) {
               currentMacs.add(macUpper);
               await callWithContext(
                 ipAddress,
@@ -4786,7 +4784,8 @@ exit 0
     }
 
     if (ubusSucceeded) {
-      final liveCleanup = '''
+      final liveCleanup =
+          '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
 (
@@ -4811,7 +4810,8 @@ exit 0
       return true;
     }
 
-    final script = '''
+    final script =
+        '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
 CLEAN="$macClean"
@@ -4977,7 +4977,8 @@ exit 0
       return true;
     }
 
-    final script = '''
+    final script =
+        '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
 MODIFIED=0
@@ -5193,8 +5194,8 @@ exit 0
           }
           final addedSectionKey =
               (addRes is List && addRes.length > 1 && addRes[1] is Map)
-                  ? (addRes[1] as Map)['section']?.toString()
-                  : null;
+              ? (addRes[1] as Map)['section']?.toString()
+              : null;
 
           // Pass staged delta changes directly to uciApply with rollback protection
           final applied = await uciApply(
@@ -5369,8 +5370,10 @@ exit 0
 
           // Authoritative state verification: section exists with updated properties
           final verifyUciValues = extractUciValuesMap(verifyRes[1]);
-          final targetSection =
-              findUciSection(verifyUciValues, portForward.sectionKey);
+          final targetSection = findUciSection(
+            verifyUciValues,
+            portForward.sectionKey,
+          );
           if (targetSection == null) {
             Logger.warning(
               'updateFirewallPortForward verification failed: section ${portForward.sectionKey} missing after update',
@@ -5470,10 +5473,7 @@ exit 0
             useHttps,
             object: 'uci',
             method: 'delete',
-            params: {
-              'config': 'firewall',
-              'section': sectionKey,
-            },
+            params: {'config': 'firewall', 'section': sectionKey},
             context: mCtx,
           );
           if (delRes is List && delRes.isNotEmpty && delRes[0] != 0) {
@@ -5630,8 +5630,8 @@ exit 0
           }
           final addedSectionKey =
               (addRes is List && addRes.length > 1 && addRes[1] is Map)
-                  ? (addRes[1] as Map)['section']?.toString()
-                  : null;
+              ? (addRes[1] as Map)['section']?.toString()
+              : null;
 
           // Pass staged delta changes directly to uciApply with rollback protection
           final applied = await uciApply(
@@ -5830,8 +5830,10 @@ exit 0
 
           // Authoritative state verification: section exists with updated properties
           final verifyUciValues = extractUciValuesMap(verifyRes[1]);
-          final targetSection =
-              findUciSection(verifyUciValues, rule.sectionKey);
+          final targetSection = findUciSection(
+            verifyUciValues,
+            rule.sectionKey,
+          );
           if (targetSection == null) {
             Logger.warning(
               'updateFirewallCustomRule verification failed: section ${rule.sectionKey} missing after update',
@@ -5931,10 +5933,7 @@ exit 0
             useHttps,
             object: 'uci',
             method: 'delete',
-            params: {
-              'config': 'firewall',
-              'section': sectionKey,
-            },
+            params: {'config': 'firewall', 'section': sectionKey},
             context: mCtx,
           );
           if (delRes is List && delRes.isNotEmpty && delRes[0] != 0) {
@@ -6080,11 +6079,7 @@ exit 0
               final idx = (v['.index'] is int)
                   ? v['.index'] as int
                   : int.tryParse(v['.index']?.toString() ?? '') ?? fallbackIdx;
-              sectionsList.add({
-                'key': secKey,
-                'type': secType,
-                'index': idx,
-              });
+              sectionsList.add({'key': secKey, 'type': secType, 'index': idx});
               fallbackIdx++;
             }
           });
@@ -6151,10 +6146,7 @@ exit 0
             useHttps,
             object: 'uci',
             method: 'order',
-            params: {
-              'config': 'firewall',
-              'sections': sNew,
-            },
+            params: {'config': 'firewall', 'sections': sNew},
             context: mCtx,
           );
           if (orderRes is List && orderRes.isNotEmpty && orderRes[0] != 0) {
@@ -6218,7 +6210,7 @@ exit 0
               final idx = (v['.index'] is int)
                   ? v['.index'] as int
                   : int.tryParse(v['.index']?.toString() ?? '') ??
-                      postFallbackIdx;
+                        postFallbackIdx;
               postSectionsList.add({
                 'key': secKey,
                 'type': secType,
@@ -6290,8 +6282,7 @@ exit 0
           for (int j = 0; j < ruleSlotIndices.length; j++) {
             if (j != jTarget && j != jSibling) {
               final slot = ruleSlotIndices[j];
-              if (postSectionsList[slot]['key'] !=
-                  sectionsList[slot]['key']) {
+              if (postSectionsList[slot]['key'] != sectionsList[slot]['key']) {
                 Logger.warning(
                   'reorder verification failed: untouched rule slot $slot modified',
                 );
@@ -6386,10 +6377,7 @@ exit 0
   }
 
   @visibleForTesting
-  static bool hasUciSection(
-    Map<String, dynamic> uciValues,
-    String sectionKey,
-  ) {
+  static bool hasUciSection(Map<String, dynamic> uciValues, String sectionKey) {
     return findUciSection(uciValues, sectionKey) != null;
   }
 
@@ -6485,7 +6473,9 @@ exit 0
         params: {'config': 'dropbear'},
         context: mCtx,
       );
-      if (dropbearRes is List && dropbearRes.length > 1 && dropbearRes[0] == 0) {
+      if (dropbearRes is List &&
+          dropbearRes.length > 1 &&
+          dropbearRes[0] == 0) {
         final rawData = dropbearRes[1];
         final Map? values = (rawData is Map && rawData['values'] is Map)
             ? rawData['values'] as Map
@@ -6706,7 +6696,8 @@ exit 0
               context: mCtx,
             );
             return false;
-          } else if (!policy.isEffectivelyBlocked && recognized.hasActiveBlock) {
+          } else if (!policy.isEffectivelyBlocked &&
+              recognized.hasActiveBlock) {
             Logger.warning(
               'applyPerDeviceNetworkAccessPolicy verification failed: block still active after unblock apply',
             );
@@ -6722,7 +6713,9 @@ exit 0
 
           final confirmed = await uciConfirm(ipAddress, sysauth, useHttps);
           if (!confirmed) {
-            Logger.warning('applyPerDeviceNetworkAccessPolicy uciConfirm failed');
+            Logger.warning(
+              'applyPerDeviceNetworkAccessPolicy uciConfirm failed',
+            );
             return false;
           }
 
@@ -6740,7 +6733,11 @@ exit 0
 
           return true;
         } catch (e, stack) {
-          Logger.exception('applyPerDeviceNetworkAccessPolicy failed', e, stack);
+          Logger.exception(
+            'applyPerDeviceNetworkAccessPolicy failed',
+            e,
+            stack,
+          );
           await uciRevert(
             ipAddress,
             sysauth,
@@ -6846,7 +6843,8 @@ exit 0
     }
 
     // 2. Non-blocking background script to remove hostapd_cli deny_acl and live firewall drop rules
-    final unbanScript = '''
+    final unbanScript =
+        '''
 MAC_U="$macUpper"
 MAC_L="$macLower"
 
@@ -7038,10 +7036,10 @@ echo "\$PAUSE_FW_UCI \$NFT_MACS \$IPT_MACS" | tr ' ' '\\n' | grep -vE "^00:00:00
                   final List<String> macs = raw is List
                       ? raw
                             .map(
-                              (e) => e
-                                  .toString()
-                                  .toUpperCase()
-                                  .replaceAll('-', ':'),
+                              (e) => e.toString().toUpperCase().replaceAll(
+                                '-',
+                                ':',
+                              ),
                             )
                             .toList()
                       : (raw != null
@@ -7099,10 +7097,8 @@ echo "\$PAUSE_FW_UCI \$NFT_MACS \$IPT_MACS" | tr ' ' '\\n' | grep -vE "^00:00:00
                 final List<String> macs = srcMac is List
                     ? srcMac
                           .map(
-                            (e) => e
-                                .toString()
-                                .toUpperCase()
-                                .replaceAll('-', ':'),
+                            (e) =>
+                                e.toString().toUpperCase().replaceAll('-', ':'),
                           )
                           .toList()
                     : (srcMac != null
@@ -10032,8 +10028,10 @@ rm -f "$leasePath" /tmp/dhcp.leases /var/dhcp.leases /tmp/dnsmasq.leases /var/li
         return false;
       }
 
-      final verifiedEntries =
-          _extractDnsmasqAddressEntries(verifyRes, sectionName);
+      final verifiedEntries = _extractDnsmasqAddressEntries(
+        verifyRes,
+        sectionName,
+      );
       final verifiedBlocked = verifiedEntries.any((entry) {
         final existing = DomainValidator.parseBlockedDomainFromAddress(entry);
         return existing != null &&
@@ -10214,8 +10212,10 @@ rm -f "$leasePath" /tmp/dhcp.leases /var/dhcp.leases /tmp/dnsmasq.leases /var/li
         return false;
       }
 
-      final verifiedEntries =
-          _extractDnsmasqAddressEntries(verifyRes, sectionName);
+      final verifiedEntries = _extractDnsmasqAddressEntries(
+        verifyRes,
+        sectionName,
+      );
       final stillBlocked = verifiedEntries.any((entry) {
         final existing = DomainValidator.parseBlockedDomainFromAddress(entry);
         return existing != null &&

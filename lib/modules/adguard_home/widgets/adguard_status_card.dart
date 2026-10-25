@@ -32,7 +32,8 @@ class AdGuardStatusCard extends StatelessWidget {
     final version = status?.version ?? '—';
     final dnsPort = status?.dnsPort ?? 53;
     final httpPort = status?.httpPort ?? 3000;
-    final dnsAddresses = (status?.dnsAddresses != null && status!.dnsAddresses.isNotEmpty)
+    final dnsAddresses =
+        (status?.dnsAddresses != null && status!.dnsAddresses.isNotEmpty)
         ? status!.dnsAddresses.join(', ')
         : '0.0.0.0';
 
@@ -48,11 +49,7 @@ class AdGuardStatusCard extends StatelessWidget {
             // Header: Icon, Title, and Running Status Chip
             Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 20,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.info_outline, size: 20, color: colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -94,7 +91,9 @@ class AdGuardStatusCard extends StatelessWidget {
                             ? (l10n?.aghStatusRunning ?? 'Running')
                             : (l10n?.aghStatusStopped ?? 'Stopped'),
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: isRunning ? Colors.green.shade800 : Colors.red.shade800,
+                          color: isRunning
+                              ? Colors.green.shade800
+                              : Colors.red.shade800,
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                         ),
@@ -167,9 +166,7 @@ class AdGuardStatusCard extends StatelessWidget {
       textAlign: TextAlign.end,
       maxLines: maxLines,
       overflow: maxLines != null ? TextOverflow.ellipsis : null,
-      style: theme.textTheme.bodyMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
+      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
     );
 
     return Row(
@@ -184,10 +181,7 @@ class AdGuardStatusCard extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(
           child: maxLines != null
-              ? Tooltip(
-                  message: value,
-                  child: textWidget,
-                )
+              ? Tooltip(message: value, child: textWidget)
               : textWidget,
         ),
       ],

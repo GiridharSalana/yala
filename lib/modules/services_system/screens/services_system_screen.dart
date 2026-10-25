@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yala/l10n/app_localizations.dart';
@@ -322,10 +323,19 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                     _buildInitScriptsCard(context, overview.initScripts),
               ),
               const SizedBox(height: 16),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isCompact = constraints.maxWidth < 460;
-                  final addButton = FilledButton.icon(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: _buildSectionHeader(
+                      context,
+                      l10n?.servicesSysCronHeader ?? 'Cron Jobs',
+                      Icons.schedule_outlined,
+                      maxLines: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
                     onPressed: _isSaving
                         ? null
                         : () => _showAddEditCronDialog(
@@ -345,45 +355,8 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                  );
-
-                  if (isCompact) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionHeader(
-                          context,
-                          l10n?.servicesSysCronHeader ??
-                              'System Scheduled Cron Jobs',
-                          Icons.schedule_outlined,
-                          maxLines: 2,
-                        ),
-                        const SizedBox(height: 6),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: addButton,
-                        ),
-                      ],
-                    );
-                  }
-
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: _buildSectionHeader(
-                          context,
-                          l10n?.servicesSysCronHeader ??
-                              'System Scheduled Cron Jobs',
-                          Icons.schedule_outlined,
-                          maxLines: 2,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      addButton,
-                    ],
-                  );
-                },
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               _buildCronJobsCard(context, overview.cronJobs),
@@ -593,116 +566,115 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
 
     final theme = Theme.of(context);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Column(
-        children: cronJobs.asMap().entries.map((entry) {
-          final index = entry.key;
-          final cron = entry.value;
-          final isEnabled = !cron.isCommented;
-          final scheduleText = CronValidator.describeSchedule(
-            cron.expression,
-            l10n,
-          );
+    return Column(
+      children: cronJobs.asMap().entries.map((entry) {
+        final index = entry.key;
+        final cron = entry.value;
+        final isEnabled = !cron.isCommented;
+        final scheduleText = CronValidator.describeSchedule(
+          cron.expression,
+          l10n,
+        );
 
-          return Column(
-            children: [
-              if (index > 0)
-                const Divider(height: 1, indent: 16, endIndent: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Row(
+        return Card(
+          key: ValueKey('cron_${index}_${cron.rawLine}'),
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 1.5,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: isEnabled
+                  ? theme.colorScheme.primary.withValues(alpha: 0.25)
+                  : theme.dividerColor.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Row: Schedule Icon, Expression Badge, Active Badge, and Toggle Switch
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     CircleAvatar(
-                      radius: 16,
+                      radius: 15,
                       backgroundColor: isEnabled
                           ? theme.colorScheme.primary.withValues(alpha: 0.15)
                           : theme.colorScheme.onSurface.withValues(alpha: 0.12),
                       child: Icon(
-                        Icons.schedule,
+                        Icons.schedule_rounded,
                         color: isEnabled
                             ? theme.colorScheme.primary
                             : theme.colorScheme.onSurface.withValues(
                                 alpha: 0.38,
                               ),
-                        size: 18,
+                        size: 16,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  cron.command,
-                                  style: GoogleFonts.geistMono(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                    color: isEnabled
-                                        ? null
-                                        : theme.disabledColor,
-                                    decoration: isEnabled
-                                        ? null
-                                        : TextDecoration.lineThrough,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isEnabled
-                                      ? LuciStatusColors.connected.withValues(
-                                          alpha: 0.15,
-                                        )
-                                      : Colors.grey.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  isEnabled
-                                      ? (l10n?.statusActive ?? 'ACTIVE')
-                                      : (l10n?.statusDisabled ?? 'DISABLED'),
-                                  style: TextStyle(
-                                    color: isEnabled
-                                        ? LuciStatusColors.connected
-                                        : Colors.grey,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            l10n?.cronSchedulePrefix(
-                                  cron.expression,
-                                  scheduleText,
-                                ) ??
-                                'Schedule: ${cron.expression} • $scheduleText',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: theme.colorScheme.onSurfaceVariant,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.25,
+                                ),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              cron.expression,
+                              style: GoogleFonts.geistMono(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isEnabled
+                                  ? LuciStatusColors.connected.withValues(
+                                      alpha: 0.15,
+                                    )
+                                  : Colors.grey.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isEnabled
+                                  ? (l10n?.statusActive ?? 'ACTIVE')
+                                  : (l10n?.statusDisabled ?? 'DISABLED'),
+                              style: TextStyle(
+                                color: isEnabled
+                                    ? LuciStatusColors.connected
+                                    : Colors.grey,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 4),
                     Switch.adaptive(
                       value: isEnabled,
                       onChanged: _isSaving
@@ -710,9 +682,110 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                           : (val) =>
                                 _toggleCronJobEnabled(index, cronJobs, val),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      tooltip: 'Edit Task',
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Human-readable schedule description with calendar/clock context
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.event_repeat_rounded,
+                        size: 14,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.7,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          scheduleText,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          softWrap: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Dedicated Monospace Command Box (Full width, wrapping, zero ellipsis truncation!)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.4,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: theme.dividerColor.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2, right: 8),
+                        child: Icon(
+                          Icons.terminal_rounded,
+                          size: 15,
+                          color: isEnabled
+                              ? theme.colorScheme.primary
+                              : theme.disabledColor,
+                        ),
+                      ),
+                      Expanded(
+                        child: SelectableText(
+                          cron.command,
+                          style: GoogleFonts.geistMono(
+                            fontSize: 12,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                            color: isEnabled
+                                ? theme.colorScheme.onSurface
+                                : theme.disabledColor,
+                            decoration: isEnabled
+                                ? null
+                                : TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.copy_rounded, size: 15),
+                        tooltip:
+                            l10n?.addRpcHandlerCopyCommand ?? 'Copy Command',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: cron.command));
+                          context.showToastSuccess(
+                            l10n?.addRpcHandlerCommandCopied ??
+                                'Command copied to clipboard!',
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Action Footer: Edit and Delete buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton.icon(
                       onPressed: _isSaving
                           ? null
                           : () => _showAddEditCronDialog(
@@ -721,26 +794,53 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                               existingJob: cron,
                               index: index,
                             ),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.delete_outline,
-                        size: 18,
-                        color: theme.colorScheme.error,
+                      icon: const Icon(Icons.edit_outlined, size: 15),
+                      label: Text(
+                        l10n?.actionEdit ?? 'Edit',
+                        style: const TextStyle(fontSize: 12),
                       ),
-                      tooltip:
-                          l10n?.servicesSysDeleteTaskTooltip ?? 'Delete Task',
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
                       onPressed: _isSaving
                           ? null
                           : () => _confirmDeleteCronJob(index, cronJobs),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        size: 15,
+                        color: theme.colorScheme.error,
+                      ),
+                      label: Text(
+                        l10n?.actionDelete ?? 'Delete',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -1244,79 +1344,82 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
           child: Transform.scale(
             scale: 0.8,
             child: Switch(
-            value: effectiveGlobalValue,
-            onChanged: isGlobalPending
-                ? null
-                : (val) async {
-                    if (_isTogglingGlobalDdns) {
-                      return;
-                    }
-                    setState(() {
-                      _isTogglingGlobalDdns = true;
-                    });
-                    const actionKey = 'toggle_global_ddns';
-                    context.showToastLoading(
-                      val
-                          ? (l10n?.servicesSysDdnsEnablingToast ??
-                                'Enabling DDNS service...')
-                          : (l10n?.servicesSysDdnsDisablingToast ??
-                                'Disabling DDNS service...'),
-                      actionKey: actionKey,
-                    );
-                    try {
-                      final success = await appState.toggleGlobalDdns(val);
-                      if (context.mounted) {
-                        if (success) {
-                          context.showToastSuccess(
-                            val
-                                ? (l10n?.servicesSysDdnsEnabledToast ??
-                                      'DDNS service enabled')
-                                : (l10n?.servicesSysDdnsDisabledToast ??
-                                      'DDNS service disabled'),
-                            actionKey: actionKey,
-                          );
-                        } else {
+              value: effectiveGlobalValue,
+              onChanged: isGlobalPending
+                  ? null
+                  : (val) async {
+                      if (_isTogglingGlobalDdns) {
+                        return;
+                      }
+                      setState(() {
+                        _isTogglingGlobalDdns = true;
+                      });
+                      const actionKey = 'toggle_global_ddns';
+                      context.showToastLoading(
+                        val
+                            ? (l10n?.servicesSysDdnsEnablingToast ??
+                                  'Enabling DDNS service...')
+                            : (l10n?.servicesSysDdnsDisablingToast ??
+                                  'Disabling DDNS service...'),
+                        actionKey: actionKey,
+                      );
+                      try {
+                        final success = await appState.toggleGlobalDdns(val);
+                        if (context.mounted) {
+                          if (success) {
+                            context.showToastSuccess(
+                              val
+                                  ? (l10n?.servicesSysDdnsEnabledToast ??
+                                        'DDNS service enabled')
+                                  : (l10n?.servicesSysDdnsDisabledToast ??
+                                        'DDNS service disabled'),
+                              actionKey: actionKey,
+                            );
+                          } else {
+                            context.showToastError(
+                              l10n?.servicesSysDdnsToggleFailedToast ??
+                                  'Failed to update DDNS service state',
+                              actionKey: actionKey,
+                            );
+                          }
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
                           context.showToastError(
                             l10n?.servicesSysDdnsToggleFailedToast ??
                                 'Failed to update DDNS service state',
+                            subtitle: e.toString().replaceAll(
+                              'Exception: ',
+                              '',
+                            ),
                             actionKey: actionKey,
                           );
                         }
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            _isTogglingGlobalDdns = false;
+                          });
+                        }
                       }
-                    } catch (e) {
-                      if (context.mounted) {
-                        context.showToastError(
-                          l10n?.servicesSysDdnsToggleFailedToast ??
-                              'Failed to update DDNS service state',
-                          subtitle: e.toString().replaceAll('Exception: ', ''),
-                          actionKey: actionKey,
-                        );
-                      }
-                    } finally {
-                      if (mounted) {
-                        setState(() {
-                          _isTogglingGlobalDdns = false;
-                        });
-                      }
-                    }
-                  },
+                    },
+            ),
+          ),
+        ),
+        if (isGlobalPending)
+          Padding(
+            padding: const EdgeInsets.only(left: 6.0),
+            child: SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
-          if (isGlobalPending)
-            Padding(
-              padding: const EdgeInsets.only(left: 6.0),
-              child: SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ),
-        ],
-      );
+      ],
+    );
 
     Widget buildAddButton() => FilledButton.icon(
       onPressed: () => _showAddEditDdnsDialog(context, existingInstance: null),
@@ -1535,11 +1638,13 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       ),
       child: Column(
         children: ddns.instances
-            .map((instance) => _buildDdnsInstanceTile(
-                  context,
-                  instance,
-                  isGlobalEnabled: isGlobalEnabled,
-                ))
+            .map(
+              (instance) => _buildDdnsInstanceTile(
+                context,
+                instance,
+                isGlobalEnabled: isGlobalEnabled,
+              ),
+            )
             .toList(),
       ),
     );
@@ -1558,8 +1663,9 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
       orElse: () => kDdnsProviderPresets.last,
     );
 
-    final isInstancePending =
-        _pendingDdnsInstanceToggles.contains(instance.name);
+    final isInstancePending = _pendingDdnsInstanceToggles.contains(
+      instance.name,
+    );
     final effectiveInstanceValue = instance.enabled;
 
     return AnimatedOpacity(
@@ -1571,12 +1677,10 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
           color: !isGlobalEnabled
               ? theme.cardColor.withValues(alpha: 0.5)
               : (instance.enabled
-                  ? theme.cardColor
-                  : theme.cardColor.withAlpha(180)),
+                    ? theme.cardColor
+                    : theme.cardColor.withAlpha(180)),
           border: Border(
-            bottom: BorderSide(
-              color: theme.dividerColor.withAlpha(50),
-            ),
+            bottom: BorderSide(color: theme.dividerColor.withAlpha(50)),
           ),
         ),
         child: Padding(
@@ -1595,17 +1699,17 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                     decoration: BoxDecoration(
                       color: !isGlobalEnabled
                           ? theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.5)
+                                .withValues(alpha: 0.5)
                           : (instance.enabled
-                              ? LuciStatusColors.successBg(context)
-                              : LuciStatusColors.infoBg(context)),
+                                ? LuciStatusColors.successBg(context)
+                                : LuciStatusColors.infoBg(context)),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                         color: !isGlobalEnabled
                             ? theme.dividerColor.withValues(alpha: 0.3)
                             : (instance.enabled
-                                ? LuciStatusColors.successBorder(context)
-                                : LuciStatusColors.infoBorder(context)),
+                                  ? LuciStatusColors.successBorder(context)
+                                  : LuciStatusColors.infoBorder(context)),
                       ),
                     ),
                     child: Text(
@@ -1614,11 +1718,12 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: !isGlobalEnabled
-                            ? theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.6)
+                            ? theme.colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.6,
+                              )
                             : (instance.enabled
-                                ? LuciStatusColors.successText(context)
-                                : LuciStatusColors.infoText(context)),
+                                  ? LuciStatusColors.successText(context)
+                                  : LuciStatusColors.infoText(context)),
                       ),
                     ),
                   ),
@@ -1642,101 +1747,102 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                         child: Transform.scale(
                           scale: 0.8,
                           child: Switch(
-                          value: effectiveInstanceValue,
-                          onChanged: (isGlobalEnabled && !isInstancePending)
-                              ? (val) async {
-                                  if (_pendingDdnsInstanceToggles.contains(
-                                    instance.name,
-                                  )) {
-                                    return;
-                                  }
-                                  setState(() {
-                                    _pendingDdnsInstanceToggles.add(
+                            value: effectiveInstanceValue,
+                            onChanged: (isGlobalEnabled && !isInstancePending)
+                                ? (val) async {
+                                    if (_pendingDdnsInstanceToggles.contains(
                                       instance.name,
+                                    )) {
+                                      return;
+                                    }
+                                    setState(() {
+                                      _pendingDdnsInstanceToggles.add(
+                                        instance.name,
+                                      );
+                                    });
+                                    final actionKey =
+                                        'toggle_ddns_instance_${instance.name}';
+                                    context.showToastLoading(
+                                      val
+                                          ? (l10n?.servicesSysDdnsInstanceEnablingToast(
+                                                  instance.name,
+                                                ) ??
+                                                'Enabling DDNS instance "${instance.name}"...')
+                                          : (l10n?.servicesSysDdnsInstanceDisablingToast(
+                                                  instance.name,
+                                                ) ??
+                                                'Disabling DDNS instance "${instance.name}"...'),
+                                      actionKey: actionKey,
                                     );
-                                  });
-                                  final actionKey =
-                                      'toggle_ddns_instance_${instance.name}';
-                                  context.showToastLoading(
-                                    val
-                                        ? (l10n?.servicesSysDdnsInstanceEnablingToast(
-                                                instance.name,
-                                              ) ??
-                                              'Enabling DDNS instance "${instance.name}"...')
-                                        : (l10n?.servicesSysDdnsInstanceDisablingToast(
-                                                instance.name,
-                                              ) ??
-                                              'Disabling DDNS instance "${instance.name}"...'),
-                                    actionKey: actionKey,
-                                  );
-                                  try {
-                                    final updated = instance.copyWith(
-                                      enabled: val,
-                                    );
-                                    final ok = await appState
-                                        .saveDdnsInstance(updated);
-                                    if (context.mounted) {
-                                      if (ok) {
-                                        final statusStr = val
-                                            ? (l10n?.statusActive ?? 'enabled')
-                                            : (l10n?.statusDisabled ??
-                                                'disabled');
-                                        context.showToastSuccess(
-                                          l10n?.servicesSysDdnsInstanceToggleToast(
-                                                instance.name,
-                                                statusStr,
-                                              ) ??
-                                              '${instance.name} $statusStr',
-                                          actionKey: actionKey,
-                                        );
-                                      } else {
+                                    try {
+                                      final updated = instance.copyWith(
+                                        enabled: val,
+                                      );
+                                      final ok = await appState
+                                          .saveDdnsInstance(updated);
+                                      if (context.mounted) {
+                                        if (ok) {
+                                          final statusStr = val
+                                              ? (l10n?.statusActive ??
+                                                    'enabled')
+                                              : (l10n?.statusDisabled ??
+                                                    'disabled');
+                                          context.showToastSuccess(
+                                            l10n?.servicesSysDdnsInstanceToggleToast(
+                                                  instance.name,
+                                                  statusStr,
+                                                ) ??
+                                                '${instance.name} $statusStr',
+                                            actionKey: actionKey,
+                                          );
+                                        } else {
+                                          context.showToastError(
+                                            l10n?.servicesSysDdnsUpdateFailedToast ??
+                                                'Failed to update instance',
+                                            actionKey: actionKey,
+                                          );
+                                        }
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
                                         context.showToastError(
                                           l10n?.servicesSysDdnsUpdateFailedToast ??
                                               'Failed to update instance',
+                                          subtitle: e.toString().replaceAll(
+                                            'Exception: ',
+                                            '',
+                                          ),
                                           actionKey: actionKey,
                                         );
                                       }
-                                    }
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      context.showToastError(
-                                        l10n?.servicesSysDdnsUpdateFailedToast ??
-                                            'Failed to update instance',
-                                        subtitle: e.toString().replaceAll(
-                                          'Exception: ',
-                                          '',
-                                        ),
-                                        actionKey: actionKey,
-                                      );
-                                    }
-                                  } finally {
-                                    if (mounted) {
-                                      setState(() {
-                                        _pendingDdnsInstanceToggles.remove(
-                                          instance.name,
-                                        );
-                                      });
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() {
+                                          _pendingDdnsInstanceToggles.remove(
+                                            instance.name,
+                                          );
+                                        });
+                                      }
                                     }
                                   }
-                                }
-                              : null,
-                        ),
-                      ),
-                    ),
-                    if (isInstancePending)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6.0),
-                        child: SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: theme.colorScheme.primary,
+                                : null,
                           ),
                         ),
                       ),
-                  ],
-                ),
+                      if (isInstancePending)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6.0),
+                          child: SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
@@ -1777,17 +1883,17 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                       decoration: BoxDecoration(
                         color: !isGlobalEnabled
                             ? theme.colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.4)
+                                  .withValues(alpha: 0.4)
                             : (instance.statusStr!.contains('Synced')
-                                ? LuciStatusColors.successBg(context)
-                                : LuciStatusColors.warningBg(context)),
+                                  ? LuciStatusColors.successBg(context)
+                                  : LuciStatusColors.warningBg(context)),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
                           color: !isGlobalEnabled
                               ? theme.dividerColor.withValues(alpha: 0.2)
                               : (instance.statusStr!.contains('Synced')
-                                  ? LuciStatusColors.successBorder(context)
-                                  : LuciStatusColors.warningBorder(context)),
+                                    ? LuciStatusColors.successBorder(context)
+                                    : LuciStatusColors.warningBorder(context)),
                         ),
                       ),
                       child: Text(
@@ -1798,11 +1904,12 @@ class _ServicesSystemScreenState extends ConsumerState<ServicesSystemScreen> {
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: !isGlobalEnabled
-                              ? theme.colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.6)
+                              ? theme.colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.6,
+                                )
                               : (instance.statusStr!.contains('Synced')
-                                  ? LuciStatusColors.successText(context)
-                                  : LuciStatusColors.warningText(context)),
+                                    ? LuciStatusColors.successText(context)
+                                    : LuciStatusColors.warningText(context)),
                         ),
                       ),
                     ),

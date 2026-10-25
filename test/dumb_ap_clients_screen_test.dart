@@ -16,47 +16,46 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   FlutterSecureStorage.setMockInitialValues({});
 
-  testWidgets(
-    'ClientsScreen preserves Show Dumb AP Clients option permanently',
-    (WidgetTester tester) async {
-      final appState = AppState.instance;
-      appState.clients = [
-        Client(
-          ipAddress: '10.0.0.10',
-          macAddress: 'AA:11:11:11:11:11',
-          hostname: 'Main-Desktop',
-          isConnected: true,
-          connectionType: ConnectionType.wired,
-        ),
-      ];
+  testWidgets('ClientsScreen preserves Show Dumb AP Clients option permanently', (
+    WidgetTester tester,
+  ) async {
+    final appState = AppState.instance;
+    appState.clients = [
+      Client(
+        ipAddress: '10.0.0.10',
+        macAddress: 'AA:11:11:11:11:11',
+        hostname: 'Main-Desktop',
+        isConnected: true,
+        connectionType: ConnectionType.wired,
+      ),
+    ];
 
-      await tester.pumpWidget(
-        const ProviderScope(child: MaterialApp(home: ClientsScreen())),
-      );
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: ClientsScreen())),
+    );
 
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
 
-      // "Show Dumb AP Clients" is always visible so it never disappears on any device
-      expect(find.text('Show Dumb AP Clients'), findsOneWidget);
-      // "Dumb AP" summary item should NOT be present
-      expect(find.text('Dumb AP: '), findsNothing);
-      // AppBar antenna icon should NOT be present
-      expect(
-        find.descendant(
-          of: find.byType(LuciAppBar),
-          matching: find.byIcon(Icons.settings_input_antenna_outlined),
-        ),
-        findsNothing,
-      );
-      expect(
-        find.descendant(
-          of: find.byType(LuciAppBar),
-          matching: find.byIcon(Icons.settings_input_antenna_rounded),
-        ),
-        findsNothing,
-      );
-    },
-  );
+    // "Show Dumb AP Clients" is always visible so it never disappears on any device
+    expect(find.text('Show Dumb AP Clients'), findsOneWidget);
+    // "Dumb AP" summary item should NOT be present
+    expect(find.text('Dumb AP: '), findsNothing);
+    // AppBar antenna icon should NOT be present
+    expect(
+      find.descendant(
+        of: find.byType(LuciAppBar),
+        matching: find.byIcon(Icons.settings_input_antenna_outlined),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(LuciAppBar),
+        matching: find.byIcon(Icons.settings_input_antenna_rounded),
+      ),
+      findsNothing,
+    );
+  });
 
   testWidgets(
     'ClientsScreen displays Dumb AP options when a Dumb AP client is present',

@@ -11,7 +11,9 @@ void main() {
 
     test('resolves enabled when protection_enabled is true', () {
       expect(
-        AdGuardProtectionState.resolve({'protection_enabled': true}, now: fixedNow),
+        AdGuardProtectionState.resolve({
+          'protection_enabled': true,
+        }, now: fixedNow),
         equals(AdGuardProtectionState.enabled),
       );
       // Even if pause duration or future timestamp is present, enabled takes precedence
@@ -19,131 +21,162 @@ void main() {
         AdGuardProtectionState.resolve({
           'protection_enabled': true,
           'protection_disabled_duration': 5000,
-          'protection_disabled_until': fixedNow.add(const Duration(hours: 1)).toIso8601String(),
+          'protection_disabled_until': fixedNow
+              .add(const Duration(hours: 1))
+              .toIso8601String(),
         }, now: fixedNow),
         equals(AdGuardProtectionState.enabled),
       );
     });
 
-    test('resolves paused when protection_enabled is false and modern duration > 0', () {
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_duration': 300000,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.paused),
-      );
-    });
+    test(
+      'resolves paused when protection_enabled is false and modern duration > 0',
+      () {
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_duration': 300000,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.paused),
+        );
+      },
+    );
 
-    test('modern duration takes precedence over legacy timestamp when present', () {
-      // Modern duration = 0 (disabled) overrides future legacy timestamp
-      final futureTimestamp = fixedNow.add(const Duration(hours: 2)).millisecondsSinceEpoch;
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_duration': 0,
-          'protection_disabled_until': futureTimestamp,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.disabled),
-      );
+    test(
+      'modern duration takes precedence over legacy timestamp when present',
+      () {
+        // Modern duration = 0 (disabled) overrides future legacy timestamp
+        final futureTimestamp = fixedNow
+            .add(const Duration(hours: 2))
+            .millisecondsSinceEpoch;
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_duration': 0,
+            'protection_disabled_until': futureTimestamp,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.disabled),
+        );
 
-      // Modern duration > 0 (paused) overrides even an expired legacy timestamp
-      final pastTimestamp = fixedNow.subtract(const Duration(hours: 2)).millisecondsSinceEpoch;
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_duration': 60000,
-          'protection_disabled_until': pastTimestamp,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.paused),
-      );
-    });
+        // Modern duration > 0 (paused) overrides even an expired legacy timestamp
+        final pastTimestamp = fixedNow
+            .subtract(const Duration(hours: 2))
+            .millisecondsSinceEpoch;
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_duration': 60000,
+            'protection_disabled_until': pastTimestamp,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.paused),
+        );
+      },
+    );
 
-    test('resolves paused when legacy protection_disabled_until is in the future', () {
-      // Future timestamp in milliseconds
-      final futureMs = fixedNow.add(const Duration(minutes: 30)).millisecondsSinceEpoch;
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_until': futureMs,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.paused),
-      );
+    test(
+      'resolves paused when legacy protection_disabled_until is in the future',
+      () {
+        // Future timestamp in milliseconds
+        final futureMs = fixedNow
+            .add(const Duration(minutes: 30))
+            .millisecondsSinceEpoch;
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_until': futureMs,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.paused),
+        );
 
-      // Future timestamp in seconds
-      final futureSec = futureMs ~/ 1000;
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_until': futureSec,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.paused),
-      );
+        // Future timestamp in seconds
+        final futureSec = futureMs ~/ 1000;
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_until': futureSec,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.paused),
+        );
 
-      // Future timestamp as ISO 8601 string
-      final futureIso = fixedNow.add(const Duration(minutes: 15)).toIso8601String();
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_until': futureIso,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.paused),
-      );
-    });
+        // Future timestamp as ISO 8601 string
+        final futureIso = fixedNow
+            .add(const Duration(minutes: 15))
+            .toIso8601String();
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_until': futureIso,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.paused),
+        );
+      },
+    );
 
-    test('resolves disabled when legacy protection_disabled_until is expired', () {
-      // Past timestamp in milliseconds
-      final pastMs = fixedNow.subtract(const Duration(minutes: 5)).millisecondsSinceEpoch;
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_until': pastMs,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.disabled),
-      );
+    test(
+      'resolves disabled when legacy protection_disabled_until is expired',
+      () {
+        // Past timestamp in milliseconds
+        final pastMs = fixedNow
+            .subtract(const Duration(minutes: 5))
+            .millisecondsSinceEpoch;
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_until': pastMs,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.disabled),
+        );
 
-      // Past timestamp as ISO 8601 string
-      final pastIso = fixedNow.subtract(const Duration(hours: 1)).toIso8601String();
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_until': pastIso,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.disabled),
-      );
-    });
+        // Past timestamp as ISO 8601 string
+        final pastIso = fixedNow
+            .subtract(const Duration(hours: 1))
+            .toIso8601String();
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_until': pastIso,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.disabled),
+        );
+      },
+    );
 
-    test('resolves disabled when legacy timestamp is absent, null, or invalid', () {
-      expect(
-        AdGuardProtectionState.resolve({'protection_enabled': false}, now: fixedNow),
-        equals(AdGuardProtectionState.disabled),
-      );
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_until': null,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.disabled),
-      );
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_until': 'invalid_date_format',
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.disabled),
-      );
-      expect(
-        AdGuardProtectionState.resolve({
-          'protection_enabled': false,
-          'protection_disabled_until': 0,
-        }, now: fixedNow),
-        equals(AdGuardProtectionState.disabled),
-      );
-      expect(
-        AdGuardProtectionState.resolve({}, now: fixedNow),
-        equals(AdGuardProtectionState.disabled),
-      );
-    });
+    test(
+      'resolves disabled when legacy timestamp is absent, null, or invalid',
+      () {
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.disabled),
+        );
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_until': null,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.disabled),
+        );
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_until': 'invalid_date_format',
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.disabled),
+        );
+        expect(
+          AdGuardProtectionState.resolve({
+            'protection_enabled': false,
+            'protection_disabled_until': 0,
+          }, now: fixedNow),
+          equals(AdGuardProtectionState.disabled),
+        );
+        expect(
+          AdGuardProtectionState.resolve({}, now: fixedNow),
+          equals(AdGuardProtectionState.disabled),
+        );
+      },
+    );
   });
 
   group('AdGuardStatus & Payload Validation', () {
@@ -158,16 +191,10 @@ void main() {
       };
       expect(AdGuardStatus.isValidStatusPayload(validPayload1), isTrue);
 
-      final validPayload2 = {
-        'protection_enabled': false,
-        'dns_port': 5353,
-      };
+      final validPayload2 = {'protection_enabled': false, 'dns_port': 5353};
       expect(AdGuardStatus.isValidStatusPayload(validPayload2), isTrue);
 
-      final validPayload3 = {
-        'version': '0.107.43',
-        'running': false,
-      };
+      final validPayload3 = {'version': '0.107.43', 'running': false};
       expect(AdGuardStatus.isValidStatusPayload(validPayload3), isTrue);
     });
 
@@ -180,10 +207,7 @@ void main() {
         isFalse,
       );
       // Single generic field is insufficient
-      expect(
-        AdGuardStatus.isValidStatusPayload({'running': true}),
-        isFalse,
-      );
+      expect(AdGuardStatus.isValidStatusPayload({'running': true}), isFalse);
     });
 
     test('parses status correctly from JSON', () {
@@ -209,39 +233,50 @@ void main() {
       expect(status.startTimeMs, equals(1696700000000));
     });
 
-    test('parses status with legacy protection_disabled_until calculating remaining duration', () {
-      final fixedNow = DateTime.utc(2026, 10, 8, 12, 0, 0);
-      final futureDate = fixedNow.add(const Duration(minutes: 5)); // 300,000 ms
+    test(
+      'parses status with legacy protection_disabled_until calculating remaining duration',
+      () {
+        final fixedNow = DateTime.utc(2026, 10, 8, 12, 0, 0);
+        final futureDate = fixedNow.add(
+          const Duration(minutes: 5),
+        ); // 300,000 ms
 
-      final jsonFuture = {
-        'version': 'v0.107.50',
-        'running': true,
-        'protection_enabled': false,
-        'protection_disabled_until': futureDate.millisecondsSinceEpoch,
-        'dns_addresses': ['127.0.0.1'],
-        'dns_port': 53,
-        'http_port': 3000,
-      };
+        final jsonFuture = {
+          'version': 'v0.107.50',
+          'running': true,
+          'protection_enabled': false,
+          'protection_disabled_until': futureDate.millisecondsSinceEpoch,
+          'dns_addresses': ['127.0.0.1'],
+          'dns_port': 53,
+          'http_port': 3000,
+        };
 
-      final statusFuture = AdGuardStatus.fromJson(jsonFuture, now: fixedNow);
-      expect(statusFuture.protectionState, equals(AdGuardProtectionState.paused));
-      expect(statusFuture.pauseDurationMs, equals(300000));
+        final statusFuture = AdGuardStatus.fromJson(jsonFuture, now: fixedNow);
+        expect(
+          statusFuture.protectionState,
+          equals(AdGuardProtectionState.paused),
+        );
+        expect(statusFuture.pauseDurationMs, equals(300000));
 
-      final pastDate = fixedNow.subtract(const Duration(minutes: 5));
-      final jsonPast = {
-        'version': 'v0.107.50',
-        'running': true,
-        'protection_enabled': false,
-        'protection_disabled_until': pastDate.millisecondsSinceEpoch,
-        'dns_addresses': ['127.0.0.1'],
-        'dns_port': 53,
-        'http_port': 3000,
-      };
+        final pastDate = fixedNow.subtract(const Duration(minutes: 5));
+        final jsonPast = {
+          'version': 'v0.107.50',
+          'running': true,
+          'protection_enabled': false,
+          'protection_disabled_until': pastDate.millisecondsSinceEpoch,
+          'dns_addresses': ['127.0.0.1'],
+          'dns_port': 53,
+          'http_port': 3000,
+        };
 
-      final statusPast = AdGuardStatus.fromJson(jsonPast, now: fixedNow);
-      expect(statusPast.protectionState, equals(AdGuardProtectionState.disabled));
-      expect(statusPast.pauseDurationMs, equals(0));
-    });
+        final statusPast = AdGuardStatus.fromJson(jsonPast, now: fixedNow);
+        expect(
+          statusPast.protectionState,
+          equals(AdGuardProtectionState.disabled),
+        );
+        expect(statusPast.pauseDurationMs, equals(0));
+      },
+    );
 
     test('applies safe defaults on empty or partial status JSON', () {
       final status = AdGuardStatus.fromJson({});
@@ -330,40 +365,43 @@ void main() {
       expect(parsed.first.count, equals(10));
     });
 
-    test('parses complete stats payload and preserves historical trends separately', () {
-      final json = {
-        'num_dns_queries': 10000,
-        'num_blocked_filtering': 1500,
-        'num_replaced_safebrowsing': 12,
-        'num_replaced_safesearch': 4,
-        'num_replaced_parental': 0,
-        'avg_processing_time': 0.015,
-        'top_queried_domains': [
-          {'domain': 'github.com', 'count': 400},
-        ],
-        'top_blocked_domains': [
-          {'domain': 'telemetry.corp', 'count': 120},
-        ],
-        'top_clients': [
-          {'ip': '192.168.1.50', 'count': 2500},
-        ],
-        'dns_queries': [100, 200, 300],
-        'blocked_filtering': [10, 20, 30],
-        'time_units': 'hours',
-      };
+    test(
+      'parses complete stats payload and preserves historical trends separately',
+      () {
+        final json = {
+          'num_dns_queries': 10000,
+          'num_blocked_filtering': 1500,
+          'num_replaced_safebrowsing': 12,
+          'num_replaced_safesearch': 4,
+          'num_replaced_parental': 0,
+          'avg_processing_time': 0.015,
+          'top_queried_domains': [
+            {'domain': 'github.com', 'count': 400},
+          ],
+          'top_blocked_domains': [
+            {'domain': 'telemetry.corp', 'count': 120},
+          ],
+          'top_clients': [
+            {'ip': '192.168.1.50', 'count': 2500},
+          ],
+          'dns_queries': [100, 200, 300],
+          'blocked_filtering': [10, 20, 30],
+          'time_units': 'hours',
+        };
 
-      final stats = AdGuardStats.fromJson(json);
-      expect(stats.numDnsQueries, equals(10000));
-      expect(stats.numBlockedFiltering, equals(1500));
-      expect(stats.numReplacedSafebrowsing, equals(12));
-      expect(stats.numReplacedSafesearch, equals(4));
-      expect(stats.numReplacedParental, equals(0));
-      expect(stats.avgProcessingTime, equals(0.015));
-      expect(stats.blockRatePercentage, equals(15.0));
-      expect(stats.dnsQueriesTrend, equals([100, 200, 300]));
-      expect(stats.blockedFilteringTrend, equals([10, 20, 30]));
-      expect(stats.timeUnits, equals('hours'));
-    });
+        final stats = AdGuardStats.fromJson(json);
+        expect(stats.numDnsQueries, equals(10000));
+        expect(stats.numBlockedFiltering, equals(1500));
+        expect(stats.numReplacedSafebrowsing, equals(12));
+        expect(stats.numReplacedSafesearch, equals(4));
+        expect(stats.numReplacedParental, equals(0));
+        expect(stats.avgProcessingTime, equals(0.015));
+        expect(stats.blockRatePercentage, equals(15.0));
+        expect(stats.dnsQueriesTrend, equals([100, 200, 300]));
+        expect(stats.blockedFilteringTrend, equals([10, 20, 30]));
+        expect(stats.timeUnits, equals('hours'));
+      },
+    );
   });
 
   group('AdGuardFilteringStatus', () {
@@ -386,10 +424,7 @@ void main() {
             'last_updated': '2026-10-01T00:00:00Z',
           },
         ],
-        'user_rules': [
-          '||badsite.com^',
-          '||tracking.org^',
-        ],
+        'user_rules': ['||badsite.com^', '||tracking.org^'],
       };
 
       final filtering = AdGuardFilteringStatus.fromJson(json);
@@ -429,12 +464,7 @@ void main() {
     });
 
     test('handles missing total RAM gracefully', () {
-      final json = {
-        'PID': '100',
-        '%CPU': '0%',
-        '%MEM': '5%',
-        'VSZ': '10240',
-      };
+      final json = {'PID': '100', '%CPU': '0%', '%MEM': '5%', 'VSZ': '10240'};
       final telemetry = AdGuardProcessTelemetry.fromLuciProcess(json);
       expect(telemetry.pid, equals('100'));
       expect(telemetry.estimatedRamMb, isNull);
@@ -442,31 +472,37 @@ void main() {
   });
 
   group('AdGuardDnsTopology', () {
-    test('infers Mode A (AdGuard Primary) when AGH on 53 and dnsmasq moved', () {
-      final topo = AdGuardDnsTopology.infer(
-        adguardDnsPort: 53,
-        dnsmasqPort: 5353,
-        dnsmasqServers: [],
-        hasDnatRedirect: false,
-        adguardDnsAddresses: ['192.168.1.1', '127.0.0.1'],
-        isDnsRunning: true,
-      );
-      expect(topo.mode, equals(AdGuardTopologyMode.adguardPrimary));
-      expect(topo.isIpv6Supported, isFalse);
-    });
+    test(
+      'infers Mode A (AdGuard Primary) when AGH on 53 and dnsmasq moved',
+      () {
+        final topo = AdGuardDnsTopology.infer(
+          adguardDnsPort: 53,
+          dnsmasqPort: 5353,
+          dnsmasqServers: [],
+          hasDnatRedirect: false,
+          adguardDnsAddresses: ['192.168.1.1', '127.0.0.1'],
+          isDnsRunning: true,
+        );
+        expect(topo.mode, equals(AdGuardTopologyMode.adguardPrimary));
+        expect(topo.isIpv6Supported, isFalse);
+      },
+    );
 
-    test('infers Mode B (dnsmasq Forwarder) when dnsmasq on 53 forwards to AGH', () {
-      final topo = AdGuardDnsTopology.infer(
-        adguardDnsPort: 5353,
-        dnsmasqPort: 53,
-        dnsmasqServers: ['127.0.0.1#5353'],
-        hasDnatRedirect: false,
-        adguardDnsAddresses: ['127.0.0.1', '::1'],
-        isDnsRunning: true,
-      );
-      expect(topo.mode, equals(AdGuardTopologyMode.dnsmasqForwarder));
-      expect(topo.isIpv6Supported, isTrue);
-    });
+    test(
+      'infers Mode B (dnsmasq Forwarder) when dnsmasq on 53 forwards to AGH',
+      () {
+        final topo = AdGuardDnsTopology.infer(
+          adguardDnsPort: 5353,
+          dnsmasqPort: 53,
+          dnsmasqServers: ['127.0.0.1#5353'],
+          hasDnatRedirect: false,
+          adguardDnsAddresses: ['127.0.0.1', '::1'],
+          isDnsRunning: true,
+        );
+        expect(topo.mode, equals(AdGuardTopologyMode.dnsmasqForwarder));
+        expect(topo.isIpv6Supported, isTrue);
+      },
+    );
 
     test('infers Mode C (Firewall Redirect) when DNAT rule is active', () {
       final topo = AdGuardDnsTopology.infer(
@@ -480,17 +516,20 @@ void main() {
       expect(topo.mode, equals(AdGuardTopologyMode.firewallRedirect));
     });
 
-    test('infers Mode D (Standalone) when AGH on custom port without routing', () {
-      final topo = AdGuardDnsTopology.infer(
-        adguardDnsPort: 5353,
-        dnsmasqPort: 53,
-        dnsmasqServers: ['8.8.8.8'],
-        hasDnatRedirect: false,
-        adguardDnsAddresses: ['192.168.1.1'],
-        isDnsRunning: true,
-      );
-      expect(topo.mode, equals(AdGuardTopologyMode.standalone));
-    });
+    test(
+      'infers Mode D (Standalone) when AGH on custom port without routing',
+      () {
+        final topo = AdGuardDnsTopology.infer(
+          adguardDnsPort: 5353,
+          dnsmasqPort: 53,
+          dnsmasqServers: ['8.8.8.8'],
+          hasDnatRedirect: false,
+          adguardDnsAddresses: ['192.168.1.1'],
+          isDnsRunning: true,
+        );
+        expect(topo.mode, equals(AdGuardTopologyMode.standalone));
+      },
+    );
 
     test('infers stopped mode when DNS engine is not running', () {
       final topo = AdGuardDnsTopology.infer(
@@ -568,7 +607,10 @@ void main() {
       );
 
       expect(caps.isInstalled, isTrue);
-      expect(caps.isServiceManageable, isFalse); // Installed, but NOT manageable!
+      expect(
+        caps.isServiceManageable,
+        isFalse,
+      ); // Installed, but NOT manageable!
       expect(caps.isApiReachable, isTrue);
       expect(caps.isApiAuthenticated, isTrue);
     });
@@ -630,50 +672,55 @@ void main() {
       expect(profile.routerId, equals('router-123'));
     });
 
-    test('external instance profile serializes and deserializes accurately', () {
-      final profile = AdGuardInstanceProfile.external(
-        id: 'ext_1700000000',
-        name: 'Raspberry Pi AGH',
-        host: '192.168.1.129',
-        port: 8080,
-        useHttps: true,
-      );
+    test(
+      'external instance profile serializes and deserializes accurately',
+      () {
+        final profile = AdGuardInstanceProfile.external(
+          id: 'ext_1700000000',
+          name: 'Raspberry Pi AGH',
+          host: '192.168.1.129',
+          port: 8080,
+          useHttps: true,
+        );
 
-      final json = profile.toJson();
-      expect(json['id'], equals('ext_1700000000'));
-      expect(json['name'], equals('Raspberry Pi AGH'));
-      expect(json['type'], equals('externalHost'));
-      expect(json['host'], equals('192.168.1.129'));
-      expect(json['port'], equals(8080));
-      expect(json['use_https'], isTrue);
-      expect(json.containsKey('router_id'), isFalse);
+        final json = profile.toJson();
+        expect(json['id'], equals('ext_1700000000'));
+        expect(json['name'], equals('Raspberry Pi AGH'));
+        expect(json['type'], equals('externalHost'));
+        expect(json['host'], equals('192.168.1.129'));
+        expect(json['port'], equals(8080));
+        expect(json['use_https'], isTrue);
+        expect(json.containsKey('router_id'), isFalse);
 
-      final deserialized = AdGuardInstanceProfile.fromJson(json);
-      expect(deserialized, equals(profile));
-      expect(deserialized.hashCode, equals(profile.hashCode));
-      expect(deserialized.type, equals(AdGuardInstanceType.externalHost));
-    });
+        final deserialized = AdGuardInstanceProfile.fromJson(json);
+        expect(deserialized, equals(profile));
+        expect(deserialized.hashCode, equals(profile.hashCode));
+        expect(deserialized.type, equals(AdGuardInstanceType.externalHost));
+      },
+    );
 
-    test('copyWith modifies specified fields and preserves unmodified ones', () {
-      final original = AdGuardInstanceProfile.external(
-        id: 'ext_1',
-        name: 'Server 1',
-        host: '10.0.0.5',
-        port: 3000,
-      );
+    test(
+      'copyWith modifies specified fields and preserves unmodified ones',
+      () {
+        final original = AdGuardInstanceProfile.external(
+          id: 'ext_1',
+          name: 'Server 1',
+          host: '10.0.0.5',
+          port: 3000,
+        );
 
-      final modified = original.copyWith(
-        name: 'Server 1 Updated',
-        port: 3001,
-        useHttps: true,
-      );
+        final modified = original.copyWith(
+          name: 'Server 1 Updated',
+          port: 3001,
+          useHttps: true,
+        );
 
-      expect(modified.id, equals('ext_1'));
-      expect(modified.name, equals('Server 1 Updated'));
-      expect(modified.host, equals('10.0.0.5'));
-      expect(modified.port, equals(3001));
-      expect(modified.useHttps, isTrue);
-    });
+        expect(modified.id, equals('ext_1'));
+        expect(modified.name, equals('Server 1 Updated'));
+        expect(modified.host, equals('10.0.0.5'));
+        expect(modified.port, equals(3001));
+        expect(modified.useHttps, isTrue);
+      },
+    );
   });
 }
-

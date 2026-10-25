@@ -82,8 +82,9 @@ class SystemMetrics {
       final bool isKernelFixedPoint =
           !hasDecimals &&
           loadList.any((val) {
-            final num? n =
-                val is num ? val : num.tryParse(val.toString().trim());
+            final num? n = val is num
+                ? val
+                : num.tryParse(val.toString().trim());
             return n != null && n >= 256;
           });
 

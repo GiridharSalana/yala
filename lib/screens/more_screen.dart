@@ -74,7 +74,8 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
             child: Text(
               isReviewer
                   ? 'Are you sure you want to exit Reviewer Mode and return to the login screen?'
-                  : (l10n?.dialogLogoutMessage ?? 'Are you sure you want to logout?'),
+                  : (l10n?.dialogLogoutMessage ??
+                        'Are you sure you want to logout?'),
             ),
           ),
           actions: <Widget>[
@@ -85,9 +86,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
               },
             ),
             TextButton(
-              child: Text(
-                isReviewer ? 'Exit' : (l10n?.tileLogout ?? 'Logout'),
-              ),
+              child: Text(isReviewer ? 'Exit' : (l10n?.tileLogout ?? 'Logout')),
               onPressed: () async {
                 await appState.logout();
                 // Clear all accepted certificates on logout
@@ -108,9 +107,12 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                       MaterialPageRoute(
                         builder: (context) => LoginScreen(
                           initialIp: isReviewer ? detectedGateway : effectiveIp,
-                          initialUsername:
-                              isReviewer ? 'root' : creds['username'],
-                          initialPassword: isReviewer ? null : creds['password'],
+                          initialUsername: isReviewer
+                              ? 'root'
+                              : creds['username'],
+                          initialPassword: isReviewer
+                              ? null
+                              : creds['password'],
                         ),
                       ),
                       (Route<dynamic> route) => false,
@@ -657,8 +659,9 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                 ),
                 Builder(
                   builder: (context) {
-                    final isReviewer =
-                        ref.watch(appStateProvider).reviewerModeEnabled;
+                    final isReviewer = ref
+                        .watch(appStateProvider)
+                        .reviewerModeEnabled;
                     return _buildMoreTile(
                       context,
                       icon: Icons.logout,
@@ -669,7 +672,7 @@ class _MoreScreenState extends ConsumerState<MoreScreen> {
                       subtitle: isReviewer
                           ? 'End demo session and return to login'
                           : (l10n?.tileLogoutSubtitle ??
-                              'End your session and sign out'),
+                                'End your session and sign out'),
                       titleColor: Theme.of(context).colorScheme.error,
                       subtitleColor: Theme.of(
                         context,

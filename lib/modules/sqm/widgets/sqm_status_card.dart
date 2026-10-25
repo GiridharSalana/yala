@@ -37,7 +37,9 @@ class _SqmStatusCardState extends ConsumerState<SqmStatusCard> {
 
   SqmOverview get _effectiveOverview {
     if (widget.overview != null) return widget.overview!;
-    if (widget.sqmState != null) return SqmOverview.fromSqmState(widget.sqmState!);
+    if (widget.sqmState != null) {
+      return SqmOverview.fromSqmState(widget.sqmState!);
+    }
     return const SqmOverview(isInstalled: false);
   }
 
@@ -165,8 +167,7 @@ class _SqmStatusCardState extends ConsumerState<SqmStatusCard> {
         l10n?.modSqmOperatingStateTelemetryUnavailable ?? 'Telemetry N/A',
         Icons.info_outline_rounded,
       ),
-      SqmOperatingState.inactive ||
-      SqmOperatingState.notInstalled => (
+      SqmOperatingState.inactive || SqmOperatingState.notInstalled => (
         LuciStatusColors.inactive,
         l10n?.modSqmOperatingStateInactive ?? 'Inactive',
         Icons.pause_circle_outline_rounded,

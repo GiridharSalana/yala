@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yala/config/app_config.dart';
 import 'package:yala/design/luci_theme.dart';
 import 'package:yala/services/secure_storage_service.dart';
@@ -189,6 +190,12 @@ class AppState extends ChangeNotifier {
       _sessionController?.themePalette ?? AppThemePalette.amber;
   bool get useDynamicTheme => _sessionController?.useDynamicTheme ?? false;
 
+  // Pre-hydrated Monet dynamic colors (Android 12+)
+  ColorScheme? get preloadedLightDynamic =>
+      _sessionController?.preloadedLightDynamic;
+  ColorScheme? get preloadedDarkDynamic =>
+      _sessionController?.preloadedDarkDynamic;
+
   // Selected locale (null = System default)
   Locale? get locale => _sessionController?.locale;
 
@@ -294,6 +301,12 @@ class AppState extends ChangeNotifier {
 
   /// Completes when routers, session controller, and secure storage are ready.
   Future<void> ensureInitialized() => _initFuture;
+  /// Synchronously or fast-asynchronously pre-hydrates user preferences
+  /// (Theme Palette, Theme Mode, Locale, Dynamic Monet colors) before building Frame 1.
+  static Future<void> preHydrate({SharedPreferences? prefs}) async {
+    final app = AppState.instance;
+    await app._sessionController?.preHydratePreferences(prefs: prefs);
+  }
 
   Future<void> _initialize() async {
     try {
@@ -1296,9 +1309,16 @@ class AppState extends ChangeNotifier {
     if (command == 'bridge' || command == '/sbin/bridge') {
       return _RouterCommand('/sbin/bridge', args);
     }
-    if ((command == 'sysupgrade' || command == '/sbin/sysupgrade') &&
-        (args.contains('-l') || args.contains('--list-backup'))) {
-      return const _RouterCommand('/sbin/sysupgrade', ['--list-backup']);
+    if (command == 'sysupgrade' || command == '/sbin/sysupgrade') {
+      if (args.contains('-l') || args.contains('--list-backup')) {
+        return const _RouterCommand('/sbin/sysupgrade', ['--list-backup']);
+      }
+      final normalizedArgs = args.map((a) {
+        if (a == '-F') return '--force';
+        if (a == '/tmp/sysupgrade_firmware.bin') return '/tmp/firmware.bin';
+        return a;
+      }).toList();
+      return _RouterCommand('/sbin/sysupgrade', normalizedArgs);
     }
     if (command == 'wifi') {
       return _RouterCommand('/sbin/wifi', args);
@@ -1809,8 +1829,9 @@ class AppState extends ChangeNotifier {
       for (final rule in overview.customRules) {
         if (!rule.enabled) continue;
         final target = rule.target.toUpperCase();
-        if (target != 'DROP' && target != 'REJECT' && target != 'STOP')
+        if (target != 'DROP' && target != 'REJECT' && target != 'STOP') {
           continue;
+        }
         for (final m in rule.srcMac) {
           final norm = ClientNamingHelper.normalizeMac(m);
           if (norm.isNotEmpty) {

@@ -76,10 +76,7 @@ void main() {
           appState.dashboardData!['uciWirelessConfig']['radio0']['disabled'],
           equals('0'),
         );
-        expect(
-          appState.dashboardData!['wireless']['radio0']['up'],
-          isTrue,
-        );
+        expect(appState.dashboardData!['wireless']['radio0']['up'], isTrue);
 
         // Toggle radio OFF
         final offOk = await appState.toggleWirelessRadio('radio0', false);
@@ -89,10 +86,7 @@ void main() {
           appState.dashboardData!['uciWirelessConfig']['radio0']['disabled'],
           equals('1'),
         );
-        expect(
-          appState.dashboardData!['wireless']['radio0']['up'],
-          isFalse,
-        );
+        expect(appState.dashboardData!['wireless']['radio0']['up'], isFalse);
         expect(
           appState.dashboardData!['wireless']['radio0']['disabled'],
           isTrue,
@@ -106,10 +100,7 @@ void main() {
           appState.dashboardData!['uciWirelessConfig']['radio0']['disabled'],
           equals('0'),
         );
-        expect(
-          appState.dashboardData!['wireless']['radio0']['up'],
-          isTrue,
-        );
+        expect(appState.dashboardData!['wireless']['radio0']['up'], isTrue);
         expect(
           appState.dashboardData!['wireless']['radio0']['disabled'],
           isFalse,
@@ -203,9 +194,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [
-              appStateProvider.overrideWith((ref) => appState),
-            ],
+            overrides: [appStateProvider.overrideWith((ref) => appState)],
             child: const MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
@@ -235,7 +224,8 @@ void main() {
         expect(
           spinnerTopLeft.dx,
           lessThan(switchTopLeft.dx),
-          reason: 'Spinner must be strictly on the LEFT of the Switch in SSID card',
+          reason:
+              'Spinner must be strictly on the LEFT of the Switch in SSID card',
         );
 
         // Switch must be dimmed to 0.55 and disabled (onChanged == null)
@@ -279,15 +269,14 @@ void main() {
           securityMode: WifiSecurityMode.wpa2Psk,
           pmfState: PmfState.disabled,
           channel: '36',
-          isEnabled: true, // Interface itself is enabled, but parent radio transceiver is off
+          isEnabled:
+              true, // Interface itself is enabled, but parent radio transceiver is off
           stations: [],
         );
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [
-              appStateProvider.overrideWith((ref) => appState),
-            ],
+            overrides: [appStateProvider.overrideWith((ref) => appState)],
             child: const MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
@@ -319,7 +308,8 @@ void main() {
         expect(
           cardOpacityFinder,
           findsOneWidget,
-          reason: 'Card must be greyed out to 0.45 when parent radio is disabled',
+          reason:
+              'Card must be greyed out to 0.45 when parent radio is disabled',
         );
       },
     );
@@ -378,15 +368,11 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [
-              appStateProvider.overrideWith((ref) => appState),
-            ],
+            overrides: [appStateProvider.overrideWith((ref) => appState)],
             child: const MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: Scaffold(
-                body: WirelessManagementScreen(),
-              ),
+              home: Scaffold(body: WirelessManagementScreen()),
             ),
           ),
         );
@@ -468,7 +454,8 @@ void main() {
         expect(
           spinnerTopLeft.dx,
           lessThan(switchTopLeft.dx),
-          reason: 'Spinner must be strictly on the LEFT of the switch in UnifiedNetworkCard',
+          reason:
+              'Spinner must be strictly on the LEFT of the switch in UnifiedNetworkCard',
         );
 
         // Switch must be disabled while isSaving is true
@@ -550,15 +537,11 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [
-              appStateProvider.overrideWith((ref) => appState),
-            ],
+            overrides: [appStateProvider.overrideWith((ref) => appState)],
             child: const MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: Scaffold(
-                body: WirelessManagementScreen(),
-              ),
+              home: Scaffold(body: WirelessManagementScreen()),
             ),
           ),
         );
@@ -676,15 +659,11 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [
-              appStateProvider.overrideWith((ref) => appState),
-            ],
+            overrides: [appStateProvider.overrideWith((ref) => appState)],
             child: const MaterialApp(
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: Scaffold(
-                body: WirelessManagementScreen(),
-              ),
+              home: Scaffold(body: WirelessManagementScreen()),
             ),
           ),
         );

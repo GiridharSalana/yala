@@ -8,7 +8,6 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -23,9 +22,6 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Native edge-to-edge window setup without pulling in deprecated AndroidX EdgeToEdgeApi classes
-        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Unlock high refresh rate (90Hz/120Hz/144Hz) for ultra-smooth 120fps scrolling
         unlockHighRefreshRate()
@@ -161,10 +157,15 @@ class MainActivity : FlutterFragmentActivity() {
     private fun unlockHighRefreshRate() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
-                val display = this.display
-                val supportedModes = display?.supportedModes
-                val maxMode = supportedModes?.maxByOrNull { it.refreshRate }
-                if (maxMode != null) {
+                val display = this.display ?: return
+                val currentMode = display.mode
+                val supportedModes = display.supportedModes ?: return
+                val maxMode = supportedModes
+                    .filter { it.physicalWidth == currentMode.physicalWidth && it.physicalHeight == currentMode.physicalHeight }
+                    .maxByOrNull { it.refreshRate }
+                    ?: supportedModes.maxByOrNull { it.refreshRate }
+
+                if (maxMode != null && window.attributes.preferredDisplayModeId != maxMode.modeId) {
                     val lp = window.attributes
                     lp.preferredDisplayModeId = maxMode.modeId
                     window.attributes = lp
@@ -175,10 +176,15 @@ class MainActivity : FlutterFragmentActivity() {
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
                 @Suppress("DEPRECATION")
-                val display = windowManager.defaultDisplay
-                val supportedModes = display?.supportedModes
-                val maxMode = supportedModes?.maxByOrNull { it.refreshRate }
-                if (maxMode != null) {
+                val display = windowManager.defaultDisplay ?: return
+                val currentMode = display.mode
+                val supportedModes = display.supportedModes ?: return
+                val maxMode = supportedModes
+                    .filter { it.physicalWidth == currentMode.physicalWidth && it.physicalHeight == currentMode.physicalHeight }
+                    .maxByOrNull { it.refreshRate }
+                    ?: supportedModes.maxByOrNull { it.refreshRate }
+
+                if (maxMode != null && window.attributes.preferredDisplayModeId != maxMode.modeId) {
                     val lp = window.attributes
                     lp.preferredDisplayModeId = maxMode.modeId
                     window.attributes = lp

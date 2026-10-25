@@ -91,9 +91,13 @@ class DomainBlockingService {
               activeEngine: engine,
               isFilteringActive: false,
               topology: activeTopology,
-              supportedScopes: _determineSupportedScopes(engine, activeTopology),
+              supportedScopes: _determineSupportedScopes(
+                engine,
+                activeTopology,
+              ),
               warning: _buildTopologyWarning(activeTopology),
-              error: res.error?.message ??
+              error:
+                  res.error?.message ??
                   'Failed to retrieve AdGuard Home filtering status',
             );
           }
@@ -101,8 +105,9 @@ class DomainBlockingService {
           final status = res.data!;
           final List<DomainBlockRule> rules = [];
           for (final raw in status.userRules) {
-            final domain =
-                DomainValidator.parseBlockedDomainFromAdGuardRule(raw);
+            final domain = DomainValidator.parseBlockedDomainFromAdGuardRule(
+              raw,
+            );
             if (domain != null) {
               rules.add(
                 DomainBlockRule.global(
@@ -217,16 +222,16 @@ class DomainBlockingService {
 
           // Idempotency check:
           final alreadyPresent = existingRules.any((r) {
-            final parsed =
-                DomainValidator.parseBlockedDomainFromAdGuardRule(r);
+            final parsed = DomainValidator.parseBlockedDomainFromAdGuardRule(r);
             return parsed != null &&
                 parsed.toLowerCase() == normalized.toLowerCase();
           });
 
           if (!alreadyPresent) {
             existingRules.add(newRulePattern);
-            final updateRes =
-                await adguardApiService.setUserRules(existingRules);
+            final updateRes = await adguardApiService.setUserRules(
+              existingRules,
+            );
             if (!updateRes.isSuccess || updateRes.data != true) {
               return DomainBlockActionResult.failed(
                 message: 'Failed to apply rule to AdGuard Home',
@@ -291,9 +296,7 @@ class DomainBlockingService {
   }) async {
     final normalized = DomainValidator.normalize(domain);
     if (normalized == null || normalized.isEmpty) {
-      return DomainBlockActionResult.failed(
-        message: 'Invalid domain',
-      );
+      return DomainBlockActionResult.failed(message: 'Invalid domain');
     }
 
     return await operationQueue.runLocked<DomainBlockActionResult>(
@@ -315,15 +318,15 @@ class DomainBlockingService {
 
           final existingRules = List<String>.from(statusRes.data!.userRules);
           final updatedRules = existingRules.where((r) {
-            final parsed =
-                DomainValidator.parseBlockedDomainFromAdGuardRule(r);
+            final parsed = DomainValidator.parseBlockedDomainFromAdGuardRule(r);
             return parsed == null ||
                 parsed.toLowerCase() != normalized.toLowerCase();
           }).toList();
 
           if (updatedRules.length != existingRules.length) {
-            final updateRes =
-                await adguardApiService.setUserRules(updatedRules);
+            final updateRes = await adguardApiService.setUserRules(
+              updatedRules,
+            );
             if (!updateRes.isSuccess || updateRes.data != true) {
               return DomainBlockActionResult.failed(
                 message: 'Failed to update AdGuard Home rules',

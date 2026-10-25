@@ -100,19 +100,16 @@ void main() {
       },
     );
 
-    test(
-      'deleteWirelessInterface removes interface cleanly',
-      () async {
-        final delResult = await mockApi.deleteWirelessInterface(
-          '192.168.1.1',
-          'sysauth_token',
-          false,
-          sectionName: 'wifinet0',
-        );
+    test('deleteWirelessInterface removes interface cleanly', () async {
+      final delResult = await mockApi.deleteWirelessInterface(
+        '192.168.1.1',
+        'sysauth_token',
+        false,
+        sectionName: 'wifinet0',
+      );
 
-        expect(delResult, isTrue);
-      },
-    );
+      expect(delResult, isTrue);
+    });
 
     test(
       'updateInterfaceDhcpConfig retry targets existing section and updates without duplication',
@@ -151,4 +148,3 @@ void main() {
     );
   });
 }
-

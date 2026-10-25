@@ -96,7 +96,10 @@ class AdGuardServiceCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: isRunning
                         ? Colors.green.withValues(alpha: 0.15)
@@ -112,7 +115,9 @@ class AdGuardServiceCard extends StatelessWidget {
                         ? (l10n?.aghStatusRunning ?? 'Running')
                         : (l10n?.aghStatusStopped ?? 'Stopped'),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: isRunning ? Colors.green.shade800 : Colors.red.shade800,
+                      color: isRunning
+                          ? Colors.green.shade800
+                          : Colors.red.shade800,
                       fontWeight: FontWeight.bold,
                       fontSize: 11,
                     ),
@@ -126,7 +131,10 @@ class AdGuardServiceCard extends StatelessWidget {
               Container(
                 key: const Key('agh_service_error_banner'),
                 margin: const EdgeInsets.only(bottom: 12.0),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: colorScheme.errorContainer.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(10),
@@ -167,7 +175,11 @@ class AdGuardServiceCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.lock_outline, size: 16, color: colorScheme.outline),
+                    Icon(
+                      Icons.lock_outline,
+                      size: 16,
+                      color: colorScheme.outline,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -210,9 +222,11 @@ class AdGuardServiceCard extends StatelessWidget {
                           label: Text(l10n?.aghActionStop ?? 'Stop'),
                           onPressed: () => _confirmAndExecute(
                             context,
-                            title: l10n?.aghServiceConfirmStopTitle ??
+                            title:
+                                l10n?.aghServiceConfirmStopTitle ??
                                 'Stop AdGuard Home Service?',
-                            message: l10n?.aghServiceConfirmStopMessage ??
+                            message:
+                                l10n?.aghServiceConfirmStopMessage ??
                                 'Stopping the service will disable DNS resolution if AdGuard Home is your primary DNS listener. Continue?',
                             action: onStop,
                           ),
@@ -226,9 +240,11 @@ class AdGuardServiceCard extends StatelessWidget {
                           label: Text(l10n?.aghActionRestart ?? 'Restart'),
                           onPressed: () => _confirmAndExecute(
                             context,
-                            title: l10n?.aghServiceConfirmRestartTitle ??
+                            title:
+                                l10n?.aghServiceConfirmRestartTitle ??
                                 'Restart AdGuard Home Service?',
-                            message: l10n?.aghServiceConfirmRestartMessage ??
+                            message:
+                                l10n?.aghServiceConfirmRestartMessage ??
                                 'Restarting the service will temporarily interrupt DNS queries. Continue?',
                             action: onRestart,
                           ),
