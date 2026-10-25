@@ -6,7 +6,6 @@ name: CI & Release
 # PR: validate before merge. Tag (v*): one run — validate then release (no main
 # push trigger, so tagging does not also fire a separate main workflow).
 on:
-  workflow_dispatch:
   push:
     tags:
       - 'v*'
