@@ -40,6 +40,7 @@ class _WifiAccessControlScreenState
   final Map<String, bool> _initialIfaceAllows = {};
   final Map<String, bool> _selectedIfaceAllows = {};
   String? _phoneMac;
+  Client? _phoneClient;
 
   @override
   void initState() {
@@ -50,7 +51,6 @@ class _WifiAccessControlScreenState
     if (cachedClients.isNotEmpty) {
       _availableClients = cachedClients;
       _isLoadingClients = false;
-      _detectPhoneMac(cachedClients);
     }
     _loadClients();
   }
@@ -63,22 +63,53 @@ class _WifiAccessControlScreenState
 
   // ... (keeping internal state methods)
 
-  void _detectPhoneMac(List<Client> clients, [List<String>? localAddresses]) {
+  void _detectPhoneMac(List<Client> clients, [Set<String>? localAddresses]) {
+    if (localAddresses == null || localAddresses.isEmpty) return;
+
     for (final c in clients) {
       final normMac = _normalizeMac(c.macAddress);
       final normIp = c.ipAddress.toLowerCase().trim();
-      if (localAddresses != null &&
-          (localAddresses.contains(normIp) ||
-              localAddresses.any(
-                (a) => SelfDeviceGuard.normalizeMac(a) == normMac,
-              ))) {
+      final hasMatchingIp =
+          normIp.isNotEmpty &&
+          normIp != 'n/a' &&
+          localAddresses.contains(normIp);
+      final hasMatchingIpv6 =
+          c.ipv6Addresses?.any(
+            (ip6) => localAddresses.contains(ip6.toLowerCase().trim()),
+          ) ??
+          false;
+      final hasMatchingMac = localAddresses.any(
+        (a) => SelfDeviceGuard.normalizeMac(a) == normMac,
+      );
+
+      if (hasMatchingIp || hasMatchingIpv6 || hasMatchingMac) {
+        _phoneClient = c;
         _phoneMac = normMac;
         return;
       }
-      if (c.isConnected && c.connectionType == ConnectionType.wireless) {
-        _phoneMac ??= normMac;
-      }
     }
+  }
+
+  bool _isPhoneConnectedToIface(WirelessInterface iface, String secName) {
+    if (_phoneClient == null) return false;
+    if (_phoneClient!.connectionType != ConnectionType.wireless) return false;
+    if (!_phoneClient!.isConnected) return false;
+
+    // 1. If phone's SSID is known, match against this interface's SSID
+    if (_phoneClient!.ssid != null && _phoneClient!.ssid!.trim().isNotEmpty) {
+      return _phoneClient!.ssid!.trim().toLowerCase() ==
+          iface.ssid.trim().toLowerCase();
+    }
+
+    // 2. If phone's wireless interface name / section is known, match it
+    if (_phoneClient!.wirelessIface != null &&
+        _phoneClient!.wirelessIface!.trim().isNotEmpty) {
+      final ifaceName = _phoneClient!.wirelessIface!.trim().toLowerCase();
+      return ifaceName == iface.ifName.trim().toLowerCase() ||
+          ifaceName == secName.trim().toLowerCase();
+    }
+
+    return false;
   }
 
   Future<void> _loadClients() async {
@@ -107,7 +138,7 @@ class _WifiAccessControlScreenState
       );
       final results = await Future.wait([localAddressesFuture, clientsFuture]);
       if (!mounted) return;
-      final localAddresses = results[0] as List<String>;
+      final localAddresses = results[0] as Set<String>;
       final clients = results[1] as List<Client>;
       final effectiveClients = clients.isNotEmpty ? clients : _availableClients;
       setState(() {
@@ -354,6 +385,7 @@ class _WifiAccessControlScreenState
       child: Scaffold(
         appBar: LuciAppBar(
           title: l10n?.wifiAccessControlTitle ?? 'Wi-Fi Access Control',
+          showBack: true,
         ),
         body: Column(
           children: [
@@ -361,48 +393,63 @@ class _WifiAccessControlScreenState
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 100.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeaderCard(context),
-                    const SizedBox(height: 16),
-                    _buildDeviceSelectionCard(context),
-                    const SizedBox(height: 16),
-                    if (_isValidMac(_selectedMac)) ...[
-                      _buildStaticLeaseOptionCard(context, appState),
-                      _buildAccessControlMatrix(context, overview, appState),
-                      const SizedBox(height: 24),
-                      _buildApplyButton(context, overview, appState),
-                    ] else ...[
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24.0),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.touch_app_rounded,
-                                  size: 48,
-                                  color: theme.colorScheme.primary.withValues(
-                                    alpha: 0.4,
-                                  ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 840),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildHeaderCard(context),
+                        const SizedBox(height: 16),
+                        _buildDeviceSelectionCard(context),
+                        const SizedBox(height: 16),
+                        if (_isValidMac(_selectedMac)) ...[
+                          _buildStaticLeaseOptionCard(context, appState),
+                          _buildAccessControlMatrix(
+                            context,
+                            overview,
+                            appState,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildApplyButton(context, overview, appState),
+                        ] else ...[
+                          Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.touch_app_rounded,
+                                      size: 48,
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.4),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      l10n?.selectDevicePrompt ??
+                                          'Select a device from the dropdown above or enter a valid MAC address to configure Wi-Fi access rules.',
+                                      textAlign: TextAlign.center,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  l10n?.selectDevicePrompt ??
-                                      'Select a device from the dropdown above or enter a valid MAC address to configure Wi-Fi access rules.',
-                                  textAlign: TextAlign.center,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ],
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -490,14 +537,125 @@ class _WifiAccessControlScreenState
                     borderRadius: BorderRadius.circular(12),
                   ),
                   prefixIcon: const Icon(Icons.devices_rounded),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
                 isExpanded: true,
+                menuMaxHeight: 380,
+                borderRadius: BorderRadius.circular(16),
+                dropdownColor: theme.colorScheme.surfaceContainerHigh,
+                elevation: 4,
+                icon: const Icon(Icons.arrow_drop_down_rounded),
+                selectedItemBuilder: (context) {
+                  return _availableClients.map((c) {
+                    final isWifi = c.connectionType == ConnectionType.wireless;
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isWifi ? Icons.wifi_rounded : Icons.lan_outlined,
+                            size: 18,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              '${c.displayName} (${c.macAddress})',
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList();
+                },
                 items: _availableClients.map((c) {
+                  final isWifi = c.connectionType == ConnectionType.wireless;
                   return DropdownMenuItem<Client>(
                     value: c,
-                    child: Text(
-                      '${c.displayName} (${c.macAddress})',
-                      overflow: TextOverflow.ellipsis,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: isWifi
+                                  ? theme.colorScheme.primaryContainer
+                                        .withValues(alpha: 0.6)
+                                  : theme.colorScheme.secondaryContainer
+                                        .withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              isWifi ? Icons.wifi_rounded : Icons.lan_outlined,
+                              size: 18,
+                              color: isWifi
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.secondary,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '${c.displayName} (${c.macAddress})',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (c.ipAddress.isNotEmpty &&
+                                    c.ipAddress != 'N/A') ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    c.ipAddress,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontFamily: 'monospace',
+                                      fontSize: 11,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          if (c.isDumbApClient) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.tertiaryContainer,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                c.apName ?? 'AP',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onTertiaryContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   );
                 }).toList(),
@@ -570,25 +728,20 @@ class _WifiAccessControlScreenState
     }
 
     if (existingMapping != null) {
+      final connectedColor = LuciStatusColors.connectedColor(context);
       return Card(
-        color: LuciStatusColors.connected.withValues(alpha: 0.1),
+        color: connectedColor.withValues(alpha: 0.1),
         margin: const EdgeInsets.only(bottom: 16),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(
-            color: LuciStatusColors.connected.withValues(alpha: 0.3),
-          ),
+          side: BorderSide(color: connectedColor.withValues(alpha: 0.3)),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
-              const Icon(
-                Icons.push_pin,
-                color: LuciStatusColors.connected,
-                size: 20,
-              ),
+              Icon(Icons.push_pin, color: connectedColor, size: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -596,12 +749,12 @@ class _WifiAccessControlScreenState
                   children: [
                     Row(
                       children: [
-                        const Text(
+                        Text(
                           'Static Lease Active',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
-                            color: LuciStatusColors.connected,
+                            color: connectedColor,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -611,9 +764,7 @@ class _WifiAccessControlScreenState
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: LuciStatusColors.connected.withValues(
-                              alpha: 0.2,
-                            ),
+                            color: connectedColor.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -651,8 +802,8 @@ class _WifiAccessControlScreenState
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                 ),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: LuciStatusColors.connected,
-                  side: const BorderSide(color: LuciStatusColors.connected),
+                  foregroundColor: connectedColor,
+                  side: BorderSide(color: connectedColor),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 6,
@@ -855,15 +1006,15 @@ class _WifiAccessControlScreenState
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: LuciStatusColors.connected.withValues(
-                            alpha: 0.15,
-                          ),
+                          color: LuciStatusColors.connectedColor(
+                            context,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Current: Allowed',
                           style: TextStyle(
-                            color: LuciStatusColors.connected,
+                            color: LuciStatusColors.connectedColor(context),
                             fontWeight: FontWeight.bold,
                             fontSize: 10,
                           ),
@@ -1150,6 +1301,7 @@ class _WifiAccessControlScreenState
 
         final shouldAllow = _selectedIfaceAllows[secName] ?? false;
         final updatedMaclist = List<String>.from(currentMaclist);
+        final isPhoneOnThisIface = _isPhoneConnectedToIface(iface, secName);
 
         if (shouldAllow) {
           if (!updatedMaclist.contains(targetMac)) {
@@ -1159,8 +1311,10 @@ class _WifiAccessControlScreenState
           newMaclistByIface[secName] = updatedMaclist;
           affectedSsids.add('${iface.ssid} (${radio.name})');
 
-          // Check phone lockout risk: If phone MAC is known and NOT in updated maclist for an allowed SSID
-          if (_phoneMac != null &&
+          // Check phone lockout risk: ONLY if the managing device is actively connected
+          // to this wireless interface, and the new allowlist will exclude the managing device!
+          if (isPhoneOnThisIface &&
+              _phoneMac != null &&
               _phoneMac!.isNotEmpty &&
               !updatedMaclist.contains(_phoneMac)) {
             phoneLockoutRisk = true;
@@ -1172,6 +1326,14 @@ class _WifiAccessControlScreenState
             newMacfilterByIface[secName] = 'disable';
           } else {
             newMacfilterByIface[secName] = 'allow';
+            // If managing device is on this interface, and user explicitly removed the managing device
+            // from the allowlist while the interface remains in allow mode:
+            if (isPhoneOnThisIface &&
+                _phoneMac != null &&
+                targetMac == _phoneMac &&
+                !updatedMaclist.contains(_phoneMac)) {
+              phoneLockoutRisk = true;
+            }
           }
         }
       }
@@ -1182,9 +1344,9 @@ class _WifiAccessControlScreenState
       final addPhone = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(
+          icon: Icon(
             Icons.warning_amber_rounded,
-            color: Colors.red,
+            color: Theme.of(ctx).colorScheme.error,
             size: 40,
           ),
           title: Text(l10n?.wifiAclLockoutWarning ?? 'Device Lockout Warning'),
@@ -1225,9 +1387,9 @@ class _WifiAccessControlScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(
+        icon: Icon(
           Icons.verified_user_rounded,
-          color: Colors.blue,
+          color: Theme.of(ctx).colorScheme.primary,
           size: 36,
         ),
         title: Text(

@@ -13,7 +13,7 @@ void main() {
       expect(jsonMap.containsKey('yet-another-luci-app'), isTrue);
 
       final acl = jsonMap['yet-another-luci-app'] as Map<String, dynamic>;
-      expect(acl['description'], 'Yet Another LuCI App Permissions');
+      expect(acl['description'], 'Yala Permissions');
 
       // Check 'read' section
       final read = acl['read'] as Map<String, dynamic>;

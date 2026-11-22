@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In Android, build-name is used as versionName while build-number used as versionCode.
 # Read more about Android versioning at https://developer.android.com/studio/publish/versioning
 # App X.Y.Z = upstream latest GitHub release; +N = fork Android versionCode (see README).
-version: 2.6.0+236
+version: 2.8.10+238
 
 environment:
   sdk: ^3.8.1
@@ -49,6 +49,7 @@ dependencies:
   qr_flutter: ^4.1.0
   dynamic_color: ^1.7.0
   dartssh2: ^4.1.0
+  xterm: ^4.0.0
 
 dev_dependencies:
   flutter_test:

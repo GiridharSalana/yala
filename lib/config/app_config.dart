@@ -36,8 +36,7 @@ class AppConfig {
   static const String appAuthorGithubHandle = 'GiridharSalana';
   static const String appAuthor = '@GiridharSalana';
   static const String appAuthorGithub = '@GiridharSalana';
-  static const String appAuthorProfileUrl =
-      'https://github.com/GiridharSalana';
+  static const String appAuthorProfileUrl = 'https://github.com/GiridharSalana';
   static const String supportEmail = 'yala+support@nightcode.co.in';
   static const String feedbackEmail = 'yala+feedback@nightcode.co.in';
   static const String privacyEmail = 'yala+privacy@nightcode.co.in';

@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:yala/l10n/app_localizations.dart';
 import 'package:yala/modules/storage_monitoring/models/storage_info.dart';
+import 'package:yala/services/local_network_permission_service.dart';
 import 'package:yala/widgets/luci_toast.dart';
 
 /// Semantic haptic feedback intensity types.
@@ -93,9 +94,12 @@ class OsPlatformIntegration {
 
     try {
       if (Platform.isAndroid) {
-        final intentUri = Uri.parse('package:yala');
-        if (await canLaunchUrl(intentUri)) {
-          launched = await launchUrl(intentUri);
+        launched = await LocalNetworkPermissionService.openAppSettings();
+        if (!launched) {
+          final intentUri = Uri.parse('package:com.giridharsalana.yala');
+          if (await canLaunchUrl(intentUri)) {
+            launched = await launchUrl(intentUri);
+          }
         }
       } else if (Platform.isIOS) {
         final intentUri = Uri.parse('app-settings:');
@@ -349,7 +353,6 @@ class OsPlatformIntegration {
       builder: (ctx) => AlertDialog(
         actionsOverflowButtonSpacing: 8,
         actionsOverflowDirection: VerticalDirection.down,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         icon: Icon(icon, color: accentColor, size: 40),
         title: Text(
           resolvedTitle,

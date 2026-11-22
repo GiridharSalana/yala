@@ -6,12 +6,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:yala/state/app_state.dart';
 import 'package:yala/services/secure_storage_service.dart';
-import 'package:yala/services/local_network_permission_service.dart';
 import 'package:yala/config/app_config.dart';
 import 'package:yala/widgets/theme_router_logo.dart';
 import 'package:yala/screens/main_screen.dart';
 import 'package:yala/screens/login_screen.dart';
 import 'package:yala/l10n/app_localizations.dart';
+import 'package:yala/services/local_network_permission_service.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:yala/utils/logger.dart';
 

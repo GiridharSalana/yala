@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:yala/main.dart';
 import 'package:yala/widgets/luci_app_bar.dart';
 import 'package:yala/widgets/luci_collapsible_card.dart';
+import 'package:yala/design/luci_design_system.dart';
 import 'package:yala/l10n/app_localizations.dart';
 import '../models/storage_info.dart';
 
@@ -245,8 +246,10 @@ class StorageMonitoringScreen extends ConsumerWidget {
                 backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   percent > 85
-                      ? Colors.red
-                      : (percent > 65 ? Colors.orange : Colors.teal),
+                      ? theme.colorScheme.error
+                      : (percent > 65
+                            ? LuciStatusColors.warningColor(context)
+                            : LuciStatusColors.connectedColor(context)),
                 ),
               ),
             ),
@@ -441,9 +444,9 @@ class StorageMonitoringScreen extends ConsumerWidget {
                 backgroundColor: theme.colorScheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   percent > 90
-                      ? Colors.red
+                      ? theme.colorScheme.error
                       : (percent > 75
-                            ? Colors.orange
+                            ? LuciStatusColors.warningColor(context)
                             : theme.colorScheme.tertiary),
                 ),
               ),
@@ -708,7 +711,7 @@ class StorageMonitoringScreen extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: SelectableText(
+            child: Text(
               value,
               textAlign: TextAlign.end,
               style: const TextStyle(fontWeight: FontWeight.bold),

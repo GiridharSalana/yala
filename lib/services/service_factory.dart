@@ -5,12 +5,15 @@
 import 'package:yala/services/interfaces/auth_service_interface.dart';
 import 'package:yala/services/interfaces/api_service_interface.dart';
 import 'package:yala/services/interfaces/ssh_service_interface.dart';
+import 'package:yala/services/interfaces/ssh_persistent_session_interface.dart';
 import 'package:yala/services/auth_service.dart';
 import 'package:yala/services/api_service.dart';
 import 'package:yala/services/ssh_service.dart';
+import 'package:yala/services/ssh_persistent_session.dart';
 import 'package:yala/services/mock_auth_service.dart';
 import 'package:yala/services/mock_api_service.dart';
 import 'package:yala/services/mock_ssh_service.dart';
+import 'package:yala/services/mock_ssh_persistent_session.dart';
 import 'package:yala/services/secure_storage_service.dart';
 import 'package:yala/services/router_service.dart';
 import 'package:yala/services/throughput_service.dart';
@@ -19,6 +22,7 @@ abstract class ServiceFactory {
   IAuthService createAuthService();
   IApiService createApiService();
   ISshService createSshService();
+  ISshPersistentSession createSshPersistentSession();
   SecureStorageService createSecureStorageService();
   RouterService createRouterService();
   ThroughputService createThroughputService();
@@ -41,6 +45,10 @@ class ProductionServiceFactory implements ServiceFactory {
 
   @override
   ISshService createSshService() => _sshService ??= RealSshService();
+
+  @override
+  ISshPersistentSession createSshPersistentSession() =>
+      RealSshPersistentSession();
 
   @override
   SecureStorageService createSecureStorageService() =>
@@ -70,6 +78,10 @@ class ReviewerModeServiceFactory implements ServiceFactory {
 
   @override
   ISshService createSshService() => _sshService ??= MockSshService();
+
+  @override
+  ISshPersistentSession createSshPersistentSession() =>
+      MockSshPersistentSession();
 
   @override
   SecureStorageService createSecureStorageService() =>

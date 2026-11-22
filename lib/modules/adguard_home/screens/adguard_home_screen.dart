@@ -7,6 +7,7 @@ import 'package:yala/l10n/app_localizations.dart';
 import 'package:yala/main.dart';
 import 'package:yala/widgets/luci_loading_view.dart';
 import 'package:yala/widgets/luci_loading_states.dart';
+import 'package:yala/widgets/luci_toast.dart';
 import '../controllers/adguard_controller.dart';
 import '../models/adguard_models.dart';
 import '../utils/adguard_web_url_helper.dart';
@@ -206,11 +207,9 @@ class _AdGuardHomeScreenState extends ConsumerState<AdGuardHomeScreen> {
                     await controller.deleteExternalProfile(profileId);
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to delete profile: $e'),
-                          backgroundColor: Theme.of(context).colorScheme.error,
-                        ),
+                      context.showToastError(
+                        'Failed to delete profile',
+                        subtitle: LuciToastManager.parseErrorReason(e),
                       );
                     }
                   }

@@ -19,7 +19,7 @@ void main() {
     AppConfig.debugIsIpaBuild = null;
     AppConfig.debugIsFdroidBuild = false;
     PackageInfo.setMockInitialValues(
-      appName: 'Yet Another LuCI App',
+      appName: 'Yala',
       packageName: 'com.nightcode.yala',
       version: '2.2.5',
       buildNumber: '220',

@@ -37,41 +37,38 @@ void main() async {
   // Modern Android Edge-to-Edge System Bar Integration
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  // Register SIL Open Font License (OFL) for bundled Geist and Geist Mono fonts
-  LicenseRegistry.addLicense(() async* {
-    final license = await rootBundle.loadString('assets/fonts/OFL.txt');
-    yield LicenseEntryWithLineBreaks([
-      'google_fonts',
-      'Geist',
-      'Geist Mono',
-    ], license);
-  });
-
-  // Register YALA's GPLv3 copyleft license and copyright attributions in Flutter LicenseRegistry
-  LicenseRegistry.addLicense(() async* {
-    yield LicenseEntryWithLineBreaks(
-      ['yala (yala)'],
-      '''Yala (yala)
-${AppConfig.copyrightNotice.replaceAll('–', '-')}
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.''',
-    );
-  });
+  // Register all open-source licenses and upstream attributions
+  registerOpenSourceLicenses();
 
   // Low-RAM & Smooth Scrolling Optimization: Cap image memory cache (30MB max, 100 entries max)
   PaintingBinding.instance.imageCache.maximumSizeBytes = 30 * 1024 * 1024;
   PaintingBinding.instance.imageCache.maximumSize = 100;
+
+  // Global Flutter error boundary:
+  // In release mode, the default RenderErrorBox inflates to 100,000 pixels on unbounded constraints
+  // (such as inside a SingleChildScrollView / Column), causing infinite scrolling blank grey voids.
+  // Instead, gracefully log the exception and render a collapsed fallback box.
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    Logger.exception(
+      'Flutter framework captured widget build exception',
+      details.exception,
+      details.stack ?? StackTrace.current,
+    );
+    bool isDebug = false;
+    assert(() {
+      isDebug = true;
+      return true;
+    }());
+    if (isDebug) {
+      return ErrorWidget.withDetails(
+        message: details.exception.toString(),
+        error: details.exception is FlutterError
+            ? details.exception as FlutterError
+            : null,
+      );
+    }
+    return const SizedBox.shrink();
+  };
 
   // Enable semantics early so AccessibilityNodeInfo reports scrollable to OEM screenshot engines immediately
   SemanticsBinding.instance.ensureSemantics();
@@ -153,9 +150,9 @@ class LuCIApp extends ConsumerWidget {
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         final effectiveLightDynamic =
-            lightDynamic ?? preloadedLight ?? LuciTheme.fallbackDynamicLight;
+            preloadedLight ?? lightDynamic ?? LuciTheme.fallbackDynamicLight;
         final effectiveDarkDynamic =
-            darkDynamic ?? preloadedDark ?? LuciTheme.fallbackDynamicDark;
+            preloadedDark ?? darkDynamic ?? LuciTheme.fallbackDynamicDark;
 
         final lightTheme = LuciTheme.buildLightTheme(
           dynamicColorScheme: useDynamicTheme ? effectiveLightDynamic : null,
@@ -176,14 +173,14 @@ class LuCIApp extends ConsumerWidget {
           themeMode: themeMode,
           builder: (context, child) {
             final mediaQuery = MediaQuery.of(context);
-            // Accessibility large font support clamped within safe bounds [0.85, 1.45]
-            // Allows 45% larger font size while preventing UI destruction on dense network management views
-            final clampedTextScaler = mediaQuery.textScaler.clamp(
+            // Accessibility large font support: Clamping minimum to 0.85 to avoid microscopic text,
+            // while supporting full Android accessibility scaling (up to 2.5x+) without arbitrary low caps.
+            final effectiveTextScaler = mediaQuery.textScaler.clamp(
               minScaleFactor: 0.85,
-              maxScaleFactor: 1.45,
+              maxScaleFactor: 2.5,
             );
             return MediaQuery(
-              data: mediaQuery.copyWith(textScaler: clampedTextScaler),
+              data: mediaQuery.copyWith(textScaler: effectiveTextScaler),
               child: child ?? const SizedBox.shrink(),
             );
           },
@@ -223,4 +220,149 @@ class LuCIApp extends ConsumerWidget {
       },
     );
   }
+}
+
+/// Registers all open-source licenses, copyleft notices, and third-party attributions
+/// with Flutter's LicenseRegistry.
+void registerOpenSourceLicenses() {
+  // Register SIL Open Font License (OFL) for bundled Geist and Geist Mono fonts
+  LicenseRegistry.addLicense(() async* {
+    final license = await rootBundle.loadString('assets/fonts/OFL.txt');
+    yield LicenseEntryWithLineBreaks([
+      'google_fonts',
+      'Geist',
+      'Geist Mono',
+    ], license);
+  });
+
+  // Register YALA's GPLv3 copyleft license and copyright attributions in Flutter LicenseRegistry
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+      ['yala (yala)'],
+      '''Yala (yala)
+${AppConfig.copyrightNotice.replaceAll('–', '-')}
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.''',
+    );
+  });
+
+  // Register OpenWrt luci-app-advanced-reboot attribution and GPLv3 license in Flutter LicenseRegistry
+  LicenseRegistry.addLicense(() async* {
+    yield const LicenseEntryWithLineBreaks(
+      ['luci-app-advanced-reboot (OpenWrt)'],
+      '''luci-app-advanced-reboot
+Copyright (C) 2017-2024 Stan Grishin <stangri@melmac.ca>
+Copyright (C) OpenWrt Contributors
+Repository: https://github.com/openwrt/luci/tree/main/applications/luci-app-advanced-reboot
+
+Dual-firmware partition discovery, bootloader environment inspection (boot_part, boot_part_ready, DualImageFlag), and read-only alternate partition mounting techniques adapted from luci-app-advanced-reboot for YALA's Advanced Reboot subsystem.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.''',
+    );
+  });
+
+  // Register dartssh2 MIT license — SSH client library used by SSH Console and background SSH service
+  LicenseRegistry.addLicense(() async* {
+    yield const LicenseEntryWithLineBreaks(
+      ['dartssh2'],
+      '''MIT License
+
+Copyright (c) 2022 xuty (TerminalStudio)
+https://github.com/TerminalStudio/dartssh2
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.''',
+    );
+  });
+
+  // Register xterm MIT license — terminal emulator widget used by the SSH Console screen
+  LicenseRegistry.addLicense(() async* {
+    yield const LicenseEntryWithLineBreaks(
+      ['xterm'],
+      '''MIT License
+
+Copyright (c) 2020 xuty
+https://github.com/TerminalStudio/xterm.dart
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.''',
+    );
+  });
+
+  // Register dynamic_color Apache-2.0 license — Google Material dynamic color extraction package
+  LicenseRegistry.addLicense(() async* {
+    yield const LicenseEntryWithLineBreaks(
+      ['dynamic_color'],
+      '''Apache License
+Version 2.0, January 2004
+http://www.apache.org/licenses/
+
+Copyright (c) Google LLC
+https://github.com/material-foundation/flutter-packages/tree/main/packages/dynamic_color
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.''',
+    );
+  });
 }

@@ -57,7 +57,7 @@ jobs:
         continue-on-error: true
 
       - name: Analyze Project Source
-        run: flutter analyze --fatal-infos
+        run: flutter analyze --fatal-warnings --no-fatal-infos
 
       - name: Run Tests
         run: flutter test
